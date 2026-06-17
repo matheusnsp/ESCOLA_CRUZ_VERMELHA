@@ -1,0 +1,15 @@
+<%- include('partials/head', { titulo: 'Confirme seu e-mail' }) %>
+
+<main class="auth-wrap">
+  <div class="auth-card auth-card-center">
+    <div class="auth-icone-info"><i class="fa-regular fa-envelope"></i></div>
+    <h1>Quase lá!</h1>
+    <p class="auth-sub">
+      Enviamos um link de confirmação para <strong><%= email %></strong>.
+      Abra seu e-mail e clique no link para ativar sua conta.
+    </p>
+    <p class="auth-alt">Não recebeu? <a href="/reenviar-confirmacao">Reenviar confirmação</a></p>
+  </div>
+</main>
+
+<%- include('partials/foot') %>

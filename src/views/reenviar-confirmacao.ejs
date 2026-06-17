@@ -1,0 +1,39 @@
+<%- include('partials/head', { titulo: 'Reenviar confirmação' }) %>
+
+<main class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <i class="fa-solid fa-plus"></i>
+      <div class="auth-brand-text">
+        <strong>CRUZ VERMELHA</strong>
+        <span>Escola de Capacitação</span>
+      </div>
+    </div>
+    <h1>Reenviar confirmação</h1>
+
+    <% if (sucesso) { %>
+      <div class="auth-erros" style="background:#f0fdf4;border-color:#86efac;">
+        <p style="color:#16a34a;"><i class="fa-solid fa-circle-check"></i> Se houver uma conta não confirmada com este e-mail, enviaremos um novo link em instantes.</p>
+      </div>
+      <p class="auth-alt"><a href="/login">Voltar ao login</a></p>
+    <% } else { %>
+      <p class="auth-sub">Digite seu e-mail e enviaremos um novo link de confirmação.</p>
+      <% if (erro) { %>
+        <div class="auth-erros" role="alert">
+          <p><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></p>
+        </div>
+      <% } %>
+      <form method="POST" action="/reenviar-confirmacao" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label class="auth-field">
+          <span>E-mail</span>
+          <input type="email" name="email" required autocomplete="email">
+        </label>
+        <button type="submit" class="auth-btn">Reenviar confirmação</button>
+      </form>
+      <p class="auth-alt"><a href="/login">Voltar ao login</a></p>
+    <% } %>
+  </div>
+</main>
+
+<%- include('partials/foot') %>

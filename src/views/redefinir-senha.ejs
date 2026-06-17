@@ -1,0 +1,42 @@
+<%- include('partials/head', { titulo: 'Redefinir senha' }) %>
+<main class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <i class="fa-solid fa-plus"></i>
+      <div class="auth-brand-text">
+        <strong>CRUZ VERMELHA</strong>
+        <span>Escola de Capacitação</span>
+      </div>
+    </div>
+    <h1>Redefinir senha</h1>
+    <p class="auth-sub">Digite sua nova senha abaixo.</p>
+
+    <% if (erro) { %>
+    <div class="auth-erros" role="alert">
+      <p><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></p>
+    </div>
+    <% } %>
+
+    <form method="POST" action="/redefinir-senha" novalidate>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="token" value="<%= token %>">
+      <label class="auth-field">
+        <span>Nova senha</span>
+        <input type="password" name="senha" required minlength="10" autocomplete="new-password">
+        <small>Mínimo de 10 caracteres.</small>
+        <div class="senha-forca" id="senhaForca" hidden>
+          <div class="senha-barra"><span></span></div>
+          <small class="senha-label"></small>
+        </div>
+      </label>
+      <label class="auth-field">
+        <span>Confirmar nova senha</span>
+        <input type="password" name="confirmarSenha" required autocomplete="new-password">
+      </label>
+      <button type="submit" class="auth-btn">Salvar nova senha</button>
+    </form>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
+<script src="/js/senha.js"></script>
+<%- include('partials/foot') %>

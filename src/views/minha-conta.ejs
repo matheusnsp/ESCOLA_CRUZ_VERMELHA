@@ -1,0 +1,110 @@
+<%- include('partials/site-head', { titulo: 'Minha conta' }) %>
+<%- include('partials/site-header') %>
+
+<main class="interna-wrap">
+  <% if (inscrito) { %>
+    <div class="banner-ok"><i class="fa-solid fa-circle-check"></i> Inscrição registrada! Ela ficará pendente até a confirmação do pagamento.</div>
+  <% } %>
+
+  <div class="conta-layout">
+    <!-- Menu lateral com perfil -->
+    <aside class="conta-side">
+      <div class="conta-perfil">
+        <div class="conta-avatar"><%= usuario.nome.charAt(0).toUpperCase() %></div>
+        <strong><%= usuario.nome %></strong>
+        <span><%= usuario.email %></span>
+      </div>
+      <nav class="conta-nav">
+        <a class="conta-side-item <%= sec === 'inscricoes' ? 'ativo' : '' %>" href="/minha-conta?sec=inscricoes">
+          <i class="fa-solid fa-graduation-cap"></i> Inscrições
+        </a>
+        <a class="conta-side-item <%= sec === 'dados' ? 'ativo' : '' %>" href="/minha-conta?sec=dados">
+          <i class="fa-solid fa-id-card"></i> Meus dados
+        </a>
+        <a class="conta-side-item conta-side-perigo <%= sec === 'excluir' ? 'ativo' : '' %>" href="/minha-conta?sec=excluir">
+          <i class="fa-solid fa-trash"></i> Excluir conta
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Conteúdo -->
+    <section class="conta-main">
+
+      <% if (sec === 'inscricoes') { %>
+        <div class="conta-head">
+          <h2>Minhas inscrições</h2>
+          <a href="/cursos" class="conta-head-acao"><i class="fa-solid fa-plus"></i> Nova inscrição</a>
+        </div>
+        <% if (!matriculas.length) { %>
+          <div class="interna-vazio">
+            <i class="fa-regular fa-folder-open" style="font-size:34px;color:#cbd5e0;display:block;margin-bottom:12px;"></i>
+            Você ainda não tem inscrições.<br><a href="/cursos">Ver cursos disponíveis</a>.
+          </div>
+        <% } else { %>
+          <div class="courses-grid">
+            <% matriculas.forEach(function (m) { %>
+              <% var cls = m.statusPagamento === 'PAGO' ? 'pago' : (m.statusPagamento === 'PENDENTE' ? 'pendente' : 'cancelado'); %>
+              <article class="course-card">
+                <% if (m.turma.curso.imagemUrl) { %>
+                  <img src="<%= m.turma.curso.imagemUrl %>" alt="<%= m.turma.curso.nome %>" class="course-img">
+                <% } else { %>
+                  <div class="course-img course-img-fallback"><i class="fa-solid fa-plus"></i></div>
+                <% } %>
+                <span class="mat-badge mat-badge-<%= cls %>"><%= m.statusPagamento %></span>
+                <div class="course-body">
+                  <h3><%= m.turma.curso.nome %></h3>
+                  <small class="mat-sub">
+                    <%= m.turma.diasSemana %> · <%= m.turma.horario %> ·
+                    início <%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
+                  </small>
+                  <div class="course-meta">
+                    <span class="duration"><%= m.plano === 'A_VISTA' ? 'À vista' : 'Parcelado' %> · <%= m.forma %></span>
+                    <span class="price"><%= formatBRL(Number(m.valorCurso) + Number(m.valorTaxaMatricula)) %></span>
+                  </div>
+                </div>
+              </article>
+            <% }) %>
+          </div>
+        <% } %>
+
+      <% } else if (sec === 'dados') { %>
+        <div class="conta-card">
+          <div class="conta-head"><h2>Meus dados</h2></div>
+          <div class="dados-lista">
+            <div><span>Nome</span><strong><%= usuario.nome %></strong></div>
+            <div><span>E-mail</span><strong><%= usuario.email %></strong></div>
+            <div><span>CPF/CNPJ</span><strong><%= docMascarado %></strong></div>
+            <div><span>E-mail confirmado</span><strong><%= usuario.emailVerificado ? 'Sim' : 'Não' %></strong></div>
+            <div><span>Cadastro em</span><strong><%= new Date(usuario.criadoEm).toLocaleDateString('pt-BR') %></strong></div>
+          </div>
+        </div>
+
+      <% } else if (sec === 'excluir') { %>
+        <div class="conta-card">
+          <div class="conta-head"><h2 style="color:#991b1b;">Excluir conta</h2></div>
+          <p class="painel-sub" style="margin-bottom:18px;">Esta ação é permanente e remove seus dados. Não é possível excluir com matrículas ativas.</p>
+
+          <% if (erro) { %>
+            <div class="aviso-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div>
+          <% } %>
+
+          <% if (matriculasAtivas > 0) { %>
+            <div class="aviso-bloqueio"><i class="fa-solid fa-lock"></i> Você tem <%= matriculasAtivas %> matrícula(s) ativa(s). Resolva com a secretaria antes de excluir.</div>
+          <% } else { %>
+            <form method="POST" action="/conta/excluir" novalidate style="max-width:400px;">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <label class="campo">
+                <span>Confirme sua senha para excluir</span>
+                <input type="password" name="senha" required autocomplete="current-password">
+              </label>
+              <button type="submit" class="btn-acao btn-perigo">Excluir minha conta</button>
+            </form>
+          <% } %>
+        </div>
+      <% } %>
+
+    </section>
+  </div>
+</main>
+
+<%- include('partials/site-footer') %>

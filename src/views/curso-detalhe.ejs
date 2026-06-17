@@ -1,0 +1,42 @@
+<%- include('partials/site-head', { titulo: curso.nome }) %>
+<%- include('partials/site-header') %>
+
+<section class="detalhe-wrap">
+  <a href="/cursos" class="cat-back" style="margin:24px 0 0;"><i class="fa-solid fa-arrow-left"></i> Cursos</a>
+
+  <div class="detalhe-top">
+    <% if (curso.imagemUrl) { %>
+      <img src="<%= curso.imagemUrl %>" alt="<%= curso.nome %>" class="detalhe-img">
+    <% } else { %>
+      <div class="detalhe-img course-img-fallback"><i class="fa-solid fa-plus"></i></div>
+    <% } %>
+    <div class="detalhe-info">
+      <h1><%= curso.nome %></h1>
+      <p><%= curso.descricao || 'Curso de capacitação da Cruz Vermelha.' %></p>
+      <ul class="detalhe-meta">
+        <li><i class="fa-regular fa-clock"></i> <%= curso.cargaHoraria %> horas</li>
+        <li><i class="fa-solid fa-tag"></i> <%= formatBRL(curso.precoAvista) %> à vista (ou <%= curso.parcelas %>x de <%= formatBRL(curso.valorParcela) %>)</li>
+        <li><i class="fa-solid fa-receipt"></i> Total à vista com matrícula: <strong><%= formatBRL(total) %></strong></li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="detalhe-turmas-titulo">Turmas abertas</h2>
+  <% if (!curso.turmas.length) { %>
+    <p style="color:#718096;">Nenhuma turma aberta no momento.</p>
+  <% } else { %>
+    <div class="detalhe-turmas">
+      <% curso.turmas.forEach(function (t) { %>
+        <div class="detalhe-turma">
+          <div>
+            <strong><%= t.diasSemana %> · <%= t.horario %></strong>
+            <small>Início: <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %></small>
+          </div>
+          <a class="btn-buy" href="/inscrever/<%= t.id %>">Inscrever-se</a>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<%- include('partials/site-footer') %>

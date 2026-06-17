@@ -1,0 +1,42 @@
+<header class="main-header">
+  <div class="header-container">
+    <a href="/" class="logo-area" style="text-decoration:none;color:inherit;">
+      <i class="fa-solid fa-plus logo-icon"></i>
+      <div class="brand-text">
+        <span class="brand-title">CRUZ VERMELHA</span>
+        <span class="brand-subtitle">ESCOLA DE CAPACITAÇÃO</span>
+      </div>
+    </a>
+
+    <nav class="nav-links">
+      <a href="/">Início</a>
+      <a href="/cursos">Cursos</a>
+      <a href="/sobre">Sobre Nós</a>
+      <a href="/seguranca">Segurança</a>
+    </nav>
+
+    <div class="header-actions">
+      <% if (typeof usuario !== 'undefined' && usuario) { %>
+        <details class="user-menu">
+          <summary>
+            <i class="fa-solid fa-circle-user"></i>
+            <span>Bem-vindo(a), <strong><%= usuario.nome.split(' ')[0] %></strong></span>
+            <i class="fa-solid fa-chevron-down user-menu-caret"></i>
+          </summary>
+          <div class="user-menu-drop">
+            <a href="/minha-conta?sec=inscricoes"><i class="fa-solid fa-graduation-cap"></i> Minhas inscrições</a>
+            <a href="/minha-conta?sec=dados"><i class="fa-solid fa-id-card"></i> Meus dados</a>
+            <a href="/minha-conta?sec=excluir"><i class="fa-solid fa-trash"></i> Excluir conta</a>
+          </div>
+        </details>
+        <form method="POST" action="/logout" style="margin:0;">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="btn-sair-sutil"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair</button>
+        </form>
+      <% } else { %>
+        <a href="/login" class="btn-login-sutil"><i class="fa-solid fa-lock"></i> Login</a>
+        <a href="/cadastro" class="btn-cadastro-sutil"><i class="fa-solid fa-user-plus"></i> Criar conta</a>
+      <% } %>
+    </div>
+  </div>
+</header>

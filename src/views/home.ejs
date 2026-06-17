@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escola de Capacitação | Cruz Vermelha</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/site-extra.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- HEADER / NAVBAR -->
+    <%- include('partials/site-header') %>
+
+    <main>
+
+        <!-- HERO -->
+        <section class="hero-section">
+            <div class="hero-container">
+                <div class="hero-text-content">
+                    <h1>CAPACITAÇÃO QUE<br><span>SALVA VIDAS.</span></h1>
+                    <p>Aprenda com quem mais entende de emergência.<br>Cursos oficiais da Cruz Vermelha Brasileira.</p>
+                    <div class="hero-buttons">
+                        <a href="/cursos" class="btn-hero-primary">VER CURSOS DISPONÍVEIS</a>
+                        <a href="/sobre" class="btn-hero-secondary">Saiba mais <i class="fa-solid fa-arrow-right" style="font-size:11px;"></i></a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- NOSSOS DIFERENCIAIS -->
+        <section class="features-section">
+            <div class="features-container">
+                <h2>Por que escolher a Cruz Vermelha</h2>
+                <div class="features-row">
+                    <div class="feature-item">
+                        <i class="fa-solid fa-shield-halved icon-red"></i>
+                        <div class="feature-text">
+                            <strong>Ambiente 100% Seguro &amp; LGPD</strong>
+                            <span>Seus dados sempre protegidos</span>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fa-solid fa-award icon-red"></i>
+                        <div class="feature-text">
+                            <strong>Certificação Oficial Reconhecida</strong>
+                            <span>Validade nacional e internacional</span>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fa-solid fa-bolt icon-red"></i>
+                        <div class="feature-text">
+                            <strong>Acesso Imediato Após Pagamento</strong>
+                            <span>Sem espera, comece agora</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VITRINE DE CURSOS (do banco) -->
+        <section id="cursos" class="courses-section">
+            <h2>Formação oficial</h2>
+
+            <% if (!cursos.length) { %>
+                <p style="text-align:center;color:#718096;">Nenhum curso disponível no momento.</p>
+            <% } %>
+
+            <div class="courses-grid">
+                <% cursos.forEach(function (curso) { %>
+                    <%- include('partials/curso-card', { curso: curso, formatBRL: formatBRL, totalExibicao: totalExibicao, cfgMap: cfgMap }) %>
+                <% }) %>
+            </div>
+
+            <% if (temMais) { %>
+                <div class="ver-mais-wrap">
+                    <a href="/cursos" class="btn-ver-mais">Ver todos os cursos <i class="fa-solid fa-arrow-right" style="font-size:12px;"></i></a>
+                </div>
+            <% } %>
+        </section>
+
+        <!-- IMPACTO + DEPOIMENTOS -->
+        <section class="impact-section">
+            <div class="impact-container">
+                <div class="impact-stats">
+                    <h2 class="impact-title">CAPACITAÇÃO QUE FAZ<br>DIFERENÇA EM TODO O BRASIL</h2>
+                    <div class="stat-item">
+                        <i class="fa-solid fa-certificate icon-red"></i>
+                        <div class="stat-text">
+                            <strong>+50.000</strong>
+                            <span>Alunos certificados</span>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fa-solid fa-heart-pulse icon-red"></i>
+                        <div class="stat-text">
+                            <strong>+10.000</strong>
+                            <span>Vidas salvas diretamente</span>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fa-solid fa-shield-halved icon-red"></i>
+                        <div class="stat-text">
+                            <strong>100% Segura</strong>
+                            <span>Plataforma certificada LGPD</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="testi-area">
+                    <span class="testi-label">Depoimentos</span>
+                    <h2 class="testi-title">O QUE DIZEM<br>NOSSOS ALUNOS</h2>
+                    <div class="testi-carousel" id="testiCarousel">
+                        <article class="testi-card">
+                            <p>"O curso de primeiros socorros mudou completamente a forma como eu trabalho nas emergências."</p>
+                            <div class="testi-card-footer">
+                                <div class="testi-avatar">MS</div>
+                                <div class="testi-info"><strong>Maria Silva</strong><span class="testi-role">Enfermeira</span></div>
+                            </div>
+                        </article>
+                        <article class="testi-card">
+                            <p>"Treinamento essencial e muito prático. Saí com confiança para atuar em campo. Recomendo demais."</p>
+                            <div class="testi-card-footer">
+                                <div class="testi-avatar">JA</div>
+                                <div class="testi-info"><strong>João Almeida</strong><span class="testi-role">Bombeiro civil</span></div>
+                            </div>
+                        </article>
+                        <article class="testi-card">
+                            <p>"Confiável, didático e seguro. Aprendi muito além do esperado — o suporte da equipe é incrível."</p>
+                            <div class="testi-card-footer">
+                                <div class="testi-avatar">AP</div>
+                                <div class="testi-info"><strong>Ana Pereira</strong><span class="testi-role">Professora</span></div>
+                            </div>
+                        </article>
+                        <article class="testi-card">
+                            <p>"Conteúdo direto ao ponto com aplicação imediata no dia a dia. Exatamente o que eu precisava."</p>
+                            <div class="testi-card-footer">
+                                <div class="testi-avatar">RC</div>
+                                <div class="testi-info"><strong>Rafael Costa</strong><span class="testi-role">Cuidador</span></div>
+                            </div>
+                        </article>
+                    </div>
+                    <div class="testi-dots" id="testiDots"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PERGUNTAS FREQUENTES -->
+        <section class="faq-section">
+            <div class="container">
+                <div class="faq-header">
+                    <i class="fa-regular fa-message faq-hero-icon"></i>
+                    <span class="section-label">Tire suas dúvidas</span>
+                    <h2 class="faq-title">PERGUNTAS FREQUENTES</h2>
+                    <p class="faq-subtitle">Não encontrou o que procura? Fale com a gente pelo WhatsApp.</p>
+                    <a href="https://wa.me/5521999999999" target="_blank" rel="noopener" class="btn-faq-wpp">
+                        <i class="fa-brands fa-whatsapp"></i> Entre em Contato por WhatsApp
+                    </a>
+                </div>
+                <div class="faq-list">
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false">
+                            <span class="faq-q-inner"><i class="fa-regular fa-rectangle-list faq-q-icon"></i> Como funciona a inscrição?</span>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="faq-a"><p>Escolha o curso, clique em "Inscrever-se", crie sua conta e finalize a inscrição. O pagamento pode ser à vista, no cartão (crédito ou débito) ou via Pix.</p></div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false">
+                            <span class="faq-q-inner"><i class="fa-regular fa-credit-card faq-q-icon"></i> Como acompanho minha inscrição?</span>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="faq-a"><p>Na sua Área do Aluno ("Minha conta") você vê todas as suas inscrições e o status de pagamento de cada uma.</p></div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false">
+                            <span class="faq-q-inner"><i class="fa-regular fa-user faq-q-icon"></i> Como faço o login?</span>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="faq-a"><p>Clique em "Login" no topo da página e entre com o e-mail e a senha cadastrados. Esqueceu a senha? Use a opção de recuperação na própria tela.</p></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- RODAPÉ -->
+    <footer class="site-footer">
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <div class="footer-logo">
+                    <i class="fa-solid fa-plus logo-icon"></i>
+                    <div><strong>CRUZ VERMELHA</strong><span>Escola de Capacitação</span></div>
+                </div>
+                <p style="font-size:13px;line-height:1.7;margin-top:4px;">Capacitando pessoas para salvar vidas há décadas no Brasil.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Contato</h4>
+                <p>Cruz Vermelha Brasileira<br>Filial Rio de Janeiro<br>Escola de Capacitação</p>
+            </div>
+            <div class="footer-col">
+                <h4>Fale conosco</h4>
+                <p><i class="fa-solid fa-phone"></i> (21) 5237-6878</p>
+                <p><i class="fa-regular fa-envelope"></i> contato@cruzvermelha-rj.org.br</p>
+            </div>
+            <div class="footer-col">
+                <h4>Siga-nos</h4>
+                <div class="footer-social">
+                    <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+                    <a href="#" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
+                    <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="#" aria-label="TikTok"><i class="fa-brands fa-tiktok"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="container footer-inner">
+                <span>&copy; 2026 Cruz Vermelha Brasileira</span>
+                <span class="sep">|</span>
+                <span>Escola de Capacitação</span>
+                <span class="sep">|</span>
+                <span>Plataforma Segura</span>
+                <span class="sep">|</span>
+                <a href="/privacidade">Política de Privacidade</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- BOTÃO FLUTUANTE WHATSAPP -->
+    <a class="wpp-float" href="https://wa.me/5521999999999?text=Ol%C3%A1!%20Tenho%20uma%20d%C3%BAvida%20sobre%20os%20cursos%20da%20Escola%20de%20Capacita%C3%A7%C3%A3o." target="_blank" rel="noopener" aria-label="Falar no WhatsApp">
+        <span class="wpp-float-text"><strong>Suporte rápido</strong><small>Dúvidas? Fale conosco</small></span>
+        <i class="fa-brands fa-whatsapp"></i>
+    </a>
+
+    <script src="/js/main.js"></script>
+
+</body>
+</html>

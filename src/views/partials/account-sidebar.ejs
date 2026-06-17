@@ -1,0 +1,13 @@
+<aside class="conta-sidebar">
+  <nav>
+    <a href="/minha-conta" class="<%= ativo === 'inscricoes' ? 'ativo' : '' %>">
+      <i class="fa-solid fa-graduation-cap"></i> Minhas inscrições
+    </a>
+    <a href="/conta" class="<%= ativo === 'dados' ? 'ativo' : '' %>">
+      <i class="fa-solid fa-id-card"></i> Meus dados
+    </a>
+    <a href="/conta#excluir" class="conta-sidebar-perigo">
+      <i class="fa-solid fa-trash-can"></i> Excluir conta
+    </a>
+  </nav>
+</aside>

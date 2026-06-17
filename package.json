@@ -1,0 +1,32 @@
+{
+  "name": "escola-cruz-vermelha",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Escola de Capacitação da Cruz Vermelha Brasileira (RJ) — backend e área autenticada",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "db:migrate": "prisma migrate dev --name init",
+    "db:seed": "node prisma/seed.js",
+    "db:seed:limpar": "node prisma/limpar-exemplos.js",
+    "prisma:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^5",
+    "argon2": "^0.41",
+    "connect-pg-simple": "^9",
+    "dotenv": "^16",
+    "ejs": "^3",
+    "express": "^4",
+    "express-rate-limit": "^7",
+    "express-session": "^1",
+    "helmet": "^7",
+    "pg": "^8",
+    "resend": "^4",
+    "zxcvbn": "^4",
+    "zod": "^3"
+  },
+  "devDependencies": {
+    "prisma": "^5"
+  }
+}

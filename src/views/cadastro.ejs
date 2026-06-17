@@ -1,0 +1,77 @@
+<%- include('partials/head', { titulo: 'Criar conta' }) %>
+
+<main class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <i class="fa-solid fa-plus"></i>
+      <div class="auth-brand-text">
+        <strong>CRUZ VERMELHA</strong>
+        <span>Escola de Capacitação</span>
+      </div>
+    </div>
+
+    <h1>Criar conta</h1>
+    <p class="auth-sub">Preencha seus dados para se inscrever nos cursos.</p>
+
+    <% if (erros && erros.length) { %>
+      <div class="auth-erros" role="alert">
+        <% erros.forEach(function (e) { %>
+          <p><i class="fa-solid fa-circle-exclamation"></i> <%= e %></p>
+        <% }) %>
+      </div>
+    <% } %>
+
+    <form method="POST" action="/cadastro" novalidate>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <label class="auth-field">
+        <span>Nome completo</span>
+        <input type="text" name="nome" value="<%= valores.nome || '' %>" required autocomplete="name">
+      </label>
+
+      <label class="auth-field">
+        <span>E-mail</span>
+        <input type="email" name="email" value="<%= valores.email || '' %>" required autocomplete="email">
+      </label>
+
+      <label class="auth-field">
+        <span>CPF ou CNPJ</span>
+        <input type="text" name="documento" value="<%= valores.documento || '' %>" required inputmode="numeric" placeholder="Somente números ou com pontuação">
+        <small>Usado para emissão do certificado. Não pedimos foto de documento.</small>
+      </label>
+
+      <label class="auth-field">
+        <span>Senha</span>
+        <input type="password" name="senha" required minlength="10" autocomplete="new-password">
+        <small>Mínimo de 10 caracteres.</small>
+        <div class="senha-forca" id="senhaForca" hidden>
+          <div class="senha-barra"><span></span></div>
+          <small class="senha-label"></small>
+        </div>
+      </label>
+
+      <label class="auth-field">
+        <span>Confirmar senha</span>
+        <input type="password" name="confirmarSenha" required autocomplete="new-password">
+      </label>
+
+      <label class="auth-check">
+        <input type="checkbox" name="consentimento">
+        <span>
+          Li e aceito a
+          <a href="/privacidade" target="_blank" rel="noopener">Política de Privacidade</a>
+          e o tratamento dos meus dados conforme a LGPD.
+        </span>
+      </label>
+
+      <button type="submit" class="auth-btn">Criar conta</button>
+    </form>
+
+    <p class="auth-alt">Já tem conta? <a href="/login">Entrar</a></p>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
+<script src="/js/senha.js"></script>
+
+<%- include('partials/foot') %>

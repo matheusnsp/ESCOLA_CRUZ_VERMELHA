@@ -1,0 +1,483 @@
+/* Ajustes que complementam o style.css (sem alterá-lo) */
+
+/* Saudação do usuário logado no header */
+.user-greeting {
+  font-size: 12px;
+  line-height: 1.25;
+  color: var(--gray-700, #4a5568);
+  text-align: right;
+  margin-right: 4px;
+}
+.user-greeting strong { color: var(--black, #0f1318); font-size: 13px; }
+
+/* Botão "Sair" segue o visual do botão de cadastro */
+.btn-sair { cursor: pointer; border: none; font: inherit; }
+
+/* Total no card de curso */
+.course-total {
+  font-size: 12px;
+  color: #718096;
+  margin: 2px 0 12px;
+}
+.course-total strong { color: #0f1318; }
+
+/* Imagem placeholder quando o curso não tem foto */
+.course-img-fallback {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #cc0000, #a30000);
+  color: #fff;
+  font-size: 42px;
+}
+
+/* Botão "Ver todos os cursos" */
+.ver-mais-wrap { text-align: center; margin-top: 32px; }
+.btn-ver-mais {
+  display: inline-block;
+  background: #1a365d;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+  padding: 14px 28px;
+  border-radius: 10px;
+}
+.btn-ver-mais:hover { background: #102443; }
+
+/* Voltar */
+.cat-back { display:inline-block; font-size: 13px; color: #718096; text-decoration: none; font-weight: 600; margin: 24px 24px 0; }
+.cat-back:hover { color: #cc0000; }
+
+/* Página de detalhe do curso */
+.detalhe-wrap { max-width: 920px; margin: 0 auto; padding: 0 24px 64px; }
+.detalhe-top { display: flex; gap: 24px; flex-wrap: wrap; margin: 20px 0 36px; }
+.detalhe-img { width: 320px; max-width: 100%; height: 220px; object-fit: cover; border-radius: 14px; }
+.detalhe-info { flex: 1; min-width: 260px; }
+.detalhe-info h1 { font-size: 28px; font-weight: 900; margin-bottom: 10px; }
+.detalhe-info p { color: #4a5568; line-height: 1.6; margin-bottom: 16px; }
+.detalhe-meta { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: #4a5568; }
+.detalhe-meta i { color: #cc0000; width: 18px; }
+
+.detalhe-turmas-titulo { font-size: 20px; font-weight: 800; margin-bottom: 16px; }
+.detalhe-turmas { display: flex; flex-direction: column; gap: 12px; }
+.detalhe-turma {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 18px;
+}
+.detalhe-turma strong { display: block; font-size: 14px; }
+.detalhe-turma small { color: #718096; font-size: 12px; }
+.detalhe-turma .btn-buy { width: auto; padding: 10px 20px; margin: 0; }
+
+/* ===== Telas internas (área do aluno) ===== */
+.interna-wrap { max-width: 1100px; margin: 0 auto; padding: 36px 24px 0; }
+.interna-head { margin-bottom: 28px; }
+.interna-head h1 { font-size: 30px; font-weight: 900; letter-spacing: -0.5px; }
+.interna-head p { color: #718096; margin-top: 4px; }
+.sec-titulo { font-size: 20px; font-weight: 800; margin: 8px 0 18px; }
+
+.interna-vazio {
+  background: #fff; border: 1px dashed #cbd5e0; border-radius: 14px;
+  padding: 40px; text-align: center; color: #718096;
+}
+.interna-vazio a { color: #cc0000; font-weight: 700; }
+
+.banner-ok {
+  background: #f0fdf4; border: 1px solid #86efac; color: #166534;
+  border-radius: 12px; padding: 14px 18px; margin-bottom: 24px;
+  display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600;
+}
+
+/* card de inscrição (mesma base do card de curso) */
+.course-card { position: relative; }
+.mat-badge {
+  position: absolute; top: 12px; right: 12px;
+  font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 999px;
+  text-transform: uppercase; letter-spacing: 0.5px; backdrop-filter: blur(2px);
+}
+.mat-badge-pendente { background: #fef9c3; color: #854d0e; }
+.mat-badge-pago { background: #dcfce7; color: #166534; }
+.mat-badge-cancelado { background: #fee2e2; color: #991b1b; }
+.mat-sub { font-size: 12px; color: #718096; display: block; margin: -4px 0 10px; }
+
+/* cartão central para Meus Dados / Inscrição */
+.painel-card {
+  max-width: 560px; margin: 32px auto 0; background: #fff;
+  border: 1px solid #e2e8f0; border-radius: 16px; padding: 32px 30px;
+  box-shadow: 0 8px 30px rgba(15,19,24,0.05);
+}
+.painel-card h1 { font-size: 24px; font-weight: 900; margin-bottom: 4px; }
+.painel-sub { color: #718096; font-size: 14px; margin-bottom: 22px; }
+.dados-lista { display: flex; flex-direction: column; }
+.dados-lista > div {
+  display: flex; justify-content: space-between; gap: 16px;
+  padding: 12px 0; border-bottom: 1px solid #edf2f7; font-size: 14px;
+}
+.dados-lista > div span { color: #718096; }
+.dados-lista > div strong { color: #0f1318; text-align: right; }
+
+.bloco-perigo { margin-top: 26px; padding-top: 22px; border-top: 1px solid #e2e8f0; }
+.bloco-perigo h2 { font-size: 16px; font-weight: 800; color: #991b1b; margin-bottom: 6px; }
+
+.campo { display: block; margin-bottom: 16px; }
+.campo > span { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.campo input, .campo select {
+  width: 100%; font-family: inherit; font-size: 15px; padding: 12px 14px;
+  border: 1px solid #cbd5e0; border-radius: 10px; background: #fff;
+}
+.campo input:focus, .campo select:focus { outline: none; border-color: #1a365d; box-shadow: 0 0 0 3px rgba(26,54,93,0.12); }
+.campo small { display: block; font-size: 12px; color: #718096; margin-top: 5px; }
+
+.btn-acao {
+  width: 100%; font-family: inherit; font-size: 15px; font-weight: 800;
+  color: #fff; background: #cc0000; border: none; border-radius: 10px;
+  padding: 14px; cursor: pointer;
+}
+.btn-acao:hover { filter: brightness(0.93); }
+.btn-perigo { background: #991b1b; }
+
+.aviso-erro {
+  background: #fff1f1; border: 1px solid #f3c2c2; color: #8a1f1f;
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; font-size: 13px;
+  display: flex; align-items: center; gap: 8px;
+}
+.resumo-box {
+  background: #f7f8fa; border: 1px solid #e2e8f0; border-radius: 10px;
+  padding: 14px 16px; margin-bottom: 20px;
+}
+.resumo-box > div { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px; }
+.resumo-box > div span { color: #4a5568; }
+.resumo-box small { display: block; font-size: 12px; color: #718096; margin-top: 4px; }
+
+/* ===== Sticky footer: rodapé sempre no fim quando há pouco conteúdo ===== */
+html, body { height: 100%; }
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+/* O conteúdo principal cresce e empurra o footer pra baixo */
+body > main,
+body > .courses-section,
+body > .detalhe-wrap,
+body > section {
+  flex: 1 0 auto;
+}
+.site-footer { flex-shrink: 0; margin-top: auto; }
+
+/* ===== Menu do usuário no header (dropdown nativo, sutil) ===== */
+.user-menu { position: relative; }
+.user-menu summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  font-size: 14px; color: #1a365d; padding: 8px 12px; border-radius: 9px;
+  border: 1px solid transparent;
+}
+.user-menu summary::-webkit-details-marker { display: none; }
+.user-menu summary:hover { background: #f0f4f8; }
+.user-menu[open] summary { background: #f0f4f8; border-color: #e2e8f0; }
+.user-menu summary > i.fa-circle-user { font-size: 20px; color: #cc0000; }
+.user-menu-caret { font-size: 10px; color: #718096; transition: transform 0.15s; }
+.user-menu[open] .user-menu-caret { transform: rotate(180deg); }
+
+.user-menu-drop {
+  position: absolute; right: 0; top: calc(100% + 8px);
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(15,19,24,0.12);
+  min-width: 210px; padding: 6px; z-index: 60;
+}
+.user-menu-drop a {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 12px; border-radius: 8px;
+  font-size: 14px; color: #0f1318; text-decoration: none;
+}
+.user-menu-drop a:hover { background: #f7f8fa; }
+.user-menu-drop a i { width: 18px; color: #718096; }
+.user-menu-drop a:last-child { color: #991b1b; }
+.user-menu-drop a:last-child i { color: #991b1b; }
+
+.btn-sair-sutil {
+  background: none; border: 1px solid #e2e8f0; color: #4a5568;
+  font: inherit; font-size: 13px; font-weight: 600;
+  padding: 9px 14px; border-radius: 9px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.btn-sair-sutil:hover { border-color: #cc0000; color: #cc0000; }
+
+/* ===== Painel da conta com menu lateral ===== */
+.conta-layout { display: grid; grid-template-columns: 230px 1fr; gap: 28px; align-items: start; }
+.conta-side {
+  display: flex; flex-direction: column; gap: 4px;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 10px;
+  position: sticky; top: 24px;
+}
+.conta-side-item {
+  display: flex; align-items: center; gap: 11px;
+  padding: 12px 14px; border-radius: 9px;
+  text-decoration: none; color: #4a5568; font-size: 14px; font-weight: 600;
+}
+.conta-side-item i { width: 18px; }
+.conta-side-item:hover { background: #f7f8fa; }
+.conta-side-item.ativo { background: #fef2f2; color: #cc0000; }
+.conta-side-item.ativo i { color: #cc0000; }
+.conta-side-perigo { color: #991b1b; }
+.conta-main { min-width: 0; }
+@media (max-width: 760px) {
+  .conta-layout { grid-template-columns: 1fr; }
+  .conta-side { flex-direction: row; flex-wrap: wrap; position: static; }
+  .conta-side-item { flex: 1; justify-content: center; }
+}
+
+/* ===== Painel da conta — visual repaginado (sobrepõe regras anteriores) ===== */
+.interna-wrap { max-width: 1040px; }
+.conta-layout {
+  display: grid; grid-template-columns: 290px 1fr; gap: 28px; align-items: start;
+  margin-top: 8px;
+}
+
+.conta-side {
+  background: #fff; border: 1px solid #e8edf3; border-radius: 18px;
+  padding: 8px; position: sticky; top: 24px;
+  box-shadow: 0 10px 30px rgba(15,19,24,0.06);
+}
+.conta-perfil {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 26px 18px 20px; border-bottom: 1px solid #eef2f7; margin-bottom: 8px;
+}
+.conta-avatar {
+  width: 66px; height: 66px; border-radius: 50%;
+  background: linear-gradient(135deg, #cc0000, #8f0000); color: #fff;
+  display: grid; place-items: center; font-size: 27px; font-weight: 800;
+  margin-bottom: 12px; box-shadow: 0 6px 16px rgba(204,0,0,0.3);
+}
+.conta-perfil strong { font-size: 16px; color: #0f1318; }
+.conta-perfil span { font-size: 12.5px; color: #718096; margin-top: 3px; word-break: break-all; }
+
+.conta-nav { display: flex; flex-direction: column; gap: 4px; padding: 8px; }
+.conta-side-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px; border-radius: 11px;
+  text-decoration: none; color: #4a5568; font-size: 14.5px; font-weight: 600;
+  transition: background 0.12s, color 0.12s;
+}
+.conta-side-item i { width: 18px; text-align: center; }
+.conta-side-item:hover { background: #f5f7fa; }
+.conta-side-item.ativo { background: #fef2f2; color: #cc0000; }
+.conta-side-item.ativo i { color: #cc0000; }
+.conta-side-perigo { color: #b04545; }
+
+/* Conteúdo */
+.conta-main { min-width: 0; }
+.conta-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; gap: 12px; }
+.conta-head h2 { font-size: 21px; font-weight: 800; letter-spacing: -0.3px; }
+.conta-head-acao {
+  font-size: 13px; font-weight: 700; color: #cc0000; text-decoration: none;
+  border: 1px solid #f3c2c2; padding: 8px 14px; border-radius: 9px;
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.conta-head-acao:hover { background: #fef2f2; }
+
+.conta-card {
+  background: #fff; border: 1px solid #e8edf3; border-radius: 18px;
+  padding: 30px 32px; box-shadow: 0 10px 30px rgba(15,19,24,0.06);
+}
+
+.aviso-bloqueio {
+  background: #f7f8fa; border: 1px solid #e2e8f0; color: #4a5568;
+  border-radius: 10px; padding: 14px 16px; font-size: 14px;
+  display: flex; align-items: center; gap: 9px;
+}
+
+.interna-vazio { padding: 48px 24px; }
+
+@media (max-width: 760px) {
+  .conta-layout { grid-template-columns: 1fr; }
+  .conta-side { position: static; }
+}
+
+/* ===== Botões Login/Cadastro (deslogado) — versão sutil ===== */
+.btn-login-sutil {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 600; color: #1a365d; text-decoration: none;
+  padding: 9px 14px; border-radius: 9px;
+}
+.btn-login-sutil i { font-size: 12px; color: #718096; }
+.btn-login-sutil:hover { background: #f0f4f8; }
+
+.btn-cadastro-sutil {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 700; color: #fff; text-decoration: none;
+  background: #cc0000; padding: 10px 18px; border-radius: 9px;
+}
+.btn-cadastro-sutil i { font-size: 12px; }
+.btn-cadastro-sutil:hover { background: #a30000; }
+
+/* ===== Páginas institucionais (Sobre / Segurança) ===== */
+.pagina-hero {
+  background: linear-gradient(135deg, #1a365d, #0f2138);
+  color: #fff; padding: 60px 24px; text-align: center;
+}
+.pagina-hero h1 { font-size: 34px; font-weight: 900; letter-spacing: -0.5px; }
+.pagina-hero p { color: #cbd5e0; max-width: 640px; margin: 12px auto 0; font-size: 16px; }
+
+.pagina-wrap { max-width: 920px; margin: 0 auto; padding: 44px 24px; }
+.pagina-wrap h2 { font-size: 22px; font-weight: 800; margin: 30px 0 12px; }
+.pagina-wrap h2:first-child { margin-top: 0; }
+.pagina-wrap > p { color: #4a5568; line-height: 1.75; margin-bottom: 12px; }
+
+.principios-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px; margin-top: 16px;
+}
+.principio {
+  background: #fff; border: 1px solid #e8edf3; border-radius: 14px; padding: 20px;
+  box-shadow: 0 6px 20px rgba(15,19,24,0.04);
+}
+.principio i { color: #cc0000; font-size: 22px; margin-bottom: 10px; display: block; }
+.principio strong { display: block; font-size: 15px; margin-bottom: 5px; color: #0f1318; }
+.principio span { font-size: 13px; color: #718096; line-height: 1.55; }
+
+.aviso-placeholder {
+  background: #fffbeb; border: 1px solid #fde68a; color: #854d0e;
+  border-radius: 10px; padding: 13px 16px; font-size: 13px; margin-top: 24px; line-height: 1.6;
+}
+
+/* ===== Páginas institucionais RICAS (Sobre / Segurança) ===== */
+.page-hero {
+  position: relative; color: #fff; text-align: center;
+  padding: 96px 24px; background-size: cover; background-position: center;
+}
+.page-hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(143,0,0,0.90), rgba(15,19,24,0.80));
+}
+.page-hero > * { position: relative; z-index: 1; }
+.page-hero .eyebrow { letter-spacing: 2.5px; font-size: 13px; font-weight: 800; color: #ffd2d2; text-transform: uppercase; }
+.page-hero h1 { font-size: 46px; font-weight: 900; letter-spacing: -1px; margin: 12px 0; line-height: 1.05; }
+.page-hero p { color: #f3e3e3; max-width: 680px; margin: 0 auto; font-size: 17px; line-height: 1.6; }
+.page-hero .hero-cta {
+  display: inline-block; margin-top: 28px; background: #fff; color: #cc0000;
+  font-weight: 800; padding: 14px 30px; border-radius: 10px; text-decoration: none;
+}
+.page-hero .hero-cta:hover { background: #ffe5e5; }
+
+.page-split {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center;
+  max-width: 1060px; margin: 0 auto; padding: 70px 24px;
+}
+.page-split img {
+  width: 100%; border-radius: 18px; box-shadow: 0 18px 44px rgba(0,0,0,0.14);
+  aspect-ratio: 4 / 3; object-fit: cover;
+}
+.page-split.rev .split-img { order: 2; }
+.page-split .eyebrow { color: #cc0000; letter-spacing: 2px; font-size: 12.5px; font-weight: 800; text-transform: uppercase; }
+.page-split h2 { font-size: 30px; font-weight: 900; margin: 8px 0 14px; letter-spacing: -0.5px; }
+.page-split p { color: #4a5568; line-height: 1.75; margin-bottom: 12px; }
+
+.band-vermelha {
+  background: linear-gradient(135deg, #cc0000, #8f0000); color: #fff; text-align: center;
+  padding: 60px 24px;
+}
+.band-vermelha h2 { font-size: 30px; font-weight: 900; max-width: 780px; margin: 0 auto 10px; letter-spacing: -0.5px; }
+.band-vermelha p { color: #ffd9d9; max-width: 640px; margin: 0 auto; font-size: 16px; line-height: 1.6; }
+
+.secao { max-width: 1060px; margin: 0 auto; padding: 60px 24px; }
+.secao-titulo { text-align: center; }
+.secao-titulo .eyebrow { color: #cc0000; letter-spacing: 2px; font-size: 12.5px; font-weight: 800; text-transform: uppercase; }
+.secao-titulo h2 { font-size: 30px; font-weight: 900; letter-spacing: -0.5px; margin-top: 4px; }
+.secao-sub { text-align: center; color: #718096; max-width: 620px; margin: 8px auto 30px; line-height: 1.6; }
+
+.principio { transition: transform 0.12s, box-shadow 0.12s; }
+.principio:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(15,19,24,0.10); }
+
+.cta-final { text-align: center; padding: 16px 24px 72px; }
+.cta-final .btn-ver-mais { font-size: 15px; }
+
+@media (max-width: 760px) {
+  .page-split { grid-template-columns: 1fr; gap: 24px; padding: 44px 24px; }
+  .page-split.rev .split-img { order: 0; }
+  .page-hero h1 { font-size: 34px; }
+}
+
+/* Marca d'água dos 3 símbolos estilizados no banner do Sobre */
+.hero-simbolos {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: url('/img/simbolos.svg') center 38% no-repeat;
+  background-size: min(760px, 82%);
+  opacity: 0.13;
+}
+
+/* Banner sem foto: fundo vermelho da marca */
+.page-hero.sem-foto { background: linear-gradient(135deg, #d11a1a, #7a0000); }
+.page-hero.sem-foto::before { display: none; }
+
+/* Bloco gráfico da marca (no lugar de foto) */
+.split-grafico {
+  border-radius: 18px; aspect-ratio: 4 / 3; display: grid; place-items: center;
+  background: linear-gradient(135deg, #cc0000, #8f0000);
+  box-shadow: 0 18px 44px rgba(204,0,0,0.22);
+}
+.split-grafico img { width: 62%; opacity: 0.95; }
+.split-grafico i { font-size: 76px; color: #fff; opacity: 0.95; }
+
+/* Placeholder de foto (ex.: foto da filial) */
+.split-placeholder {
+  border-radius: 18px; aspect-ratio: 4 / 3; display: grid; place-items: center; text-align: center;
+  border: 2px dashed #cbd5e0; background: #f7f8fa; color: #94a3b8; padding: 24px;
+}
+.split-placeholder i { font-size: 42px; margin-bottom: 12px; display: block; }
+.split-placeholder strong { font-size: 14px; color: #64748b; display: block; }
+.split-placeholder span { font-size: 12.5px; }
+
+/* ===== Página /cursos — grade própria e limpa ===== */
+.cursos-hero { padding-top: 64px; padding-bottom: 64px; }
+.cursos-hero h1 { font-size: 40px; }
+
+.cursos-wrap { max-width: 1160px; margin: 0 auto; padding: 48px 24px 68px; }
+.cursos-vazio { text-align: center; color: #718096; padding: 50px 20px; }
+
+.cursos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+@media (max-width: 980px) { .cursos-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 620px) { .cursos-grid { grid-template-columns: 1fr; } }
+
+.curso-card {
+  background: #fff; border: 1px solid #e8edf3; border-radius: 16px; overflow: hidden;
+  display: flex; flex-direction: column; box-shadow: 0 8px 24px rgba(15,19,24,0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.curso-card:hover { transform: translateY(-5px); box-shadow: 0 18px 38px rgba(15,19,24,0.12); }
+
+.curso-card-img { position: relative; height: 170px; background: #f1f5f9; }
+.curso-card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.curso-card-fallback {
+  width: 100%; height: 100%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 7px;
+  background: repeating-linear-gradient(45deg, #f3f5f8, #f3f5f8 12px, #eef1f5 12px, #eef1f5 24px);
+  color: #aab4c0;
+}
+.curso-card-fallback i { font-size: 30px; }
+.curso-card-fallback span { font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
+.curso-tag {
+  position: absolute; top: 12px; left: 12px;
+  background: rgba(15,19,24,0.78); color: #fff; font-size: 11px; font-weight: 700;
+  padding: 5px 11px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px;
+}
+
+.curso-card-body { padding: 20px; display: flex; flex-direction: column; flex: 1; }
+.curso-card-body h3 { font-size: 16px; font-weight: 800; color: #0f1318; line-height: 1.35; margin-bottom: 8px; }
+.curso-desc { font-size: 13px; color: #718096; line-height: 1.55; margin-bottom: 15px; }
+
+.curso-infos { list-style: none; padding: 0; margin: 0 0 16px; display: flex; flex-direction: column; gap: 8px; }
+.curso-infos li { font-size: 12.5px; color: #4a5568; font-weight: 600; display: flex; align-items: center; gap: 9px; }
+.curso-infos li i { width: 15px; text-align: center; color: #cc0000; }
+
+.curso-preco { border-top: 1px solid #eef2f7; padding-top: 14px; margin-top: auto; margin-bottom: 16px; }
+.curso-preco-label { display: block; font-size: 10.5px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.curso-preco-valor { display: block; font-size: 24px; font-weight: 900; color: #0f1318; line-height: 1.2; }
+.curso-preco-total { display: block; font-size: 12px; color: #718096; margin-top: 3px; }
+
+.curso-btn {
+  display: block; text-align: center; background: #cc0000; color: #fff;
+  font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 0.4px;
+  padding: 13px; border-radius: 9px; text-decoration: none; transition: background 0.15s;
+}
+.curso-btn:hover { background: #a30000; }

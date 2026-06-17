@@ -1,0 +1,12 @@
+<%- include('partials/head', { titulo: 'Ops' }) %>
+
+<main class="auth-wrap">
+  <div class="auth-card auth-card-center">
+    <div class="auth-icone-erro"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    <h1>Algo deu errado</h1>
+    <p class="auth-sub"><%= mensagem %></p>
+    <a href="/cadastro" class="auth-btn auth-btn-link">Voltar</a>
+  </div>
+</main>
+
+<%- include('partials/foot') %>

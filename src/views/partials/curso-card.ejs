@@ -1,0 +1,21 @@
+<%
+  // Espera: curso, formatBRL, totalExibicao, cfgMap
+  var total = totalExibicao(curso, cfgMap);
+%>
+<article class="course-card">
+  <% if (curso.imagemUrl) { %>
+    <img src="<%= curso.imagemUrl %>" alt="<%= curso.nome %>" class="course-img">
+  <% } else { %>
+    <div class="course-img course-img-fallback"><i class="fa-solid fa-plus"></i></div>
+  <% } %>
+  <div class="course-body">
+    <h3><%= curso.nome %></h3>
+    <p><%= curso.descricao || 'Curso de capacitação da Cruz Vermelha.' %></p>
+    <div class="course-meta">
+      <span class="duration"><i class="fa-regular fa-clock"></i> <%= curso.cargaHoraria %> horas</span>
+      <span class="price"><%= formatBRL(curso.precoAvista) %></span>
+    </div>
+    <p class="course-total">Total à vista (com matrícula): <strong><%= formatBRL(total) %></strong></p>
+    <a class="btn-buy" href="/cursos/<%= curso.id %>">Inscrever-se</a>
+  </div>
+</article>

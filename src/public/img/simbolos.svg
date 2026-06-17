@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 160" fill="#ffffff">
+  <!-- Cruz (estilizada, genérica) -->
+  <path d="M70,20 H110 V60 H150 V100 H110 V140 H70 V100 H30 V60 H70 Z"/>
+  <!-- Crescente (estilizado, genérico) -->
+  <path fill-rule="evenodd" d="M255,32 a48,48 0 1,0 0,96 a48,48 0 1,0 0,-96 Z M278,40 a40,40 0 1,0 0,80 a40,40 0 1,0 0,-80 Z"/>
+  <!-- Losango vazado (estilizado, genérico) -->
+  <path fill-rule="evenodd" d="M440,28 L492,80 L440,132 L388,80 Z M440,52 L468,80 L440,108 L412,80 Z"/>
+</svg>

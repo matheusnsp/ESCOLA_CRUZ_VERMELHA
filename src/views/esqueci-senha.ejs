@@ -1,0 +1,37 @@
+<%- include('partials/head', { titulo: 'Esqueci minha senha' }) %>
+<main class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <i class="fa-solid fa-plus"></i>
+      <div class="auth-brand-text">
+        <strong>CRUZ VERMELHA</strong>
+        <span>Escola de Capacitação</span>
+      </div>
+    </div>
+    <h1>Esqueci minha senha</h1>
+
+    <% if (sucesso) { %>
+      <div class="auth-erros" style="background:#f0fdf4;border-color:#86efac;">
+        <p style="color:#16a34a;"><i class="fa-solid fa-circle-check"></i> Se este e-mail estiver cadastrado, você receberá as instruções em instantes.</p>
+      </div>
+      <p class="auth-alt"><a href="/login">Voltar ao login</a></p>
+    <% } else { %>
+      <p class="auth-sub">Digite seu e-mail e enviaremos um link para redefinir sua senha.</p>
+      <% if (erro) { %>
+      <div class="auth-erros" role="alert">
+        <p><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></p>
+      </div>
+      <% } %>
+      <form method="POST" action="/esqueci-senha" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label class="auth-field">
+          <span>E-mail</span>
+          <input type="email" name="email" required autocomplete="email">
+        </label>
+        <button type="submit" class="auth-btn">Enviar link</button>
+      </form>
+      <p class="auth-alt"><a href="/login">Voltar ao login</a></p>
+    <% } %>
+  </div>
+</main>
+<%- include('partials/foot') %>
