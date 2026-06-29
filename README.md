@@ -97,4 +97,4 @@ Para remover a taxa, mude o modo para `NENHUMA` ou zere o valor.
 - A mensagem "acesso imediato" da home não vale para os cursos presenciais com data fixa nem para o pagamento em dinheiro — revisar o texto.
 - Logo oficial, fotos, estatísticas e depoimentos reais (hoje são placeholders).
 - Revisão de segurança humana (autenticação + pagamento + controle de acesso) antes do ar.
-# CruzVermelhaEscola
+# ESCOLA_CRUZ_VERMELHA
