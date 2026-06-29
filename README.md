@@ -98,3 +98,4 @@ Para remover a taxa, mude o modo para `NENHUMA` ou zere o valor.
 - Logo oficial, fotos, estatísticas e depoimentos reais (hoje são placeholders).
 - Revisão de segurança humana (autenticação + pagamento + controle de acesso) antes do ar.
 # ESCOLA_CRUZ_VERMELHA
+# ESCOLA_CRUZ_VERMELHA
