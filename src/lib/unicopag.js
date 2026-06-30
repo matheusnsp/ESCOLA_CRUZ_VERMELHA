@@ -12,6 +12,7 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
   if (!metodo) throw new Error(`Forma "${forma}" não suportada pelo gateway.`);
   const appUrl = process.env.APP_URL || 'http://localhost:3000';
   const valorCentavos = Math.round(Number(valorTotal) * 100);
+
   const body = {
     payment_method: metodo,
     amount: valorCentavos,
@@ -27,29 +28,21 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
     products: [{ name: nomeCurso, quantity: 1, price: valorCentavos }],
   };
 
-  const endpoints = [
-    `${API_BASE}/api/v1/transactions?api_token=${token}`,
-    `${API_BASE}/api/transactions?api_token=${token}`,
-    `${API_BASE}/v1/transactions?api_token=${token}`,
-    `${API_BASE}/transactions?api_token=${token}`,
-  ];
+  const resp = await fetch(`${API_BASE}/public/v1/payments?api_token=${token}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body),
+  });
 
-  let lastError;
-  for (const url of endpoints) {
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const data = await resp.json();
-    if (resp.ok) {
-      console.log('[UnicopAg] Transação criada:', JSON.stringify(data));
-      return { checkoutUrl: data.link_checkout ?? data.checkout_url ?? data.url ?? data.link, gatewayRef: data.hash ?? data.id };
-    }
-    lastError = data;
-    console.warn(`[UnicopAg] ${url} →`, data?.message || resp.status);
-  }
-  throw new Error(lastError?.message || 'Erro ao criar transação no gateway.');
+  const data = await resp.json();
+  console.log('[UnicopAg] Resposta:', JSON.stringify(data));
+
+  if (!resp.ok) throw new Error(data?.message || 'Erro ao criar pagamento.');
+
+  return {
+    checkoutUrl: data.link_checkout ?? data.checkout_url ?? data.url ?? data.link,
+    gatewayRef: data.hash ?? data.id,
+  };
 }
 
 module.exports = { criarTransacao, mapearMetodo };
