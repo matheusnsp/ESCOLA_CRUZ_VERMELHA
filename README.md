@@ -99,3 +99,4 @@ Para remover a taxa, mude o modo para `NENHUMA` ou zere o valor.
 - Revisão de segurança humana (autenticação + pagamento + controle de acesso) antes do ar.
 # ESCOLA_CRUZ_VERMELHA
 # ESCOLA_CRUZ_VERMELHA
+# ESCOLA_CRUZ_VERMELHA
