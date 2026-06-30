@@ -1,0 +1,55 @@
+<%- include('head', { titulo: 'Inscrições' }) %>
+<%- include('header', { ativo: 'inscricoes' }) %>
+<h1 class="adm-h1">Inscrições</h1>
+<% if (flash) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div><% } %>
+
+<form method="GET" action="/inscricoes" class="adm-filtro">
+  <label>Filtrar por turma
+    <select name="turma" onchange="this.form.submit()">
+      <option value="">Todas as turmas</option>
+      <% turmas.forEach(function(t){ %>
+        <option value="<%= t.id %>" <%= turmaId===t.id ? 'selected' : '' %>><%= t.curso.nome %> — <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %></option>
+      <% }) %>
+    </select>
+  </label>
+</form>
+
+<div class="adm-box">
+  <% if (!inscricoes.length) { %>
+    <p class="adm-vazio">Nenhuma inscrição<%= turmaId ? ' nesta turma' : '' %>.</p>
+  <% } else { %>
+    <table class="adm-table">
+      <thead><tr><th>Aluno</th><th>Curso / Turma</th><th>Plano</th><th>Valor</th><th>Alimento</th><th>Status</th><th>Ações</th></tr></thead>
+      <tbody>
+        <% inscricoes.forEach(function(m){ %>
+          <tr>
+            <td><strong><%= m.aluno.nome %></strong><br><small class="adm-mut"><%= m.aluno.email %></small></td>
+            <td><%= m.turma.curso.nome %><br><small class="adm-mut"><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %> · <%= m.turma.horario %></small></td>
+            <td><%= m.plano === 'A_VISTA' ? 'À vista' : 'Parcelado' %><br><small class="adm-mut"><%= m.forma %></small></td>
+            <td><%= formatBRL(Number(m.valorCurso) + Number(m.valorTaxaMatricula)) %></td>
+            <td>
+              <form method="POST" action="/inscricoes/<%= m.id %>/alimento">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>"><% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %>
+                <button class="adm-chip <%= m.alimentoEntregue ? 'on' : '' %>"><i class="fa-solid <%= m.alimentoEntregue ? 'fa-check' : 'fa-xmark' %>"></i> 1kg</button>
+              </form>
+            </td>
+            <td><%- statusBadge(m.statusPagamento) %></td>
+            <td class="adm-acoes">
+              <a href="/inscricoes/<%= m.id %>/nota" class="adm-mini" title="Lançar nota"><i class="fa-solid fa-pen-to-square"></i></a>
+              <a href="/inscricoes/<%= m.id %>/transferir" class="adm-mini" title="Transferir de turma"><i class="fa-solid fa-right-left"></i></a>
+              <% if (m.statusPagamento === 'PENDENTE') { %>
+                <form method="POST" action="/inscricoes/<%= m.id %>/confirmar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %><button class="adm-mini ok" title="Confirmar pagamento"><i class="fa-solid fa-check"></i></button></form>
+                <form method="POST" action="/inscricoes/<%= m.id %>/cancelar" onsubmit="return confirm('Cancelar esta inscrição?')"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %><button class="adm-mini danger" title="Cancelar inscrição"><i class="fa-solid fa-ban"></i></button></form>
+              <% } else if (m.statusPagamento === 'PAGO') { %>
+                <form method="POST" action="/inscricoes/<%= m.id %>/estornar" onsubmit="return confirm('Estornar este pagamento?')"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %><button class="adm-mini danger" title="Estornar"><i class="fa-solid fa-rotate-left"></i></button></form>
+              <% } else { %>
+                <form method="POST" action="/inscricoes/<%= m.id %>/confirmar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %><button class="adm-mini" title="Reativar como pago"><i class="fa-solid fa-arrow-rotate-right"></i></button></form>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+<%- include('foot') %>

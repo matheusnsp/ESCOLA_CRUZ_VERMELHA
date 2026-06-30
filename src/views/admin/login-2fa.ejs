@@ -1,0 +1,43 @@
+<%- include('../partials/head', { titulo: 'Verificação em duas etapas · Secretaria' }) %>
+<main class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <img src="/img/logo-cvb-rj.png" alt="Cruz Vermelha Brasileira — Rio de Janeiro" class="auth-logo">
+      <div class="auth-brand-text">
+        <strong>ESCOLA DE EDUCAÇÃO</strong>
+        <span>E SAÚDE CVB-RJ</span>
+      </div>
+    </div>
+    <h1>Confirme o acesso</h1>
+    <p class="auth-sub">Enviamos um código de 6 dígitos para <strong><%= emailMasc %></strong>. Digite-o abaixo para entrar.</p>
+
+    <% if (typeof sucesso !== 'undefined' && sucesso) { %>
+      <div class="auth-erros" style="background:#f0fdf4;border-color:#86efac;">
+        <p style="color:#16a34a;"><i class="fa-solid fa-circle-check"></i> <%= sucesso %></p>
+      </div>
+    <% } %>
+    <% if (erro) { %>
+      <div class="auth-erros" role="alert">
+        <p><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></p>
+      </div>
+    <% } %>
+
+    <form method="POST" action="/login/2fa" novalidate>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label class="auth-field">
+        <span>Código de verificação</span>
+        <input type="text" name="codigo" inputmode="numeric" autocomplete="one-time-code"
+               pattern="[0-9]*" maxlength="6" required autofocus
+               style="letter-spacing:10px;text-align:center;font-size:22px;font-weight:700;">
+      </label>
+      <button type="submit" class="auth-btn">Entrar</button>
+    </form>
+
+    <form method="POST" action="/login/2fa/reenviar" style="margin-top:16px;text-align:center;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" style="background:none;border:none;color:var(--red);font-weight:700;cursor:pointer;text-decoration:underline;font-size:14px;">Reenviar código</button>
+    </form>
+    <p class="auth-alt" style="margin-top:16px;"><a href="/login" style="color:var(--gray-500);font-weight:600;">Voltar ao login</a></p>
+  </div>
+</main>
+<%- include('../partials/foot') %>

@@ -1,14 +1,15 @@
 <%- include('partials/site-head', { titulo: 'Cursos' }) %>
 <%- include('partials/site-header') %>
 
-<section class="page-hero sem-foto cursos-hero">
-  <div class="hero-simbolos" aria-hidden="true"></div>
-  <span class="eyebrow">Nossos cursos</span>
-  <h1>Cursos disponíveis</h1>
-  <p>Capacitação oficial da Cruz Vermelha — escolha um curso e faça sua inscrição.</p>
-</section>
+<div class="inst-page" style="max-width:1160px;padding-bottom:0;">
+  <header class="inst-hero" style="margin-bottom:0;">
+    <p class="inst-eyebrow">Nossos cursos</p>
+    <h1 class="inst-h1">Cursos disponíveis</h1>
+    <p class="inst-lead">Capacitação oficial da Cruz Vermelha — escolha um curso e faça sua inscrição.</p>
+  </header>
 
-<main class="cursos-wrap">
+
+<div class="cursos-wrap">
   <% if (!cursos.length) { %>
     <p class="cursos-vazio">Nenhum curso disponível no momento.</p>
   <% } else { %>
@@ -18,6 +19,7 @@
            var turma = curso.turmas && curso.turmas[0];
       %>
         <article class="curso-card">
+          <a class="card-link-overlay" href="/cursos/<%= curso.id %>" aria-label="Ver <%= curso.nome %>"></a>
           <div class="curso-card-img">
             <% if (curso.imagemUrl) { %>
               <img src="<%= curso.imagemUrl %>" alt="<%= curso.nome %>" loading="lazy">
@@ -49,6 +51,7 @@
       <% }) %>
     </div>
   <% } %>
-</main>
+  </div>
+</div>
 
 <%- include('partials/site-footer') %>

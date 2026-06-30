@@ -51,11 +51,27 @@ function formatBRL(valor) {
 }
 
 // Le a config de matricula uma vez (para listas de cursos).
+// Cache em memória da configuração de matrícula (muda raramente).
+// Evita uma consulta ao banco a cada carregamento de página.
+let _cfgCache = null;
+let _cfgCacheEm = 0;
+const CFG_TTL_MS = 60 * 1000; // 60s
+
 async function lerConfigMatricula() {
+  const agora = Date.now();
+  if (_cfgCache && agora - _cfgCacheEm < CFG_TTL_MS) return _cfgCache;
   const cfgs = await prisma.configuracao.findMany({
     where: { chave: { in: ['matricula_modo', 'matricula_valor_padrao'] } },
   });
-  return Object.fromEntries(cfgs.map((c) => [c.chave, c.valor]));
+  _cfgCache = Object.fromEntries(cfgs.map((c) => [c.chave, c.valor]));
+  _cfgCacheEm = agora;
+  return _cfgCache;
+}
+
+// Chamar quando a secretaria altera a configuração, para refletir na hora.
+function limparCacheConfig() {
+  _cfgCache = null;
+  _cfgCacheEm = 0;
 }
 
 // Taxa de matricula para EXIBICAO num card (sem contexto de aluno).
@@ -77,6 +93,7 @@ module.exports = {
   obterTaxaMatricula,
   formatBRL,
   lerConfigMatricula,
+  limparCacheConfig,
   taxaExibicao,
   totalExibicao,
 };

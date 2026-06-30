@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.*
+!.env.example
+npm-debug.log*
+.DS_Store
+src/public/uploads/*
+!src/public/uploads/LEIA-ME.txt
+
+# PDFs de documentos enviados pela secretaria (dados de alunos — fora do versionamento)
+/storage/

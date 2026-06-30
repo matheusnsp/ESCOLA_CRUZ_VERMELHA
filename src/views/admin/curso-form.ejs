@@ -1,0 +1,76 @@
+<%- include('head', { titulo: 'Curso' }) %>
+<%- include('header', { ativo: 'cursos' }) %>
+<% var c = curso || {}; var novo = !c.id; %>
+<div class="adm-h1-row"><h1 class="adm-h1"><%= novo ? 'Novo curso' : 'Editar curso' %></h1><a href="/cursos" class="adm-link">← Voltar</a></div>
+<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+<form method="POST" action="<%= (novo ? '/cursos' : '/cursos/' + c.id) %>?_csrf=<%= csrfToken %>" enctype="multipart/form-data" class="adm-form adm-box">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <label class="full">Nome do curso<input type="text" name="nome" value="<%= c.nome || '' %>" required></label>
+  <label class="full">Descrição<textarea name="descricao" rows="2"><%= c.descricao || '' %></textarea></label>
+  <label class="full">Texto completo (página do curso)<textarea name="descricaoLonga" rows="8" placeholder="Texto detalhado que aparece na página do curso. Pode usar parágrafos."><%= c.descricaoLonga || '' %></textarea></label>
+  <label>Carga horária (h)<input type="number" name="cargaHoraria" min="1" value="<%= c.cargaHoraria || '' %>" required></label>
+  <label>Escolaridade mínima
+    <select name="escolaridadeMinima">
+      <% escolaridades.forEach(function(e){ %>
+        <option value="<%= e %>" <%= (c.escolaridadeMinima||'')===e ? 'selected' : '' %>><%= e || '— nenhuma —' %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Preço à vista (R$)<input type="text" name="precoAvista" value="<%= c.precoAvista || '' %>" placeholder="150.00" required></label>
+  <label>Preço cheio (R$)<input type="text" name="precoCheio" value="<%= c.precoCheio || '' %>" placeholder="155.00" required></label>
+  <label>Parcelas<input type="number" name="parcelas" min="1" value="<%= c.parcelas || 1 %>" required></label>
+  <label>Valor da parcela (R$)<input type="text" name="valorParcela" value="<%= c.valorParcela || '' %>" placeholder="77.50" required></label>
+  <label>Taxa de matrícula (R$)<input type="text" name="taxaMatricula" value="<%= c.taxaMatricula != null ? c.taxaMatricula : '' %>" placeholder="em branco = padrão (100,00)"></label>
+  <label class="full">Foto do curso
+    <% if (c.imagemUrl) { %>
+      <span class="foto-atual"><img src="<%= c.imagemUrl %>" alt="Foto atual"> <small>Foto atual — envie outra para substituir.</small></span>
+      <label class="check" style="font-weight:600;margin:2px 0 4px;"><input type="checkbox" name="removerFoto"> Remover foto atual (deixar sem imagem)</label>
+    <% } %>
+    <input type="file" name="foto" accept="image/png,image/jpeg,image/webp,image/gif">
+    <small class="adm-mut">JPG, PNG, WEBP ou GIF, até 3 MB.<%= novo ? ' Opcional.' : '' %></small>
+  </label>
+  <label class="check full"><input type="checkbox" name="ativo" <%= (novo || c.ativo) ? 'checked' : '' %>> Curso ativo (aparece no site do aluno)</label>
+  <div class="full"><button type="submit" class="adm-btn"><%= novo ? 'Criar curso' : 'Salvar alterações' %></button></div>
+</form>
+
+<% if (!novo) { %>
+  <div id="duvidas" class="adm-box" style="padding:20px;margin-top:18px;">
+    <h2 class="adm-h2" style="font-size:15px;margin:0 0 4px;">Dúvidas frequentes</h2>
+    <p class="adm-mut" style="font-size:13px;margin:0 0 16px;">Aparecem em formato de sanfona na página do curso.</p>
+    <% if (typeof erroFaq !== 'undefined' && erroFaq) { %><div class="adm-erro" style="margin-bottom:12px;"><i class="fa-solid fa-circle-exclamation"></i> <%= erroFaq %></div><% } %>
+
+    <% var faqs = (curso && curso.faqs) ? curso.faqs : []; %>
+    <% if (faqs.length) { %>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">
+        <% faqs.forEach(function (f) { %>
+          <div style="border:1px solid #e7ebf1;border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+            <div>
+              <strong style="font-size:14px;"><%= f.pergunta %></strong>
+              <div class="adm-mut" style="font-size:13px;margin-top:4px;"><%= f.resposta %></div>
+            </div>
+            <form method="POST" action="/cursos/<%= c.id %>/faqs/<%= f.id %>/remover" onsubmit="return confirm('Remover esta dúvida?');" style="flex:none;">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="adm-mini" title="Remover"><i class="fa-solid fa-trash"></i></button>
+            </form>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p class="adm-mut" style="font-size:13px;margin-bottom:18px;">Nenhuma dúvida cadastrada ainda.</p>
+    <% } %>
+
+    <form method="POST" action="/cursos/<%= c.id %>/faqs" style="display:grid;gap:12px;border-top:1px solid #eef1f5;padding-top:16px;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label class="full" style="font-size:13px;font-weight:600;">Pergunta
+        <input type="text" name="pergunta" required maxlength="200" style="display:block;width:100%;margin-top:5px;border:1px solid #e7ebf1;border-radius:10px;padding:11px 13px;font:inherit;">
+      </label>
+      <label class="full" style="font-size:13px;font-weight:600;">Resposta
+        <textarea name="resposta" required rows="3" style="display:block;width:100%;margin-top:5px;border:1px solid #e7ebf1;border-radius:10px;padding:11px 13px;font:inherit;"></textarea>
+      </label>
+      <div><button type="submit" class="adm-btn-sm"><i class="fa-solid fa-plus"></i> Adicionar dúvida</button></div>
+    </form>
+  </div>
+<% } else { %>
+  <p class="adm-mut" style="font-size:13px;margin-top:14px;"><i class="fa-solid fa-circle-info"></i> Salve o curso primeiro para poder cadastrar as dúvidas frequentes.</p>
+<% } %>
+<%- include('foot') %>

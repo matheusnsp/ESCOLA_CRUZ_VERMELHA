@@ -1,0 +1,76 @@
+<%- include('head', { titulo: 'Notas' }) %>
+<%- include('header', { ativo: 'inscricoes' }) %>
+<div class="adm-h1-row"><h1 class="adm-h1">Notas — <%= m.aluno.nome.split(' ')[0] %></h1><a href="/inscricoes" class="adm-link">← Voltar</a></div>
+<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+
+<div class="adm-box" style="padding:20px;margin-bottom:18px;">
+  <div class="transf-resumo">
+    <div><span class="adm-mut">Aluno</span><strong><%= m.aluno.nome %></strong><small><%= m.aluno.email %></small></div>
+    <div><span class="adm-mut">Curso</span><strong><%= m.turma.curso.nome %></strong><small><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %></small></div>
+    <div><span class="adm-mut">Média final (ponderada)</span><strong style="font-size:20px;"><%= (m.nota !== null && m.nota !== undefined) ? m.nota : '—' %></strong></div>
+    <div><span class="adm-mut">Situação</span><strong><%= m.situacao ? (m.situacao === 'APROVADO' ? 'Aprovado' : 'Reprovado') : '—' %></strong></div>
+  </div>
+</div>
+
+<!-- Avaliações lançadas -->
+<div class="adm-box" style="padding:0;margin-bottom:18px;overflow:hidden;">
+  <table class="adm-table">
+    <thead><tr><th>Avaliação</th><th>Nota</th><th>Peso</th><th></th></tr></thead>
+    <tbody>
+      <% if (!m.avaliacoes.length) { %>
+        <tr><td colspan="4" class="adm-mut" style="padding:16px;">Nenhuma avaliação lançada ainda. Adicione abaixo.</td></tr>
+      <% } else { %>
+        <% m.avaliacoes.forEach(function (a) { %>
+          <tr>
+            <td><%= a.nome %></td>
+            <td><%= a.nota %></td>
+            <td><%= a.peso %></td>
+            <td class="adm-acoes">
+              <form method="POST" action="/inscricoes/<%= m.id %>/avaliacoes/<%= a.id %>/remover" onsubmit="return confirm('Remover esta avaliação?');" style="display:inline;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="adm-mini" title="Remover"><i class="fa-solid fa-trash"></i></button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<!-- Adicionar avaliação -->
+<form method="POST" action="/inscricoes/<%= m.id %>/avaliacoes" class="adm-box" style="padding:20px;margin-bottom:18px;">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <h2 class="adm-h2" style="font-size:14px;margin:0 0 12px;">Adicionar avaliação</h2>
+  <div class="adm-form" style="padding:0;">
+    <label class="full">Nome
+      <input type="text" name="nome" required maxlength="60" placeholder="Ex.: Prova 1, Trabalho final">
+    </label>
+    <label>Nota (0 a 10)
+      <input type="number" name="nota" min="0" max="10" step="0.1" required placeholder="Ex.: 8.5">
+    </label>
+    <label>Peso
+      <input type="number" name="peso" min="0.1" step="0.1" value="1" required>
+    </label>
+  </div>
+  <p class="adm-mut" style="font-size:13px;margin:12px 0 16px;"><i class="fa-solid fa-circle-info"></i> A média final é ponderada: cada nota conta conforme o seu peso. Ex.: Prova (peso 2) e Trabalho (peso 1) → média = (prova×2 + trabalho×1) ÷ 3.</p>
+  <button type="submit" class="adm-btn"><i class="fa-solid fa-plus"></i> Adicionar</button>
+</form>
+
+<!-- Situação -->
+<form method="POST" action="/inscricoes/<%= m.id %>/situacao" class="adm-box" style="padding:20px;">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <h2 class="adm-h2" style="font-size:14px;margin:0 0 12px;">Situação final</h2>
+  <div class="adm-form" style="padding:0;">
+    <label>Situação
+      <select name="situacao">
+        <option value="">— não definida —</option>
+        <option value="APROVADO" <%= m.situacao === 'APROVADO' ? 'selected' : '' %>>Aprovado</option>
+        <option value="REPROVADO" <%= m.situacao === 'REPROVADO' ? 'selected' : '' %>>Reprovado</option>
+      </select>
+    </label>
+  </div>
+  <p class="adm-mut" style="font-size:13px;margin:12px 0 16px;">A situação é definida por você (o certificado só é liberável para Aprovado).</p>
+  <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> Salvar situação</button>
+</form>
+<%- include('foot') %>

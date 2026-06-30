@@ -1,0 +1,41 @@
+<%- include('head', { titulo: 'Alunos' }) %>
+<%- include('header', { ativo: 'alunos' }) %>
+
+<div class="adm-h1-row"><h1 class="adm-h1">Alunos</h1></div>
+
+<% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
+
+<form method="GET" action="/alunos" class="adm-filtro" style="margin-bottom:18px;">
+  <label style="max-width:520px;">Buscar
+    <input type="text" name="q" value="<%= busca %>" placeholder="Nome, e-mail ou CPF"
+           style="border:1px solid #e7ebf1;border-radius:10px;padding:11px 13px;font:inherit;font-size:14px;">
+  </label>
+</form>
+
+<div class="adm-box">
+  <% if (!alunos.length) { %>
+    <div class="adm-vazio"><%= busca ? 'Nenhum aluno encontrado para essa busca.' : 'Nenhum aluno cadastrado ainda.' %></div>
+  <% } else { %>
+  <table class="adm-table">
+    <thead><tr><th>Aluno</th><th>CPF/CNPJ</th><th>Escolaridade</th><th>Inscrições</th><th>Ações</th></tr></thead>
+    <tbody>
+      <% alunos.forEach(function (a) { %>
+        <tr>
+          <td><strong><%= a.nome %></strong><br><small class="adm-mut"><%= a.email %></small></td>
+          <td><%= a.cpfCnpj ? mascarar(a.cpfCnpj) : '—' %></td>
+          <td><%= a.escolaridade ? (a.escolaridade + (a.escolaridadeSituacao ? ' (' + a.escolaridadeSituacao + ')' : '')) : '—' %></td>
+          <td><%= a._count.matriculas %></td>
+          <td class="adm-acoes">
+            <a href="/alunos/<%= a.id %>/editar" class="adm-mini" title="Editar dados"><i class="fa-solid fa-pen-to-square"></i></a>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% } %>
+</div>
+<% if (alunos.length >= 200) { %>
+  <p class="adm-mut" style="margin-top:12px;font-size:13px;">Mostrando os primeiros 200 resultados. Refine a busca para ver outros.</p>
+<% } %>
+
+<%- include('foot') %>

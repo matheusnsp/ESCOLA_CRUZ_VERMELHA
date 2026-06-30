@@ -1,0 +1,33 @@
+<%- include('head', { titulo: 'Transferir aluno' }) %>
+<%- include('header', { ativo: 'inscricoes' }) %>
+<div class="adm-h1-row"><h1 class="adm-h1">Transferir aluno</h1><a href="/inscricoes" class="adm-link">← Voltar</a></div>
+<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+
+<div class="adm-box" style="padding:24px;margin-bottom:18px;">
+  <div class="transf-resumo">
+    <div><span class="adm-mut">Aluno</span><strong><%= m.aluno.nome %></strong><small><%= m.aluno.email %></small></div>
+    <div><span class="adm-mut">Turma atual</span><strong><%= m.turma.curso.nome %></strong><small><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %> · <%= m.turma.diasSemana %></small></div>
+    <div><span class="adm-mut">Plano / Valor atual</span><strong><%= m.plano === 'A_VISTA' ? 'À vista' : 'Parcelado' %></strong><small><%= formatBRL(m.valorCurso) %> + matrícula</small></div>
+    <div><span class="adm-mut">Status</span><%- statusBadge(m.statusPagamento) %></div>
+  </div>
+</div>
+
+<form method="POST" action="/inscricoes/<%= m.id %>/transferir" class="adm-box" style="padding:24px;" onsubmit="return confirm('Confirmar a transferência deste aluno?')">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <label style="display:flex;flex-direction:column;gap:7px;font-size:13px;font-weight:700;color:#37415a;max-width:560px;">
+    Turma de destino
+    <select name="turmaDestino" required style="border:1px solid #e7ebf1;border-radius:10px;padding:12px 13px;font:inherit;font-size:14px;">
+      <option value="">— selecione —</option>
+      <% turmas.forEach(function(t){ %>
+        <option value="<%= t.id %>">
+          <%= t.curso.nome %> — <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %> (<%= t.status %>)<%= t.cursoId === m.turma.cursoId ? ' · mesmo curso' : ' · outro curso' %>
+        </option>
+      <% }) %>
+    </select>
+  </label>
+  <p class="adm-mut" style="font-size:13px;line-height:1.6;max-width:560px;margin:14px 0 18px;">
+    <i class="fa-solid fa-circle-info"></i> Mesmo curso: sem alteração de valores. Curso diferente: o valor é recalculado pelo preço do novo curso, e a diferença a cobrar/estornar aparece em seguida. A vaga no destino não é bloqueada, mesmo se estiver cheia.
+  </p>
+  <button type="submit" class="adm-btn"><i class="fa-solid fa-right-left"></i> Transferir aluno</button>
+</form>
+<%- include('foot') %>

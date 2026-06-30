@@ -8,6 +8,10 @@ const {
   loginSchema,
   esqueciSenhaSchema,
   redefinirSenhaSchema,
+  ESCOLARIDADES,
+  SITUACOES_ESCOLARIDADE,
+  GENEROS,
+  UFS,
 } = require('../lib/validation');
 const {
   criarTokenReset,
@@ -43,7 +47,7 @@ async function enviarConfirmacao(usuario) {
 // ============================================================
 
 router.get('/cadastro', (req, res) => {
-  res.render('cadastro', { erros: [], valores: {}, politicaVersao: POLITICA_VERSAO });
+  res.render('cadastro', { erros: [], valores: {}, politicaVersao: POLITICA_VERSAO, escolaridades: ESCOLARIDADES, situacoes: SITUACOES_ESCOLARIDADE, generos: GENEROS, ufs: UFS });
 });
 
 router.post('/cadastro', cadastroLimiter, async (req, res) => {
@@ -52,20 +56,35 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
   const reRender = (erros, status = 400) =>
     res.status(status).render('cadastro', {
       erros,
-      valores: { nome: req.body.nome || '', email: req.body.email || '', documento: req.body.documento || '' },
+      valores: {
+        nome: req.body.nome || '', email: req.body.email || '', documento: req.body.documento || '',
+        rg: req.body.rg || '', celular: req.body.celular || '',
+        escolaridade: req.body.escolaridade || '', escolaridadeSituacao: req.body.escolaridadeSituacao || '', genero: req.body.genero || '',
+        cep: req.body.cep || '', logradouro: req.body.logradouro || '', numero: req.body.numero || '',
+        complemento: req.body.complemento || '', bairro: req.body.bairro || '', cidade: req.body.cidade || '', uf: req.body.uf || '',
+      },
       politicaVersao: POLITICA_VERSAO,
+      escolaridades: ESCOLARIDADES,
+      situacoes: SITUACOES_ESCOLARIDADE,
+      generos: GENEROS,
+      ufs: UFS,
     });
 
   if (!resultado.success) {
     return reRender(resultado.error.issues.map((i) => i.message));
   }
 
-  const { nome, email, documento, senha } = resultado.data;
+  const { nome, email, documento, senha, escolaridade, escolaridadeSituacao, genero, cep, logradouro, numero, complemento, bairro, cidade, uf, rg, celular } = resultado.data;
 
   // CPF/CNPJ válido? (dígitos verificadores)
   const doc = validarCpfCnpj(documento);
   if (!doc.ok) {
     return reRender(['CPF ou CNPJ inválido.']);
+  }
+
+  // RG é obrigatório para pessoa física (CPF); para CNPJ não é exigido.
+  if (doc.tipo === 'CPF' && !rg) {
+    return reRender(['Informe o RG (obrigatório para pessoa física).']);
   }
 
   // Forca da senha (servidor manda). Penaliza usar nome/e-mail na senha.
@@ -80,16 +99,38 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
         nome,
         email,
         cpfCnpj: doc.normalizado,
+        rg: rg || null,
+        celular: celular || null,
+        escolaridade: escolaridade || null,
+        escolaridadeSituacao: escolaridadeSituacao || null,
+        genero: genero || null,
+        cep: cep || null,
+        logradouro: logradouro || null,
+        numero: numero || null,
+        complemento: complemento || null,
+        bairro: bairro || null,
+        cidade: cidade || null,
+        uf: uf || null,
         senhaHash,
         papel: 'ALUNO', // cadastro publico NUNCA cria SECRETARIA
-        emailVerificado: false, // so ativa apos confirmar o e-mail
+        emailVerificado: true, // verificação de e-mail desativada: entra direto
         consentimentoLgpdEm: new Date(),
         consentimentoVersao: POLITICA_VERSAO,
       },
     });
 
-    await enviarConfirmacao(usuario);
-    return res.render('verifique-email', { email });
+    // Autentica o aluno na hora (sem confirmar e-mail).
+    req.session.regenerate((err) => {
+      if (err) {
+        console.error('Erro ao iniciar sessão no cadastro:', err);
+        return res.redirect('/login');
+      }
+      req.session.usuarioId = usuario.id;
+      req.session.papel = usuario.papel;
+      req.session.nome = usuario.nome;
+      res.redirect('/minha-conta');
+    });
+    return;
   } catch (err) {
     if (err.code === 'P2002') {
       const alvo = String(err.meta && err.meta.target);
@@ -156,11 +197,16 @@ router.post('/reenviar-confirmacao', reenvioLimiter, async (req, res) => {
 // ============================================================
 
 router.get('/login', (req, res) => {
-  if (req.session.usuarioId) {
-    return res.redirect(req.session.papel === 'SECRETARIA' ? '/admin' : '/minha-conta');
+  // No site do aluno só faz sentido redirecionar quem é ALUNO.
+  // (Em localhost o cookie de sessão é compartilhado entre as portas 3000/3001,
+  // então uma sessão da secretaria pode aparecer aqui — não a mandamos para /admin,
+  // que não existe nesta porta.)
+  if (req.session.usuarioId && req.session.papel === 'ALUNO') {
+    return res.redirect('/minha-conta');
   }
   const sucesso = req.query.redefinida ? 'Senha redefinida com sucesso. Faca login.' : undefined;
-  res.render('login', { erro: null, email: '', sucesso });
+  const erro = null;
+  res.render('login', { erro, email: '', sucesso });
 });
 
 router.post('/login', loginLimiter, async (req, res) => {
@@ -185,15 +231,24 @@ router.post('/login', loginLimiter, async (req, res) => {
       return reRender(email);
     }
 
+    // Conta sem senha definida.
+    if (!usuario.senhaHash) {
+      await hashSenha(senha); // mantém o tempo de resposta parecido
+      return res.status(401).render('login', {
+        erro: 'Esta conta ainda não tem senha. Use "Esqueci minha senha" para definir uma.',
+        email,
+      });
+    }
+
     const senhaOk = await verificarSenha(usuario.senhaHash, senha);
     if (!senhaOk) {
       return reRender(email);
     }
 
-    // E-mail ainda nao confirmado: bloqueia o login.
-    if (!usuario.emailVerificado) {
+    // Conta da secretaria não entra pela área do aluno (o painel fica em outro endereço).
+    if (usuario.papel === 'SECRETARIA') {
       return res.status(403).render('login', {
-        erro: 'Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.',
+        erro: 'Esta é a área do aluno. O acesso da secretaria é feito pelo painel administrativo.',
         email,
       });
     }
@@ -211,7 +266,7 @@ router.post('/login', loginLimiter, async (req, res) => {
           console.error('Erro ao salvar sessao:', err2);
           return res.status(500).render('erro', { mensagem: 'Erro ao iniciar a sessao.' });
         }
-        return res.redirect(usuario.papel === 'SECRETARIA' ? '/admin' : '/minha-conta');
+        return res.redirect('/minha-conta');
       });
     });
   } catch (err) {

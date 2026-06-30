@@ -54,7 +54,10 @@ router.get('/cursos/:cursoId', async (req, res) => {
   const [curso, cfgMap] = await Promise.all([
     prisma.curso.findUnique({
       where: { id: req.params.cursoId },
-      include: { turmas: { where: { status: 'ABERTA' }, orderBy: { inicioPrevisto: 'asc' } } },
+      include: {
+        turmas: { where: { status: 'ABERTA' }, orderBy: { inicioPrevisto: 'asc' } },
+        faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] },
+      },
     }),
     lerConfigMatricula(),
   ]);
@@ -63,7 +66,15 @@ router.get('/cursos/:cursoId', async (req, res) => {
     return res.status(404).render('erro', { mensagem: 'Curso não encontrado.' });
   }
 
-  res.render('curso-detalhe', { curso, formatBRL, total: totalExibicao(curso, cfgMap) });
+  // Outros cursos (para a seção do fim da página).
+  const outros = await prisma.curso.findMany({
+    where: { ativo: true, id: { not: curso.id } },
+    orderBy: { nome: 'asc' },
+    take: 3,
+    include: { turmas: { where: { status: 'ABERTA' }, orderBy: { inicioPrevisto: 'asc' }, take: 1 } },
+  });
+
+  res.render('curso-detalhe', { curso, outros, formatBRL, total: totalExibicao(curso, cfgMap), totalExibicao, cfgMap });
 });
 
 // ---------- Inscrição (exige login) ----------
@@ -116,7 +127,7 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const { plano, forma } = resultado.data;
 
   const ocupadas = await prisma.matricula.count({
-    where: { turmaId: turma.id, statusPagamento: { not: 'CANCELADO' } },
+    where: { turmaId: turma.id, statusPagamento: 'PAGO' },
   });
   if (ocupadas >= turma.vagas) {
     return reRenderErro('Esta turma está com as vagas esgotadas.');

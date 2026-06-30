@@ -70,7 +70,7 @@
 .detalhe-turma .btn-buy { width: auto; padding: 10px 20px; margin: 0; }
 
 /* ===== Telas internas (área do aluno) ===== */
-.interna-wrap { max-width: 1100px; margin: 0 auto; padding: 36px 24px 0; }
+.interna-wrap { max-width: 1100px; margin: 0 auto; padding: 36px 24px 64px; }
 .interna-head { margin-bottom: 28px; }
 .interna-head h1 { font-size: 30px; font-weight: 900; letter-spacing: -0.5px; }
 .interna-head p { color: #718096; margin-top: 4px; }
@@ -125,6 +125,11 @@
   width: 100%; font-family: inherit; font-size: 15px; padding: 12px 14px;
   border: 1px solid #cbd5e0; border-radius: 10px; background: #fff;
 }
+.campo select {
+  padding-right: 40px;
+  -webkit-appearance: none; -moz-appearance: none; appearance: none;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%236b7280' stroke-width='1.6' d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E") no-repeat right 16px center;
+}
 .campo input:focus, .campo select:focus { outline: none; border-color: #1a365d; box-shadow: 0 0 0 3px rgba(26,54,93,0.12); }
 .campo small { display: block; font-size: 12px; color: #718096; margin-top: 5px; }
 
@@ -150,7 +155,7 @@
 .resumo-box small { display: block; font-size: 12px; color: #718096; margin-top: 4px; }
 
 /* ===== Sticky footer: rodapé sempre no fim quando há pouco conteúdo ===== */
-html, body { height: 100%; }
+/* (removido height:100% em html,body — quebrava o position:sticky do header) */
 body {
   min-height: 100vh;
   display: flex;
@@ -319,15 +324,17 @@ body > section {
 .pagina-hero h1 { font-size: 34px; font-weight: 900; letter-spacing: -0.5px; }
 .pagina-hero p { color: #cbd5e0; max-width: 640px; margin: 12px auto 0; font-size: 16px; }
 
-.pagina-wrap { max-width: 920px; margin: 0 auto; padding: 44px 24px; }
+.pagina-wrap { max-width: 1140px; margin: 0 auto; padding: 44px 24px; }
 .pagina-wrap h2 { font-size: 22px; font-weight: 800; margin: 30px 0 12px; }
 .pagina-wrap h2:first-child { margin-top: 0; }
 .pagina-wrap > p { color: #4a5568; line-height: 1.75; margin-bottom: 12px; }
 
 .principios-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 14px; margin-top: 16px;
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 18px; margin-top: 16px;
 }
+@media (max-width: 820px) { .principios-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .principios-grid { grid-template-columns: 1fr; } }
 .principio {
   background: #fff; border: 1px solid #e8edf3; border-radius: 14px; padding: 20px;
   box-shadow: 0 6px 20px rgba(15,19,24,0.04);
@@ -362,7 +369,7 @@ body > section {
 
 .page-split {
   display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center;
-  max-width: 1060px; margin: 0 auto; padding: 70px 24px;
+  max-width: 1140px; margin: 0 auto; padding: 70px 24px;
 }
 .page-split img {
   width: 100%; border-radius: 18px; box-shadow: 0 18px 44px rgba(0,0,0,0.14);
@@ -380,7 +387,7 @@ body > section {
 .band-vermelha h2 { font-size: 30px; font-weight: 900; max-width: 780px; margin: 0 auto 10px; letter-spacing: -0.5px; }
 .band-vermelha p { color: #ffd9d9; max-width: 640px; margin: 0 auto; font-size: 16px; line-height: 1.6; }
 
-.secao { max-width: 1060px; margin: 0 auto; padding: 60px 24px; }
+.secao { max-width: 1140px; margin: 0 auto; padding: 60px 24px; }
 .secao-titulo { text-align: center; }
 .secao-titulo .eyebrow { color: #cc0000; letter-spacing: 2px; font-size: 12.5px; font-weight: 800; text-transform: uppercase; }
 .secao-titulo h2 { font-size: 30px; font-weight: 900; letter-spacing: -0.5px; margin-top: 4px; }
@@ -401,7 +408,7 @@ body > section {
 /* Marca d'água dos 3 símbolos estilizados no banner do Sobre */
 .hero-simbolos {
   position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background: url('/img/simbolos.svg') center 38% no-repeat;
+  background: url('/img/emblemas.png') center 38% no-repeat;
   background-size: min(760px, 82%);
   opacity: 0.13;
 }
@@ -457,7 +464,7 @@ body > section {
 .curso-card-fallback i { font-size: 30px; }
 .curso-card-fallback span { font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
 .curso-tag {
-  position: absolute; top: 12px; left: 12px;
+  position: absolute; top: 12px; left: 12px; z-index: 2;
   background: rgba(15,19,24,0.78); color: #fff; font-size: 11px; font-weight: 700;
   padding: 5px 11px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px;
 }
@@ -481,3 +488,317 @@ body > section {
   padding: 13px; border-radius: 9px; text-decoration: none; transition: background 0.15s;
 }
 .curso-btn:hover { background: #a30000; }
+
+/* ===== Logo oficial no cabeçalho + nome da escola ===== */
+.logo-img { height: 62px; width: auto; display: block; }
+.logo-area { gap: 16px; } .logo-area .brand-text { padding-left: 16px; border-left: 1px solid #e2e8f0; }
+.logo-area .brand-title { font-size: 18px; letter-spacing: 0.3px; }
+.logo-area .brand-subtitle { font-size: 11px; letter-spacing: 1px; }
+@media (max-width: 680px) {
+  .logo-img { height: 48px; }
+  .logo-area .brand-text { display: none; } /* em telas pequenas, só a logo */
+}
+
+/* Faixa dos emblemas (imagem oficial, fundo branco) na página Sobre */
+.emblemas-faixa { text-align: center; padding-top: 8px; padding-bottom: 8px; }
+.emblemas-faixa img { max-width: 360px; width: 100%; height: auto; display: block; margin: 0 auto 4px; }
+
+/* ===== Faixa de destaques (substitui a faixa vermelha) ===== */
+.destaques { background: #fbfcfe; border-top: 1px solid #eef2f7; border-bottom: 1px solid #eef2f7; padding: 44px 24px; }
+.destaques-inner { max-width: 1140px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; }
+.destaque { text-align: center; }
+.destaque-ic { width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 16px; display: grid; place-items: center; background: #fff1f1; color: #cc0000; font-size: 22px; }
+.destaque strong { display: block; font-size: 15px; color: #0f1318; margin-bottom: 5px; }
+.destaque span { font-size: 13px; color: #718096; line-height: 1.5; }
+@media (max-width: 820px) { .destaques-inner { grid-template-columns: 1fr 1fr; gap: 24px; } }
+@media (max-width: 460px) { .destaques-inner { grid-template-columns: 1fr; } }
+
+/* Logo no footer */
+.footer-logo-img { height: 64px; width: auto; display: block; }
+
+/* Texto completo e FAQ na página do curso */
+.curso-conteudo { margin-top: 36px; }
+.curso-conteudo p { color: #3a4252; line-height: 1.7; margin: 0 0 14px; }
+
+.curso-faq { margin-top: 36px; }
+.faq-item {
+  border: 1px solid #e7ebf2; border-radius: 12px; margin-bottom: 12px;
+  background: #fff; overflow: hidden;
+}
+.faq-item summary {
+  cursor: pointer; list-style: none; padding: 16px 18px;
+  font-weight: 600; color: #1f2733; display: flex; align-items: center;
+  justify-content: space-between; gap: 12px;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-ico { transition: transform .2s; color: #cc0000; font-size: 14px; flex: none; }
+.faq-item[open] .faq-ico { transform: rotate(180deg); }
+.faq-resp { padding: 0 18px 18px; color: #4a5263; line-height: 1.7; }
+
+/* Card de curso clicável por inteiro (link sobreposto) */
+.curso-card, .course-card { position: relative; cursor: pointer; }
+.card-link-overlay {
+  position: absolute; inset: 0; z-index: 1;
+  border-radius: inherit; text-indent: -9999px; overflow: hidden;
+}
+/* O botão visível e a tag de escolaridade ficam acima do overlay */
+.curso-card .curso-btn, .course-card .btn-buy { position: relative; z-index: 2; }
+
+/* Countdown na página do curso */
+.curso-countdown {
+  margin: 18px 0 4px; padding: 16px 20px;
+  background: #fff5f5; border: 1px solid #ffd6d6; border-radius: 14px;
+}
+.curso-countdown .cd-label {
+  display: block; font-size: 13px; font-weight: 700; color: #cc0000;
+  text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px;
+}
+.curso-countdown .cd-nums { display: flex; gap: 18px; flex-wrap: wrap; }
+.curso-countdown .cd-nums span {
+  display: flex; flex-direction: column; align-items: center;
+  font-size: 12px; color: #8a4b4b; min-width: 48px;
+}
+.curso-countdown .cd-nums b { font-size: 26px; font-weight: 900; color: #1f2733; line-height: 1.1; }
+
+/* ============================================================
+   Página de curso — redesign sóbrio/institucional (cd-*)
+   ============================================================ */
+.cd-page { max-width: 1080px; margin: 0 auto; padding: 0 24px 72px; }
+.cd-back {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin: 26px 0 22px; color: #6b7280; font-size: 14px; font-weight: 600;
+  text-decoration: none;
+}
+.cd-back:hover { color: #cc0000; }
+
+/* Hero */
+.cd-hero { border-bottom: 1px solid #e8e6e1; padding-bottom: 26px; margin-bottom: 34px; }
+.cd-eyebrow {
+  font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase;
+  color: #cc0000; margin: 0 0 12px; position: relative; padding-left: 26px;
+}
+.cd-eyebrow::before {
+  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 18px; height: 2px; background: #cc0000;
+}
+.cd-title {
+  font-size: clamp(30px, 4vw, 46px); font-weight: 900; line-height: 1.08;
+  letter-spacing: -0.02em; color: #16191d; margin: 0 0 16px; max-width: 18ch;
+}
+.cd-lead { font-size: 18px; line-height: 1.6; color: #525a64; margin: 0; max-width: 60ch; }
+
+/* Grid principal */
+.cd-grid { display: grid; grid-template-columns: 1fr 360px; gap: 48px; align-items: start; }
+.cd-main { min-width: 0; }
+.cd-block + .cd-block { margin-top: 44px; }
+.cd-h2 {
+  font-size: 13px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase;
+  color: #9aa1ab; margin: 0 0 18px; padding-bottom: 12px; border-bottom: 1px solid #eceae5;
+}
+.cd-prose p { font-size: 16.5px; line-height: 1.8; color: #3a4250; margin: 0 0 16px; }
+.cd-prose p:last-child { margin-bottom: 0; }
+
+/* FAQ */
+.cd-faq { display: flex; flex-direction: column; }
+.cd-faq-item { border-bottom: 1px solid #eceae5; }
+.cd-faq-item summary {
+  cursor: pointer; list-style: none; padding: 18px 4px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  font-size: 16px; font-weight: 650; color: #1f2733;
+}
+.cd-faq-item summary::-webkit-details-marker { display: none; }
+.cd-faq-ico {
+  flex: none; color: #cc0000; font-size: 13px; transition: transform .25s ease;
+}
+.cd-faq-item[open] .cd-faq-ico { transform: rotate(45deg); }
+.cd-faq-resp { padding: 0 4px 20px; font-size: 15.5px; line-height: 1.75; color: #5b636e; max-width: 64ch; }
+
+/* Ficha (sidebar sticky) */
+.cd-aside { position: sticky; top: 24px; }
+.cd-ficha {
+  background: #fff; border: 1px solid #e6e3dd; border-radius: 16px; overflow: hidden;
+  box-shadow: 0 1px 2px rgba(20,20,20,.03), 0 12px 32px rgba(20,20,20,.05);
+}
+.cd-ficha-media { aspect-ratio: 16 / 10; background: #f4f2ee; }
+.cd-ficha-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cd-ficha-noimg {
+  width: 100%; height: 100%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px; color: #b3ada3;
+}
+.cd-ficha-noimg i { font-size: 26px; }
+.cd-ficha-noimg span { font-size: 12px; font-weight: 600; letter-spacing: .3px; }
+.cd-ficha-body { padding: 22px 22px 24px; }
+
+/* Dados (definition list) */
+.cd-facts { margin: 0 0 20px; padding: 0 0 18px; border-bottom: 1px solid #eceae5; }
+.cd-facts > div { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 7px 0; }
+.cd-facts dt { font-size: 13.5px; color: #828a94; }
+.cd-facts dd { margin: 0; font-size: 14px; font-weight: 700; color: #1f2733; text-align: right; }
+
+/* Investimento */
+.cd-invest { display: flex; flex-direction: column; gap: 3px; margin-bottom: 20px; }
+.cd-invest-label {
+  font-size: 11.5px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #9aa1ab;
+}
+.cd-invest-value { font-size: 30px; font-weight: 900; color: #16191d; letter-spacing: -0.01em; line-height: 1.1; }
+.cd-invest-value small { font-size: 14px; font-weight: 600; color: #828a94; letter-spacing: 0; }
+.cd-invest-sub { font-size: 14px; color: #5b636e; }
+.cd-invest-total { font-size: 12.5px; color: #828a94; margin-top: 6px; }
+.cd-invest-total strong { color: #4a525d; }
+
+/* Countdown sóbrio */
+.curso-countdown {
+  background: #faf7f5; border: 1px solid #f0e2e2; border-radius: 12px;
+  padding: 14px 16px; margin-bottom: 20px;
+}
+.cd-count-label {
+  display: block; font-size: 11px; font-weight: 800; letter-spacing: .8px;
+  text-transform: uppercase; color: #cc0000; margin-bottom: 10px;
+}
+.curso-countdown .cd-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; }
+.curso-countdown .cd-nums span { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.curso-countdown .cd-nums b {
+  font-size: 24px; font-weight: 900; color: #16191d; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.curso-countdown .cd-nums i {
+  font-style: normal; font-size: 10.5px; font-weight: 600; color: #97928c;
+  letter-spacing: .3px; text-transform: uppercase;
+}
+
+/* Turmas dentro da ficha */
+.cd-turmas-h {
+  font-size: 11.5px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+  color: #9aa1ab; margin: 0 0 12px;
+}
+.cd-empty { font-size: 14px; color: #828a94; line-height: 1.6; margin: 0; }
+.cd-turma {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 13px 0; border-top: 1px solid #eceae5;
+}
+.cd-turma:first-of-type { border-top: none; }
+.cd-turma-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.cd-turma-info strong { font-size: 14px; color: #1f2733; }
+.cd-turma-info span { font-size: 13px; color: #5b636e; }
+.cd-turma-date { font-size: 12px !important; color: #97928c !important; }
+.cd-cta {
+  flex: none; background: #cc0000; color: #fff; text-decoration: none;
+  font-size: 13px; font-weight: 700; padding: 9px 16px; border-radius: 9px;
+  transition: background .15s;
+}
+.cd-cta:hover { background: #a30000; }
+.cd-cta:focus-visible { outline: 3px solid rgba(204,0,0,.35); outline-offset: 2px; }
+
+/* Responsivo */
+@media (max-width: 900px) {
+  .cd-grid { grid-template-columns: 1fr; gap: 32px; }
+  .cd-aside { position: static; order: -1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cd-faq-ico { transition: none; }
+}
+
+/* ============================================================
+   Páginas institucionais (Sobre / Segurança) — redesign sóbrio
+   Linguagem visual alinhada à página de curso (inst-*)
+   ============================================================ */
+.inst-page { max-width: 1080px; margin: 0 auto; padding: 0 24px 80px; }
+
+/* Hero */
+.inst-hero { padding: 56px 0 40px; border-bottom: 1px solid #e8e6e1; margin-bottom: 56px; }
+.inst-eyebrow {
+  font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase;
+  color: #cc0000; margin: 0 0 14px; position: relative; padding-left: 26px;
+}
+.inst-eyebrow::before {
+  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 18px; height: 2px; background: #cc0000;
+}
+.inst-h1 {
+  font-size: clamp(32px, 4.6vw, 52px); font-weight: 900; line-height: 1.06;
+  letter-spacing: -0.02em; color: #16191d; margin: 0 0 18px; max-width: 16ch;
+}
+.inst-lead { font-size: 18px; line-height: 1.6; color: #525a64; margin: 0; max-width: 60ch; }
+.inst-cta {
+  display: inline-flex; align-items: center; gap: 9px; margin-top: 26px;
+  background: #cc0000; color: #fff; text-decoration: none; font-weight: 700; font-size: 15px;
+  padding: 13px 24px; border-radius: 11px; transition: background .15s;
+}
+.inst-cta:hover { background: #a30000; }
+.inst-cta:focus-visible { outline: 3px solid rgba(204,0,0,.35); outline-offset: 2px; }
+
+/* Seções */
+.inst-section { margin-bottom: 64px; }
+.inst-sec-head { margin-bottom: 28px; }
+.inst-sec-head .inst-eyebrow { margin-bottom: 10px; }
+.inst-h2 {
+  font-size: clamp(24px, 3vw, 32px); font-weight: 850; letter-spacing: -0.01em;
+  color: #16191d; margin: 0; line-height: 1.15;
+}
+.inst-sub { font-size: 16px; line-height: 1.6; color: #5b636e; margin: 10px 0 0; max-width: 64ch; }
+
+/* Split (texto + mídia) */
+.inst-split {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center;
+  margin-bottom: 64px;
+}
+.inst-split.rev .inst-split-media { order: 2; }
+.inst-split-media img {
+  width: 100%; border-radius: 18px; aspect-ratio: 4/3; object-fit: cover; display: block;
+  box-shadow: 0 18px 44px rgba(15,19,24,.12);
+}
+.inst-split h2 { font-size: clamp(24px, 3vw, 32px); font-weight: 850; color: #16191d; margin: 8px 0 14px; line-height: 1.15; letter-spacing: -0.01em; }
+.inst-split p { font-size: 16.5px; line-height: 1.75; color: #3a4250; margin: 0 0 14px; }
+.inst-split p:last-child { margin-bottom: 0; }
+
+/* Painel gráfico (quando não há foto) */
+.inst-graphic {
+  aspect-ratio: 4/3; border-radius: 18px; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #fff5f5 0%, #f7f4f1 100%); border: 1px solid #f0e2e2;
+}
+.inst-graphic i { font-size: 88px; color: #cc0000; opacity: .85; }
+
+/* Grade de cards (destaques / princípios / camadas) */
+.inst-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+.inst-card {
+  background: #fff; border: 1px solid #e6e3dd; border-radius: 14px; padding: 22px 20px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.inst-card-ic {
+  width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
+  background: #fff5f5; color: #cc0000; font-size: 18px; margin-bottom: 4px;
+}
+.inst-card strong { font-size: 15.5px; color: #16191d; font-weight: 800; }
+.inst-card span { font-size: 14px; line-height: 1.6; color: #5b636e; }
+
+/* Linha de 3 (direitos LGPD) */
+.inst-row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+/* Emblemas */
+.inst-emblemas { text-align: center; margin-bottom: 64px; }
+.inst-emblemas img { max-width: 440px; width: 100%; height: auto; margin: 0 auto 16px; display: block; }
+.inst-emblemas p { font-size: 14.5px; color: #828a94; max-width: 56ch; margin: 0 auto; line-height: 1.6; }
+
+/* Nota sóbria (placeholder/jurídico) */
+.inst-note {
+  max-width: 1080px; margin: 0 auto 28px; padding: 14px 18px;
+  background: #faf7f5; border: 1px solid #f0e2e2; border-radius: 12px;
+  font-size: 13.5px; color: #6b5b5b; line-height: 1.6;
+}
+.inst-note strong { color: #9b3b3b; }
+
+/* CTA final */
+.inst-final { text-align: center; padding: 8px 0 0; }
+
+/* Responsivo */
+@media (max-width: 860px) {
+  .inst-split { grid-template-columns: 1fr; gap: 28px; }
+  .inst-split.rev .inst-split-media { order: 0; }
+  .inst-row3 { grid-template-columns: 1fr; }
+}
+
+/* Outros cursos no fim da página de detalhe */
+.cd-outros { margin-top: 56px; padding-top: 8px; border-top: 1px solid #e8e6e1; }
+.cd-outros .cd-h2 { border-bottom: none; padding-bottom: 0; margin: 26px 0 20px; color: #16191d; font-size: 22px; letter-spacing: -0.01em; text-transform: none; }
+.cd-outros-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+@media (max-width: 900px) { .cd-outros-grid { grid-template-columns: 1fr; } }

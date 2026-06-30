@@ -28,7 +28,9 @@ function csrfProtection(req, res, next) {
     return next();
   }
 
-  const enviado = req.body && req.body._csrf;
+  // Para formulários multipart (upload), o corpo ainda não foi parseado quando
+  // este middleware roda, então aceitamos o token também via query string.
+  const enviado = (req.body && req.body._csrf) || (req.query && req.query._csrf);
   if (!tokensIguais(enviado, req.session.csrfToken)) {
     return res.status(403).render('erro', {
       mensagem: 'Sessão inválida ou expirada. Recarregue a página e tente novamente.',

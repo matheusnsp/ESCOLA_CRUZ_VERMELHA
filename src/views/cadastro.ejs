@@ -1,12 +1,12 @@
 <%- include('partials/head', { titulo: 'Criar conta' }) %>
 
 <main class="auth-wrap">
-  <div class="auth-card">
+  <div class="auth-card auth-card-wide">
     <div class="auth-brand">
-      <i class="fa-solid fa-plus"></i>
+      <img src="/img/logo-cvb-rj.png" alt="Cruz Vermelha Brasileira — Rio de Janeiro" class="auth-logo">
       <div class="auth-brand-text">
-        <strong>CRUZ VERMELHA</strong>
-        <span>Escola de Capacitação</span>
+        <strong>ESCOLA DE EDUCAÇÃO</strong>
+        <span>E SAÚDE CVB-RJ</span>
       </div>
     </div>
 
@@ -21,12 +21,13 @@
       </div>
     <% } %>
 
-    <form method="POST" action="/cadastro" novalidate>
+    <form method="POST" action="/cadastro" class="auth-form-grid" novalidate>
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-      <label class="auth-field">
+      <label class="auth-field full">
         <span>Nome completo</span>
         <input type="text" name="nome" value="<%= valores.nome || '' %>" required autocomplete="name">
+        <small>Nome completo (nome e sobrenome). Usado no certificado — confira antes de continuar.</small>
       </label>
 
       <label class="auth-field">
@@ -34,11 +35,107 @@
         <input type="email" name="email" value="<%= valores.email || '' %>" required autocomplete="email">
       </label>
 
-      <label class="auth-field">
-        <span>CPF ou CNPJ</span>
-        <input type="text" name="documento" value="<%= valores.documento || '' %>" required inputmode="numeric" placeholder="Somente números ou com pontuação">
-        <small>Usado para emissão do certificado. Não pedimos foto de documento.</small>
+      <div class="auth-field full" style="grid-column:1 / -1;">
+        <span style="display:block;margin-bottom:6px;">Tipo de cadastro</span>
+        <div class="tipo-pessoa-toggle" role="group">
+          <button type="button" class="tp-btn" data-tipo="CPF"><i class="fa-solid fa-user"></i> Pessoa física (CPF)</button>
+          <button type="button" class="tp-btn" data-tipo="CNPJ"><i class="fa-solid fa-building"></i> Pessoa jurídica (CNPJ)</button>
+        </div>
+        <small id="tipo-hint" style="display:block;margin-top:6px;color:#718096;">Escolha o tipo para preencher o documento.</small>
+      </div>
+
+      <label class="auth-field" id="campo-documento" style="display:none;">
+        <span id="label-documento">CPF</span>
+        <input type="text" name="documento" value="<%= valores.documento || '' %>" inputmode="numeric" placeholder="Somente números ou com pontuação">
+        <small>Usado para emissão do certificado.</small>
       </label>
+
+      <label class="auth-field" id="campo-rg" style="display:none;">
+        <span>RG</span>
+        <input type="text" name="rg" value="<%= valores.rg || '' %>" maxlength="20" placeholder="Número do RG">
+        <small>Obrigatório para pessoa física.</small>
+      </label>
+
+      <label class="auth-field">
+        <span>Celular</span>
+        <input type="text" name="celular" value="<%= valores.celular || '' %>" required inputmode="numeric" placeholder="(21) 90000-0000">
+        <small>Com DDD.</small>
+      </label>
+
+      <label class="auth-field">
+        <span>Escolaridade</span>
+        <select name="escolaridade" required>
+          <option value="" disabled <%= valores.escolaridade ? '' : 'selected' %>>Selecione...</option>
+          <% escolaridades.forEach(function (e) { %>
+            <option value="<%= e %>" <%= (valores.escolaridade === e) ? 'selected' : '' %>><%= e %></option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label class="auth-field">
+        <span>Situação</span>
+        <select name="escolaridadeSituacao" required>
+          <option value="" disabled <%= valores.escolaridadeSituacao ? '' : 'selected' %>>Cursando ou completo?</option>
+          <% situacoes.forEach(function (s) { %>
+            <option value="<%= s %>" <%= (valores.escolaridadeSituacao === s) ? 'selected' : '' %>><%= s %></option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label class="auth-field full">
+        <span>Gênero <span style="font-weight:400;color:#718096;font-size:.85em;">(opcional)</span></span>
+        <select name="genero">
+          <option value="">— selecione —</option>
+          <% generos.forEach(function (g) { %>
+            <option value="<%= g %>" <%= (valores.genero === g) ? 'selected' : '' %>><%= g %></option>
+          <% }) %>
+        </select>
+      </label>
+
+      <fieldset style="border:1px solid #e7ebf2;border-radius:12px;padding:16px;margin:4px 0 18px;">
+        <legend style="font-size:13px;font-weight:700;padding:0 6px;">Endereço</legend>
+        <p style="font-size:12px;color:#718096;margin:0 0 14px;">Usado para emissão de cobrança em caso de inadimplência.</p>
+
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px;">
+          <label class="auth-field" style="margin:0;">
+            <span>CEP</span>
+            <input type="text" name="cep" value="<%= valores.cep || '' %>" required inputmode="numeric" placeholder="00000-000" maxlength="9">
+          </label>
+          <label class="auth-field" style="margin:0;">
+            <span>Rua / Logradouro</span>
+            <input type="text" name="logradouro" value="<%= valores.logradouro || '' %>" required>
+          </label>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-top:12px;">
+          <label class="auth-field" style="margin:0;">
+            <span>Número</span>
+            <input type="text" name="numero" value="<%= valores.numero || '' %>" required>
+          </label>
+          <label class="auth-field" style="margin:0;">
+            <span>Complemento <span style="font-weight:400;color:#718096;font-size:.85em;">(opcional)</span></span>
+            <input type="text" name="complemento" value="<%= valores.complemento || '' %>" placeholder="Apto, bloco, etc.">
+          </label>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 2fr 1fr;gap:12px;margin-top:12px;">
+          <label class="auth-field" style="margin:0;">
+            <span>Bairro</span>
+            <input type="text" name="bairro" value="<%= valores.bairro || '' %>" required>
+          </label>
+          <label class="auth-field" style="margin:0;">
+            <span>Cidade</span>
+            <input type="text" name="cidade" value="<%= valores.cidade || '' %>" required>
+          </label>
+          <label class="auth-field" style="margin:0;">
+            <span>UF</span>
+            <select name="uf" required>
+              <option value="" disabled <%= valores.uf ? '' : 'selected' %>>--</option>
+              <% ufs.forEach(function (u) { %>
+                <option value="<%= u %>" <%= (valores.uf === u) ? 'selected' : '' %>><%= u %></option>
+              <% }) %>
+            </select>
+          </label>
+        </div>
+      </fieldset>
 
       <label class="auth-field">
         <span>Senha</span>
@@ -54,6 +151,11 @@
         <span>Confirmar senha</span>
         <input type="password" name="confirmarSenha" required autocomplete="new-password">
       </label>
+
+      <div class="auth-field full" style="grid-column:1 / -1;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:14px 16px;">
+        <strong style="display:block;font-size:13px;color:#9a3412;margin-bottom:6px;"><i class="fa-solid fa-circle-info"></i> No primeiro dia de aula, traga os originais:</strong>
+        <span style="font-size:13px;color:#7c2d12;">Documento de identidade · Comprovante de residência · Comprovante de escolaridade. Os documentos são apenas conferidos presencialmente (não ficam retidos).</span>
+      </div>
 
       <label class="auth-check">
         <input type="checkbox" name="consentimento">
@@ -73,5 +175,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
 <script src="/js/senha.js"></script>
+<script src="/js/cadastro.js"></script>
 
 <%- include('partials/foot') %>

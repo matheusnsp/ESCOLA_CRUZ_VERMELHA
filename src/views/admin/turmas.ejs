@@ -1,0 +1,32 @@
+<%- include('head', { titulo: 'Turmas' }) %>
+<%- include('header', { ativo: 'turmas' }) %>
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Turmas</h1>
+  <a href="/turmas/nova" class="adm-btn"><i class="fa-solid fa-plus"></i> Nova turma</a>
+</div>
+<% if (flash) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div><% } %>
+<div class="adm-box">
+  <% if (!turmas.length) { %>
+    <p class="adm-vazio">Nenhuma turma. <a href="/turmas/nova">Criar a primeira</a>.</p>
+  <% } else { %>
+    <table class="adm-table">
+      <thead><tr><th>Curso</th><th>Início</th><th>Dias / Horário</th><th>Inscritos</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        <% turmas.forEach(function(t){ %>
+          <tr>
+            <td><strong><%= t.curso.nome %></strong></td>
+            <td><%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %></td>
+            <td><%= t.diasSemana %><br><small class="adm-mut"><%= t.horario %></small></td>
+            <td><a href="/inscricoes?turma=<%= t.id %>"><%= t._count.matriculas %>/<%= t.vagas %></a></td>
+            <td><span class="badge st-<%= t.status.toLowerCase() %>"><%= t.status %></span></td>
+            <td class="adm-acoes">
+              <a href="/turmas/<%= t.id %>/notas" class="adm-mini" title="Lançar notas da turma"><i class="fa-solid fa-list-check"></i></a>
+              <a href="/turmas/<%= t.id %>/editar" class="adm-mini" title="Editar"><i class="fa-solid fa-pen"></i></a>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+<%- include('foot') %>

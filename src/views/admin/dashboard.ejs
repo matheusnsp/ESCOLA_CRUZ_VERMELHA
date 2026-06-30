@@ -1,0 +1,32 @@
+<%- include('head', { titulo: 'Painel' }) %>
+<%- include('header', { ativo: 'home' }) %>
+<h1 class="adm-h1">Painel</h1>
+<div class="adm-cards">
+  <div class="adm-stat"><span><%= stats.cursosAtivos %>/<%= stats.totalCursos %></span><small>Cursos ativos</small></div>
+  <div class="adm-stat"><span><%= stats.turmasAbertas %></span><small>Turmas abertas</small></div>
+  <div class="adm-stat warn"><span><%= stats.pendentes %></span><small>Pagamentos pendentes</small></div>
+  <div class="adm-stat ok"><span><%= stats.pagas %></span><small>Pagas</small></div>
+</div>
+
+<div class="adm-box">
+  <div class="adm-box-head"><h2>Últimas inscrições</h2><a href="/inscricoes" class="adm-link">Ver todas</a></div>
+  <% if (!ultimas.length) { %>
+    <p class="adm-vazio">Nenhuma inscrição ainda.</p>
+  <% } else { %>
+    <table class="adm-table">
+      <thead><tr><th>Aluno</th><th>Curso</th><th>Valor</th><th>Status</th><th>Quando</th></tr></thead>
+      <tbody>
+        <% ultimas.forEach(function(m){ %>
+          <tr>
+            <td><%= m.aluno.nome %></td>
+            <td><%= m.turma.curso.nome %></td>
+            <td><%= formatBRL(Number(m.valorCurso) + Number(m.valorTaxaMatricula)) %></td>
+            <td><%- statusBadge(m.statusPagamento) %></td>
+            <td><%= new Date(m.criadoEm).toLocaleDateString('pt-BR') %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+<%- include('foot') %>

@@ -1,0 +1,79 @@
+<%- include('head', { titulo: 'Editar aluno' }) %>
+<%- include('header', { ativo: 'alunos' }) %>
+<div class="adm-h1-row"><h1 class="adm-h1">Editar aluno</h1><a href="/alunos" class="adm-link">← Voltar</a></div>
+<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+
+<form method="POST" action="/alunos/<%= aluno.id %>/editar" class="adm-box" style="padding:24px;max-width:640px;">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="adm-form" style="padding:0;">
+    <label class="full">Nome completo
+      <input type="text" name="nome" value="<%= aluno.nome %>" required>
+      <small style="color:#6b7689;font-weight:400;">Usado no certificado. Confira a grafia.</small>
+    </label>
+    <label>Escolaridade
+      <select name="escolaridade">
+        <option value="">— não informada —</option>
+        <% escolaridades.forEach(function (e) { %>
+          <option value="<%= e %>" <%= aluno.escolaridade === e ? 'selected' : '' %>><%= e %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label>Situação
+      <select name="escolaridadeSituacao">
+        <option value="">— não informada —</option>
+        <% situacoes.forEach(function (s) { %>
+          <option value="<%= s %>" <%= aluno.escolaridadeSituacao === s ? 'selected' : '' %>><%= s %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label>Gênero
+      <select name="genero">
+        <option value="">— não informado —</option>
+        <% generos.forEach(function (g) { %>
+          <option value="<%= g %>" <%= aluno.genero === g ? 'selected' : '' %>><%= g %></option>
+        <% }) %>
+      </select>
+    </label>
+  </div>
+
+  <fieldset style="border:1px solid #e7ebf1;border-radius:12px;padding:18px;margin-top:18px;">
+    <legend style="font-size:13px;font-weight:700;padding:0 6px;">Endereço (para cobrança)</legend>
+    <div class="adm-form" style="padding:0;">
+      <label>CEP
+        <input type="text" name="cep" value="<%= aluno.cep || '' %>" inputmode="numeric" placeholder="00000000" maxlength="9">
+      </label>
+      <label class="full">Rua / Logradouro
+        <input type="text" name="logradouro" value="<%= aluno.logradouro || '' %>">
+      </label>
+      <label>Número
+        <input type="text" name="numero" value="<%= aluno.numero || '' %>">
+      </label>
+      <label>Complemento
+        <input type="text" name="complemento" value="<%= aluno.complemento || '' %>">
+      </label>
+      <label>Bairro
+        <input type="text" name="bairro" value="<%= aluno.bairro || '' %>">
+      </label>
+      <label>Cidade
+        <input type="text" name="cidade" value="<%= aluno.cidade || '' %>">
+      </label>
+      <label>UF
+        <select name="uf">
+          <option value="">--</option>
+          <% ufs.forEach(function (u) { %>
+            <option value="<%= u %>" <%= aluno.uf === u ? 'selected' : '' %>><%= u %></option>
+          <% }) %>
+        </select>
+      </label>
+    </div>
+  </fieldset>
+
+  <div class="dados-lista" style="margin-top:20px;border-top:1px solid #e7ebf1;padding-top:16px;display:grid;gap:8px;">
+    <div style="display:flex;justify-content:space-between;"><span class="adm-mut">E-mail (não editável)</span><strong><%= aluno.email %></strong></div>
+    <div style="display:flex;justify-content:space-between;"><span class="adm-mut">CPF/CNPJ (não editável)</span><strong><%= aluno.cpfCnpj ? mascarar(aluno.cpfCnpj) : '—' %></strong></div>
+  </div>
+  <p class="adm-mut" style="font-size:13px;margin:14px 0 18px;"><i class="fa-solid fa-lock"></i> E-mail e CPF não são editáveis por aqui (login e identidade). Toda alteração fica registrada na auditoria.</p>
+
+  <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> Salvar alterações</button>
+</form>
+<%- include('foot') %>

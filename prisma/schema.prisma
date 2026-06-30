@@ -45,6 +45,11 @@ enum StatusPagamento {
   ESTORNADO
 }
 
+enum SituacaoAcademica {
+  APROVADO
+  REPROVADO
+}
+
 // ---------- Usuário ----------
 // O cadastro público SEMPRE cria papel = ALUNO.
 // Conta SECRETARIA é criada via seed/painel admin, nunca pelo formulário público.
@@ -54,9 +59,29 @@ model Usuario {
   nome                String
   email               String      @unique
   cpfCnpj             String?     @unique // só dígitos; nulo p/ contas antigas/seed
-  senhaHash           String
+  rg                  String?     // obrigatório para pessoa física (CPF)
+  celular             String?
+  senhaHash           String?     // nulo p/ contas criadas só por login social
   papel               Papel       @default(ALUNO)
+  escolaridade        String?     // nível: Ensino Fundamental | Médio | Superior
+  escolaridadeSituacao String?    // Cursando | Completo
+  genero              String?     // Masculino | Feminino | Outro | Prefiro não informar (opcional)
+  // Endereço (opcional) — finalidade: cobrança em caso de inadimplência
+  cep                 String?
+  logradouro          String?
+  numero              String?
+  complemento         String?
+  bairro              String?
+  cidade              String?
+  uf                  String?
   emailVerificado     Boolean     @default(false)
+  // Bloqueio temporário por tentativas de senha erradas
+  loginFalhas         Int         @default(0)
+  bloqueadoAte        DateTime?
+  // Escalada: nº de bloqueios temporários acumulados e bloqueio total (desbloqueio manual)
+  loginStrikes        Int         @default(0)
+  bloqueioTotal       Boolean     @default(false)
+  avatarUrl           String?     // foto vinda do provedor social (opcional)
   // LGPD: registramos QUANDO consentiu e QUAL versão da política aceitou
   consentimentoLgpdEm DateTime?
   consentimentoVersao String?
@@ -71,6 +96,7 @@ model Curso {
   id                 String   @id @default(uuid())
   nome               String
   descricao          String?
+  descricaoLonga     String? // texto completo exibido na página do curso
   cargaHoraria       Int // em horas
   escolaridadeMinima String?
   imagemUrl          String? // foto do card (placeholder por ora; trocar por foto real)
@@ -84,6 +110,20 @@ model Curso {
   ativo              Boolean  @default(true)
   criadoEm           DateTime @default(now())
   turmas             Turma[]
+  faqs               FaqCurso[]
+}
+
+// Dúvida frequente de um curso (editável pela secretaria).
+model FaqCurso {
+  id       String   @id @default(uuid())
+  curso    Curso    @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  cursoId  String
+  pergunta String
+  resposta String
+  ordem    Int      @default(0)
+  criadoEm DateTime @default(now())
+
+  @@index([cursoId])
 }
 
 // ---------- Turma (oferta concreta de um curso, com datas) ----------
@@ -118,12 +158,16 @@ model Matricula {
   valorTaxaMatricula Decimal         @default(0) @db.Decimal(10, 2)
   alimentoEntregue   Boolean         @default(false) // 1kg de alimento não perecível
   statusPagamento    StatusPagamento @default(PENDENTE)
+  // Avaliação lançada pela secretaria
+  nota               Float?          // 0 a 10
+  situacao           SituacaoAcademica?
   // Preenchidos quando a secretaria confirma um pagamento presencial
   confirmadaPor      String?
   confirmadaEm       DateTime?
   criadoEm           DateTime        @default(now())
   atualizadoEm       DateTime        @updatedAt
   pagamentos         Pagamento[]
+  avaliacoes         Avaliacao[]
 
   @@unique([alunoId, turmaId]) // um aluno não matricula duas vezes na mesma turma
 }
@@ -179,4 +223,18 @@ model LogAuditoria {
   alvoId   String?
   detalhe  Json?
   criadoEm DateTime @default(now())
+}
+
+// Avaliação individual de uma inscrição (prova, trabalho, etc.).
+// A nota final da matrícula (Matricula.nota) é a MÉDIA PONDERADA destas.
+model Avaliacao {
+  id          String    @id @default(uuid())
+  matricula   Matricula @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
+  matriculaId String
+  nome        String // ex.: "Prova 1", "Trabalho final"
+  nota        Float // 0 a 10
+  peso        Float     @default(1) // peso na média ponderada
+  criadoEm    DateTime  @default(now())
+
+  @@index([matriculaId])
 }

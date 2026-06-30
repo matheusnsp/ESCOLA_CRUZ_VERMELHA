@@ -37,3 +37,19 @@
         });
     });
 })();
+/* Menu hambúrguer (mobile) */
+(function () {
+  var header = document.querySelector('.main-header');
+  if (!header) return;
+  var toggle = header.querySelector('.nav-toggle');
+  if (!toggle) return;
+  function fechar() { header.classList.remove('nav-open'); toggle.setAttribute('aria-expanded', 'false'); }
+  toggle.addEventListener('click', function () {
+    var aberto = header.classList.toggle('nav-open');
+    toggle.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  });
+  header.querySelectorAll('.nav-links a').forEach(function (a) {
+    a.addEventListener('click', fechar);
+  });
+  window.addEventListener('resize', function () { if (window.innerWidth > 1024) fechar(); });
+})();

@@ -1,42 +1,152 @@
 <%- include('partials/site-head', { titulo: curso.nome }) %>
 <%- include('partials/site-header') %>
 
-<section class="detalhe-wrap">
-  <a href="/cursos" class="cat-back" style="margin:24px 0 0;"><i class="fa-solid fa-arrow-left"></i> Cursos</a>
+<%
+  var agora = new Date();
+  var prox = (curso.turmas || []).find(function (t) { return new Date(t.inicioPrevisto) > agora; });
+%>
 
-  <div class="detalhe-top">
-    <% if (curso.imagemUrl) { %>
-      <img src="<%= curso.imagemUrl %>" alt="<%= curso.nome %>" class="detalhe-img">
-    <% } else { %>
-      <div class="detalhe-img course-img-fallback"><i class="fa-solid fa-plus"></i></div>
-    <% } %>
-    <div class="detalhe-info">
-      <h1><%= curso.nome %></h1>
-      <p><%= curso.descricao || 'Curso de capacitação da Cruz Vermelha.' %></p>
-      <ul class="detalhe-meta">
-        <li><i class="fa-regular fa-clock"></i> <%= curso.cargaHoraria %> horas</li>
-        <li><i class="fa-solid fa-tag"></i> <%= formatBRL(curso.precoAvista) %> à vista (ou <%= curso.parcelas %>x de <%= formatBRL(curso.valorParcela) %>)</li>
-        <li><i class="fa-solid fa-receipt"></i> Total à vista com matrícula: <strong><%= formatBRL(total) %></strong></li>
-      </ul>
-    </div>
+<section class="cd-page">
+  <a href="/cursos" class="cd-back"><i class="fa-solid fa-arrow-left"></i> Cursos</a>
+
+  <header class="cd-hero">
+    <p class="cd-eyebrow">Escola de Educação e Saúde CVB-RJ</p>
+    <h1 class="cd-title"><%= curso.nome %></h1>
+    <p class="cd-lead"><%= curso.descricao || 'Curso de capacitação da Cruz Vermelha Brasileira.' %></p>
+  </header>
+
+  <div class="cd-grid">
+    <main class="cd-main">
+      <% if (curso.descricaoLonga) { %>
+        <section class="cd-block">
+          <h2 class="cd-h2">Sobre o curso</h2>
+          <div class="cd-prose">
+            <% curso.descricaoLonga.split(/\n\s*\n/).forEach(function (par) { %>
+              <% if (par.trim()) { %><p><%= par.trim() %></p><% } %>
+            <% }) %>
+          </div>
+        </section>
+      <% } %>
+
+      <% if (curso.faqs && curso.faqs.length) { %>
+        <section class="cd-block">
+          <h2 class="cd-h2">Dúvidas frequentes</h2>
+          <div class="cd-faq">
+            <% curso.faqs.forEach(function (f) { %>
+              <details class="cd-faq-item">
+                <summary><span><%= f.pergunta %></span><i class="fa-solid fa-plus cd-faq-ico"></i></summary>
+                <div class="cd-faq-resp"><%= f.resposta %></div>
+              </details>
+            <% }) %>
+          </div>
+        </section>
+      <% } %>
+    </main>
+
+    <aside class="cd-aside">
+      <div class="cd-ficha">
+        <div class="cd-ficha-media">
+          <% if (curso.imagemUrl) { %>
+            <img src="<%= curso.imagemUrl %>" alt="<%= curso.nome %>">
+          <% } else { %>
+            <div class="cd-ficha-noimg"><i class="fa-regular fa-image"></i><span>Foto em breve</span></div>
+          <% } %>
+        </div>
+
+        <div class="cd-ficha-body">
+          <dl class="cd-facts">
+            <div>
+              <dt>Carga horária</dt>
+              <dd><%= curso.cargaHoraria %> horas</dd>
+            </div>
+            <% if (curso.escolaridadeMinima) { %>
+              <div>
+                <dt>Escolaridade mínima</dt>
+                <dd><%= curso.escolaridadeMinima %></dd>
+              </div>
+            <% } %>
+          </dl>
+
+          <div class="cd-invest">
+            <span class="cd-invest-label">Investimento</span>
+            <span class="cd-invest-value"><%= formatBRL(curso.precoAvista) %> <small>à vista</small></span>
+            <span class="cd-invest-sub">ou <%= curso.parcelas %>x de <%= formatBRL(curso.valorParcela) %></span>
+            <span class="cd-invest-total">Total à vista com matrícula: <strong><%= formatBRL(total) %></strong></span>
+          </div>
+
+          <% if (prox) { %>
+            <div class="curso-countdown" data-inicio="<%= new Date(prox.inicioPrevisto).toISOString() %>">
+              <span class="cd-count-label">Próxima turma começa em</span>
+              <div class="cd-nums">
+                <span><b data-d>--</b><i>dias</i></span>
+                <span><b data-h>--</b><i>h</i></span>
+                <span><b data-m>--</b><i>min</i></span>
+                <span><b data-s>--</b><i>s</i></span>
+              </div>
+            </div>
+          <% } %>
+
+          <div class="cd-turmas">
+            <h3 class="cd-turmas-h">Turmas abertas</h3>
+            <% if (!curso.turmas.length) { %>
+              <p class="cd-empty">Nenhuma turma aberta no momento. Volte em breve para conferir as próximas datas.</p>
+            <% } else { %>
+              <% curso.turmas.forEach(function (t) { %>
+                <div class="cd-turma">
+                  <div class="cd-turma-info">
+                    <strong><%= t.diasSemana %></strong>
+                    <span><%= t.horario %></span>
+                    <span class="cd-turma-date">Início em <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %></span>
+                  </div>
+                  <a class="cd-cta" href="/inscrever/<%= t.id %>">Inscrever-se</a>
+                </div>
+              <% }) %>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </aside>
   </div>
 
-  <h2 class="detalhe-turmas-titulo">Turmas abertas</h2>
-  <% if (!curso.turmas.length) { %>
-    <p style="color:#718096;">Nenhuma turma aberta no momento.</p>
-  <% } else { %>
-    <div class="detalhe-turmas">
-      <% curso.turmas.forEach(function (t) { %>
-        <div class="detalhe-turma">
-          <div>
-            <strong><%= t.diasSemana %> · <%= t.horario %></strong>
-            <small>Início: <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %></small>
-          </div>
-          <a class="btn-buy" href="/inscrever/<%= t.id %>">Inscrever-se</a>
-        </div>
-      <% }) %>
-    </div>
+  <% if (outros && outros.length) { %>
+    <section class="cd-outros">
+      <h2 class="cd-h2">Outros cursos</h2>
+      <div class="cd-outros-grid">
+        <% outros.forEach(function (c) { %>
+          <% var ct = (c.turmas && c.turmas[0]) ? c.turmas[0] : null; var ctotal = totalExibicao(c, cfgMap); %>
+          <article class="curso-card">
+            <a class="card-link-overlay" href="/cursos/<%= c.id %>" aria-label="Ver <%= c.nome %>"></a>
+            <div class="curso-card-img">
+              <% if (c.imagemUrl) { %>
+                <img src="<%= c.imagemUrl %>" alt="<%= c.nome %>" loading="lazy">
+              <% } else { %>
+                <div class="curso-card-fallback"><i class="fa-regular fa-image"></i><span>Foto a definir</span></div>
+              <% } %>
+              <% if (c.escolaridadeMinima) { %>
+                <span class="curso-tag"><i class="fa-solid fa-graduation-cap"></i> <%= c.escolaridadeMinima %></span>
+              <% } %>
+            </div>
+            <div class="curso-card-body">
+              <h3><%= c.nome %></h3>
+              <p class="curso-desc"><%= c.descricao || 'Curso de capacitação da Cruz Vermelha.' %></p>
+              <ul class="curso-infos">
+                <li><i class="fa-regular fa-clock"></i> <%= c.cargaHoraria %> horas</li>
+                <% if (ct) { %>
+                  <li><i class="fa-solid fa-flag-checkered"></i> Início <%= new Date(ct.inicioPrevisto).toLocaleDateString('pt-BR') %></li>
+                <% } %>
+              </ul>
+              <div class="curso-preco">
+                <span class="curso-preco-label">A partir de (à vista)</span>
+                <span class="curso-preco-valor"><%= formatBRL(c.precoAvista) %></span>
+              </div>
+              <a class="curso-btn" href="/cursos/<%= c.id %>">Ver curso</a>
+            </div>
+          </article>
+        <% }) %>
+      </div>
+    </section>
   <% } %>
 </section>
 
 <%- include('partials/site-footer') %>
+<script src="/js/countdown.js"></script>

@@ -1,13 +1,18 @@
 <header class="main-header">
   <div class="header-container">
     <a href="/" class="logo-area" style="text-decoration:none;color:inherit;">
-      <i class="fa-solid fa-plus logo-icon"></i>
+      <img src="/img/logo-cvb-rj.png" alt="Cruz Vermelha Brasileira — Rio de Janeiro" class="logo-img">
       <div class="brand-text">
-        <span class="brand-title">CRUZ VERMELHA</span>
-        <span class="brand-subtitle">ESCOLA DE CAPACITAÇÃO</span>
+        <span class="brand-title">ESCOLA DE EDUCAÇÃO</span>
+        <span class="brand-subtitle">E SAÚDE CVB-RJ</span>
       </div>
     </a>
 
+    <button class="nav-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <div class="header-collapse">
     <nav class="nav-links">
       <a href="/">Início</a>
       <a href="/cursos">Cursos</a>
@@ -20,7 +25,7 @@
         <details class="user-menu">
           <summary>
             <i class="fa-solid fa-circle-user"></i>
-            <span>Bem-vindo(a), <strong><%= usuario.nome.split(' ')[0] %></strong></span>
+            <span>Olá, <strong><%= usuario.nome.split(' ')[0] %></strong></span>
             <i class="fa-solid fa-chevron-down user-menu-caret"></i>
           </summary>
           <div class="user-menu-drop">
@@ -37,6 +42,7 @@
         <a href="/login" class="btn-login-sutil"><i class="fa-solid fa-lock"></i> Login</a>
         <a href="/cadastro" class="btn-cadastro-sutil"><i class="fa-solid fa-user-plus"></i> Criar conta</a>
       <% } %>
+    </div>
     </div>
   </div>
 </header>

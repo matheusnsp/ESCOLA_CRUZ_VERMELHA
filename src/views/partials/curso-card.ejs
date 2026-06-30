@@ -3,6 +3,7 @@
   var total = totalExibicao(curso, cfgMap);
 %>
 <article class="course-card">
+  <a class="card-link-overlay" href="/cursos/<%= curso.id %>" aria-label="Ver <%= curso.nome %>"></a>
   <% if (curso.imagemUrl) { %>
     <img src="<%= curso.imagemUrl %>" alt="<%= curso.nome %>" class="course-img">
   <% } else { %>

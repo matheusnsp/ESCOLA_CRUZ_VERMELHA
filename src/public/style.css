@@ -218,7 +218,7 @@ body {
     position: relative;
     color: var(--white);
     padding: 130px 24px 150px;
-    background: var(--black) url('https://images.unsplash.com/photo-1581594693702-fbdc51b2763b?auto=format&fit=crop&w=1600&q=80') center 35% / cover no-repeat;
+    background: var(--black) url('/img/capa.png') center 35% / cover no-repeat;
 }
 
 .hero-section::before {
@@ -1189,16 +1189,21 @@ button:focus-visible {
    ============================================================ */
 
 
-@media (max-width: 900px) {
+/* Menu hambúrguer (some no desktop; aparece no mobile) */
+.nav-toggle {
+    display: none;
+    background: none;
+    border: 1px solid var(--gray-200, #e7ebf2);
+    border-radius: 10px;
+    width: 44px; height: 44px;
+    font-size: 20px; color: var(--ink, #0b1220);
+    cursor: pointer; align-items: center; justify-content: center;
+}
+/* No desktop o wrapper não interfere no layout */
+.header-collapse { display: contents; }
+
+@media (max-width: 1024px) {
     :root { --section-gap: 56px; }
-
-    .header-container {
-        flex-wrap: wrap;
-        gap: 10px;
-        padding: 12px 16px;
-    }
-
-    .nav-links { gap: 18px; }
 
     .hero-section { padding: 80px 24px 100px; }
     .hero-text-content h1 { font-size: 38px; }
@@ -1295,3 +1300,54 @@ button:focus-visible {
 
 .btn-login i,
 .btn-cadastro i { font-size: 13px; }
+/* ============================================================
+   HEADER RESPONSIVO (hambúrguer) — bloco no FIM para vencer a ordem
+   ============================================================ */
+@media (max-width: 1024px) {
+  .header-container { flex-wrap: nowrap; justify-content: space-between; gap: 10px; padding: 12px 16px; }
+  .nav-toggle { display: inline-flex; }
+
+  .header-collapse {
+    display: none;
+    position: absolute;
+    top: 100%; left: 0; right: 0;
+    background: #fff;
+    flex-direction: column;
+    padding: 8px 20px 18px;
+    box-shadow: 0 18px 40px rgba(11,18,32,.12);
+    border-top: 1px solid var(--gray-200, #e7ebf2);
+  }
+  .main-header.nav-open .header-collapse { display: flex; }
+  .main-header.nav-open .nav-toggle i::before { content: "\f00d"; }
+
+  /* ESSENCIAL: remove o posicionamento absoluto/centralizado do nav no mobile */
+  .nav-links {
+    position: static;
+    transform: none;
+    left: auto;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+  }
+  .nav-links a {
+    padding: 14px 4px;
+    border-bottom: 1px solid var(--gray-100, #f0f4f8);
+    width: 100%;
+  }
+  .nav-links a::after { display: none; }
+
+  .header-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .header-actions .btn-login-sutil,
+  .header-actions .btn-cadastro-sutil,
+  .header-actions .btn-sair-sutil { justify-content: center; width: 100%; }
+  .header-actions .user-menu,
+  .header-actions .user-menu summary,
+  .header-actions form { width: 100%; }
+}

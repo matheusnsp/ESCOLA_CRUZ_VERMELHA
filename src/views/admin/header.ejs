@@ -1,0 +1,20 @@
+<header class="adm-top">
+<% var secaoAtiva = (typeof ativo !== 'undefined') ? ativo : ''; %>
+  <a href="/" class="adm-brand">
+    <img src="/img/logo-cvb-rj.png" alt="Cruz Vermelha Brasileira — RJ" class="adm-logo">
+    <span class="adm-brand-txt">Secretaria <small>Escola de Educação e Saúde CVB-RJ</small></span>
+  </a>
+  <nav class="adm-nav">
+    <a href="/" class="<%= secaoAtiva === 'home' ? 'on' : '' %>"><i class="fa-solid fa-gauge"></i> Painel</a>
+    <a href="/cursos" class="<%= secaoAtiva === 'cursos' ? 'on' : '' %>"><i class="fa-solid fa-book"></i> Cursos</a>
+    <a href="/turmas" class="<%= secaoAtiva === 'turmas' ? 'on' : '' %>"><i class="fa-solid fa-calendar-days"></i> Turmas</a>
+    <a href="/inscricoes" class="<%= secaoAtiva === 'inscricoes' ? 'on' : '' %>"><i class="fa-solid fa-users"></i> Inscrições</a>
+    <a href="/alunos" class="<%= secaoAtiva === 'alunos' ? 'on' : '' %>"><i class="fa-solid fa-user-graduate"></i> Alunos</a>
+  </nav>
+  <form method="POST" action="/logout" class="adm-sair">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <span><%= usuario ? usuario.nome : '' %></span>
+    <button type="submit"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair</button>
+  </form>
+</header>
+<main class="adm-wrap">

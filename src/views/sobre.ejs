@@ -1,73 +1,78 @@
 <%- include('partials/site-head', { titulo: 'Sobre Nós' }) %>
 <%- include('partials/site-header') %>
 
-<!-- HERO com fundo da marca + marca d'água dos símbolos -->
-<section class="page-hero sem-foto">
-  <div class="hero-simbolos" aria-hidden="true"></div>
-  <span class="eyebrow">Escola de Capacitação</span>
-  <h1>Capacitação que<br>salva vidas</h1>
-  <p>Fazemos parte do maior movimento humanitário do mundo — e formamos pessoas prontas para agir quando mais importa.</p>
-  <a href="/cursos" class="hero-cta">Ver cursos disponíveis</a>
-</section>
+<div class="inst-page">
 
-<!-- INTRO lado a lado -->
-<section class="page-split">
-  <div class="split-grafico split-img"><img src="/img/simbolos.svg" alt="Símbolos do movimento (estilizados)"></div>
-  <div>
-    <span class="eyebrow">Quem somos</span>
-    <h2>Mais de um século cuidando de pessoas</h2>
-    <p>A Cruz Vermelha Brasileira integra uma rede presente em quase todos os países do mundo. Nossa Escola de Capacitação leva conhecimento técnico e humano para quem quer aprender a proteger vidas.</p>
-    <p>São cursos oficiais, instrutores qualificados e foco total na prática — do primeiro socorro básico à formação profissional.</p>
-  </div>
-</section>
+  <header class="inst-hero">
+    <p class="inst-eyebrow">Escola de Educação e Saúde CVB-RJ</p>
+    <h1 class="inst-h1">Capacitação que salva vidas</h1>
+    <p class="inst-lead">Fazemos parte do maior movimento humanitário do mundo — e formamos pessoas prontas para agir quando mais importa.</p>
+    <a href="/cursos" class="inst-cta">Ver cursos disponíveis <i class="fa-solid fa-arrow-right" style="font-size:13px;"></i></a>
+  </header>
 
-<!-- FAIXA VERMELHA com a missão -->
-<section class="band-vermelha">
-  <h2>Difundir conhecimento que salva vidas</h2>
-  <p>Levar primeiros socorros, prevenção e cuidado ao maior número de pessoas, com qualidade técnica e acolhimento.</p>
-</section>
-
-<!-- 7 PRINCÍPIOS -->
-<section class="secao">
-  <div class="secao-titulo">
-    <span class="eyebrow">Nossos valores</span>
-    <h2>Os 7 princípios fundamentais</h2>
-  </div>
-  <p class="secao-sub">Todo o movimento Cruz Vermelha e Crescente Vermelho se guia por estes princípios.</p>
-  <div class="principios-grid">
-    <div class="principio"><i class="fa-solid fa-heart"></i><strong>Humanidade</strong><span>Prevenir e aliviar o sofrimento humano onde quer que ele exista.</span></div>
-    <div class="principio"><i class="fa-solid fa-scale-balanced"></i><strong>Imparcialidade</strong><span>Socorrer sem distinção de nacionalidade, raça, religião ou opinião.</span></div>
-    <div class="principio"><i class="fa-solid fa-handshake-angle"></i><strong>Neutralidade</strong><span>Não tomar partido em hostilidades ou controvérsias.</span></div>
-    <div class="principio"><i class="fa-solid fa-flag"></i><strong>Independência</strong><span>Manter autonomia para agir sempre segundo seus princípios.</span></div>
-    <div class="principio"><i class="fa-solid fa-hands-holding-circle"></i><strong>Voluntariado</strong><span>Um movimento de socorro voluntário, sem qualquer interesse de lucro.</span></div>
-    <div class="principio"><i class="fa-solid fa-people-group"></i><strong>Unidade</strong><span>Uma só instituição em cada país, aberta a todos.</span></div>
-    <div class="principio"><i class="fa-solid fa-earth-americas"></i><strong>Universalidade</strong><span>Uma rede mundial com direitos e deveres iguais entre todos.</span></div>
-  </div>
-</section>
-
-<!-- NOSSA ESCOLA lado a lado (invertido) -->
-<section class="page-split rev">
-  <div class="split-placeholder split-img">
-    <div>
-      <i class="fa-regular fa-image"></i>
-      <strong>Foto da filial — Rio de Janeiro</strong>
-      <span>Inserir aqui a foto oficial da filial</span>
+  <section class="inst-split">
+    <div class="inst-split-media">
+      <img src="/img/sede-rj.png" alt="Sede da Cruz Vermelha Brasileira — Rio de Janeiro">
     </div>
-  </div>
-  <div>
-    <span class="eyebrow">Nossa escola</span>
-    <h2>Aprender fazendo</h2>
-    <p>As turmas são presenciais e práticas, com simulações reais e materiais oficiais. Você sai preparado para agir com confiança — em casa, no trabalho ou na comunidade.</p>
-    <p>Ao concluir, você recebe certificação reconhecida da instituição.</p>
-  </div>
-</section>
+    <div>
+      <p class="inst-eyebrow">Quem somos</p>
+      <h2>Mais de um século cuidando de pessoas</h2>
+      <p>A Cruz Vermelha Brasileira integra uma rede presente em quase todos os países do mundo. Nossa Escola leva conhecimento técnico e humano para quem quer aprender a proteger vidas.</p>
+      <p>São cursos oficiais, instrutores qualificados e foco total na prática — do primeiro socorro básico à formação profissional.</p>
+    </div>
+  </section>
 
-<div class="aviso-placeholder" style="max-width:1000px;margin:0 auto 16px;">
-  <strong>Nota:</strong> as fotos são de banco de imagens (placeholder). Substituir por fotos e logotipo oficiais da instituição antes de publicar — o emblema da cruz vermelha é protegido e deve vir da Cruz Vermelha.
-</div>
+  <section class="inst-section">
+    <div class="inst-grid">
+      <div class="inst-card"><div class="inst-card-ic"><i class="fa-solid fa-certificate"></i></div><strong>Cursos oficiais</strong><span>Certificação reconhecida ao concluir.</span></div>
+      <div class="inst-card"><div class="inst-card-ic"><i class="fa-solid fa-chalkboard-user"></i></div><strong>Aulas presenciais</strong><span>Prática real com instrutores qualificados.</span></div>
+      <div class="inst-card"><div class="inst-card-ic"><i class="fa-solid fa-earth-americas"></i></div><strong>Movimento global</strong><span>Presente em quase todos os países.</span></div>
+      <div class="inst-card"><div class="inst-card-ic"><i class="fa-solid fa-heart-pulse"></i></div><strong>Foco em vidas</strong><span>Do primeiro socorro à formação profissional.</span></div>
+    </div>
+  </section>
 
-<div class="cta-final">
-  <a href="/cursos" class="btn-ver-mais">Conhecer os cursos <i class="fa-solid fa-arrow-right" style="font-size:12px;"></i></a>
+  <section class="inst-emblemas">
+    <img src="/img/emblemas.png" alt="Emblemas do Movimento: Cruz Vermelha, Crescente Vermelho e Cristal Vermelho">
+    <p>Os três emblemas reconhecidos do Movimento Internacional: Cruz Vermelha, Crescente Vermelho e Cristal Vermelho.</p>
+  </section>
+
+  <section class="inst-section">
+    <div class="inst-sec-head">
+      <p class="inst-eyebrow">Nossos valores</p>
+      <h2 class="inst-h2">Os 7 princípios fundamentais</h2>
+      <p class="inst-sub">Todo o movimento Cruz Vermelha e Crescente Vermelho se guia por estes princípios.</p>
+    </div>
+    <div class="inst-grid">
+      <div class="inst-card"><div class="inst-card-ic"><i class="fa-solid fa-heart"></i></div><strong>Humanidade</strong><span>Prevenir e aliviar o sofrimento humano onde quer que ele exista.</span></div>
+      <div class="inst-card"><div class="inst-card-ic"><i class="fa-solid fa-scale-balanced"></i></div><strong>Imparcialidade</strong><span>Socorrer sem distinção de nacionalidade, raça, religião ou opinião.</span></div>
+      <div class="inst-card"><div class="inst-card-ic"><i class="fa-solid fa-handshake-angle"></i></div><strong>Neutralidade</strong><span>Não tomar partido em hostilidades ou controvérsias.</span></div>
+      <div class="inst-card"><div class="inst-card-ic"><i class="fa-solid fa-flag"></i></div><strong>Independência</strong><span>Manter autonomia para agir sempre segundo seus princípios.</span></div>
+      <div class="inst-card"><div class="inst-card-ic"><i class="fa-solid fa-hands-holding-circle"></i></div><strong>Voluntariado</strong><span>Um movimento de socorro voluntário, sem qualquer interesse de lucro.</span></div>
+      <div class="inst-card"><div class="inst-card-ic"><i class="fa-solid fa-people-group"></i></div><strong>Unidade</strong><span>Uma só instituição em cada país, aberta a todos.</span></div>
+      <div class="inst-card"><div class="inst-card-ic"><i class="fa-solid fa-earth-americas"></i></div><strong>Universalidade</strong><span>Uma rede mundial com direitos e deveres iguais entre todos.</span></div>
+    </div>
+  </section>
+
+  <section class="inst-split rev">
+    <div class="inst-split-media">
+      <div class="inst-graphic"><i class="fa-solid fa-graduation-cap"></i></div>
+    </div>
+    <div>
+      <p class="inst-eyebrow">Nossa escola</p>
+      <h2>Aprender fazendo</h2>
+      <p>As turmas são presenciais e práticas, com simulações reais e materiais oficiais. Você sai preparado para agir com confiança — em casa, no trabalho ou na comunidade.</p>
+      <p>Ao concluir, você recebe certificação reconhecida da instituição.</p>
+    </div>
+  </section>
+
+  <div class="inst-note">
+    <strong>Nota:</strong> as fotos são de banco de imagens (placeholder). Substituir por fotos e logotipo oficiais da instituição antes de publicar — o emblema da cruz vermelha é protegido e deve vir da Cruz Vermelha.
+  </div>
+
+  <div class="inst-final">
+    <a href="/cursos" class="inst-cta">Conhecer os cursos <i class="fa-solid fa-arrow-right" style="font-size:13px;"></i></a>
+  </div>
+
 </div>
 
 <%- include('partials/site-footer') %>

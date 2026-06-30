@@ -1,0 +1,47 @@
+# Blueprint do Render — sobe o site + banco PostgreSQL gerenciado.
+# No painel do Render: New > Blueprint > aponte para o repositório com este arquivo.
+databases:
+  - name: escola-cvb-db
+    databaseName: escola_cruz_vermelha
+    plan: free            # troque para 'starter' em produção real (o free expira)
+
+services:
+  - type: web
+    name: escola-cvb
+    runtime: node
+    plan: free            # troque para 'starter' para não dormir por inatividade
+    buildCommand: npm install && npx prisma migrate deploy
+    startCommand: npm start
+    healthCheckPath: /
+    # Disco persistente: as fotos de curso enviadas pela secretaria sobrevivem a deploys.
+    disk:
+      name: uploads
+      mountPath: /var/data/uploads
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: escola-cvb-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: "false"          # conexão interna do Render não usa SSL; Neon/Supabase = "true"
+      - key: UPLOADS_DIR
+        value: /var/data/uploads
+      - key: SESSION_SECRET
+        generateValue: true     # o Render gera um segredo forte automaticamente
+      - key: APP_URL
+        sync: false             # preencha com a URL final (ex.: https://escola-cvb.onrender.com)
+      - key: ADMIN_HOST
+        value: secretaria
+      - key: RESEND_API_KEY
+        sync: false             # cole sua chave da Resend (envio de e-mails)
+      - key: EMAIL_REMETENTE
+        sync: false
+      - key: SEED_ADMIN_NOME
+        value: Secretaria
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_SENHA
+        sync: false

@@ -11,7 +11,7 @@
     <aside class="conta-side">
       <div class="conta-perfil">
         <div class="conta-avatar"><%= usuario.nome.charAt(0).toUpperCase() %></div>
-        <strong><%= usuario.nome %></strong>
+        <strong><%= usuario.nome.split(' ')[0] %></strong>
         <span><%= usuario.email %></span>
       </div>
       <nav class="conta-nav">
@@ -61,6 +61,16 @@
                     <span class="duration"><%= m.plano === 'A_VISTA' ? 'À vista' : 'Parcelado' %> · <%= m.forma %></span>
                     <span class="price"><%= formatBRL(Number(m.valorCurso) + Number(m.valorTaxaMatricula)) %></span>
                   </div>
+                  <% if ((m.nota !== null && m.nota !== undefined) || m.situacao) { %>
+                    <div class="mat-nota" style="margin-top:10px;padding-top:10px;border-top:1px solid #eef1f6;display:flex;align-items:center;gap:10px;font-size:13px;">
+                      <% if (m.nota !== null && m.nota !== undefined) { %>
+                        <span><strong>Nota:</strong> <%= m.nota %></span>
+                      <% } %>
+                      <% if (m.situacao) { %>
+                        <span class="mat-badge mat-badge-<%= m.situacao === 'APROVADO' ? 'pago' : 'cancelado' %>" style="position:static;"><%= m.situacao === 'APROVADO' ? 'Aprovado' : 'Reprovado' %></span>
+                      <% } %>
+                    </div>
+                  <% } %>
                 </div>
               </article>
             <% }) %>
@@ -70,13 +80,97 @@
       <% } else if (sec === 'dados') { %>
         <div class="conta-card">
           <div class="conta-head"><h2>Meus dados</h2></div>
-          <div class="dados-lista">
-            <div><span>Nome</span><strong><%= usuario.nome %></strong></div>
+
+          <% if (typeof salvo !== 'undefined' && salvo) { %>
+            <div class="aviso-ok" style="background:#f0fdf4;border:1px solid #86efac;color:#16a34a;padding:12px 14px;border-radius:10px;margin-bottom:16px;"><i class="fa-solid fa-circle-check"></i> Dados atualizados com sucesso.</div>
+          <% } %>
+          <% if (typeof erroDados !== 'undefined' && erroDados) { %>
+            <div class="aviso-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erroDados %></div>
+          <% } %>
+
+          <form method="POST" action="/conta/dados" novalidate style="max-width:480px;">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <label class="campo" style="display:block;margin-bottom:16px;">
+              <span>Escolaridade</span>
+              <select name="escolaridade" required>
+                <option value="" disabled <%= usuario.escolaridade ? '' : 'selected' %>>Selecione...</option>
+                <% escolaridades.forEach(function (e) { %>
+                  <option value="<%= e %>" <%= (usuario.escolaridade === e) ? 'selected' : '' %>><%= e %></option>
+                <% }) %>
+              </select>
+            </label>
+            <label class="campo" style="display:block;margin-bottom:16px;">
+              <span>Situação</span>
+              <select name="escolaridadeSituacao" required>
+                <option value="" disabled <%= usuario.escolaridadeSituacao ? '' : 'selected' %>>Cursando ou completo?</option>
+                <% situacoes.forEach(function (s) { %>
+                  <option value="<%= s %>" <%= (usuario.escolaridadeSituacao === s) ? 'selected' : '' %>><%= s %></option>
+                <% }) %>
+              </select>
+            </label>
+            <label class="campo" style="display:block;margin-bottom:16px;">
+              <span>Gênero <span style="font-weight:400;color:#718096;font-size:.85em;">(opcional)</span></span>
+              <select name="genero">
+                <option value="">— selecione —</option>
+                <% generos.forEach(function (g) { %>
+                  <option value="<%= g %>" <%= (usuario.genero === g) ? 'selected' : '' %>><%= g %></option>
+                <% }) %>
+              </select>
+            </label>
+
+            <fieldset style="border:1px solid #e7ebf2;border-radius:12px;padding:16px;margin:0 0 18px;">
+              <legend style="font-size:13px;font-weight:700;padding:0 6px;">Endereço</legend>
+              <p style="font-size:12px;color:#718096;margin:0 0 14px;">Usado para emissão de cobrança em caso de inadimplência.</p>
+              <label class="campo" style="display:block;margin-bottom:12px;">
+                <span>CEP</span>
+                <input type="text" name="cep" value="<%= usuario.cep || '' %>" required inputmode="numeric" placeholder="00000-000" maxlength="9">
+              </label>
+              <label class="campo" style="display:block;margin-bottom:12px;">
+                <span>Rua / Logradouro</span>
+                <input type="text" name="logradouro" value="<%= usuario.logradouro || '' %>" required>
+              </label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                <label class="campo" style="display:block;">
+                  <span>Número</span>
+                  <input type="text" name="numero" value="<%= usuario.numero || '' %>" required>
+                </label>
+                <label class="campo" style="display:block;">
+                  <span>Complemento <span style="font-weight:400;color:#718096;font-size:.85em;">(opcional)</span></span>
+                  <input type="text" name="complemento" value="<%= usuario.complemento || '' %>">
+                </label>
+              </div>
+              <div style="display:grid;grid-template-columns:2fr 2fr 1fr;gap:12px;">
+                <label class="campo" style="display:block;">
+                  <span>Bairro</span>
+                  <input type="text" name="bairro" value="<%= usuario.bairro || '' %>" required>
+                </label>
+                <label class="campo" style="display:block;">
+                  <span>Cidade</span>
+                  <input type="text" name="cidade" value="<%= usuario.cidade || '' %>" required>
+                </label>
+                <label class="campo" style="display:block;">
+                  <span>UF</span>
+                  <select name="uf" required>
+                    <option value="" disabled <%= usuario.uf ? '' : 'selected' %>>--</option>
+                    <% ufs.forEach(function (u) { %>
+                      <option value="<%= u %>" <%= (usuario.uf === u) ? 'selected' : '' %>><%= u %></option>
+                    <% }) %>
+                  </select>
+                </label>
+              </div>
+            </fieldset>
+
+            <button type="submit" class="btn-acao">Salvar alterações</button>
+          </form>
+
+          <div class="dados-lista" style="margin-top:24px;border-top:1px solid #e7ebf2;padding-top:18px;">
+            <div><span>Nome completo</span><strong><%= usuario.nome %></strong></div>
             <div><span>E-mail</span><strong><%= usuario.email %></strong></div>
             <div><span>CPF/CNPJ</span><strong><%= docMascarado %></strong></div>
             <div><span>E-mail confirmado</span><strong><%= usuario.emailVerificado ? 'Sim' : 'Não' %></strong></div>
             <div><span>Cadastro em</span><strong><%= new Date(usuario.criadoEm).toLocaleDateString('pt-BR') %></strong></div>
           </div>
+          <p class="painel-sub" style="font-size:12px;color:#718096;margin-top:10px;"><i class="fa-solid fa-lock"></i> Nome, e-mail e CPF não podem ser alterados por aqui — o nome é usado no certificado e o e-mail/CPF na identificação. Se precisar corrigir algum deles, fale com a secretaria.</p>
         </div>
 
       <% } else if (sec === 'excluir') { %>
