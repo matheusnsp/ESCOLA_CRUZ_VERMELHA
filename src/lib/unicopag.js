@@ -1,4 +1,3 @@
-// src/lib/unicopag.js
 const API_BASE = 'https://api.cloud.unicopag.com.br';
 
 function mapearMetodo(forma) {
@@ -27,14 +26,30 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
     },
     products: [{ name: nomeCurso, quantity: 1, price: valorCentavos }],
   };
-  const resp = await fetch(`${API_BASE}/public/v1/transactions?api_token=${token}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await resp.json();
-  if (!resp.ok) { console.error('[UnicopAg] Erro:', data); throw new Error(data?.message || 'Erro no gateway.'); }
-  return { checkoutUrl: data.link_checkout ?? data.checkout_url ?? data.url, gatewayRef: data.hash ?? data.id };
+
+  // Tenta as rotas possíveis da UnicopAg
+  const endpoints = [
+    `${API_BASE}/public/v1/transaction?api_token=${token}`,
+    `${API_BASE}/public/v1/checkout?api_token=${token}`,
+    `${API_BASE}/public/v1/orders?api_token=${token}`,
+  ];
+
+  let lastError;
+  for (const url of endpoints) {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      console.log('[UnicopAg] Transação criada:', JSON.stringify(data));
+      return { checkoutUrl: data.link_checkout ?? data.checkout_url ?? data.url ?? data.link, gatewayRef: data.hash ?? data.id };
+    }
+    lastError = data;
+    console.warn(`[UnicopAg] ${url} →`, data?.message || resp.status);
+  }
+  throw new Error(lastError?.message || 'Erro ao criar transação no gateway.');
 }
 
 module.exports = { criarTransacao, mapearMetodo };
