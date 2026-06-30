@@ -16,6 +16,7 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
   const body = {
     payment_method: metodo,
     amount: valorCentavos,
+    installments: 1,
     postback_url: `${appUrl}/webhook/unicopag`,
     redirect_url: `${appUrl}/inscricao/retorno?matriculaId=${matriculaId}`,
     external_id: matriculaId,
@@ -24,8 +25,15 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
       email: aluno.email,
       document: aluno.cpfCnpj,
       document_type: aluno.cpfCnpj?.length === 14 ? 'cnpj' : 'cpf',
+      phone_number: aluno.celular || '00000000000',
     },
-    products: [{ name: nomeCurso, quantity: 1, price: valorCentavos }],
+    cart: [
+      {
+        name: nomeCurso,
+        quantity: 1,
+        unit_price: valorCentavos,
+      },
+    ],
   };
 
   const resp = await fetch(`${API_BASE}/public/v1/payments?api_token=${token}`, {

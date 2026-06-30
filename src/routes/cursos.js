@@ -110,7 +110,7 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
   const aluno = await prisma.usuario.findUnique({
     where: { id: req.session.usuarioId },
-    select: { nome: true, email: true, cpfCnpj: true },
+    select: { nome: true, email: true, cpfCnpj: true, celular: true },
   });
 
   if (!aluno?.cpfCnpj) {
