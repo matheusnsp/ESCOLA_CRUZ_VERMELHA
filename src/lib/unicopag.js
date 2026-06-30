@@ -27,11 +27,11 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
     products: [{ name: nomeCurso, quantity: 1, price: valorCentavos }],
   };
 
-  // Tenta as rotas possíveis da UnicopAg
   const endpoints = [
-    `${API_BASE}/public/v1/transaction?api_token=${token}`,
-    `${API_BASE}/public/v1/checkout?api_token=${token}`,
-    `${API_BASE}/public/v1/orders?api_token=${token}`,
+    `${API_BASE}/api/v1/transactions?api_token=${token}`,
+    `${API_BASE}/api/transactions?api_token=${token}`,
+    `${API_BASE}/v1/transactions?api_token=${token}`,
+    `${API_BASE}/transactions?api_token=${token}`,
   ];
 
   let lastError;
