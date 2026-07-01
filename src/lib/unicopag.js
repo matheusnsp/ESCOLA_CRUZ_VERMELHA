@@ -36,7 +36,6 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
       name: aluno.nome,
       email: aluno.email,
       document: documento,
-      document_type: documento.length === 14 ? 'cnpj' : 'cpf',
       phone_number: telefone,
     },
     cart: [
