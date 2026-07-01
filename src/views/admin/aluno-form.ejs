@@ -3,46 +3,79 @@
 <div class="adm-h1-row"><h1 class="adm-h1">Editar aluno</h1><a href="/alunos" class="adm-link">← Voltar</a></div>
 <% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
 
-<form method="POST" action="/alunos/<%= aluno.id %>/editar" class="adm-box" style="padding:24px;max-width:640px;">
+<form method="POST" action="/alunos/<%= aluno.id %>/editar" class="adm-box" style="padding:24px;">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-  <div class="adm-form" style="padding:0;">
+
+  <div class="adm-form" style="padding:0;display:grid;grid-template-columns:1fr;gap:14px;">
     <label class="full">Nome completo
       <input type="text" name="nome" value="<%= aluno.nome %>" required>
       <small style="color:#6b7689;font-weight:400;">Usado no certificado. Confira a grafia.</small>
     </label>
-    <label>Escolaridade
-      <select name="escolaridade">
-        <option value="">— não informada —</option>
-        <% escolaridades.forEach(function (e) { %>
-          <option value="<%= e %>" <%= aluno.escolaridade === e ? 'selected' : '' %>><%= e %></option>
-        <% }) %>
-      </select>
-    </label>
-    <label>Situação
-      <select name="escolaridadeSituacao">
-        <option value="">— não informada —</option>
-        <% situacoes.forEach(function (s) { %>
-          <option value="<%= s %>" <%= aluno.escolaridadeSituacao === s ? 'selected' : '' %>><%= s %></option>
-        <% }) %>
-      </select>
-    </label>
-    <label>Gênero
-      <select name="genero">
-        <option value="">— não informado —</option>
-        <% generos.forEach(function (g) { %>
-          <option value="<%= g %>" <%= aluno.genero === g ? 'selected' : '' %>><%= g %></option>
-        <% }) %>
-      </select>
-    </label>
   </div>
 
   <fieldset style="border:1px solid #e7ebf1;border-radius:12px;padding:18px;margin-top:18px;">
+    <legend style="font-size:13px;font-weight:700;padding:0 6px;">Contato</legend>
+    <div class="adm-form" style="padding:0;display:grid;grid-template-columns:2fr 1fr;gap:16px;">
+      <label>E-mail (login)
+        <input type="email" name="email" value="<%= aluno.email %>" required maxlength="180">
+      </label>
+      <label>Celular
+        <input type="text" name="celular" value="<%= aluno.celular || '' %>" inputmode="numeric" placeholder="(21) 99999-9999" maxlength="15" data-mask="celular">
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset style="border:1px solid #e7ebf1;border-radius:12px;padding:18px;margin-top:18px;">
+    <legend style="font-size:13px;font-weight:700;padding:0 6px;">Documentos</legend>
+    <div class="adm-form" style="padding:0;display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <label>CPF ou CNPJ
+        <input type="text" name="cpfCnpj" value="<%= cpfCnpjDigitado %>" inputmode="numeric" placeholder="<%= cpfCnpjAtualMascarado ? 'Atual: ' + cpfCnpjAtualMascarado : 'Somente números' %>" maxlength="18" data-mask="cpfCnpj">
+        <small style="color:#6b7689;font-weight:400;">Deixe em branco para manter o documento atual<%= cpfCnpjAtualMascarado ? '' : ' (nenhum cadastrado)' %>.</small>
+      </label>
+      <label>RG
+        <input type="text" name="rg" value="<%= rgDigitado %>" maxlength="14" placeholder="<%= rgAtualMascarado ? 'Atual: ' + rgAtualMascarado : 'Número do RG' %>" data-mask="rg">
+        <small style="color:#6b7689;font-weight:400;">Deixe em branco para manter o RG atual<%= rgAtualMascarado ? '' : ' (nenhum cadastrado)' %>.</small>
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset style="border:1px solid #e7ebf1;border-radius:12px;padding:18px;margin-top:18px;">
+    <legend style="font-size:13px;font-weight:700;padding:0 6px;">Perfil</legend>
+    <div class="adm-form" style="padding:0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+      <label>Escolaridade
+        <select name="escolaridade">
+          <option value="">— não informada —</option>
+          <% escolaridades.forEach(function (e) { %>
+            <option value="<%= e %>" <%= aluno.escolaridade === e ? 'selected' : '' %>><%= e %></option>
+          <% }) %>
+        </select>
+      </label>
+      <label>Situação
+        <select name="escolaridadeSituacao">
+          <option value="">— não informada —</option>
+          <% situacoes.forEach(function (s) { %>
+            <option value="<%= s %>" <%= aluno.escolaridadeSituacao === s ? 'selected' : '' %>><%= s %></option>
+          <% }) %>
+        </select>
+      </label>
+      <label>Gênero
+        <select name="genero">
+          <option value="">— não informado —</option>
+          <% generos.forEach(function (g) { %>
+            <option value="<%= g %>" <%= aluno.genero === g ? 'selected' : '' %>><%= g %></option>
+          <% }) %>
+        </select>
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset style="border:1px solid #e7ebf1;border-radius:12px;padding:18px;margin-top:18px;">
     <legend style="font-size:13px;font-weight:700;padding:0 6px;">Endereço (para cobrança)</legend>
-    <div class="adm-form" style="padding:0;">
+    <div class="adm-form" style="padding:0;display:grid;grid-template-columns:1fr 3fr 1fr 1.5fr;gap:16px;">
       <label>CEP
         <input type="text" name="cep" value="<%= aluno.cep || '' %>" inputmode="numeric" placeholder="00000000" maxlength="9">
       </label>
-      <label class="full">Rua / Logradouro
+      <label>Rua / Logradouro
         <input type="text" name="logradouro" value="<%= aluno.logradouro || '' %>">
       </label>
       <label>Número
@@ -51,6 +84,8 @@
       <label>Complemento
         <input type="text" name="complemento" value="<%= aluno.complemento || '' %>">
       </label>
+    </div>
+    <div class="adm-form" style="padding:0;margin-top:16px;display:grid;grid-template-columns:2fr 2fr 1fr;gap:16px;">
       <label>Bairro
         <input type="text" name="bairro" value="<%= aluno.bairro || '' %>">
       </label>
@@ -68,12 +103,9 @@
     </div>
   </fieldset>
 
-  <div class="dados-lista" style="margin-top:20px;border-top:1px solid #e7ebf1;padding-top:16px;display:grid;gap:8px;">
-    <div style="display:flex;justify-content:space-between;"><span class="adm-mut">E-mail (não editável)</span><strong><%= aluno.email %></strong></div>
-    <div style="display:flex;justify-content:space-between;"><span class="adm-mut">CPF/CNPJ (não editável)</span><strong><%= aluno.cpfCnpj ? mascarar(aluno.cpfCnpj) : '—' %></strong></div>
-  </div>
-  <p class="adm-mut" style="font-size:13px;margin:14px 0 18px;"><i class="fa-solid fa-lock"></i> E-mail e CPF não são editáveis por aqui (login e identidade). Toda alteração fica registrada na auditoria.</p>
+  <p class="adm-mut" style="font-size:13px;margin:16px 0 18px;"><i class="fa-solid fa-triangle-exclamation"></i> E-mail e CPF/CNPJ são usados para login e identidade do aluno (inclusive no certificado). Alterações aqui ficam registradas na auditoria.</p>
 
   <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> Salvar alterações</button>
 </form>
 <%- include('foot') %>
+<script src="/js/mascaras.js"></script>

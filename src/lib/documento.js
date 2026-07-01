@@ -59,4 +59,13 @@ function mascarar(d) {
   return d ? '***' : '';
 }
 
-module.exports = { validarCpfCnpj, formatar, mascarar, soDigitos };
+// Mascara o RG para exibição (esconde o miolo). RG não tem um formato único
+// nacional, então isso funciona em cima do texto como foi digitado/salvo.
+function mascararRG(v) {
+  const alnum = String(v || '').trim().replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+  if (!alnum) return '';
+  if (alnum.length <= 3) return '*'.repeat(alnum.length);
+  return `${alnum.slice(0, 2)}.***.***-${alnum.slice(-1)}`;
+}
+
+module.exports = { validarCpfCnpj, formatar, mascarar, mascararRG, soDigitos };

@@ -5,6 +5,7 @@
   <a href="/turmas/nova" class="adm-btn"><i class="fa-solid fa-plus"></i> Nova turma</a>
 </div>
 <% if (flash) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div><% } %>
+<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
 <div class="adm-box">
   <% if (!turmas.length) { %>
     <p class="adm-vazio">Nenhuma turma. <a href="/turmas/nova">Criar a primeira</a>.</p>
@@ -22,6 +23,10 @@
             <td class="adm-acoes">
               <a href="/turmas/<%= t.id %>/notas" class="adm-mini" title="Lançar notas da turma"><i class="fa-solid fa-list-check"></i></a>
               <a href="/turmas/<%= t.id %>/editar" class="adm-mini" title="Editar"><i class="fa-solid fa-pen"></i></a>
+              <form method="POST" action="/turmas/<%= t.id %>/excluir" onsubmit="return confirm('Excluir esta turma? Só é possível se não houver alunos matriculados.')" style="display:inline;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="adm-mini danger" title="Excluir turma"><i class="fa-solid fa-trash"></i></button>
+              </form>
             </td>
           </tr>
         <% }) %>

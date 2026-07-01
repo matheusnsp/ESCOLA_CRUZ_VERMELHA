@@ -11,7 +11,7 @@ const { verificarSenha } = require('../lib/password');
 const { criarCodigo2fa, verificarCodigo2fa, consumirToken, criarTokenDesbloqueio, verificarTokenDesbloqueio } = require('../lib/tokens');
 const { enviarCodigo2fa, enviarAlertaLoginSecretaria, enviarLinkDesbloqueio } = require('../lib/email');
 const { ESCOLARIDADES: ESCOLARIDADES_ALUNO, SITUACOES_ESCOLARIDADE, GENEROS, UFS } = require('../lib/validation');
-const { mascarar } = require('../lib/documento');
+const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
 const { formatBRL } = require('../lib/matricula');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 
@@ -467,7 +467,7 @@ router.get('/turmas', async (req, res) => {
     orderBy: { inicioPrevisto: 'asc' },
     include: { curso: true, _count: { select: { matriculas: { where: { statusPagamento: 'PAGO' } } } } },
   });
-  res.render('admin/turmas', { turmas, statusTurma: STATUS_TURMA, flash: req.query.ok || null });
+  res.render('admin/turmas', { turmas, statusTurma: STATUS_TURMA, flash: req.query.ok || null, erro: req.query.erro || null });
 });
 
 router.get('/turmas/nova', async (req, res) => {
@@ -571,6 +571,21 @@ router.post('/turmas/:id', async (req, res) => {
   res.redirect('/turmas?ok=Turma atualizada.');
 });
 
+// Excluir turma — SOMENTE se não tiver matrículas (protege histórico).
+router.post('/turmas/:id/excluir', async (req, res) => {
+  const turma = await prisma.turma.findUnique({ where: { id: req.params.id }, include: { curso: true } });
+  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma não encontrada.' });
+
+  const matriculas = await prisma.matricula.count({ where: { turmaId: turma.id } });
+  if (matriculas > 0) {
+    return res.redirect('/turmas?erro=' + encodeURIComponent('Não é possível excluir: a turma tem aluno(s) matriculado(s). Use o status "CANCELADA" ou "ENCERRADA" para tirá-la do site preservando o histórico.'));
+  }
+
+  await prisma.turma.delete({ where: { id: turma.id } });
+  await auditar(req, 'EXCLUIU_TURMA', 'Turma', turma.id, { cursoId: turma.cursoId, curso: turma.curso.nome });
+  res.redirect('/turmas?ok=Turma excluída.');
+});
+
 // ---------- Inscrições / Pagamentos ----------
 
 router.get('/inscricoes', async (req, res) => {
@@ -650,7 +665,12 @@ router.get('/alunos', async (req, res) => {
 router.get('/alunos/:id/editar', async (req, res) => {
   const aluno = await prisma.usuario.findUnique({ where: { id: req.params.id } });
   if (!aluno || aluno.papel !== 'ALUNO') return res.status(404).render('admin/erro', { mensagem: 'Aluno não encontrado.' });
-  res.render('admin/aluno-form', { aluno, escolaridades: ESCOLARIDADES_ALUNO, situacoes: SITUACOES_ESCOLARIDADE, generos: GENEROS, ufs: UFS, erro: null, mascarar });
+  res.render('admin/aluno-form', {
+    aluno,
+    cpfCnpjDigitado: '', cpfCnpjAtualMascarado: aluno.cpfCnpj ? mascarar(aluno.cpfCnpj) : null,
+    rgDigitado: '', rgAtualMascarado: aluno.rg ? mascararRG(aluno.rg) : null,
+    escolaridades: ESCOLARIDADES_ALUNO, situacoes: SITUACOES_ESCOLARIDADE, generos: GENEROS, ufs: UFS, erro: null, mascarar,
+  });
 });
 
 router.post('/alunos/:id/editar', async (req, res) => {
@@ -658,10 +678,17 @@ router.post('/alunos/:id/editar', async (req, res) => {
   if (!aluno || aluno.papel !== 'ALUNO') return res.status(404).render('admin/erro', { mensagem: 'Aluno não encontrado.' });
 
   const reErro = (erro) => res.status(400).render('admin/aluno-form', {
-    aluno: { ...aluno, ...req.body }, escolaridades: ESCOLARIDADES_ALUNO, situacoes: SITUACOES_ESCOLARIDADE, generos: GENEROS, ufs: UFS, erro, mascarar,
+    aluno: { ...aluno, ...req.body },
+    cpfCnpjDigitado: req.body.cpfCnpj || '', cpfCnpjAtualMascarado: aluno.cpfCnpj ? mascarar(aluno.cpfCnpj) : null,
+    rgDigitado: req.body.rg || '', rgAtualMascarado: aluno.rg ? mascararRG(aluno.rg) : null,
+    escolaridades: ESCOLARIDADES_ALUNO, situacoes: SITUACOES_ESCOLARIDADE, generos: GENEROS, ufs: UFS, erro, mascarar,
   });
 
   const nome = String(req.body.nome || '').trim();
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const rgDigitado = String(req.body.rg || '').trim();
+  const celular = String(req.body.celular || '').replace(/\D/g, '');
+  const documentoDigitado = String(req.body.cpfCnpj || '').trim();
   const escolaridade = String(req.body.escolaridade || '').trim();
   const escolaridadeSituacao = String(req.body.escolaridadeSituacao || '').trim();
   const genero = String(req.body.genero || '').trim();
@@ -675,6 +702,20 @@ router.post('/alunos/:id/editar', async (req, res) => {
 
   if (nome.split(/\s+/).filter(Boolean).length < 2) return reErro('Informe o nome completo (nome e sobrenome).');
   if (nome.length > 120) return reErro('Nome muito longo.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reErro('Informe um e-mail válido.');
+  if (email.length > 180) return reErro('E-mail muito longo.');
+  if (rgDigitado.length > 20) return reErro('RG muito longo.');
+  if (celular && celular.length !== 10 && celular.length !== 11) return reErro('Celular deve ter 10 ou 11 dígitos (com DDD).');
+
+  let cpfCnpjNormalizado = aluno.cpfCnpj; // em branco = mantém o atual
+  if (documentoDigitado) {
+    const doc = validarCpfCnpj(documentoDigitado);
+    if (!doc.ok) return reErro('CPF/CNPJ inválido.');
+    cpfCnpjNormalizado = doc.normalizado;
+  }
+
+  const rgFinal = rgDigitado || aluno.rg; // em branco = mantém o atual
+
   if (escolaridade && !ESCOLARIDADES_ALUNO.includes(escolaridade)) return reErro('Escolaridade inválida.');
   if (escolaridadeSituacao && !SITUACOES_ESCOLARIDADE.includes(escolaridadeSituacao)) return reErro('Situação de escolaridade inválida.');
   if (escolaridade && !escolaridadeSituacao) return reErro('Selecione se o aluno está cursando ou já concluiu.');
@@ -682,10 +723,38 @@ router.post('/alunos/:id/editar', async (req, res) => {
   if (cep && cep.length !== 8) return reErro('CEP deve ter 8 dígitos.');
   if (uf && !UFS.includes(uf)) return reErro('UF inválida.');
 
-  const antes = { nome: aluno.nome, escolaridade: aluno.escolaridade, escolaridadeSituacao: aluno.escolaridadeSituacao, genero: aluno.genero, cep: aluno.cep, logradouro: aluno.logradouro, numero: aluno.numero, complemento: aluno.complemento, bairro: aluno.bairro, cidade: aluno.cidade, uf: aluno.uf };
-  const depois = { nome, escolaridade: escolaridade || null, escolaridadeSituacao: escolaridadeSituacao || null, genero: genero || null, cep: cep || null, logradouro: logradouro || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, uf: uf || null };
-  await prisma.usuario.update({ where: { id: aluno.id }, data: depois });
-  await auditar(req, 'EDITOU_ALUNO', 'Usuario', aluno.id, { antes, depois });
+  const antes = {
+    nome: aluno.nome, email: aluno.email, celular: aluno.celular,
+    rg: aluno.rg ? mascararRG(aluno.rg) : null,
+    cpfCnpj: aluno.cpfCnpj ? mascarar(aluno.cpfCnpj) : null,
+    escolaridade: aluno.escolaridade, escolaridadeSituacao: aluno.escolaridadeSituacao, genero: aluno.genero,
+    cep: aluno.cep, logradouro: aluno.logradouro, numero: aluno.numero, complemento: aluno.complemento, bairro: aluno.bairro, cidade: aluno.cidade, uf: aluno.uf,
+  };
+  const depois = {
+    nome, email, celular: celular || null, rg: rgFinal || null,
+    cpfCnpj: cpfCnpjNormalizado,
+    escolaridade: escolaridade || null, escolaridadeSituacao: escolaridadeSituacao || null, genero: genero || null,
+    cep: cep || null, logradouro: logradouro || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, uf: uf || null,
+  };
+
+  try {
+    await prisma.usuario.update({ where: { id: aluno.id }, data: depois });
+  } catch (err) {
+    if (err.code === 'P2002') {
+      const alvo = String(err.meta && err.meta.target);
+      return reErro(alvo.includes('cpfCnpj') ? 'Já existe outra conta com este CPF/CNPJ.' : 'Já existe outra conta com este e-mail.');
+    }
+    throw err;
+  }
+
+  await auditar(req, 'EDITOU_ALUNO', 'Usuario', aluno.id, {
+    antes,
+    depois: {
+      ...depois,
+      cpfCnpj: depois.cpfCnpj ? mascarar(depois.cpfCnpj) : null,
+      rg: depois.rg ? mascararRG(depois.rg) : null,
+    },
+  });
   res.redirect('/alunos?ok=' + encodeURIComponent(`Dados de ${nome.split(' ')[0]} atualizados.`));
 });
 

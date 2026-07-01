@@ -46,19 +46,19 @@
 
       <label class="auth-field" id="campo-documento" style="display:none;">
         <span id="label-documento">CPF</span>
-        <input type="text" name="documento" value="<%= valores.documento || '' %>" inputmode="numeric" placeholder="Somente números ou com pontuação">
+        <input type="text" name="documento" value="<%= valores.documento || '' %>" inputmode="numeric" placeholder="000.000.000-00" maxlength="18" data-mask="cpfCnpj">
         <small>Usado para emissão do certificado.</small>
       </label>
 
       <label class="auth-field" id="campo-rg" style="display:none;">
         <span>RG</span>
-        <input type="text" name="rg" value="<%= valores.rg || '' %>" maxlength="20" placeholder="Número do RG">
+        <input type="text" name="rg" value="<%= valores.rg || '' %>" maxlength="14" placeholder="Número do RG" data-mask="rg">
         <small>Obrigatório para pessoa física.</small>
       </label>
 
       <label class="auth-field">
         <span>Celular</span>
-        <input type="text" name="celular" value="<%= valores.celular || '' %>" required inputmode="numeric" placeholder="(21) 90000-0000">
+        <input type="text" name="celular" value="<%= valores.celular || '' %>" required inputmode="numeric" placeholder="(21) 90000-0000" maxlength="15" data-mask="celular">
         <small>Com DDD.</small>
       </label>
 
@@ -175,6 +175,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
 <script src="/js/senha.js"></script>
+<script src="/js/mascaras.js"></script>
 <script src="/js/cadastro.js"></script>
 
 <%- include('partials/foot') %>

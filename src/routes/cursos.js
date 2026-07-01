@@ -167,31 +167,35 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
 router.post('/webhook/unicopag', express.json(), async (req, res) => {
   res.sendStatus(200);
   try {
-    const { hash, payment_status, external_id } = req.body;
-    if (!external_id || !payment_status) return;
+    const { hash, payment_status } = req.body;
+    if (!hash || !payment_status) return;
 
-    console.log(`[Webhook] ${external_id} → ${payment_status}`);
+    const pagamento = await prisma.pagamento.findFirst({ where: { gatewayRef: hash } });
+    if (!pagamento) {
+      console.warn(`[Webhook] Nenhum pagamento encontrado para hash ${hash}`);
+      return;
+    }
+    const matriculaId = pagamento.matriculaId;
+
+    console.log(`[Webhook] ${matriculaId} (hash ${hash}) → ${payment_status}`);
 
     if (payment_status === 'paid') {
       await prisma.$transaction([
         prisma.pagamento.updateMany({ where: { gatewayRef: hash }, data: { status: 'PAGO', atualizadoEm: new Date() } }),
-        prisma.matricula.update({ where: { id: external_id }, data: { statusPagamento: 'PAGO', confirmadaEm: new Date(), confirmadaPor: 'unicopag' } }),
+        prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'PAGO', confirmadaEm: new Date(), confirmadaPor: 'unicopag' } }),
       ]);
-      console.log(`[Webhook] ✅ Matrícula ${external_id} PAGO`);
     } else if (payment_status === 'refunded') {
       await prisma.$transaction([
         prisma.pagamento.updateMany({ where: { gatewayRef: hash }, data: { status: 'ESTORNADO', atualizadoEm: new Date() } }),
-        prisma.matricula.update({ where: { id: external_id }, data: { statusPagamento: 'ESTORNADO' } }),
+        prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'ESTORNADO' } }),
       ]);
-      console.log(`[Webhook] 🔄 Matrícula ${external_id} ESTORNADO`);
     } else if (payment_status === 'refused' || payment_status === 'failed') {
       await prisma.$transaction([
         prisma.pagamento.updateMany({ where: { gatewayRef: hash }, data: { status: 'CANCELADO', atualizadoEm: new Date() } }),
-        prisma.matricula.update({ where: { id: external_id }, data: { statusPagamento: 'CANCELADO' } }),
+        prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'CANCELADO' } }),
       ]);
-      console.log(`[Webhook] ❌ Matrícula ${external_id} CANCELADO`);
     } else if (payment_status === 'waiting_payment' || payment_status === 'pending') {
-      console.log(`[Webhook] ⏳ Matrícula ${external_id} aguardando`);
+      console.log(`[Webhook] ⏳ Matrícula ${matriculaId} aguardando`);
     }
   } catch (err) {
     console.error('[Webhook] Erro:', err.message);
