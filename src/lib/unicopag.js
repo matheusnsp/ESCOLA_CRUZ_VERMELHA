@@ -29,7 +29,6 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
     payment_method: metodo,
     amount: valorCentavos,
     installments: 1,
-    postback_url: `${appUrl}/webhook/unicopag`,
     expire_in_days: 3,
     ...(dfpId ? { dfp_id: dfpId } : {}),
     customer: {
