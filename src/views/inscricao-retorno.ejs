@@ -2,9 +2,20 @@
 <%- include('partials/site-header') %>
 <main class="interna-wrap">
   <div class="painel-card" style="text-align:center;padding:48px 24px;">
-    <i class="fa-solid fa-clock" style="font-size:48px;color:#e2a800;margin-bottom:16px;"></i>
-    <h1>Aguardando confirmação</h1>
-    <p class="painel-sub">Seu pagamento está sendo processado. Assim que confirmado, sua matrícula será atualizada automaticamente.</p>
+    <% if (isPix && pixQrCode) { %>
+      <i class="fa-brands fa-pix" style="font-size:48px;color:#32BCAD;margin-bottom:16px;"></i>
+      <h1>Pague via PIX</h1>
+      <p class="painel-sub">Copie o código abaixo e pague no seu banco. Sua matrícula será confirmada automaticamente.</p>
+      <textarea readonly onclick="this.select()" style="width:100%;max-width:500px;padding:12px;margin:16px auto;display:block;font-size:11px;border-radius:8px;border:1px solid #ccc;resize:none;height:80px;"><%= pixQrCode %></textarea>
+      <button onclick="navigator.clipboard.writeText('<%= pixQrCode %>');this.textContent='✅ Copiado!'" style="padding:10px 24px;background:#32BCAD;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;margin-bottom:16px;">
+        Copiar código PIX
+      </button>
+      <p class="painel-sub" style="font-size:12px;">Após o pagamento, a confirmação pode levar alguns minutos.</p>
+    <% } else { %>
+      <i class="fa-solid fa-clock" style="font-size:48px;color:#e2a800;margin-bottom:16px;"></i>
+      <h1>Aguardando confirmação</h1>
+      <p class="painel-sub">Seu pagamento está sendo processado. Assim que confirmado, sua matrícula será atualizada automaticamente.</p>
+    <% } %>
     <a href="/minha-conta?sec=inscricoes" class="btn-acao" style="margin-top:24px;display:inline-block;">Ver minhas inscrições</a>
   </div>
 </main>

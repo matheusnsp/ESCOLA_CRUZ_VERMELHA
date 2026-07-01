@@ -118,17 +118,33 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   }
 
   try {
-    const { checkoutUrl, gatewayRef } = await criarTransacao({
+    const resultado = await criarTransacao({
       matriculaId: matricula.id,
       nomeCurso: turma.curso.nome,
       valorTotal: total,
       forma,
       aluno,
     });
+
     await prisma.pagamento.create({
-      data: { matriculaId: matricula.id, gateway: 'unicopag', gatewayRef, metodo: forma, valor: total, status: 'PENDENTE' },
+      data: {
+        matriculaId: matricula.id,
+        gateway: 'unicopag',
+        gatewayRef: resultado.gatewayRef,
+        metodo: forma,
+        valor: total,
+        status: 'PENDENTE',
+      },
     });
-    return res.redirect(checkoutUrl);
+
+    // Se tiver link de checkout (cartão), redireciona
+    if (resultado.checkoutUrl) {
+      return res.redirect(resultado.checkoutUrl);
+    }
+
+    // PIX: mostra QR code na página de retorno
+    return res.redirect(`/inscricao/retorno?matriculaId=${matricula.id}&pix=1&qr=${encodeURIComponent(resultado.pixQrCode || '')}`);
+
   } catch (err) {
     console.error('[UnicopAg] Erro:', err.message);
     return res.render('erro', { mensagem: 'Sua inscrição foi registrada, mas houve um problema ao abrir o pagamento. Entre em contato com a secretaria.' });
@@ -136,11 +152,16 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 });
 
 router.get('/inscricao/retorno', requireLogin, async (req, res) => {
-  const { matriculaId } = req.query;
+  const { matriculaId, pix, qr } = req.query;
   const matricula = matriculaId
     ? await prisma.matricula.findUnique({ where: { id: matriculaId }, include: { turma: { include: { curso: true } } } })
     : null;
-  res.render('inscricao-retorno', { matricula, formatBRL });
+  res.render('inscricao-retorno', {
+    matricula,
+    formatBRL,
+    isPix: pix === '1',
+    pixQrCode: qr ? decodeURIComponent(qr) : null,
+  });
 });
 
 router.post('/webhook/unicopag', express.json(), async (req, res) => {
@@ -157,25 +178,21 @@ router.post('/webhook/unicopag', express.json(), async (req, res) => {
         prisma.matricula.update({ where: { id: external_id }, data: { statusPagamento: 'PAGO', confirmadaEm: new Date(), confirmadaPor: 'unicopag' } }),
       ]);
       console.log(`[Webhook] ✅ Matrícula ${external_id} PAGO`);
-
     } else if (payment_status === 'refunded') {
       await prisma.$transaction([
         prisma.pagamento.updateMany({ where: { gatewayRef: hash }, data: { status: 'ESTORNADO', atualizadoEm: new Date() } }),
         prisma.matricula.update({ where: { id: external_id }, data: { statusPagamento: 'ESTORNADO' } }),
       ]);
       console.log(`[Webhook] 🔄 Matrícula ${external_id} ESTORNADO`);
-
     } else if (payment_status === 'refused' || payment_status === 'failed') {
       await prisma.$transaction([
         prisma.pagamento.updateMany({ where: { gatewayRef: hash }, data: { status: 'CANCELADO', atualizadoEm: new Date() } }),
         prisma.matricula.update({ where: { id: external_id }, data: { statusPagamento: 'CANCELADO' } }),
       ]);
       console.log(`[Webhook] ❌ Matrícula ${external_id} CANCELADO`);
-
     } else if (payment_status === 'waiting_payment' || payment_status === 'pending') {
-      console.log(`[Webhook] ⏳ Matrícula ${external_id} aguardando pagamento`);
+      console.log(`[Webhook] ⏳ Matrícula ${external_id} aguardando`);
     }
-
   } catch (err) {
     console.error('[Webhook] Erro:', err.message);
   }
