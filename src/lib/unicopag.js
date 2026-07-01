@@ -1,8 +1,14 @@
-const API_BASE = 'https://api.cloud.unicopag.com.br';
+const API_BASE = process.env.UNICOPAG_API_BASE || 'https://api.cloud.unicopag.com.br';
 
+// Converte a "forma" usada no nosso formulário (PIX, DEBITO, CREDITO)
+// para o payment_method esperado pela API do UnicoPag.
 function mapearMetodo(forma) {
-  const mapa = { PIX: 'pix', CREDITO: 'credit_card', DEBITO: 'debit_card', DINHEIRO: null };
-  return mapa[forma] ?? null;
+  const mapa = {
+    PIX: 'pix',
+    DEBITO: 'debit_card',
+    CREDITO: 'credit_card',
+  };
+  return mapa[forma] || null;
 }
 
 async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno }) {
@@ -29,9 +35,11 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
     },
     cart: [
       {
-        name: nomeCurso,
+        hash: matriculaId,        // identificador único do item — usamos a própria matrícula, já é UUID único
+        title: nomeCurso,          // era "name"
+        price: valorCentavos,      // era "unit_price"
         quantity: 1,
-        unit_price: valorCentavos,
+        operation_type: 1,         // ⚠️ valor de exemplo — ver observação abaixo
       },
     ],
   };
@@ -53,4 +61,4 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
   };
 }
 
-module.exports = { criarTransacao, mapearMetodo };
+module.exports = { criarTransacao };
