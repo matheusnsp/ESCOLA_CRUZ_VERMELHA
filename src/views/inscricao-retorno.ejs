@@ -1,59 +1,37 @@
 <%- include('partials/site-head', { titulo: 'Inscrição' }) %>
 <%- include('partials/site-header') %>
-
 <main class="interna-wrap">
-
-  <div class="painel-card" style="text-align:center;padding:48px 24px;">
-    
-    <% if (isPix && pixUrl) { %>
-
-
-      <i class="fa-brands fa-pix" 
-        style="font-size:48px;color:#32BCAD;margin-bottom:16px;">
-      </i>
-
-
-      <h1>Pague via PIX</h1>
-
-
-      <p class="painel-sub">
+<div class="painel-card" style="text-align:center;padding:48px 24px;">
+<% if (isPix && pixUrl) { %>
+<i class="fa-brands fa-pix" 
+style="font-size:48px;color:#32BCAD;margin-bottom:16px;">
+</i>
+<h1>Pague via PIX</h1>
+<p class="painel-sub">
         Abra o aplicativo do seu banco e aponte a câmera para o QR Code abaixo,
         ou copie o código PIX Copia e Cola.
-      </p>
-
-
-
-      <!-- QR CODE PIX -->
-      <div style="margin:24px auto;">
-
-        <img 
-          src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=<%= encodeURIComponent(pixUrl) %>"
-          alt="QR Code Pix"
-          style="
+</p>
+<!-- QR CODE PIX -->
+<div style="margin:24px auto;">
+<img 
+src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=<%= encodeURIComponent(pixUrl) %>"
+alt="QR Code Pix"
+style="
             max-width:250px;
             width:100%;
             border:1px solid #eee;
             padding:8px;
             border-radius:12px;
           "
-        />
-
-      </div>
-
-
-
-
-      <p class="painel-sub" style="margin-top:16px;">
+/>
+</div>
+<p class="painel-sub" style="margin-top:16px;">
         Código PIX Copia e Cola:
-      </p>
-
-
-
-
-      <textarea 
-        id="chavePix"
-        readonly
-        style="
+</p>
+<textarea 
+id="chavePix"
+readonly
+style="
           width:100%;
           max-width:500px;
           padding:12px;
@@ -65,15 +43,10 @@
           resize:none;
           height:90px;
         "
-      ><%= pixUrl %></textarea>
-
-
-
-
-      <button 
-        id="btnCopiar"
-        onclick="copiarPix()"
-        style="
+><%= pixUrl %></textarea>
+<button 
+id="btnCopiar"
+style="
           padding:10px 24px;
           background:#32BCAD;
           color:white;
@@ -82,178 +55,33 @@
           cursor:pointer;
           font-size:14px;
         "
-      >
+>
         Copiar código PIX
-      </button>
-
-
-
-
-      <p 
-        class="painel-sub" 
-        style="font-size:12px;margin-top:16px;"
-      >
+</button>
+<p 
+class="painel-sub" 
+style="font-size:12px;margin-top:16px;"
+>
         Após o pagamento, a confirmação pode levar alguns minutos.
-      </p>
-
-
-
-
-    <% } else { %>
-
-
-      <i class="fa-solid fa-clock" 
-        style="font-size:48px;color:#e2a800;margin-bottom:16px;">
-      </i>
-
-
-      <h1>Aguardando confirmação</h1>
-
-
-      <p class="painel-sub">
+</p>
+<% } else { %>
+<i class="fa-solid fa-clock" 
+style="font-size:48px;color:#e2a800;margin-bottom:16px;">
+</i>
+<h1>Aguardando confirmação</h1>
+<p class="painel-sub">
         Seu pagamento está sendo processado.
         Assim que confirmado, sua matrícula será atualizada automaticamente.
-      </p>
-
-
-    <% } %>
-
-
-
-    <a 
-      href="/minha-conta?sec=inscricoes"
-      class="btn-acao"
-      style="margin-top:24px;display:inline-block;"
-    >
+</p>
+<% } %>
+<a 
+href="/minha-conta?sec=inscricoes"
+class="btn-acao"
+style="margin-top:24px;display:inline-block;"
+>
       Ver minhas inscrições
-    </a>
-
-
-  </div>
-
+</a>
+</div>
 </main>
-
-
-
-
-<script>
-
-
-function copiarPix(){
-
-
-  const texto = document.getElementById("chavePix").value;
-  const botao = document.getElementById("btnCopiar");
-
-
-
-  // tenta copiar pelo método moderno
-  if (navigator.clipboard && window.isSecureContext) {
-
-
-    navigator.clipboard.writeText(texto)
-
-    .then(()=>{
-
-      mostrarCopiado(botao);
-
-    })
-
-    .catch(()=>{
-
-      copiarAntigo(texto, botao);
-
-    });
-
-
-
-  } else {
-
-
-    copiarAntigo(texto, botao);
-
-
-  }
-
-
-}
-
-
-
-
-
-function copiarAntigo(texto, botao){
-
-
-  const area = document.createElement("textarea");
-
-
-  area.value = texto;
-
-
-  area.style.position = "fixed";
-  area.style.opacity = "0";
-
-
-  document.body.appendChild(area);
-
-
-  area.focus();
-
-  area.select();
-
-
-
-  try {
-
-
-    document.execCommand("copy");
-
-
-    mostrarCopiado(botao);
-
-
-  } catch(e){
-
-
-    alert("Não foi possível copiar. Selecione o código manualmente.");
-
-
-  }
-
-
-
-  document.body.removeChild(area);
-
-
-}
-
-
-
-
-
-function mostrarCopiado(botao){
-
-
-  botao.innerHTML = "✅ Copiado!";
-
-
-  setTimeout(()=>{
-
-
-    botao.innerHTML = "Copiar código PIX";
-
-
-  },2000);
-
-
-}
-
-
-
-</script>
-
-
-
-
+<script src="/js/pix.js"></script>
 <%- include('partials/site-footer') %>
