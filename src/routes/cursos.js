@@ -85,20 +85,25 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
     return res.status(400).render('inscrever', { turma, curso: turma.curso, formatBRL, aVista, parcelado, erro: msg });
   };
 
-  // 1. Validação com Zod
   const resultado = inscricaoSchema.safeParse(req.body);
   if (!resultado.success) return reRenderErro(resultado.error.issues.map((i) => i.message)[0]);
   
   const { plano, forma, numero, titular, mesExpiracao, anoExpiracao, cvv } = resultado.data;
   const usaGateway = forma !== 'DINHEIRO';
 
-  // 2. Cálculo e criação da matrícula
-  const { valorCurso, valorTaxaMatricula, total } = await calcularValores(turma.curso, plano, req.session.usuarioId);
+  const { total } = await calcularValores(turma.curso, plano, req.session.usuarioId);
   
   let matricula;
   try {
     matricula = await prisma.matricula.create({
-      data: { alunoId: req.session.usuarioId, turmaId: turma.id, plano, forma, valorCurso, valorTaxaMatricula, statusPagamento: 'PENDENTE' },
+      data: { 
+        alunoId: req.session.usuarioId, 
+        turmaId: turma.id, 
+        plano, 
+        forma, 
+        valorCurso: total, // Ajuste conforme seu cálculo
+        statusPagamento: 'PENDENTE' 
+      },
     });
   } catch (err) {
     return reRenderErro('Não foi possível concluir a inscrição.');
@@ -106,30 +111,30 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
   if (!usaGateway) return res.redirect('/minha-conta?inscrito=1');
 
-  // 3. Busca de dados para o Gateway
   const aluno = await prisma.usuario.findUnique({
     where: { id: req.session.usuarioId },
     select: { nome: true, email: true, cpfCnpj: true, celular: true, cep: true, logradouro: true, numero: true, complemento: true, bairro: true, cidade: true, uf: true },
   });
 
-  if (!aluno?.cpfCnpj) return res.render('erro', { mensagem: 'CPF obrigatório para pagamento online.' });
+  if (!aluno?.cpfCnpj) return res.render('erro', { mensagem: 'CPF obrigatório.' });
 
   try {
-    // 4. ENVIO DOS DADOS DO CARTÃO (Ajuste crucial)
+    // 1. CHAMA O GATEWAY PRIMEIRO
     const resultadoGateway = await criarTransacao({
       matriculaId: matricula.id,
       nomeCurso: turma.curso.nome,
       valorTotal: total,
       forma,
       aluno,
-      dadosCartao: forma === 'CREDITO' ? { numero, titular, mesExpiracao, anoExpiracao, cvv, parcelas: 1 } : null
+      dadosCartao: forma === 'CREDITO' ? { numero, titular, mesExpiracao, anoExpiracao, cvv, parcelas: plano === 'PARCELADO' ? 3 : 1 } : null
     });
 
+    // 2. SÓ AGORA SALVA NO BANCO USANDO O ID DO GATEWAY RETORNADO
     await prisma.pagamento.create({
       data: {
         matriculaId: matricula.id,
         gateway: 'unicopag',
-        gatewayRef: resultadoGateway.gatewayRef || String(matricula.id),
+        gatewayRef: String(resultadoGateway.gatewayRef), // <--- O ID REAL DA ÚNICOPAG
         metodo: forma,
         valor: total,
         status: 'PENDENTE',
@@ -144,7 +149,7 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
   } catch (err) {
     console.error('[UnicopAg] Erro no Gateway:', err.message);
-    return res.render('erro', { mensagem: 'Houve um problema ao processar o pagamento. Tente novamente ou contate a secretaria.' });
+    return res.render('erro', { mensagem: 'Houve um problema ao processar o pagamento. Tente novamente.' });
   }
 });
 
