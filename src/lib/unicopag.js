@@ -1,117 +1,106 @@
 const fetch = require('node-fetch');
 
 /**
- * Sanitiza strings deixando apenas números (útil para CPF e Telefone)
+ * Sanitiza strings deixando apenas números
  */
 function apenasNumeros(valor) {
   if (!valor) return '';
-  return valor.replace(/\D/g, '');
+  return String(valor).replace(/\D/g, '');
 }
 
 /**
- * Cria uma transação de Pix ou Redirecionamento de Cartão na Únicopag
+ * Cria uma transação transparente na Únicopag (Pix ou Crédito)
  */
-async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno }) {
+async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno, dadosCartao }) {
   const token = process.env.UNICOPAG_API_TOKEN;
-  const baseUrl = process.env.UNICOPAG_API_URL || 'https://vps1.unicopag.com.br';
-  const appUrl = process.env.APP_URL || 'http://localhost:3000';
-
+  
   if (!token) {
     throw new Error('Chave UNICOPAG_API_TOKEN não configurada no ambiente (.env)');
   }
 
-  // 1. Mapeia para "checkout" quando for crédito, forçando a criação do link externo
-  // Se for PIX, mantém "pix" para pegar o QR Code direto na tela
-  const paymentMethod = forma === 'CREDITO' ? 'checkout' : 'pix';
+  const isCredito = forma === 'CREDITO';
+  const baseUrl = isCredito 
+    ? 'https://api.cloud.unicopag.com.br' 
+    : 'https://vps1.unicopag.com.br';
+    
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+  const paymentMethod = isCredito ? 'credit_card' : 'pix';
+  const endpoint = '/public/v1/payments';
 
-  // 2. Converte o valor de Float/Decimal para centavos (Inteiro)
   const amountCentavos = Math.round(parseFloat(valorTotal) * 100);
 
-  // 3. Monta o Payload ajustado para Checkout Externo
   const payload = {
-    payment_method: paymentMethod,
     amount: amountCentavos,
-    installments: 1,
+    payment_method: paymentMethod,
+    installments: isCredito ? Number(dadosCartao?.parcelas || 1) : 1,
     postback_url: `${appUrl}/webhook/unicopag`,
-    expire_in_days: 3,
+    expire_in_days: 1,
     origin: "minha-aplicacao",
     customer: {
       name: aluno.nome,
       email: aluno.email,
-      document: apenasNumeros(aluno.cpfCnpj),
       phone_number: apenasNumeros(aluno.celular),
-      // Endereço mapeado do banco para evitar rejeições cadastrais
+      document: apenasNumeros(aluno.cpfCnpj),
       zip_code: apenasNumeros(aluno.cep) || "01001000",
       street_name: aluno.logradouro || "Não Informado",
       number: aluno.numero || "SN",
-      complement: aluno.complement || "",
-      neighborhood: aluno.bairro || "",
-      city: aluno.cidade || "",
-      state: aluno.uf || ""
+      complement: aluno.complemento || null,
+      neighborhood: aluno.bairro || "Centro",
+      city: aluno.cidade || "Rio de Janeiro",
+      state: aluno.uf || "RJ"
     },
-    cart: [
-      {
-        hash: matriculaId,
-        title: nomeCurso,
-        price: amountCentavos,
-        quantity: 1,
-        operation_type: 1
-      }
-    ],
-    metadata: {
-      order_id: matriculaId
-    }
+    cart: [{
+      hash: matriculaId,
+      title: nomeCurso,
+      price: amountCentavos,
+      quantity: 1,
+      operation_type: 1
+    }],
+    metadata: { order_id: matriculaId }
   };
 
-  console.log(`[UnicopAg] APP_URL em uso: ${appUrl}`);
-  console.log(`[UnicopAg] Payload gerado para o método: ${paymentMethod}`);
+  if (isCredito) {
+    if (!dadosCartao || !dadosCartao.numero || !dadosCartao.cvv) {
+      throw new Error('Dados do cartão de crédito incompletos.');
+    }
 
-  // 4. Constrói a URL injetando o api_token como Query Parameter
-  const urlFinal = `${baseUrl.replace(/\/$/, '')}/public/v1/payments?api_token=${token.trim()}`;
-  
-  let response;
-  let textBody = '';
-
-  try {
-    response = await fetch(urlFinal, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    textBody = await response.text();
-  } catch (fetchError) {
-    console.error('[UnicopAg] Erro físico de rede/conexão:', fetchError.message);
-    throw new Error('Falha ao conectar com o servidor de pagamentos.');
-  }
-
-  // 5. Trata respostas com erro do Gateway
-  if (!response.ok) {
-    console.error(`[UnicopAg] Status HTTP: ${response.status} | Resposta: ${textBody}`);
-    throw new Error(`Gateway respondeu com erro ${response.status}`);
-  }
-
-  // 6. Resposta de Sucesso: Repassa o checkout_url para o seu cursos.js redirecionar
-  try {
-    const json = JSON.parse(textBody);
-    const pixData = json.result?.pix || json.pix || null;
-    const stringPix = pixData ? (pixData.pix_qr_code || pixData.qrcode || pixData.copy_and_paste) : null;
-    
-    return {
-      success: true,
-      gatewayRef: json.result?.id || json.id || matriculaId,
-      // Captura a URL da página de pagamento da Únicopag
-      checkoutUrl: json.result?.checkout_url || json.checkout_url || json.result?.payment_url || json.payment_url || null,
-      pixQrCode: stringPix,
-      pixUrl: stringPix
+    payload.card = {
+      number: apenasNumeros(dadosCartao.numero),
+      holdername: dadosCartao.titular,
+      exp_month: String(dadosCartao.mesExpiracao).padStart(2, '0'),
+      exp_year: String(dadosCartao.anoExpiracao),
+      cvv: String(dadosCartao.cvv)
     };
-  } catch (parseError) {
-    console.error('[UnicopAg] Erro ao processar JSON de sucesso do gateway:', parseError.message);
-    throw new Error('Resposta de sucesso do gateway veio em formato inválido.');
   }
+
+  console.log(`[UnicopAg] Enviando para: ${baseUrl} | Método: ${paymentMethod}`);
+
+  const urlFinal = `${baseUrl}${endpoint}?api_token=${token.trim()}`;
+  
+  const response = await fetch(urlFinal, {
+    method: 'POST', 
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const textBody = await response.text();
+
+  if (!response.ok) {
+    console.error(`[UnicopAg] Erro HTTP ${response.status}: ${textBody}`);
+    throw new Error(`Gateway: ${textBody || 'Erro desconhecido'}`);
+  }
+
+  const json = JSON.parse(textBody);
+  const result = json.result || json;
+  
+  return {
+    success: true,
+    gatewayRef: String(result.id || matriculaId),
+    paymentStatus: result.payment_status || 'pending',
+    pixQrCode: result.pix?.pix_qr_code || result.pix?.qrcode || null,
+    pixUrl: result.pix?.pix_url || null,
+    checkoutUrl: result.checkout_url || null
+  };
 }
 
 module.exports = { criarTransacao };

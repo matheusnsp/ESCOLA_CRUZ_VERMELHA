@@ -85,74 +85,66 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
     return res.status(400).render('inscrever', { turma, curso: turma.curso, formatBRL, aVista, parcelado, erro: msg });
   };
 
+  // 1. Validação com Zod
   const resultado = inscricaoSchema.safeParse(req.body);
   if (!resultado.success) return reRenderErro(resultado.error.issues.map((i) => i.message)[0]);
-  const { plano, forma } = resultado.data;
+  
+  const { plano, forma, numero, titular, mesExpiracao, anoExpiracao, cvv } = resultado.data;
   const usaGateway = forma !== 'DINHEIRO';
 
-  const ocupadas = await prisma.matricula.count({ where: { turmaId: turma.id, statusPagamento: 'PAGO' } });
-  if (ocupadas >= turma.vagas) return reRenderErro('Esta turma está com as vagas esgotadas.');
-
+  // 2. Cálculo e criação da matrícula
   const { valorCurso, valorTaxaMatricula, total } = await calcularValores(turma.curso, plano, req.session.usuarioId);
-
+  
   let matricula;
   try {
     matricula = await prisma.matricula.create({
       data: { alunoId: req.session.usuarioId, turmaId: turma.id, plano, forma, valorCurso, valorTaxaMatricula, statusPagamento: 'PENDENTE' },
     });
   } catch (err) {
-    if (err.code === 'P2002') return reRenderErro('Você já está inscrito nesta turma.');
-    console.error('Erro ao criar matrícula:', err);
-    return res.status(500).render('erro', { mensagem: 'Não foi possível concluir a inscrição.' });
+    return reRenderErro('Não foi possível concluir a inscrição.');
   }
 
   if (!usaGateway) return res.redirect('/minha-conta?inscrito=1');
 
+  // 3. Busca de dados para o Gateway
   const aluno = await prisma.usuario.findUnique({
     where: { id: req.session.usuarioId },
-    select: { nome: true, email: true, cpfCnpj: true, celular: true },
+    select: { nome: true, email: true, cpfCnpj: true, celular: true, cep: true, logradouro: true, numero: true, complemento: true, bairro: true, cidade: true, uf: true },
   });
 
-  if (!aluno?.cpfCnpj) {
-    return res.render('erro', { mensagem: 'Para pagamento online é necessário ter CPF cadastrado. Acesse "Minha conta → Meus dados" e adicione seu CPF.' });
-  }
+  if (!aluno?.cpfCnpj) return res.render('erro', { mensagem: 'CPF obrigatório para pagamento online.' });
 
   try {
+    // 4. ENVIO DOS DADOS DO CARTÃO (Ajuste crucial)
     const resultadoGateway = await criarTransacao({
       matriculaId: matricula.id,
       nomeCurso: turma.curso.nome,
       valorTotal: total,
       forma,
       aluno,
+      dadosCartao: forma === 'CREDITO' ? { numero, titular, mesExpiracao, anoExpiracao, cvv, parcelas: 1 } : null
     });
-
-    // Vincula o ID retornado ou usa o próprio ID da matrícula (hash) como garantia para o Webhook
-    const refFinal = resultadoGateway.gatewayRef || matricula.id;
 
     await prisma.pagamento.create({
       data: {
         matriculaId: matricula.id,
         gateway: 'unicopag',
-        gatewayRef: refFinal,
+        gatewayRef: resultadoGateway.gatewayRef || String(matricula.id),
         metodo: forma,
         valor: total,
         status: 'PENDENTE',
       },
     });
 
-    // Se tiver link de checkout (cartão), redireciona
-    if (resultadoGateway.checkoutUrl) {
-      return res.redirect(resultadoGateway.checkoutUrl);
-    }
+    if (resultadoGateway.checkoutUrl) return res.redirect(resultadoGateway.checkoutUrl);
 
-    // PIX: redireciona enviando tanto o QR Code quanto a URL do Copia e Cola
     const qrParam = encodeURIComponent(resultadoGateway.pixQrCode || '');
     const urlParam = encodeURIComponent(resultadoGateway.pixUrl || '');
     return res.redirect(`/inscricao/retorno?matriculaId=${matricula.id}&pix=1&qr=${qrParam}&url=${urlParam}`);
 
   } catch (err) {
-    console.error('[UnicopAg] Erro:', err.message);
-    return res.render('erro', { mensagem: 'Sua inscrição foi registrada, mas houve um problema ao abrir o pagamento. Entre em contato com a secretaria.' });
+    console.error('[UnicopAg] Erro no Gateway:', err.message);
+    return res.render('erro', { mensagem: 'Houve um problema ao processar o pagamento. Tente novamente ou contate a secretaria.' });
   }
 });
 

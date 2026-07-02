@@ -48,7 +48,8 @@ app.use(
         styleSrcAttr: ["'unsafe-inline'"],
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
         imgSrc: ["'self'", 'data:', 'https:'],
-        scriptSrc: ["'self'", 'https://cdnjs.cloudflare.com'],
+        // 💡 CORRIGIDO: Libera a execução do script que mostra/esconde os inputs do cartão na tela inscrever.ejs
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com'],
         // Em desenvolvimento (http://localhost) NAO forcar upgrade para https,
         // senao o Safari tenta carregar os assets in https e eles falham.
         ...(isProd ? {} : { upgradeInsecureRequests: null }),
@@ -60,10 +61,11 @@ app.use(
   })
 );
 
-app.use(express.urlencoded({ extended: false }));
+// 💡 CORRIGIDO: Alterado para extended: true. Obrigatório para ler o formulário com dados de cartão.
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// 💡 ROTA DO WEBHOOK ANTECIPADA: Declarada antes do CSRF e das sessões para receber o aviso externo sem travar
+// 💡 ROTA DO WEBHOOK CORRIGIDA E SINCRONIZADA COM O SEU BANCO DE DADOS:
 app.post('/webhook/unicopag', async (req, res) => {
   try {
     const payload = req.body;
@@ -72,7 +74,9 @@ app.post('/webhook/unicopag', async (req, res) => {
     const idPrincipal = payload.gatewaytransaction || payload.id;
     const hashMenor = payload.transactionhash || payload.hash || payload.result?.hash;
     const orderId = payload.order_id || payload.metadata?.order_id || payload.result?.metadata?.order_id;
-    const payment_status = payload.payment_status || payload.status || payload.result?.status;
+    
+    // Normaliza o status vindo do gateway para letras minúsculas
+    const payment_status = String(payload.payment_status || payload.status || payload.result?.status).toLowerCase();
 
     if (!payment_status) {
       console.error('[Webhook UnicopAg] Erro: Status de pagamento ausente.');
@@ -95,28 +99,33 @@ app.post('/webhook/unicopag', async (req, res) => {
     }
 
     const matriculaId = pagamento.matriculaId;
+    console.log(`[Webhook UnicopAg] Localizado! Matrícula associada: ${matriculaId}`);
 
-    if (payment_status === 'paid' || payment_status === 'PAGO' || payment_status === 'success') {
+    // Mapeamento e atualização direta das tabelas no Banco de Dados
+    if (payment_status === 'paid' || payment_status === 'pago' || payment_status === 'success') {
       await prisma.$transaction([
         prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'PAGO', atualizadoEm: new Date() } }),
         prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'PAGO', confirmadaEm: new Date(), confirmadaPor: 'unicopag' } })
       ]);
-      console.log(`[Webhook UnicopAg] 🎉 Matrícula ${matriculaId} ATUALIZADA PARA PAGO!`);
-    } else if (payment_status === 'refunded' || payment_status === 'ESTORNADO') {
+      console.log(`[Webhook UnicopAg] 🎉 Matrícula ${matriculaId} ATUALIZADA PARA PAGO NO BANCO!`);
+    } else if (payment_status === 'refunded' || payment_status === 'estornado') {
       await prisma.$transaction([
         prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'ESTORNADO', atualizadoEm: new Date() } }),
         prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'ESTORNADO' } })
       ]);
-    } else if (payment_status === 'refused' || payment_status === 'failed' || payment_status === 'CANCELADO') {
+      console.log(`[Webhook UnicopAg] ↩️ Matrícula ${matriculaId} atualizada para ESTORNADO.`);
+    } else if (payment_status === 'refused' || payment_status === 'failed' || payment_status === 'cancelado') {
       await prisma.$transaction([
-        prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'CANCELADO', updatedAt: new Date() } }),
+        // 💡 CORRIGIDO: Nome do campo corrigido de AIC/updatedAt para o padrão do seu banco: atualizadoEm
+        prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'CANCELADO', atualizadoEm: new Date() } }),
         prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'CANCELADO' } })
       ]);
+      console.log(`[Webhook UnicopAg] ❌ Matrícula ${matriculaId} atualizada para CANCELADO.`);
     }
 
     return res.status(200).send('Webhook processado');
   } catch (error) {
-    console.error('[Webhook UnicopAg] Erro crítico:', error.message);
+    console.error('[Webhook UnicopAg] Erro crítico no banco:', error.message);
     return res.status(500).send('Erro interno');
   }
 });
@@ -182,6 +191,8 @@ app.use((req, res, next) => {
 });
 
 const port = process.env.PORT || 3000;
+app.use((req, res, next) => { next(); });
+
 app.listen(port, () => {
   console.log(`Site do aluno:      http://localhost:${port}`);
   if (!ADMIN_PORT || ADMIN_PORT === Number(port)) {

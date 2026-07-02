@@ -35,19 +35,64 @@
 
       <label class="campo">
         <span>Forma de pagamento</span>
-        <select name="forma" required>
+        <select id="selectForma" name="forma" required>
           <option value="PIX">Pix</option>
-          <option value="DEBITO">Cartão de débito</option>
           <option value="CREDITO">Cartão de crédito</option>
           <option value="DINHEIRO">Dinheiro (presencial)</option>
         </select>
         <small>Parcelamento apenas no crédito ou presencial.</small>
       </label>
 
+      <div id="dadosDoCartao" style="display: none; border: 1px solid #ddd; padding: 16px; border-radius: 8px; margin: 16px 0; background: #fafafa;">
+        <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 16px; color: #333;">Dados do Cartão de Crédito</h3>
+        
+        <label class="campo" style="margin-bottom: 12px; display: block;">
+          <span style="font-size: 13px;">Número do Cartão</span>
+          <input type="text" name="numero" placeholder="0000 0000 0000 0000" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+        </label>
+
+        <label class="campo" style="margin-bottom: 12px; display: block;">
+          <span style="font-size: 13px;">Nome do Titular (como está escrito no cartão)</span>
+          <input type="text" name="titular" placeholder="JOAO S SILVA" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; text-transform: uppercase;">
+        </label>
+
+        <div style="display: flex; gap: 12px;">
+          <label class="campo" style="flex: 1;">
+            <span style="font-size: 13px;">Mês Exp. (MM)</span>
+            <input type="text" name="mesExpiracao" placeholder="02" maxlength="2" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+          </label>
+
+          <label class="campo" style="flex: 1;">
+            <span style="font-size: 13px;">Ano Exp. (AAAA)</span>
+            <input type="text" name="anoExpiracao" placeholder="2028" maxlength="4" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+          </label>
+
+          <label class="campo" style="flex: 1;">
+            <span style="font-size: 13px;">CVV</span>
+            <input type="text" name="cvv" placeholder="123" maxlength="4" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+          </label>
+        </div>
+      </div>
+
       <button type="submit" class="btn-acao">Confirmar inscrição</button>
     </form>
-    <p class="painel-sub" style="margin:14px 0 0;font-size:12px;">O pagamento é feito na etapa seguinte; sua matrícula ficará como "pendente" até a confirmação.</p>
+    <p class="painel-sub" style="margin:14px 0 0;font-size:12px;">Sua matrícula ficará como "pendente" até a confirmação do pagamento.</p>
   </div>
 </main>
 
-<%- include('partials/site-footer') %>
+<script>
+  document.getElementById('selectForma').addEventListener('change', function() {
+    const blocoCartao = document.getElementById('dadosDoCartao');
+    const inputsCartao = blocoCartao.querySelectorAll('input');
+    
+    if (this.value === 'CREDITO') {
+      blocoCartao.style.display = 'block';
+      inputsCartao.forEach(i => i.disabled = false); // Habilita para envio
+    } else {
+      blocoCartao.style.display = 'none';
+      inputsCartao.forEach(i => i.disabled = true);  // Remove do POST se não for crédito
+    }
+  });
+</script>
+
+<%- include('partials/site-footer') %> 
