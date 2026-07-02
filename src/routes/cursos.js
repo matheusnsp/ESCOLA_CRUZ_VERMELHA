@@ -167,81 +167,66 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
   });
 });
 
-// Substitua a rota do Webhook dentro de routes/cursos.js por esta versão:
 router.post('/webhook/unicopag', async (req, res) => {
   try {
     const payload = req.body;
     console.log('[Webhook UnicopAg] Notificação recebida:', JSON.stringify(payload));
 
-    // 💡 Captura todas as variantes possíveis de ID que a Únicopag costuma enviar
-    const idPrincipal = payload.gatewaytransaction || payload.id;
-    const hashMenor = payload.transactionhash || payload.hash || payload.result?.hash;
-    const orderId = payload.order_id || payload.metadata?.order_id || payload.result?.metadata?.order_id;
+    // 1. Coleta de identificadores (Baseado nos logs reais que você me passou)
+    const id = payload.id || payload.gatewaytransaction || '';
+    const hash = payload.hash || payload.transactionhash || '';
+    const orderId = payload.metadata?.order_id || payload.order_id || '';
+    const status = payload.payment_status || payload.status || '';
 
-    // Captura o status do pagamento vindo do gateway
-    const payment_status = payload.payment_status || payload.status || payload.result?.status;
-
-    if (!payment_status) {
-      console.error('[Webhook UnicopAg] Erro: Status de pagamento não informado no payload.');
-      return res.status(400).send('Status inválido');
+    if (!status) {
+      return res.status(400).send('Status ausente');
     }
 
-    // 💡 Busca inteligente: Varre o Supabase procurando por qualquer um dos identificadores vinculados
+    // 2. BUSCA ROBUSTA: Tenta encontrar o pagamento por qualquer um dos IDs possíveis
     const pagamento = await prisma.pagamento.findFirst({
       where: {
         OR: [
-          idPrincipal ? { gatewayRef: String(idPrincipal) } : null,
-          hashMenor ? { gatewayRef: String(hashMenor) } : null,
-          orderId ? { matriculaId: String(orderId) } : null
-        ].filter(Boolean) // Remove opções nulas ou vazias da busca
+          { gatewayRef: String(id) },
+          { gatewayRef: String(hash) },
+          { matriculaId: String(orderId) }
+        ]
       }
     });
 
     if (!pagamento) {
-      console.error(`[Webhook UnicopAg] Nenhum pagamento localizado para os IDs fornecidos (ID: ${idPrincipal}, Hash: ${hashMenor}, Order: ${orderId})`);
-      // Retornamos 200 para a VPS deles saber que a rota existe e parar de travar o servidor
-      return res.status(200).send('Ok, mas não encontrado no banco');
+      console.error(`[Webhook UnicopAg] ERRO: Nenhum pagamento encontrado para ID: ${id}, Hash: ${hash}, Order: ${orderId}`);
+      return res.status(200).send('Pagamento não localizado, mas webhook recebido');
     }
 
-    const matriculaId = pagamento.matriculaId;
-    console.log(`[Webhook UnicopAg] Localizado! Matrícula: ${matriculaId} | Status atual recebido: ${payment_status}`);
+    const { matriculaId } = pagamento;
 
-    // 💡 Mapeamento de aprovação automática de pendente para PAGO
-    if (payment_status === 'paid' || payment_status === 'PAGO' || payment_status === 'success') {
+    // 3. PROCESSAMENTO DE STATUS
+    const ehSucesso = ['paid', 'PAGO', 'success', 'captured'].includes(status);
+    const ehEstorno = ['refunded', 'ESTORNADO'].includes(status);
+    const ehFalha = ['refused', 'failed', 'CANCELADO'].includes(status);
+
+    if (ehSucesso) {
       await prisma.$transaction([
-        // 1. Altera o status do pagamento para PAGO no banco
-        prisma.pagamento.updateMany({
-          where: { matriculaId: matriculaId },
-          data: { status: 'PAGO', atualizadoEm: new Date() }
-        }),
-        // 2. Ativa a matrícula do aluno de forma automática
-        prisma.matricula.update({
-          where: { id: matriculaId },
-          data: { statusPagamento: 'PAGO', confirmadaEm: new Date(), confirmadaPor: 'unicopag' }
-        })
+        prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'PAGO', atualizadoEm: new Date() } }),
+        prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'PAGO', confirmadaEm: new Date(), confirmadaPor: 'unicopag' } })
       ]);
-      console.log(`[Webhook UnicopAg] 🎉 Sucesso absoluto! Matrícula ${matriculaId} atualizada para PAGO no Supabase.`);
-    } 
-    // Mapeamento de estorno
-    else if (payment_status === 'refunded' || payment_status === 'ESTORNADO') {
+    } else if (ehEstorno) {
       await prisma.$transaction([
-        prisma.pagamento.updateMany({ where: { matriculaId: matriculaId }, data: { status: 'ESTORNADO', atualizadoEm: new Date() } }),
+        prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'ESTORNADO', atualizadoEm: new Date() } }),
         prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'ESTORNADO' } })
       ]);
-    } 
-    // Mapeamento de cancelamento ou falha
-    else if (payment_status === 'refused' || payment_status === 'failed' || payment_status === 'CANCELADO') {
+    } else if (ehFalha) {
       await prisma.$transaction([
-        prisma.pagamento.updateMany({ where: { matriculaId: matriculaId }, data: { status: 'CANCELADO', atualizadoEm: new Date() } }),
+        prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'CANCELADO', atualizadoEm: new Date() } }),
         prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'CANCELADO' } })
       ]);
     }
 
-    return res.status(200).send('Webhook processado com sucesso');
+    return res.status(200).send('Webhook processado');
 
   } catch (error) {
-    console.error('[Webhook UnicopAg] Erro crítico de banco de dados:', error.message);
-    return res.status(500).send('Erro interno do servidor');
+    console.error('[Webhook UnicopAg] Erro fatal:', error);
+    return res.status(500).send('Erro interno');
   }
 });
 
