@@ -13,6 +13,7 @@ const authRoutes = require('./routes/auth');
 const painelRoutes = require('./routes/painel');
 const cursosRoutes = require('./routes/cursos');
 const adminRoutes = require('./routes/admin');
+const prisma = require('./db'); // Importado para uso no Webhook direto
 
 const app = express();
 
@@ -49,7 +50,7 @@ app.use(
         imgSrc: ["'self'", 'data:', 'https:'],
         scriptSrc: ["'self'", 'https://cdnjs.cloudflare.com'],
         // Em desenvolvimento (http://localhost) NAO forcar upgrade para https,
-        // senao o Safari tenta carregar os assets em https e eles falham.
+        // senao o Safari tenta carregar os assets in https e eles falham.
         ...(isProd ? {} : { upgradeInsecureRequests: null }),
       },
     },
@@ -60,19 +61,76 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+
+// 💡 ROTA DO WEBHOOK ANTECIPADA: Declarada antes do CSRF e das sessões para receber o aviso externo sem travar
+app.post('/webhook/unicopag', async (req, res) => {
+  try {
+    const payload = req.body;
+    console.log('[Webhook UnicopAg] Notificação recebida no servidor:', JSON.stringify(payload));
+
+    const idPrincipal = payload.gatewaytransaction || payload.id;
+    const hashMenor = payload.transactionhash || payload.hash || payload.result?.hash;
+    const orderId = payload.order_id || payload.metadata?.order_id || payload.result?.metadata?.order_id;
+    const payment_status = payload.payment_status || payload.status || payload.result?.status;
+
+    if (!payment_status) {
+      console.error('[Webhook UnicopAg] Erro: Status de pagamento ausente.');
+      return res.status(400).send('Status inválido');
+    }
+
+    const pagamento = await prisma.pagamento.findFirst({
+      where: {
+        OR: [
+          idPrincipal ? { gatewayRef: String(idPrincipal) } : null,
+          hashMenor ? { gatewayRef: String(hashMenor) } : null,
+          orderId ? { matriculaId: String(orderId) } : null
+        ].filter(Boolean)
+      }
+    });
+
+    if (!pagamento) {
+      console.error(`[Webhook UnicopAg] Nenhum pagamento achado no banco.`);
+      return res.status(200).send('Não localizado');
+    }
+
+    const matriculaId = pagamento.matriculaId;
+
+    if (payment_status === 'paid' || payment_status === 'PAGO' || payment_status === 'success') {
+      await prisma.$transaction([
+        prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'PAGO', atualizadoEm: new Date() } }),
+        prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'PAGO', confirmadaEm: new Date(), confirmadaPor: 'unicopag' } })
+      ]);
+      console.log(`[Webhook UnicopAg] 🎉 Matrícula ${matriculaId} ATUALIZADA PARA PAGO!`);
+    } else if (payment_status === 'refunded' || payment_status === 'ESTORNADO') {
+      await prisma.$transaction([
+        prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'ESTORNADO', atualizadoEm: new Date() } }),
+        prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'ESTORNADO' } })
+      ]);
+    } else if (payment_status === 'refused' || payment_status === 'failed' || payment_status === 'CANCELADO') {
+      await prisma.$transaction([
+        prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'CANCELADO', updatedAt: new Date() } }),
+        prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'CANCELADO' } })
+      ]);
+    }
+
+    return res.status(200).send('Webhook processado');
+  } catch (error) {
+    console.error('[Webhook UnicopAg] Erro crítico:', error.message);
+    return res.status(500).send('Erro interno');
+  }
+});
 
 // Arquivos estaticos (CSS, JS, imagens). index:false para a home ser a rota '/'.
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // Serve a pasta de uploads tambem quando ela fica FORA de public/
-// (ex.: disco persistente em producao via UPLOADS_DIR). Inofensivo no padrao.
 const { uploadsDir } = require('./lib/upload');
 app.use('/uploads', express.static(uploadsDir));
 
 // Sessao guardada no PostgreSQL (nao no MemoryStore padrao).
 const sessionPool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  // Bancos gerenciados (Neon, Supabase) exigem SSL. Defina DATABASE_SSL=true nesses casos.
   ...(process.env.DATABASE_SSL === 'true' ? { ssl: { rejectUnauthorized: false } } : {}),
 });
 app.use(
@@ -96,8 +154,6 @@ app.use(csrfProtection);
 app.use(exposeUser);
 
 // ---- Roteamento por contexto: site do ALUNO x painel da SECRETARIA ----
-// Admin é identificado pelo subdomínio (ex.: secretaria.dominio) em produção,
-// ou pela porta ADMIN_PORT em desenvolvimento. Mesmo app, mesmo banco.
 const ADMIN_HOST = (process.env.ADMIN_HOST || 'secretaria').toLowerCase();
 const ADMIN_PORT = process.env.ADMIN_PORT ? Number(process.env.ADMIN_PORT) : null;
 
@@ -133,8 +189,6 @@ app.listen(port, () => {
   }
 });
 
-// Em desenvolvimento, sobe o painel numa porta separada.
-// Em produção o painel é acessado por subdomínio (um único processo/porta).
 if (!isProd && ADMIN_PORT && ADMIN_PORT !== Number(port)) {
   app.listen(ADMIN_PORT, () => {
     console.log(`Painel secretaria:  http://localhost:${ADMIN_PORT}`);
