@@ -91,8 +91,8 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const { plano, forma, numero, titular, mesExpiracao, anoExpiracao, cvv } = resultado.data;
   const usaGateway = forma !== 'DINHEIRO';
 
-  const { total } = await calcularValores(turma.curso, plano, req.session.usuarioId);
-  
+  const total = Number(turma.curso.preco || 10.00);
+    
   let matricula;
   try {
     matricula = await prisma.matricula.create({

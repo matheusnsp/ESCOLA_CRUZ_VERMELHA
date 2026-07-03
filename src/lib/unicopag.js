@@ -27,7 +27,9 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
   const paymentMethod = isCredito ? 'credit_card' : 'pix';
   const endpoint = '/public/v1/payments';
 
-  const amountCentavos = Math.round(parseFloat(valorTotal) * 100);
+// Transforma em string com 2 casas decimais estritas para sumir com qualquer quebrado invisível
+const valorTratado = parseFloat(valorTotal || 0).toFixed(2);
+const amountCentavos = Math.round(parseFloat(valorTratado) * 100);
 
   const payload = {
     amount: amountCentavos,
