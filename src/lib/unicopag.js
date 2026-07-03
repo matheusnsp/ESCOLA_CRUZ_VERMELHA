@@ -33,6 +33,7 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
     amount: amountCentavos,
     payment_method: paymentMethod,
     installments: isCredito ? Number(dadosCartao?.parcelas || 1) : 1,
+    interest_free: true, // 💡 CRUCIAL: Força juros sem acréscimo (Sem Juros para o Aluno)
     postback_url: `${appUrl}/webhook/unicopag`,
     expire_in_days: 1,
     origin: "minha-aplicacao",
@@ -95,8 +96,9 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
   
   return {
     success: true,
-    gatewayRef: String(result.id || matriculaId),
+    gatewayRef: String(result.id || result.hash || matriculaId),
     paymentStatus: result.payment_status || 'pending',
+    installments: result.installments || (isCredito ? Number(dadosCartao?.parcelas || 1) : 1), // Retorna as parcelas reais processadas
     pixQrCode: result.pix?.pix_qr_code || result.pix?.qrcode || null,
     pixUrl: result.pix?.pix_url || null,
     checkoutUrl: result.checkout_url || null

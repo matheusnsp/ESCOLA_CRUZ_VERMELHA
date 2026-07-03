@@ -33,8 +33,13 @@
                 <button class="adm-chip <%= m.alimentoEntregue ? 'on' : '' %>"><i class="fa-solid <%= m.alimentoEntregue ? 'fa-check' : 'fa-xmark' %>"></i> 1kg</button>
               </form>
             </td>
-            <td><%- statusBadge(m.statusPagamento) %></td>
-            <td class="adm-acoes">
+            <td>
+              <% if (m.statusPagamento === 'PAGO' && m.plano === 'PARCELADO') { %>
+                <span class="adm-badge azul" style="background-color: #0284c7; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">PARCELADO</span>
+              <% } else { %>
+                <%- statusBadge(m.statusPagamento) %>
+              <% } %>
+            </td>            <td class="adm-acoes">
               <a href="/inscricoes/<%= m.id %>/nota" class="adm-mini" title="Lançar nota"><i class="fa-solid fa-pen-to-square"></i></a>
               <a href="/inscricoes/<%= m.id %>/transferir" class="adm-mini" title="Transferir de turma"><i class="fa-solid fa-right-left"></i></a>
               <% if (m.statusPagamento === 'PENDENTE') { %>

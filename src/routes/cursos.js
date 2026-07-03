@@ -101,7 +101,7 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
         turmaId: turma.id, 
         plano, 
         forma, 
-        valorCurso: total, // Ajuste conforme seu cálculo
+        valorCurso: total,
         statusPagamento: 'PENDENTE' 
       },
     });
@@ -113,12 +113,15 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
   const aluno = await prisma.usuario.findUnique({
     where: { id: req.session.usuarioId },
-    select: { nome: true, email: true, cpfCnpj: true, celular: true, cep: true, logradouro: true, numero: true, complemento: true, bairro: true, cidade: true, uf: true },
+    select: { nome: true, email: true, cpfCnpj: true, celular: true, cep: true, logradouro: true, numero: true, complemento: true, bairro: true, city: true, uf: true },
   });
 
   if (!aluno?.cpfCnpj) return res.render('erro', { mensagem: 'CPF obrigatório.' });
 
   try {
+    // 💡 CALCULA AS PARCELAS DINAMICAMENTE BASEADO NO CURSO SALVO NO BANCO
+    const parcelasFinais = plano === 'PARCELADO' ? Number(turma.curso.parcelas || 1) : 1;
+
     // 1. CHAMA O GATEWAY PRIMEIRO
     const resultadoGateway = await criarTransacao({
       matriculaId: matricula.id,
@@ -126,7 +129,14 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       valorTotal: total,
       forma,
       aluno,
-      dadosCartao: forma === 'CREDITO' ? { numero, titular, mesExpiracao, anoExpiracao, cvv, parcelas: plano === 'PARCELADO' ? 3 : 1 } : null
+      dadosCartao: forma === 'CREDITO' ? { 
+        numero, 
+        titular, 
+        mesExpiracao, 
+        anoExpiracao, 
+        cvv, 
+        parcelas: parcelasFinais 
+      } : null
     });
 
     // 2. SÓ AGORA SALVA NO BANCO USANDO O ID DO GATEWAY RETORNADO
@@ -134,7 +144,7 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       data: {
         matriculaId: matricula.id,
         gateway: 'unicopag',
-        gatewayRef: String(resultadoGateway.gatewayRef), // <--- O ID REAL DA ÚNICOPAG
+        gatewayRef: String(resultadoGateway.gatewayRef),
         metodo: forma,
         valor: total,
         status: 'PENDENTE',
@@ -163,7 +173,7 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
     formatBRL,
     isPix: pix === '1',
     pixQrCode: qr ? decodeURIComponent(qr) : null,
-    pixUrl: url ? decodeURIComponent(url) : null, // Disponível para o botão "Copiar Código PIX"
+    pixUrl: url ? decodeURIComponent(url) : null,
   });
 });
 
@@ -172,7 +182,6 @@ router.post('/webhook/unicopag', async (req, res) => {
     const payload = req.body;
     console.log('[Webhook UnicopAg] Notificação recebida:', JSON.stringify(payload));
 
-    // 1. Coleta de identificadores (Baseado nos logs reais que você me passou)
     const id = payload.id || payload.gatewaytransaction || '';
     const hash = payload.hash || payload.transactionhash || '';
     const orderId = payload.metadata?.order_id || payload.order_id || '';
@@ -182,25 +191,23 @@ router.post('/webhook/unicopag', async (req, res) => {
       return res.status(400).send('Status ausente');
     }
 
-    // 2. BUSCA ROBUSTA: Tenta encontrar o pagamento por qualquer um dos IDs possíveis
     const pagamento = await prisma.pagamento.findFirst({
       where: {
         OR: [
           { gatewayRef: String(id) },
           { gatewayRef: String(hash) },
           { matriculaId: String(orderId) }
-        ]
+        ].filter(Boolean)
       }
     });
 
     if (!pagamento) {
       console.error(`[Webhook UnicopAg] ERRO: Nenhum pagamento encontrado para ID: ${id}, Hash: ${hash}, Order: ${orderId}`);
-      return res.status(200).send('Pagamento não localizado, mas webhook recebido');
+      return res.status(200).send('Pagamento não localizado');
     }
 
     const { matriculaId } = pagamento;
 
-    // 3. PROCESSAMENTO DE STATUS
     const ehSucesso = ['paid', 'PAGO', 'success', 'captured'].includes(status);
     const ehEstorno = ['refunded', 'ESTORNADO'].includes(status);
     const ehFalha = ['refused', 'failed', 'CANCELADO'].includes(status);
@@ -210,6 +217,7 @@ router.post('/webhook/unicopag', async (req, res) => {
         prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'PAGO', atualizadoEm: new Date() } }),
         prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'PAGO', confirmadaEm: new Date(), confirmadaPor: 'unicopag' } })
       ]);
+      console.log(`[Webhook] Matrícula ${matriculaId} atualizada com sucesso.`);
     } else if (ehEstorno) {
       await prisma.$transaction([
         prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'ESTORNADO', atualizadoEm: new Date() } }),
