@@ -14,7 +14,7 @@ style="font-size:48px;color:#32BCAD;margin-bottom:16px;">
 <!-- QR CODE PIX -->
 <div style="margin:24px auto;">
 <img 
-src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=<%= encodeURIComponent(pixUrl) %>"
+src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=<%= encodeURIComponent(pixQrCode || pixUrl) %>"
 alt="QR Code Pix"
 style="
             max-width:250px;

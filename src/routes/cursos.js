@@ -91,7 +91,8 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const { plano, forma, numero, titular, mesExpiracao, anoExpiracao, cvv } = resultado.data;
   const usaGateway = forma !== 'DINHEIRO';
 
-  const total = Number(turma.curso.preco || 10.00);
+  // 💡 FIX 1: Pegando o preço correto do esquema mapeado pelo plano escolhido
+  const total = plano === 'A_VISTA' ? Number(turma.curso.precoAvista) : Number(turma.curso.precoCheio);
     
   let matricula;
   try {
@@ -111,7 +112,6 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
   if (!usaGateway) return res.redirect('/minha-conta?inscrito=1');
 
-  // 💡 SELEÇÃO CORRIGIDA: Removido o campo inexistente "city" e usando o "cidade" correto do schema.prisma
   const aluno = await prisma.usuario.findUnique({
     where: { id: req.session.usuarioId },
     select: { nome: true, email: true, cpfCnpj: true, celular: true, cep: true, logradouro: true, numero: true, complemento: true, bairro: true, cidade: true, uf: true },
@@ -122,7 +122,6 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   try {
     const parcelasFinais = plano === 'PARCELADO' ? Number(turma.curso.parcelas || 1) : 1;
 
-    // 1. CHAMA O GATEWAY COM OS DADOS MAPEADOS CORRETAMENTE
     const resultadoGateway = await criarTransacao({
       matriculaId: matricula.id,
       nomeCurso: turma.curso.nome,
@@ -130,7 +129,7 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       forma,
       aluno: {
         ...aluno,
-        cidade: aluno.cidade || "Rio de Janeiro" // Mapeado de forma segura
+        cidade: aluno.cidade || "Rio de Janeiro"
       },
       dadosCartao: forma === 'CREDITO' ? { 
         numero, 
@@ -142,25 +141,27 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       } : null
     });
 
-    // 2. SALVA NO BANCO O REGISTRO DO PAGAMENTO AGUARDANDO O WEBHOOK
     await prisma.pagamento.create({
       data: {
         matriculaId: matricula.id,
         gateway: 'unicopag',
-        gatewayRef: String(resultadoGateway.gatewayRef),
+        gatewayRef: String(resultadoGateway.gatewayRef || resultadoGateway.id || resultadoGateway.hash),
         metodo: forma,
         valor: total,
         status: 'PENDENTE',
       },
     });
 
-    // 3. REDIRECIONAMENTO COM BASE NA FORMA DE PAGAMENTO RETORNADA
     if (resultadoGateway.checkoutUrl) {
       return res.redirect(resultadoGateway.checkoutUrl);
     }
 
-    const qrParam = encodeURIComponent(resultadoGateway.pixQrCode || '');
-    const urlParam = encodeURIComponent(resultadoGateway.pixUrl || '');
+    // 💡 FIX 2: Fallback inteligente para garantir mapeamento correto de campos comuns da UnicoPag (pixQrCode, qr_code, pixUrl ou copia_e_cola)
+    const rawQr = resultadoGateway.pixQrCode || resultadoGateway.qr_code || resultadoGateway.pix_qr_code || '';
+    const rawUrl = resultadoGateway.pixUrl || resultadoGateway.copia_e_cola || resultadoGateway.pix_code || '';
+
+    const qrParam = encodeURIComponent(rawQr);
+    const urlParam = encodeURIComponent(rawUrl);
     return res.redirect(`/inscricao/retorno?matriculaId=${matricula.id}&pix=${forma === 'PIX' ? '1' : '0'}&qr=${qrParam}&url=${urlParam}`);
 
   } catch (err) {

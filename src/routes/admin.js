@@ -1,7 +1,7 @@
 // ============================================================
 //  Painel da SECRETARIA (área administrativa)
 //  Servido por subdomínio (secretaria.<dominio>) em produção
-//  ou por porta separada (ADMIN_PORT) em desenvolvimento.
+//  ou por porta separada (ADMIN_PORT) in desenvolvimento.
 //  Sessão é independente da do aluno (host/porta diferente).
 // ============================================================
 const express = require('express');
@@ -25,7 +25,6 @@ const IDLE_MS = 15 * 60 * 1000;
 function requireAdmin(req, res, next) {
   if (req.session && req.session.usuarioId && req.session.papel === 'SECRETARIA') {
     const agora = Date.now();
-    // Expira por inatividade: backstop no servidor (o cliente também avisa/redireciona).
     if (req.session.adminLastSeen && agora - req.session.adminLastSeen > IDLE_MS) {
       return req.session.destroy(() => res.redirect('/login?expirado=1'));
     }
@@ -39,7 +38,13 @@ function requireAdmin(req, res, next) {
 async function auditar(req, acao, alvoTipo, alvoId, detalhe) {
   try {
     await prisma.logAuditoria.create({
-      data: { atorId: req.session.usuarioId, acao, alvoTipo, alvoId: alvoId || null, detalhe: detalhe || undefined },
+      data: { 
+        atorId: req.session.usuarioId || 'SISTEMA', 
+        acao, 
+        alvoTipo, 
+        alvoId: alvoId ? String(alvoId) : null, 
+        detalhe: detalhe ? JSON.stringify(detalhe) : undefined 
+      },
     });
   } catch (e) {
     console.error('Falha ao gravar auditoria:', e.message);
@@ -52,9 +57,17 @@ function parseDecimal(v, { opcional = false } = {}) {
   const n = Number(String(v).replace(',', '.'));
   return Number.isFinite(n) && n >= 0 ? n : NaN;
 }
+
 function parseInteiro(v, { min = 0 } = {}) {
   const n = parseInt(v, 10);
   return Number.isInteger(n) && n >= min ? n : NaN;
+}
+
+// Auxiliar para retornar à página anterior de forma segura com mensagem de sucesso
+function back(req, msg) {
+  const url = req.get('Referer') || '/inscricoes';
+  const queryConector = url.includes('?') ? '&' : '?';
+  return `${url}${queryConector}ok=${encodeURIComponent(msg)}`;
 }
 
 const ESCOLARIDADES = ['', 'Ensino Fundamental', 'Ensino Médio', 'Ensino Superior'];
@@ -62,12 +75,11 @@ const STATUS_TURMA = ['ABERTA', 'CONFIRMADA', 'CANCELADA', 'ENCERRADA'];
 
 // ---------- Login da secretaria (senha → 2FA por e-mail) ----------
 
-const MAX_FALHAS = 5;                          // senhas erradas antes de cada bloqueio
-const STRIKE_DURACOES_MIN = [15, 30, 60];      // duração crescente por bloqueio (strike)
-const MAX_STRIKES_TEMP = STRIKE_DURACOES_MIN.length; // após isso → bloqueio total
-const PENDENTE_2FA_MS = 10 * 60 * 1000;        // validade do desafio 2FA na sessão
+const MAX_FALHAS = 5;                          
+const STRIKE_DURACOES_MIN = [15, 30, 60];      
+const MAX_STRIKES_TEMP = STRIKE_DURACOES_MIN.length; 
+const PENDENTE_2FA_MS = 10 * 60 * 1000;        
 
-// URL pública do PAINEL (origem admin), usada nos links de desbloqueio por e-mail.
 const ADMIN_URL = process.env.ADMIN_URL
   || (process.env.ADMIN_PORT ? `http://localhost:${process.env.ADMIN_PORT}` : null)
   || (process.env.APP_URL
@@ -79,14 +91,12 @@ const codigo2faLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 8, standardH
 const reenvioLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 4, standardHeaders: true, legacyHeaders: false });
 const desbloqueioLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false });
 
-// Cria token de desbloqueio e envia o link para o e-mail oficial.
 async function enviarDesbloqueio(usuario) {
   const token = await criarTokenDesbloqueio(usuario.id);
   const link = `${ADMIN_URL}/desbloquear?token=${token}`;
   await enviarLinkDesbloqueio(usuario.email, usuario.nome, link);
 }
 
-// Mascara o e-mail para exibir na tela do código (ex.: se*******@dominio.com).
 function mascararEmail(e) {
   const [u, d] = String(e || '').split('@');
   if (!d) return e || '';
@@ -94,14 +104,11 @@ function mascararEmail(e) {
   return `${ini}${'*'.repeat(Math.max(1, u.length - ini.length))}@${d}`;
 }
 
-// Gera e envia um novo código 2FA para o usuário pendente.
 async function dispararCodigo2fa(pend) {
   const codigo = await criarCodigo2fa(pend.id);
   await enviarCodigo2fa(pend.email, pend.nome, codigo);
 }
 
-// Registra eventos de segurança do login (não depende de usuário logado).
-// Usa atorId = id do alvo, ou 'ANONIMO' quando o e-mail não existe.
 async function logSeguranca(req, acao, usuarioId, detalhe) {
   try {
     await prisma.logAuditoria.create({
@@ -110,7 +117,7 @@ async function logSeguranca(req, acao, usuarioId, detalhe) {
         acao,
         alvoTipo: 'LoginSecretaria',
         alvoId: usuarioId || null,
-        detalhe: { ...(detalhe || {}), ip: req.ip || null, em: new Date().toISOString() },
+        detalhe: JSON.stringify({ ...(detalhe || {}), ip: req.ip || null, em: new Date().toISOString() }),
       },
     });
   } catch (e) {
@@ -138,7 +145,6 @@ router.post('/login', loginAdminLimiter, async (req, res) => {
       return falha();
     }
 
-    // Bloqueio TOTAL: só sai por link de desbloqueio (e-mail) ou comando no servidor.
     if (usuario.bloqueioTotal) {
       await logSeguranca(req, 'LOGIN_BLOQUEADO', usuario.id, { email, motivo: 'bloqueio_total' });
       return res.status(403).render('admin/login', {
@@ -147,7 +153,6 @@ router.post('/login', loginAdminLimiter, async (req, res) => {
       });
     }
 
-    // Bloqueio temporário em vigor?
     if (usuario.bloqueadoAte && usuario.bloqueadoAte > new Date()) {
       const minutos = Math.ceil((usuario.bloqueadoAte.getTime() - Date.now()) / 60000);
       await logSeguranca(req, 'LOGIN_BLOQUEADO', usuario.id, { email, motivo: 'bloqueio_temporario', minutos });
@@ -158,24 +163,20 @@ router.post('/login', loginAdminLimiter, async (req, res) => {
     if (!ok) {
       const falhas = usuario.loginFalhas + 1;
 
-      // Ainda não atingiu o limite de erros deste ciclo.
       if (falhas < MAX_FALHAS) {
         await prisma.usuario.update({ where: { id: usuario.id }, data: { loginFalhas: falhas } });
         await logSeguranca(req, 'LOGIN_FALHO', usuario.id, { email, motivo: 'senha_incorreta', falhas });
         return falha();
       }
 
-      // Atingiu o limite → fecha um "strike".
       const strikes = usuario.loginStrikes + 1;
 
       if (strikes > MAX_STRIKES_TEMP) {
-        // 4º estouro → bloqueio total + link de desbloqueio por e-mail.
         await prisma.usuario.update({
           where: { id: usuario.id },
           data: { loginFalhas: 0, bloqueadoAte: null, loginStrikes: strikes, bloqueioTotal: true },
         });
         try { await enviarDesbloqueio(usuario); } catch (e) { console.error('Falha ao enviar desbloqueio:', e); }
-        console.warn(`[SEGURANÇA] Bloqueio TOTAL da secretaria ${usuario.email}.`);
         await logSeguranca(req, 'BLOQUEIO_TOTAL', usuario.id, { email, strikes });
         return res.status(403).render('admin/login', {
           erro: 'Conta bloqueada por segurança. Enviamos um link de desbloqueio para o e-mail oficial da secretaria.',
@@ -183,7 +184,6 @@ router.post('/login', loginAdminLimiter, async (req, res) => {
         });
       }
 
-      // Bloqueio temporário com duração crescente (15 → 30 → 60 min).
       const durMin = STRIKE_DURACOES_MIN[strikes - 1];
       await prisma.usuario.update({
         where: { id: usuario.id },
@@ -193,16 +193,14 @@ router.post('/login', loginAdminLimiter, async (req, res) => {
       return res.status(429).render('admin/login', { erro: `Muitas tentativas. Acesso bloqueado por ${durMin} min.`, info: null });
     }
 
-    // Senha correta → zera falhas e strikes.
     if (usuario.loginFalhas || usuario.bloqueadoAte || usuario.loginStrikes) {
       await prisma.usuario.update({ where: { id: usuario.id }, data: { loginFalhas: 0, bloqueadoAte: null, loginStrikes: 0 } });
     }
 
-    // 2FA: não loga ainda. Guarda o desafio na sessão, gera e envia o código.
     req.session.pendingAdmin2fa = { id: usuario.id, email: usuario.email, nome: usuario.nome, em: Date.now() };
     await dispararCodigo2fa(req.session.pendingAdmin2fa);
     return req.session.save((e) => {
-      if (e) { console.error('Erro ao salvar 2FA pendente:', e); return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar o login.' }); }
+      if (e) { return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar o login.' }); }
       return res.redirect('/login/2fa');
     });
   } catch (err) {
@@ -211,7 +209,6 @@ router.post('/login', loginAdminLimiter, async (req, res) => {
   }
 });
 
-// Etapa 2 — tela do código.
 router.get('/login/2fa', (req, res) => {
   const pend = req.session.pendingAdmin2fa;
   if (!pend) return res.redirect('/login');
@@ -223,7 +220,6 @@ router.post('/login/2fa', codigo2faLimiter, async (req, res) => {
   const pend = req.session.pendingAdmin2fa;
   if (!pend) return res.redirect('/login');
 
-  // Desafio expirado na sessão → recomeça.
   if (Date.now() - pend.em > PENDENTE_2FA_MS) {
     delete req.session.pendingAdmin2fa;
     return res.status(401).render('admin/login', { erro: 'Tempo esgotado. Faça login novamente.' });
@@ -245,13 +241,13 @@ router.post('/login/2fa', codigo2faLimiter, async (req, res) => {
 
   const ip = req.ip;
   return req.session.regenerate((err) => {
-    if (err) { console.error('Erro ao regenerar sessão:', err); return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar a sessão.' }); }
+    if (err) { return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar a sessão.' }); }
     req.session.usuarioId = usuario.id;
     req.session.nome = usuario.nome;
     req.session.papel = usuario.papel;
+    req.session.adminLastSeen = Date.now();
     req.session.save(async (err2) => {
-      if (err2) { console.error('Erro ao salvar sessão:', err2); return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar a sessão.' }); }
-      // Alerta de acesso + auditoria (não travam o login se falharem).
+      if (err2) { return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar a sessão.' }); }
       try {
         const quando = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
         await enviarAlertaLoginSecretaria(usuario.email, usuario.nome, quando, ip);
@@ -262,11 +258,10 @@ router.post('/login/2fa', codigo2faLimiter, async (req, res) => {
   });
 });
 
-// Reenviar o código.
 router.post('/login/2fa/reenviar', reenvioLimiter, async (req, res) => {
   const pend = req.session.pendingAdmin2fa;
   if (!pend) return res.redirect('/login');
-  pend.em = Date.now(); // renova a janela do desafio
+  pend.em = Date.now(); 
   try {
     await dispararCodigo2fa(pend);
   } catch (e) {
@@ -275,7 +270,6 @@ router.post('/login/2fa/reenviar', reenvioLimiter, async (req, res) => {
   return req.session.save(() => res.redirect('/login/2fa?reenviado=1'));
 });
 
-// Reenviar o link de desbloqueio (quando a conta está em bloqueio total).
 router.post('/desbloquear/solicitar', desbloqueioLimiter, async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   try {
@@ -286,11 +280,9 @@ router.post('/desbloquear/solicitar', desbloqueioLimiter, async (req, res) => {
   } catch (e) {
     console.error('Erro ao solicitar desbloqueio:', e);
   }
-  // Resposta genérica (não revela se a conta existe/está bloqueada).
   return res.render('admin/login', { erro: null, info: 'Se a conta estiver bloqueada, enviamos um link de desbloqueio ao e-mail oficial.' });
 });
 
-// Consumir o link de desbloqueio.
 router.get('/desbloquear', async (req, res) => {
   const token = String(req.query.token || '');
   const registro = await verificarTokenDesbloqueio(token);
@@ -305,11 +297,18 @@ router.get('/desbloquear', async (req, res) => {
   return res.render('admin/login', { erro: null, info: 'Acesso liberado. Faça login normalmente.' });
 });
 
-router.post('/logout', requireAdmin, (req, res) => {
+router.post('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
 
-// A partir daqui, tudo exige secretaria logada.
+// Middleware Global de Contexto para as views administradas
+router.use((req, res, next) => {
+  res.locals.admUsuarioNome = req.session?.nome || '';
+  res.locals.path = req.path;
+  next();
+});
+
+// Restrição global para as rotas abaixo
 router.use(requireAdmin);
 
 // ---------- Dashboard ----------
@@ -390,7 +389,6 @@ router.get('/cursos/:id/editar', async (req, res) => {
   res.render('admin/curso-form', { curso, escolaridades: ESCOLARIDADES, erro: null, erroFaq: req.query.erroFaq || null });
 });
 
-// Adiciona uma dúvida ao curso.
 router.post('/cursos/:id/faqs', async (req, res) => {
   const curso = await prisma.curso.findUnique({ where: { id: req.params.id } });
   if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso não encontrado.' });
@@ -421,19 +419,18 @@ router.post('/cursos/:id', uploadFoto, async (req, res) => {
   if (erro) return res.status(400).render('admin/curso-form', { curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro });
   if (req.file) {
     dados.imagemUrl = await salvarFotoCurso(req.file);
-    await removerFotoCurso(existe.imagemUrl); // troca: apaga a foto antiga
+    await removerFotoCurso(existe.imagemUrl); 
   } else if (req.body.removerFoto === 'on') {
     dados.imagemUrl = null;
-    await removerFotoCurso(existe.imagemUrl); // remove: fica sem foto
+    await removerFotoCurso(existe.imagemUrl); 
   } else {
-    dados.imagemUrl = existe.imagemUrl; // mantém a atual
+    dados.imagemUrl = existe.imagemUrl; 
   }
   await prisma.curso.update({ where: { id: req.params.id }, data: dados });
   await auditar(req, 'EDITOU_CURSO', 'Curso', req.params.id, { nome: dados.nome });
   res.redirect('/cursos?ok=Curso atualizado.');
 });
 
-// Excluir curso — SOMENTE se não tiver turmas nem matrículas (protege histórico).
 router.post('/cursos/:id/excluir', async (req, res) => {
   const curso = await prisma.curso.findUnique({ where: { id: req.params.id } });
   if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso não encontrado.' });
@@ -507,10 +504,10 @@ router.post('/turmas', async (req, res) => {
   res.redirect('/turmas?ok=Turma criada.');
 });
 
-// Lançamento de notas em lote (turma inteira): adiciona UMA avaliação a todos.
 router.get('/turmas/:id/notas', async (req, res) => {
+  const { id } = req.params;
   const turma = await prisma.turma.findUnique({
-    where: { id: req.params.id },
+    where: { id },
     include: {
       curso: true,
       matriculas: { include: { aluno: true }, orderBy: { criadoEm: 'asc' } },
@@ -519,6 +516,17 @@ router.get('/turmas/:id/notas', async (req, res) => {
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma não encontrada.' });
   res.render('admin/turma-notas', { turma, erro: null, ok: req.query.ok || null });
 });
+
+async function recalcularMedia(matriculaId) {
+  const avals = await prisma.avaliacao.findMany({ where: { matriculaId } });
+  let media = null;
+  if (avals.length) {
+    const somaPesos = avals.reduce((s, a) => s + a.peso, 0);
+    media = somaPesos > 0 ? Math.round((avals.reduce((s, a) => s + a.nota * a.peso, 0) / somaPesos) * 100) / 100 : null;
+  }
+  await prisma.matricula.update({ where: { id: matriculaId }, data: { nota: media } });
+  return media;
+}
 
 router.post('/turmas/:id/notas', async (req, res) => {
   const turma = await prisma.turma.findUnique({
@@ -532,11 +540,11 @@ router.post('/turmas/:id/notas', async (req, res) => {
   if (!nome || nome.length > 60) return res.status(400).render('admin/erro', { mensagem: 'Dê um nome à avaliação.' });
   if (Number.isNaN(peso) || peso <= 0 || peso > 100) return res.status(400).render('admin/erro', { mensagem: 'Peso inválido.' });
 
-  const notas = req.body || {}; // campos vêm como "nota[<matriculaId>]"
+  const mapNotas = req.body || {}; 
   let lancadas = 0;
   for (const m of turma.matriculas) {
-    const raw = notas['nota[' + m.id + ']'];
-    if (raw === undefined || String(raw).trim() === '') continue; // pula quem ficou em branco
+    const raw = mapNotas['nota[' + m.id + ']'];
+    if (raw === undefined || String(raw).trim() === '') continue; 
     const nota = Number(String(raw).replace(',', '.'));
     if (Number.isNaN(nota) || nota < 0 || nota > 10) {
       return res.status(400).render('admin/erro', { mensagem: `Nota inválida (${nome}). Use valores de 0 a 10.` });
@@ -571,7 +579,6 @@ router.post('/turmas/:id', async (req, res) => {
   res.redirect('/turmas?ok=Turma atualizada.');
 });
 
-// Excluir turma — SOMENTE se não tiver matrículas (protege histórico).
 router.post('/turmas/:id/excluir', async (req, res) => {
   const turma = await prisma.turma.findUnique({ where: { id: req.params.id }, include: { curso: true } });
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma não encontrada.' });
@@ -590,7 +597,13 @@ router.post('/turmas/:id/excluir', async (req, res) => {
 
 router.get('/inscricoes', async (req, res) => {
   const turmaId = req.query.turma || null;
-  const where = turmaId ? { turmaId } : {};
+  
+  // 💡 FIX: Reintroduzido o status 'PENDENTE'. Sem ele, compras PIX novas sumiam do painel impossibilitando a alteração de tag
+  const where = {
+    statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] },
+    ...(turmaId ? { turmaId } : {})
+  };
+
   const [inscricoes, turmas] = await Promise.all([
     prisma.matricula.findMany({
       where,
@@ -602,7 +615,6 @@ router.get('/inscricoes', async (req, res) => {
   res.render('admin/inscricoes', { inscricoes, turmas, turmaId, formatBRL, flash: req.query.ok || null });
 });
 
-// Confirma pagamento (presencial ou manual) → PAGO.
 router.post('/inscricoes/:id/confirmar', async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
@@ -614,7 +626,6 @@ router.post('/inscricoes/:id/confirmar', async (req, res) => {
   res.redirect(back(req, 'Pagamento confirmado.'));
 });
 
-// Cancela a inscrição (ex.: inscrição "ruim", aluno desistiu) → CANCELADO.
 router.post('/inscricoes/:id/cancelar', async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
@@ -623,7 +634,6 @@ router.post('/inscricoes/:id/cancelar', async (req, res) => {
   res.redirect(back(req, 'Inscrição cancelada.'));
 });
 
-// Estorna um pagamento já confirmado → ESTORNADO.
 router.post('/inscricoes/:id/estornar', async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
@@ -632,7 +642,6 @@ router.post('/inscricoes/:id/estornar', async (req, res) => {
   res.redirect(back(req, 'Pagamento estornado.'));
 });
 
-// Marca/desmarca a entrega do 1kg de alimento.
 router.post('/inscricoes/:id/alimento', async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
@@ -642,10 +651,12 @@ router.post('/inscricoes/:id/alimento', async (req, res) => {
 });
 
 // ---------- Alunos (listar, buscar, editar dados básicos) ----------
+
 router.get('/alunos', async (req, res) => {
   const busca = String(req.query.q || '').trim();
   const soDigitos = busca.replace(/\D/g, '');
   const where = { papel: 'ALUNO' };
+
   if (busca) {
     where.OR = [
       { nome: { contains: busca, mode: 'insensitive' } },
@@ -653,13 +664,25 @@ router.get('/alunos', async (req, res) => {
       ...(soDigitos ? [{ cpfCnpj: { contains: soDigitos } }] : []),
     ];
   }
-  const alunos = await prisma.usuario.findMany({
-    where,
-    orderBy: { nome: 'asc' },
-    take: 200,
-    include: { _count: { select: { matriculas: true } } },
-  });
-  res.render('admin/alunos', { alunos, busca, mascarar, ok: req.query.ok || null });
+
+  try {
+    const alunos = await prisma.usuario.findMany({
+      where,
+      orderBy: { nome: 'asc' },
+      take: 200,
+      include: { _count: { select: { matriculas: true } } }
+    });
+
+    res.render('admin/alunos', { 
+      alunos, 
+      busca, 
+      ok: req.query.ok || null,
+      mascarar 
+    });
+  } catch (err) {
+    console.error('Erro ao listar alunos:', err);
+    res.status(500).render('admin/erro', { mensagem: 'Erro ao carregar a listagem de alunos.' });
+  }
 });
 
 router.get('/alunos/:id/editar', async (req, res) => {
@@ -707,14 +730,14 @@ router.post('/alunos/:id/editar', async (req, res) => {
   if (rgDigitado.length > 20) return reErro('RG muito longo.');
   if (celular && celular.length !== 10 && celular.length !== 11) return reErro('Celular deve ter 10 ou 11 dígitos (com DDD).');
 
-  let cpfCnpjNormalizado = aluno.cpfCnpj; // em branco = mantém o atual
+  let cpfCnpjNormalizado = aluno.cpfCnpj; 
   if (documentoDigitado) {
     const doc = validarCpfCnpj(documentoDigitado);
     if (!doc.ok) return reErro('CPF/CNPJ inválido.');
     cpfCnpjNormalizado = doc.normalizado;
   }
 
-  const rgFinal = rgDigitado || aluno.rg; // em branco = mantém o atual
+  const rgFinal = rgDigitado || aluno.rg; 
 
   if (escolaridade && !ESCOLARIDADES_ALUNO.includes(escolaridade)) return reErro('Escolaridade inválida.');
   if (escolaridadeSituacao && !SITUACOES_ESCOLARIDADE.includes(escolaridadeSituacao)) return reErro('Situação de escolaridade inválida.');
@@ -758,19 +781,6 @@ router.post('/alunos/:id/editar', async (req, res) => {
   res.redirect('/alunos?ok=' + encodeURIComponent(`Dados de ${nome.split(' ')[0]} atualizados.`));
 });
 
-// Lançar/editar nota e situação do aluno.
-// Recalcula e grava a média ponderada das avaliações de uma matrícula.
-async function recalcularMedia(matriculaId) {
-  const avals = await prisma.avaliacao.findMany({ where: { matriculaId } });
-  let media = null;
-  if (avals.length) {
-    const somaPesos = avals.reduce((s, a) => s + a.peso, 0);
-    media = somaPesos > 0 ? Math.round((avals.reduce((s, a) => s + a.nota * a.peso, 0) / somaPesos) * 100) / 100 : null;
-  }
-  await prisma.matricula.update({ where: { id: matriculaId }, data: { nota: media } });
-  return media;
-}
-
 router.get('/inscricoes/:id/nota', async (req, res) => {
   const m = await prisma.matricula.findUnique({
     where: { id: req.params.id },
@@ -780,7 +790,6 @@ router.get('/inscricoes/:id/nota', async (req, res) => {
   res.render('admin/nota', { m, erro: null });
 });
 
-// Adiciona uma avaliação (prova/trabalho) com peso e recalcula a média.
 router.post('/inscricoes/:id/avaliacoes', async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id }, include: { aluno: true, turma: { include: { curso: true } }, avaliacoes: true } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
@@ -809,7 +818,6 @@ router.post('/inscricoes/:id/avaliacoes/:avalId/remover', async (req, res) => {
   res.redirect(`/inscricoes/${req.params.id}/nota`);
 });
 
-// Define a situação (Aprovado/Reprovado) — manual.
 router.post('/inscricoes/:id/situacao', async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
@@ -862,7 +870,6 @@ router.post('/inscricoes/:id/transferir', async (req, res) => {
   let msg = `Aluno transferido para "${destino.curso.nome}".`;
 
   if (!mesmoCurso) {
-    // Recalcula o valor do curso pelo preço do destino, conforme o plano.
     const novoValor = m.plano === 'A_VISTA' ? Number(destino.curso.precoAvista) : Number(destino.curso.precoCheio);
     const valorAntigo = Number(m.valorCurso);
     const diff = novoValor - valorAntigo;
@@ -880,11 +887,5 @@ router.post('/inscricoes/:id/transferir', async (req, res) => {
   });
   res.redirect('/inscricoes?ok=' + encodeURIComponent(msg));
 });
-
-// Volta para a lista mantendo o filtro de turma, se houver.
-function back(req, msg) {
-  const turma = req.body.turma ? `&turma=${encodeURIComponent(req.body.turma)}` : '';
-  return `/inscricoes?ok=${encodeURIComponent(msg)}${turma}`;
-}
 
 module.exports = router;

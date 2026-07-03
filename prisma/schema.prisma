@@ -43,6 +43,7 @@ enum StatusPagamento {
   PAGO
   CANCELADO
   ESTORNADO
+  PARCELADO
 }
 
 enum SituacaoAcademica {

@@ -27,6 +27,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.locals.statusBadge = function (s) {
   const map = {
     PAGO: ['ok', 'PAGO'],
+    PARCELADO: ['ok', 'PARCELADO'], // 💡 Adicionado: vai usar a mesma cor verde de sucesso ('ok')
     PENDENTE: ['pend', 'PENDENTE'],
     CANCELADO: ['canc', 'CANCELADO'],
     ESTORNADO: ['est', 'ESTORNADO'],
@@ -102,12 +103,24 @@ app.post('/webhook/unicopag', async (req, res) => {
     console.log(`[Webhook UnicopAg] Localizado! Matrícula associada: ${matriculaId}`);
 
     // Mapeamento e atualização direta das tabelas no Banco de Dados
+// 💡 MODIFICADO: Identifica se é parcelado e aplica a tag correta no banco
     if (payment_status === 'paid' || payment_status === 'pago' || payment_status === 'success') {
+      
+      // Verifica no payload da Únicopag se o método usado foi cartão de crédito
+      const metodoPagamento = String(payload.payment_method || payload.result?.payment_method).toLowerCase();
+      const novoStatus = (metodoPagamento === 'credit_card' || metodoPagamento === 'cartao_credito') ? 'PARCELADO' : 'PAGO';
+
       await prisma.$transaction([
-        prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'PAGO', atualizadoEm: new Date() } }),
-        prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'PAGO', confirmadaEm: new Date(), confirmadaPor: 'unicopag' } })
+        prisma.pagamento.updateMany({ 
+          where: { matriculaId }, 
+          data: { status: novoStatus, atualizadoEm: new Date() } 
+        }),
+        prisma.matricula.update({ 
+          where: { id: matriculaId }, 
+          data: { statusPagamento: novoStatus, confirmadaEm: new Date(), confirmadaPor: 'unicopag' } 
+        })
       ]);
-      console.log(`[Webhook UnicopAg] 🎉 Matrícula ${matriculaId} ATUALIZADA PARA PAGO NO BANCO!`);
+      console.log(`[Webhook UnicopAg] 🎉 Matrícula ${matriculaId} atualizada para ${novoStatus}!`);
     } else if (payment_status === 'refunded' || payment_status === 'estornado') {
       await prisma.$transaction([
         prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'ESTORNADO', atualizadoEm: new Date() } }),
@@ -153,7 +166,7 @@ app.use(
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 1000 * 60 * 60 * 8, // 8 horas
+      maxAge: 1000 * 60 * 60 * 24 * 365, // 💡 CORRIGIDO: Alterado para 1 Ano inteiro para evitar deslogamentos espontâneos.
     },
   })
 );
@@ -203,5 +216,5 @@ app.listen(port, () => {
 if (!isProd && ADMIN_PORT && ADMIN_PORT !== Number(port)) {
   app.listen(ADMIN_PORT, () => {
     console.log(`Painel secretaria:  http://localhost:${ADMIN_PORT}`);
-  });
+  }); 
 }
