@@ -36,7 +36,7 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
     installments: isCredito ? Number(dadosCartao.parcelas || 1) : 1,
     postback_url: `${appUrl}/webhook/unicopag`,
     metadata: {
-      order_id: String(matriculaId) // Chave essencial para o Cartão Cloud devolver a matrícula
+      order_id: String(matriculaId)
     },
     customer: {
       name: aluno.nome,
@@ -51,7 +51,8 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
       city: aluno.cidade || 'Rio de Janeiro',
       state: aluno.uf || 'RJ'
     },
-    items: [{
+    // 🔥 CORREÇÃO AQUI: Mudamos de "items" para "cart" para aceitar na API Cloud
+    cart: [{
       id: String(matriculaId),
       title: nomeCurso,
       price: amountCentavos,
@@ -70,7 +71,6 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
     };
   }
 
-  // 🔴 LOG DE ENTRADA: Monitorando os dados antes de disparar
   console.log(`[MONITORAMENTO CARTÃO] ➡️ 1. Enviando Transação. Matrícula Original: ${matriculaId} | Método: ${paymentMethod}`);
 
   const urlFinal = `${baseUrl}${endpoint}?api_token=${token.trim()}`;
@@ -90,7 +90,6 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
   const json = JSON.parse(textBody);
   const result = json.result || json;
   
-  // 🟢 LOG DE RETORNO DA API: Verificando o que o banco guardará em gatewayRef
   console.log(`[MONITORAMENTO CARTÃO] ⬅️ 2. Resposta da API recebida. hash gerado: ${result.hash} | id gerado: ${result.id}`);
 
   return {
