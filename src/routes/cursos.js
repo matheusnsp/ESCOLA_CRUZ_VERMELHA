@@ -91,7 +91,6 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const { plano, forma, numero, titular, mesExpiracao, anoExpiracao, cvv } = resultado.data;
   const usaGateway = forma !== 'DINHEIRO';
 
-  // 💡 FIX 1: Pegando o preço correto do esquema mapeado pelo plano escolhido
   const total = plano === 'A_VISTA' ? Number(turma.curso.precoAvista) : Number(turma.curso.precoCheio);
     
   let matricula;
@@ -156,7 +155,6 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       return res.redirect(resultadoGateway.checkoutUrl);
     }
 
-    // 💡 FIX 2 ATUALIZADO: Usando o mapeamento corrigido em conformidade com o unicopag.js estruturado
     const rawQr = resultadoGateway.pixQrCode || resultadoGateway.pixUrl || '';
     const rawUrl = resultadoGateway.pixUrl || resultadoGateway.pixQrCode || '';
 
@@ -191,50 +189,78 @@ router.post('/webhook/unicopag', async (req, res) => {
 
     const id = payload.id || payload.gatewaytransaction || '';
     const hash = payload.hash || payload.transactionhash || '';
-    const orderId = payload.metadata?.order_id || payload.order_id || '';
     const status = payload.payment_status || payload.status || '';
+    
+    const orderId = payload.metadata?.order_id || payload.order_id || (payload.items && payload.items[0]?.hash) || '';
 
     if (!status) {
       return res.status(400).send('Status ausente');
     }
 
-    const pagamento = await prisma.pagamento.findFirst({
+    let pagamento = await prisma.pagamento.findFirst({
       where: {
         OR: [
           { gatewayRef: String(id) },
-          { gatewayRef: String(hash) },
-          { matriculaId: String(orderId) }
+          { gatewayRef: String(hash) }
         ].filter(Boolean)
       }
     });
 
-    if (!pagamento) {
-      console.error(`[Webhook UnicopAg] ERRO: Nenhum pagamento encontrado para ID: ${id}, Hash: ${hash}, Order: ${orderId}`);
-      return res.status(200).send('Pagamento não localizado');
-    }
+    let matriculaId = pagamento ? pagamento.matriculaId : orderId;
 
-    const { matriculaId } = pagamento;
+    if (!matriculaId) {
+      console.error(`[Webhook UnicopAg] ERRO: Não foi possível determinar a matrícula para ID: ${id}, Hash: ${hash}`);
+      return res.status(200).send('Matrícula não identificada');
+    }
 
     const ehSucesso = ['paid', 'PAGO', 'success', 'captured'].includes(status);
     const ehEstorno = ['refunded', 'ESTORNADO'].includes(status);
     const ehFalha = ['refused', 'failed', 'CANCELADO'].includes(status);
 
     if (ehSucesso) {
-      await prisma.$transaction([
-        prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'PAGO', atualizadoEm: new Date() } }),
-        prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'PAGO', confirmadaEm: new Date(), confirmadaPor: 'unicopag' } })
-      ]);
-      console.log(`[Webhook] Matrícula ${matriculaId} updated com sucesso.`);
+      if (!pagamento && orderId) {
+        console.log(`[Webhook UnicopAg] Criando registro rápido via cartão: ${matriculaId}`);
+        await prisma.pagamento.create({
+          data: {
+            matriculaId: matriculaId,
+            gateway: 'unicopag',
+            gatewayRef: String(id || hash),
+            metodo: payload.payment_method || 'CREDITO',
+            valor: Number(payload.amount_total || 0) / 100,
+            status: 'PAGO'
+          }
+        });
+      } else if (pagamento) {
+        await prisma.pagamento.updateMany({ 
+          where: { matriculaId }, 
+          data: { status: 'PAGO', atualizadoEm: new Date() } 
+        });
+      }
+
+      // 💡 Busca os dados da matrícula para avaliar o plano (A_VISTA ou PARCELADO)
+      const dadosMatricula = await prisma.matricula.findUnique({
+        where: { id: matriculaId }
+      });
+
+      // Se o plano do aluno for parcelado, define o status final como 'PARCELADO'
+      const novoStatusMatricula = dadosMatricula?.plano === 'PARCELADO' ? 'PARCELADO' : 'PAGO';
+
+      await prisma.matricula.update({ 
+        where: { id: matriculaId }, 
+        data: { 
+          statusPagamento: novoStatusMatricula, 
+          confirmadaEm: new Date(), 
+          confirmadaPor: 'unicopag' 
+        } 
+      });
+
+      console.log(`[Webhook UnicopAg] 🎉 Matrícula ${matriculaId} atualizada para ${novoStatusMatricula}. Acesso liberado!`);
     } else if (ehEstorno) {
-      await prisma.$transaction([
-        prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'ESTORNADO', atualizadoEm: new Date() } }),
-        prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'ESTORNADO' } })
-      ]);
+      await prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'ESTORNADO', atualizadoEm: new Date() } });
+      await prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'ESTORNADO' } });
     } else if (ehFalha) {
-      await prisma.$transaction([
-        prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'CANCELADO', updatedEm: new Date() } }),
-        prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'CANCELADO' } })
-      ]);
+      await prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'CANCELADO', atualizadoEm: new Date() } });
+      await prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'CANCELADO' } });
     }
 
     return res.status(200).send('Webhook processado');

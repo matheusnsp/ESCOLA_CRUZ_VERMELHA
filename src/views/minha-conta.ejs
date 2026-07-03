@@ -7,7 +7,6 @@
   <% } %>
 
   <div class="conta-layout">
-    <!-- Menu lateral com perfil -->
     <aside class="conta-side">
       <div class="conta-perfil">
         <div class="conta-avatar"><%= usuario.nome.charAt(0).toUpperCase() %></div>
@@ -27,7 +26,6 @@
       </nav>
     </aside>
 
-    <!-- Conteúdo -->
     <section class="conta-main">
 
       <% if (sec === 'inscricoes') { %>
@@ -43,7 +41,8 @@
         <% } else { %>
           <div class="courses-grid">
             <% matriculas.forEach(function (m) { %>
-              <% var cls = m.statusPagamento === 'PAGO' ? 'pago' : (m.statusPagamento === 'PENDENTE' ? 'pendente' : 'cancelado'); %>
+              <% /* 💡 Suporte unificado para os status PAGO e PARCELADO */ %>
+              <% var cls = (m.statusPagamento === 'PAGO' || m.statusPagamento === 'PARCELADO') ? 'pago' : (m.statusPagamento === 'PENDENTE' ? 'pendente' : 'cancelado'); %>
               <article class="course-card">
                 <% if (m.turma.curso.imagemUrl) { %>
                   <img src="<%= m.turma.curso.imagemUrl %>" alt="<%= m.turma.curso.nome %>" class="course-img">
