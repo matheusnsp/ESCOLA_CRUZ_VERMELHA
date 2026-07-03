@@ -1,81 +1,81 @@
 <%- include('partials/site-head', { titulo: 'Inscrição' }) %>
 <%- include('partials/site-header') %>
 
-<main class=\"interna-wrap\">
-  <a href=\"/cursos/<%= curso.id %>\" class=\"cat-back\" style=\"margin:0;\"><i class=\"fa-solid fa-arrow-left\"></i> Voltar ao curso</a>
+<main class="interna-wrap">
+  <a href="/cursos/<%= curso.id %>" class="cat-back" style="margin:0;"><i class="fa-solid fa-arrow-left"></i> Voltar ao curso</a>
 
-  <div class=\"painel-card\">
+  <div class="painel-card">
     <h1><%= curso.nome %></h1>
-    <p class=\"painel-sub\">
+    <p class="painel-sub">
       <%= turma.diasSemana %> · <%= turma.horario %> ·
       início em <%= new Date(turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
     </p>
 
     <% if (erro) { %>
-      <div class=\"aviso-erro\"><i class=\"fa-solid fa-circle-exclamation\"></i> <%= erro %></div>
+      <div class="aviso-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div>
     <% } %>
 
-    <div class=\"resumo-box\">
+    <div class="resumo-box">
       <div><span>Curso (à vista)</span><strong><%= formatBRL(aVista.valorCurso) %></strong></div>
       <div><span>Curso (parcelado)</span><strong><%= formatBRL(parcelado.valorCurso) %></strong></div>
       <div><span>Taxa de matrícula</span><strong><%= formatBRL(aVista.valorTaxaMatricula) %></strong></div>
       <small>+ 1 kg de alimento não perecível, entregue na secretaria.</small>
     </div>
 
-    <form method=\"POST\" action=\"/inscrever/<%= turma.id %>\" novalidate>
-      <input type=\"hidden\" name=\"_csrf\" value=\"<%= csrfToken %>\">
+    <form method="POST" action="/inscrever/<%= turma.id %>" novalidate>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-      <label class=\"campo\">
+      <label class="campo">
         <span>Plano</span>
-        <select name=\"plano\">
-          <option value=\"A_VISTA\">À vista (<%= formatBRL(aVista.total) %>)</option>
-          <option value=\"PARCELADO\">Parcelado (<%= turma.curso.parcelas %>x de <%= formatBRL(parcelado.valorParcela) %> = <%= formatBRL(parcelado.total) %>)</option>
+        <select name="plano">
+          <option value="A_VISTA">À vista (<%= formatBRL(aVista.total) %>)</option>
+          <option value="PARCELADO">Parcelado (<%= turma.curso.parcelas %>x de <%= formatBRL(parcelado.valorParcela) %> = <%= formatBRL(parcelado.total) %>)</option>
         </select>
       </label>
 
-      <label class=\"campo\">
+      <label class="campo">
         <span>Forma de pagamento</span>
-        <select name=\"forma\" id=\"selectForma\">
-          <option value=\"PIX\">Pix (Liberação imediata)</option>
-          <option value=\"CREDITO\">Cartão de Crédito</option>
-          <option value=\"DINHEIRO\">Dinheiro / Espécie (Pagar na secretaria)</option>
+        <select name="forma" id="selectForma">
+          <option value="PIX">Pix (Liberação imediata)</option>
+          <option value="CREDITO">Cartão de Crédito</option>
+          <option value="DINHEIRO">Dinheiro / Espécie (Pagar na secretaria)</option>
         </select>
       </label>
 
-      <div id=\"dadosDoCartao\" style=\"display: none; border: 1px dashed #ccc; padding: 14px; margin-bottom: 14px; border-radius: 4px; background: #fafafa;\">
-        <h3 style=\"margin-top:0; font-size:15px; color:#333;\">Dados do Cartão de Crédito</h3>
+      <div id="dadosDoCartao" style="display: none; border: 1px dashed #ccc; padding: 14px; margin-bottom: 14px; border-radius: 4px; background: #fafafa;">
+        <h3 style="margin-top:0; font-size:15px; color:#333;">Dados do Cartão de Crédito</h3>
         
-        <label class=\"campo\">
-          <span style=\"font-size: 13px;\">Número do Cartão</span>
-          <input type=\"text\" name=\"numero\" placeholder=\"0000 0000 0000 0000\" style=\"width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;\">
+        <label class="campo">
+          <span style="font-size: 13px;">Número do Cartão</span>
+          <input type="text" name="numero" placeholder="0000 0000 0000 0000" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
         </label>
 
-        <label class=\"campo\">
-          <span style=\"font-size: 13px;\">Nome do Titular (como no cartão)</span>
-          <input type=\"text\" name=\"titular\" placeholder=\"JOAO S SILVA\" style=\"width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;\">
+        <label class="campo">
+          <span style="font-size: 13px;">Nome do Titular (como no cartão)</span>
+          <input type="text" name="titular" placeholder="JOAO S SILVA" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
         </label>
 
-        <div style=\"display: flex; gap: 10px;\">
-          <label class=\"campo\" style=\"flex: 1;\">
-            <span style=\"font-size: 13px;\">Mês Exp. (MM)</span>
-            <input type=\"text\" name=\"mesExpiracao\" placeholder=\"12\" maxlength=\"2\" style=\"width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;\">
+        <div style="display: flex; gap: 10px;">
+          <label class="campo" style="flex: 1;">
+            <span style="font-size: 13px;">Mês Exp. (MM)</span>
+            <input type="text" name="mesExpiracao" placeholder="12" maxlength="2" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
           </label>
 
-          <label class=\"campo\" style=\"flex: 1;\">
-            <span style=\"font-size: 13px;\">Ano Exp. (AAAA)</span>
-            <input type=\"text\" name=\"anoExpiracao\" placeholder=\"2028\" maxlength=\"4\" style=\"width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;\">
+          <label class="campo" style="flex: 1;">
+            <span style="font-size: 13px;">Ano Exp. (AAAA)</span>
+            <input type="text" name="anoExpiracao" placeholder="2028" maxlength="4" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
           </label>
 
-          <label class=\"campo\" style=\"flex: 1;\">
-            <span style=\"font-size: 13px;\">CVV</span>
-            <input type=\"text\" name=\"cvv\" placeholder=\"123\" maxlength=\"4\" style=\"width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;\">
+          <label class="campo" style="flex: 1;">
+            <span style="font-size: 13px;">CVV</span>
+            <input type="text" name="cvv" placeholder="123" maxlength="4" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
           </label>
         </div>
       </div>
 
-      <button type=\"submit\" class=\"btn-acao\">Confirmar inscrição</button>
+      <button type="submit" class="btn-acao">Confirmar inscrição</button>
     </form>
-    <p class=\"painel-sub\" style=\"margin:14px 0 0;font-size:12px;\">Sua matrícula ficará como \"pendente\" até a confirmação do pagamento.</p>
+    <p class="painel-sub" style="margin:14px 0 0;font-size:12px;">Sua matrícula ficará como "pendente" até a confirmation do pagamento.</p>
   </div>
 </main>
 
@@ -86,16 +86,13 @@
     
     if (this.value === 'CREDITO') {
       blocoCartao.style.display = 'block';
-      // 💡 Ativa os inputs para serem enviados ao backend
       inputsCartao.forEach(input => input.removeAttribute('disabled'));
     } else {
       blocoCartao.style.display = 'none';
-      // 💡 Desativa os inputs para não quebrar a validação do Zod no PIX/Dinheiro
       inputsCartao.forEach(input => input.setAttribute('disabled', 'true'));
     }
   });
 
-  // Executa uma vez ao carregar a página para garantir o estado correto inicial dos inputs
   document.getElementById('selectForma').dispatchEvent(new Event('change'));
 </script>
 

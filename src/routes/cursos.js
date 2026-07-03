@@ -156,9 +156,9 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       return res.redirect(resultadoGateway.checkoutUrl);
     }
 
-    // 💡 FIX 2: Fallback inteligente para garantir mapeamento correto de campos comuns da UnicoPag (pixQrCode, qr_code, pixUrl ou copia_e_cola)
-    const rawQr = resultadoGateway.pixQrCode || resultadoGateway.qr_code || resultadoGateway.pix_qr_code || '';
-    const rawUrl = resultadoGateway.pixUrl || resultadoGateway.copia_e_cola || resultadoGateway.pix_code || '';
+    // 💡 FIX 2 ATUALIZADO: Usando o mapeamento corrigido em conformidade com o unicopag.js estruturado
+    const rawQr = resultadoGateway.pixQrCode || resultadoGateway.pixUrl || '';
+    const rawUrl = resultadoGateway.pixUrl || resultadoGateway.pixQrCode || '';
 
     const qrParam = encodeURIComponent(rawQr);
     const urlParam = encodeURIComponent(rawUrl);
@@ -166,7 +166,7 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
   } catch (err) {
     console.error('[UnicopAg] Erro no Gateway:', err.message);
-    return res.render('erro', { mensagem: 'Houve um problema ao processar o pagamento. Tente novamente.' });
+    return res.render('erro', { mensagem: 'Houve um problem ao processar o pagamento. Tente novamente.' });
   }
 });
 
@@ -224,7 +224,7 @@ router.post('/webhook/unicopag', async (req, res) => {
         prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'PAGO', atualizadoEm: new Date() } }),
         prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'PAGO', confirmadaEm: new Date(), confirmadaPor: 'unicopag' } })
       ]);
-      console.log(`[Webhook] Matrícula ${matriculaId} atualizada com sucesso.`);
+      console.log(`[Webhook] Matrícula ${matriculaId} updated com sucesso.`);
     } else if (ehEstorno) {
       await prisma.$transaction([
         prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'ESTORNADO', atualizadoEm: new Date() } }),
@@ -232,7 +232,7 @@ router.post('/webhook/unicopag', async (req, res) => {
       ]);
     } else if (ehFalha) {
       await prisma.$transaction([
-        prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'CANCELADO', atualizadoEm: new Date() } }),
+        prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'CANCELADO', updatedEm: new Date() } }),
         prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'CANCELADO' } })
       ]);
     }

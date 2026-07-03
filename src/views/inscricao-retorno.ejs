@@ -1,87 +1,69 @@
 <%- include('partials/site-head', { titulo: 'Inscrição' }) %>
 <%- include('partials/site-header') %>
+
 <main class="interna-wrap">
-<div class="painel-card" style="text-align:center;padding:48px 24px;">
-<% if (isPix && pixUrl) { %>
-<i class="fa-brands fa-pix" 
-style="font-size:48px;color:#32BCAD;margin-bottom:16px;">
-</i>
-<h1>Pague via PIX</h1>
-<p class="painel-sub">
-        Abra o aplicativo do seu banco e aponte a câmera para o QR Code abaixo,
-        ou copie o código PIX Copia e Cola.
-</p>
-<!-- QR CODE PIX -->
-<div style="margin:24px auto;">
-<img 
-src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=<%= encodeURIComponent(pixQrCode || pixUrl) %>"
-alt="QR Code Pix"
-style="
-            max-width:250px;
-            width:100%;
-            border:1px solid #eee;
-            padding:8px;
-            border-radius:12px;
-          "
-/>
-</div>
-<p class="painel-sub" style="margin-top:16px;">
+  <div class="painel-card" style="text-align: center; padding: 48px 24px; max-width: 600px; margin: 0 auto;">
+    
+    <% if (isPix && pixUrl) { %>
+      <div style="margin-bottom: 20px;">
+        <i class="fa-brands fa-pix" style="font-size: 56px; color: #32BCAD;"></i>
+      </div>
+      
+      <h1 style="font-size: 24px; margin-bottom: 8px; color: #333;">Pague via PIX</h1>
+      
+      <p class="painel-sub" style="color: #666; font-size: 14px; max-width: 450px; margin: 0 auto 24px; line-height: 1.5;">
+        Abra o aplicativo do seu banco e aponte a câmera para o QR Code abaixo, ou copie o código PIX Copia e Cola.
+      </p>
+
+      <div style="margin: 24px auto; display: inline-block; background: #fff; padding: 12px; border: 1px solid #e0e0e0; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        <img 
+          src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=<%= encodeURIComponent(pixQrCode || pixUrl) %>"
+          alt="QR Code Pix"
+          style="max-width: 230px; width: 100%; display: block;"
+        />
+      </div>
+
+      <p class="painel-sub" style="margin: 24px 0 8px; font-weight: 600; color: #333; font-size: 14px;">
         Código PIX Copia e Cola:
-</p>
-<textarea 
-id="chavePix"
-readonly
-style="
-          width:100%;
-          max-width:500px;
-          padding:12px;
-          margin:8px auto 16px;
-          display:block;
-          font-size:12px;
-          border-radius:8px;
-          border:1px solid #ccc;
-          resize:none;
-          height:90px;
-        "
-><%= pixUrl %></textarea>
-<button 
-id="btnCopiar"
-style="
-          padding:10px 24px;
-          background:#32BCAD;
-          color:white;
-          border:none;
-          border-radius:8px;
-          cursor:pointer;
-          font-size:14px;
-        "
->
-        Copiar código PIX
-</button>
-<p 
-class="painel-sub" 
-style="font-size:12px;margin-top:16px;"
->
+      </p>
+      
+      <textarea 
+        id="chavePix"
+        readonly
+        style="width: 100%; max-width: 450px; padding: 12px; margin: 0 auto 16px; display: block; font-size: 12px; border-radius: 8px; border: 1px solid #ccc; background: #f9f9f9; color: #555; font-family: monospace; resize: none; height: 80px;"
+      ><%= pixUrl %></textarea>
+
+      <button 
+        id="btnCopiar"
+        style="padding: 12px 32px; background: #32BCAD; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; transition: background 0.2s; display: inline-block; margin-bottom: 16px;"
+      >
+        <i class="fa-regular fa-copy"></i> Copiar código PIX
+      </button>
+
+      <p class="painel-sub" style="font-size: 12px; color: #888; margin-top: 8px;">
         Após o pagamento, a confirmação pode levar alguns minutos.
-</p>
-<% } else { %>
-<i class="fa-solid fa-clock" 
-style="font-size:48px;color:#e2a800;margin-bottom:16px;">
-</i>
-<h1>Aguardando confirmação</h1>
-<p class="painel-sub">
-        Seu pagamento está sendo processado.
-        Assim que confirmado, sua matrícula será atualizada automaticamente.
-</p>
-<% } %>
-<a 
-href="/minha-conta?sec=inscricoes"
-class="btn-acao"
-style="margin-top:24px;display:inline-block;"
->
-      Ver minhas inscrições
-</a>
-</div>
+      </p>
+
+    <% } else { %>
+      <div style="margin-bottom: 20px;">
+        <i class="fa-solid fa-clock" style="font-size: 56px; color: #e2a800;"></i>
+      </div>
+      
+      <h1 style="font-size: 24px; margin-bottom: 8px; color: #333;">Aguardando confirmação</h1>
+      
+      <p class="painel-sub" style="color: #666; font-size: 14px; max-width: 450px; margin: 0 auto; line-height: 1.5;">
+        Seu pagamento está sendo processado. Assim que confirmado, sua matrícula será atualizada automaticamente.
+      </p>
+    <% } %>
+
+    <div style="margin-top: 32px; border-top: 1px solid #eee; padding-top: 24px;">
+      <a href="/minha-conta?sec=inscricoes" class="btn-acao" style="display: inline-block; padding: 12px 24px;">
+        Ver minhas inscrições
+      </a>
+    </div>
+
+  </div>
 </main>
+
 <script src="/js/pix.js"></script>
 <%- include('partials/site-footer') %>
