@@ -51,13 +51,14 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
       city: aluno.cidade || 'Rio de Janeiro',
       state: aluno.uf || 'RJ'
     },
-    // 🔥 CORREÇÃO AQUI: Mudamos de "items" para "cart" para aceitar na API Cloud
+    // 🔥 CONFIGURAÇÃO COMPLETA: Enviando múltiplos identificadores para alinhar com o validador da nuvem
     cart: [{
       id: String(matriculaId),
+      hash: String(matriculaId), // Fornece o hash exigido no erro 422
       title: nomeCurso,
       price: amountCentavos,
       quantity: 1,
-      operation_type: 'sale'
+      operation_type: 1 // 1 = Venda Direta (conforme especificado no documento)
     }]
   };
 
