@@ -166,7 +166,7 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
   } catch (err) {
     console.error('[UnicopAg] Erro no Gateway:', err.message);
-    return res.render('erro', { mensagem: 'Houve um problem ao processar o pagamento. Tente novamente.' });
+    return res.render('erro', { mensagem: 'Houve um problema ao processar o pagamento. Tente novamente.' });
   }
 });
 
