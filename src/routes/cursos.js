@@ -113,22 +113,24 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
   const aluno = await prisma.usuario.findUnique({
     where: { id: req.session.usuarioId },
-    select: { nome: true, email: true, cpfCnpj: true, celular: true, cep: true, logradouro: true, numero: true, complemento: true, bairro: true, city: true, uf: true },
+    select: { nome: true, email: true, cpfCnpj: true, celular: true, cep: true, logradouro: true, numero: true, complemento: true, bairro: true, cidade: true, uf: true },
   });
 
   if (!aluno?.cpfCnpj) return res.render('erro', { mensagem: 'CPF obrigatório.' });
 
   try {
-    // 💡 CALCULA AS PARCELAS DINAMICAMENTE BASEADO NO CURSO SALVO NO BANCO
     const parcelasFinais = plano === 'PARCELADO' ? Number(turma.curso.parcelas || 1) : 1;
 
-    // 1. CHAMA O GATEWAY PRIMEIRO
+    // 1. CHAMA O GATEWAY
     const resultadoGateway = await criarTransacao({
       matriculaId: matricula.id,
       nomeCurso: turma.curso.nome,
       valorTotal: total,
       forma,
-      aluno,
+      aluno: {
+        ...aluno,
+        cidade: aluno.cidade || "Rio de Janeiro" // 💡 CORRIGIDO: Alinhado com o select do banco
+      },
       dadosCartao: forma === 'CREDITO' ? { 
         numero, 
         titular, 
@@ -139,7 +141,7 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       } : null
     });
 
-    // 2. SÓ AGORA SALVA NO BANCO USANDO O ID DO GATEWAY RETORNADO
+    // 2. SALVA NO BANCO
     await prisma.pagamento.create({
       data: {
         matriculaId: matricula.id,
@@ -151,15 +153,20 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       },
     });
 
-    if (resultadoGateway.checkoutUrl) return res.redirect(resultadoGateway.checkoutUrl);
+    // 3. REDIRECIONAMENTO SEGURO
+    if (resultadoGateway.checkoutUrl) {
+      return res.redirect(resultadoGateway.checkoutUrl);
+    }
 
     const qrParam = encodeURIComponent(resultadoGateway.pixQrCode || '');
     const urlParam = encodeURIComponent(resultadoGateway.pixUrl || '');
-    return res.redirect(`/inscricao/retorno?matriculaId=${matricula.id}&pix=1&qr=${qrParam}&url=${urlParam}`);
+    
+    // Força o retorno correto para a página de sucesso do aluno
+    return res.redirect(`/inscricao/retorno?matriculaId=${matricula.id}&pix=${forma === 'PIX' ? '1' : '0'}&qr=${qrParam}&url=${urlParam}`);
 
   } catch (err) {
-    console.error('[UnicopAg] Erro no Gateway:', err.message);
-    return res.render('erro', { mensagem: 'Houve um problema ao processar o pagamento. Tente novamente.' });
+    console.error('[UnicopAg] Erro no Gateway que causou tela branca:', err.message);
+    return res.render('erro', { mensagem: 'Houve um problema ao processar o pagamento. Verifique seu saldo ou tente novamente.' });
   }
 });
 
