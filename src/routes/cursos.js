@@ -185,40 +185,42 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
 router.post('/webhook/unicopag', async (req, res) => {
   try {
     const payload = req.body;
-    console.log('[Webhook UnicopAg] Notificação recebida:', JSON.stringify(payload));
+    console.log('[Webhook UnicopAg] Recebido:', JSON.stringify(payload));
 
-    // Captura os dados básicos da notificação
     const id = payload.id || payload.gatewaytransaction || '';
     const hash = payload.hash || payload.transactionhash || '';
     const status = payload.payment_status || payload.status || '';
-    // Tenta pegar o ID da matrícula enviado no metadata ou no hash do item
-    const orderId = payload.metadata?.order_id || payload.order_id || (payload.items && payload.items[0]?.hash) || '';
 
     if (!status) return res.status(400).send('Status ausente');
 
-    // 1. Tenta localizar o pagamento no banco
+    // 1. Tenta buscar pelo pagamento já criado
     let pagamento = await prisma.pagamento.findFirst({
-      where: {
-        OR: [{ gatewayRef: String(id) }, { gatewayRef: String(hash) }].filter(Boolean)
-      }
+      where: { OR: [{ gatewayRef: String(id) }, { gatewayRef: String(hash) }].filter(Boolean) }
     });
 
-    // Se não encontrou, o ID da matrícula deve ser o orderId que veio no Webhook
-    let matriculaId = pagamento ? pagamento.matriculaId : orderId;
+    // 2. SE NÃO ACHOU, AQUI ESTÁ O PULO DO GATO:
+    // A Únicopag geralmente envia o ID da nossa transação dentro do "items" ou descrição.
+    // Se o seu ID de matricula estiver em algum lugar do payload, vamos pegá-lo aqui:
+    let matriculaId = pagamento ? pagamento.matriculaId : null;
 
     if (!matriculaId) {
-      console.error(`[Webhook] ERRO: Não foi possível determinar a matrícula. ID: ${id}`);
+      // Tenta extrair de qualquer campo possível do JSON enviado pela Únicopag
+      // Substitua 'SUA_LOGICA_DE_EXTRAIR_ID' caso você saiba onde ele está vindo no JSON
+      // Por enquanto, vamos tentar pegar o ID do primeiro item da lista:
+      matriculaId = payload.items && payload.items[0] ? payload.items[0].hash : null;
+    }
+
+    if (!matriculaId) {
+      console.error(`[Webhook] ERRO: Não foi possível identificar a matrícula para ID: ${id}. Dados:`, JSON.stringify(payload));
       return res.status(200).send('Matrícula não identificada');
     }
 
     const ehSucesso = ['paid', 'PAGO', 'success', 'captured'].includes(status);
-    const ehEstorno = ['refunded', 'ESTORNADO'].includes(status);
-    const ehFalha = ['refused', 'failed', 'CANCELADO'].includes(status);
 
     if (ehSucesso) {
-      // 2. A MÁGICA: Se não achou o pagamento, CRIAMOS AGORA (Solução definitiva para Cartão Rápido)
+      // 3. Criação de Emergência
       if (!pagamento) {
-        console.log(`[Webhook] Pagamento não localizado, criando registro de emergência para Matrícula: ${matriculaId}`);
+        console.log(`[Webhook] Criando pagamento de emergência para Matrícula: ${matriculaId}`);
         pagamento = await prisma.pagamento.create({
           data: {
             matriculaId: matriculaId,
@@ -236,7 +238,7 @@ router.post('/webhook/unicopag', async (req, res) => {
         });
       }
 
-      // 3. Define a TAG final da matrícula (PARCELADO ou PAGO)
+      // 4. Atualiza o status da matrícula (PARCELADO ou PAGO)
       const dadosMatricula = await prisma.matricula.findUnique({ where: { id: matriculaId } });
       const novoStatus = dadosMatricula?.plano === 'PARCELADO' ? 'PARCELADO' : 'PAGO';
 
@@ -244,26 +246,18 @@ router.post('/webhook/unicopag', async (req, res) => {
         where: { id: matriculaId }, 
         data: { 
           statusPagamento: novoStatus, 
-          confirmadaEm: new Date(),
-          confirmadaPor: 'unicopag'
+          confirmadaEm: new Date(), 
+          confirmadaPor: 'unicopag' 
         } 
       });
 
-      console.log(`[Webhook] ✅ SUCESSO: Matrícula ${matriculaId} atualizada para ${novoStatus}. Acesso liberado!`);
-      
-    } else if (ehEstorno) {
-      await prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'ESTORNADO', atualizadoEm: new Date() } });
-      await prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'ESTORNADO' } });
-      
-    } else if (ehFalha) {
-      await prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'CANCELADO', atualizadoEm: new Date() } });
-      await prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'CANCELADO' } });
+      console.log(`[Webhook] ✅ SUCESSO: Matrícula ${matriculaId} atualizada para ${novoStatus}.`);
     }
 
-    return res.status(200).send('Webhook processado');
+    return res.status(200).send('OK');
 
   } catch (error) {
-    console.error('[Webhook UnicopAg] Erro fatal:', error);
+    console.error('[Webhook UnicopAg] Erro:', error);
     return res.status(500).send('Erro interno');
   }
 });
