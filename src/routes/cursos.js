@@ -185,85 +185,91 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
 router.post('/webhook/unicopag', async (req, res) => {
   try {
     const payload = req.body;
-    
-    // 🔍 LOG INICIAL DO WEBHOOK
-    console.log('[MONITORAMENTO CARTÃO] 🔔 3. Webhook ativado pelo Gateway!');
-    console.log('[MONITORAMENTO CARTÃO] Payload integral recebido:', JSON.stringify(payload));
+    console.log('[MONITORAMENTO CARTÃO] 🔔 Webhook disparado pelo gateway!');
 
     const id = payload.id || payload.gatewaytransaction || '';
     const hash = payload.hash || payload.transactionhash || '';
-    const status = payload.payment_status || payload.status || '';
-    
-    // Tentativa de extração do ID usando todas as propriedades possíveis
-    const matriculaId = payload.metadata?.order_id || payload.order_id || (payload.items && payload.items[0]?.id) || '';
+    let status = payload.payment_status || payload.status || '';
 
-    console.log(`[MONITORAMENTO CARTÃO] Dados Extraídos -> Hash: "${hash}" | ID: "${id}" | Matricula Identificada: "${matriculaId}" | Status: "${status}"`);
+    if (!hash) return res.status(200).send('Sem hash para processar');
 
-    if (!matriculaId) {
-      console.error('[MONITORAMENTO CARTÃO] ❌ FALHA CRÍTICA: Não conseguimos determinar a Matrícula por nenhum metadado.');
-      return res.status(200).send('Matrícula não identificada');
-    }
-
-    // Buscando o pagamento correspondente no banco
+    // 1. TENTA BUSCAR LOGO DE PRIMEIRA PELO HASH DA TRANSAÇÃO
     let pagamento = await prisma.pagamento.findFirst({
-      where: {
-        OR: [
-          { matriculaId: matriculaId },
-          { gatewayRef: String(id) },
-          { gatewayRef: String(hash) }
-        ].filter(Boolean)
-      }
+      where: { gatewayRef: String(hash) }
     });
 
-    console.log(`[MONITORAMENTO CARTÃO] 🔎 Busca no Banco -> Registro de pagamento já existia? ${pagamento ? 'SIM' : 'NÃO'}`);
+    let matriculaId = pagamento ? pagamento.matriculaId : null;
+
+    // 2. SE NÃO ACHOU (RACE CONDITION OU NOVO), CONSULTA DIRETAMENTE A API DELES PARA PEGAR OS METADADOS REAIS!
+    if (!matriculaId) {
+      console.log(`[MONITORAMENTO CARTÃO] 🔍 Buscando metadados oficiais da transação ${hash} na API Cloud...`);
+      const token = process.env.UNICOPAG_API_TOKEN || '';
+      
+      try {
+        const response = await fetch(`https://api.cloud.unicopag.com.br/public/v1/transactions/${hash}?api_token=${token.trim()}`);
+        if (response.ok) {
+          const dadosApi = await response.json();
+          const transacaoReal = dadosApi.result || dadosApi;
+          
+          // Pega o order_id seguro que salvamos no metadata
+          matriculaId = transacaoReal.metadata?.order_id || null;
+          status = transacaoReal.payment_status || status;
+          console.log(`[MONITORAMENTO CARTÃO] 🎯 API respondeu! Matrícula encontrada via Metadata: ${matriculaId}`);
+        }
+      } catch (errApi) {
+        console.error('[MONITORAMENTO CARTÃO] Erro ao consultar transação na API:', errApi.message);
+      }
+    }
+
+    // Se mesmo consultando a API não achar a matrícula associada, encerra com aviso
+    if (!matriculaId) {
+      console.error(`[MONITORAMENTO CARTÃO] ❌ IMPOSSÍVEL IDENTIFICAR A MATRÍCULA PARA O HASH: ${hash}`);
+      return res.status(200).send('Matrícula não identificada');
+    }
 
     const ehSucesso = ['paid', 'PAGO', 'success', 'captured'].includes(status);
 
     if (ehSucesso) {
+      // 3. SE O PAGAMENTO NÃO EXISTIA NO BANCO AINDA, CRIA ELE AGORA (Garante a baixa mesmo com o Webhook sendo mais rápido)
       if (!pagamento) {
-        console.log(`[MONITORAMENTO CARTÃO] ⚠️ Registro ausente no banco (Race Condition). Criando pagamento de emergência para Matrícula: ${matriculaId}`);
+        console.log(`[MONITORAMENTO CARTÃO] ⚠️ Criando pagamento de emergência imediato para a Matrícula: ${matriculaId}`);
         pagamento = await prisma.pagamento.create({
           data: {
             matriculaId: matriculaId,
             gateway: 'unicopag',
-            gatewayRef: String(hash || id),
-            metodo: payload.payment_method || 'CREDITO',
-            valor: Number(payload.amount_total || 0) / 100,
+            gatewayRef: String(hash),
+            metodo: 'CREDITO',
+            valor: Number(payload.amount_total || 500) / 100,
             status: 'PAGO'
           }
         });
       } else {
-        console.log(`[MONITORAMENTO CARTÃO] ✨ Registro encontrado. Atualizando pagamento id: ${pagamento.id} para PAGO`);
-        await prisma.pagamento.updateMany({ 
-          where: { id: pagamento.id }, 
-          data: { status: 'PAGO', gatewayRef: String(hash || id), atualizadoEm: new Date() } 
+        await prisma.pagamento.updateMany({
+          where: { id: pagamento.id },
+          data: { status: 'PAGO', atualizadoEm: new Date() }
         });
       }
 
-      // Verificando os detalhes da matrícula para aplicar o status final correto
+      // 4. ATUALIZA A TAG DA MATRÍCULA NO SITE
       const dadosMatricula = await prisma.matricula.findUnique({ where: { id: matriculaId } });
       const novoStatusMatricula = dadosMatricula?.plano === 'PARCELADO' ? 'PARCELADO' : 'PAGO';
 
-      console.log(`[MONITORAMENTO CARTÃO] 🔄 Atualizando Matrícula ${matriculaId} de "${dadosMatricula?.statusPagamento}" para "${novoStatusMatricula}"`);
-
-      await prisma.matricula.update({ 
-        where: { id: matriculaId }, 
+      await prisma.matricula.update({
+        where: { id: matriculaId },
         data: { 
           statusPagamento: novoStatusMatricula, 
-          confirmadaEm: new Date(), 
-          confirmadaPor: 'unicopag' 
-        } 
+          confirmadaEm: new Date(),
+          confirmadaPor: 'unicopag'
+        }
       });
 
-      console.log(`[MONITORAMENTO CARTÃO] ✅ SUCESSO COMPLETO: Matrícula ${matriculaId} liberada com sucesso!`);
-    } else {
-      console.log(`[MONITORAMENTO CARTÃO] ℹ️ Transação recebida com status não-sucesso ("${status}"). Nenhuma ação de baixa tomada.`);
+      console.log(`[MONITORAMENTO CARTÃO] ✅ SUCESSO ABSOLUTO: Matrícula ${matriculaId} atualizada para ${novoStatusMatricula}`);
     }
 
-    return res.status(200).send('Webhook processado com logs');
+    return res.status(200).send('Webhook processado com segurança');
 
   } catch (error) {
-    console.error('[MONITORAMENTO CARTÃO] 💥 ERRO FATAL NO WEBHOOK:', error);
+    console.error('[MONITORAMENTO CARTÃO] 💥 Erro interno no processamento do webhook:', error);
     return res.status(500).send('Erro interno');
   }
 });
