@@ -78,13 +78,16 @@ app.post('/webhook/unicopag', async (req, res) => {
     // Formato real confirmado em log de produção (payload achatado, sem "data"/"result"):
     // { event, id, hash, payment_method, payment_status, amount_total, customer: {...},
     //   items: [{ hash, title, price, quantity, operation_type }], ... }
-    // IMPORTANTE: esse payload NÃO tem metadata/order_id. O único jeito de saber a que
-    // matrícula ele se refere é pelo hash (== gatewayRef que salvamos) ou, na janela de
-    // corrida em que o gatewayRef ainda não foi gravado, pelo CPF do cliente.
+    // IMPORTANTE: esse payload NÃO tem metadata/order_id nem customer.document (confirmado em
+    // 2 capturas reais de log). O único jeito de saber a que matrícula ele se refere é pelo
+    // hash (== gatewayRef que salvamos) ou, na janela de corrida em que o gatewayRef ainda não
+    // foi gravado, pelo e-mail do cliente (customer.email, esse sim presente no payload).
     const hash = payload.hash || payload.id || '';
     const status = payload.payment_status || payload.status || '';
     const amountTotal = Number(payload.amount_total ?? payload.amount ?? 0) / 100;
-    const documentoCliente = String(payload.customer?.document || '').replace(/\D/g, '');
+    // Confirmado em log real: customer.document NÃO vem no payload do webhook (só vinha na
+    // requisição de criação). O campo confiável disponível aqui é customer.email.
+    const emailCliente = String(payload.customer?.email || '').trim().toLowerCase();
 
     if (!hash) return res.status(200).send('Sem hash para processar');
 
@@ -93,10 +96,10 @@ app.post('/webhook/unicopag', async (req, res) => {
 
     // 2. Corrida de dados: o webhook chegou antes de terminarmos de gravar o gatewayRef
     //    (a linha PENDENTE já existe, criada antes de chamar o gateway — ver POST
-    //    /inscrever/:turmaId em cursos.js — só falta o gatewayRef). Casa pelo CPF do cliente +
-    //    valor + status PENDENTE mais recente, já que é o único vínculo disponível aqui.
-    if (!pagamento && documentoCliente) {
-      const aluno = await prisma.usuario.findUnique({ where: { cpfCnpj: documentoCliente } });
+    //    /inscrever/:turmaId em cursos.js — só falta o gatewayRef). Casa pelo e-mail do
+    //    cliente + valor + status PENDENTE mais recente.
+    if (!pagamento && emailCliente) {
+      const aluno = await prisma.usuario.findUnique({ where: { email: emailCliente } });
       if (aluno) {
         pagamento = await prisma.pagamento.findFirst({
           where: {
@@ -107,13 +110,13 @@ app.post('/webhook/unicopag', async (req, res) => {
           orderBy: { criadoEm: 'desc' },
         });
         if (pagamento) {
-          console.log(`[Webhook UnicopAg] Casado por CPF (corrida de dados) — Pagamento ${pagamento.id}`);
+          console.log(`[Webhook UnicopAg] Casado por e-mail (corrida de dados) — Pagamento ${pagamento.id}`);
         }
       }
     }
 
     if (!pagamento) {
-      console.error(`[Webhook UnicopAg] Pagamento não identificado. hash=${hash} doc=${documentoCliente} valor=${amountTotal} payload=${JSON.stringify(payload)}`);
+      console.error(`[Webhook UnicopAg] Pagamento não identificado. hash=${hash} email=${emailCliente} valor=${amountTotal} payload=${JSON.stringify(payload)}`);
       return res.status(200).send('Pagamento não identificado');
     }
 
