@@ -120,12 +120,51 @@ app.post('/webhook/unicopag', async (req, res) => {
       return res.status(200).send('Pagamento não identificado');
     }
 
-    // Idempotência: se um retry do webhook chegar depois de já termos processado, não refaz.
-    if (pagamento.status === 'PAGO') {
+    const statusLower = String(status).toLowerCase();
+    const ehSucesso = ['paid', 'pago', 'success', 'captured', 'approved'].includes(statusLower);
+    // 💡 CORRIGIDO: antes o webhook só entendia status de sucesso. Um "refunded"/"chargeback"
+    // caía direto no "nada a atualizar" e a matrícula nunca saía de PAGO.
+    const ehReembolso = ['refunded', 'reembolsado', 'refund', 'chargeback', 'charged_back', 'estornado'].includes(statusLower);
+    const ehCancelamento = ['canceled', 'cancelled', 'cancelado', 'voided', 'void'].includes(statusLower);
+
+    // Idempotência: só ignora se o status recebido é O MESMO que já está salvo. Antes,
+    // "if (pagamento.status === 'PAGO') return" bloqueava QUALQUER webhook seguinte (inclusive
+    // um reembolso) assim que o pagamento tinha sido confirmado uma vez — por isso o estorno
+    // nunca era gravado.
+    if (
+      (pagamento.status === 'PAGO' && ehSucesso) ||
+      (pagamento.status === 'ESTORNADO' && ehReembolso) ||
+      (pagamento.status === 'CANCELADO' && ehCancelamento)
+    ) {
       return res.status(200).send('Já processado');
     }
 
-    const ehSucesso = ['paid', 'pago', 'success', 'captured', 'approved'].includes(String(status).toLowerCase());
+    if (ehReembolso) {
+      await prisma.pagamento.updateMany({
+        where: { id: pagamento.id },
+        data: { status: 'ESTORNADO', gatewayRef: String(hash), atualizadoEm: new Date() },
+      });
+      await prisma.matricula.update({
+        where: { id: pagamento.matriculaId },
+        data: { statusPagamento: 'ESTORNADO' },
+      });
+      console.log(`[Webhook UnicopAg] 💸 Matrícula ${pagamento.matriculaId} marcada como ESTORNADO (status gateway: "${status}")`);
+      return res.status(200).send('Reembolso processado com sucesso');
+    }
+
+    if (ehCancelamento) {
+      await prisma.pagamento.updateMany({
+        where: { id: pagamento.id },
+        data: { status: 'CANCELADO', gatewayRef: String(hash), atualizadoEm: new Date() },
+      });
+      await prisma.matricula.update({
+        where: { id: pagamento.matriculaId },
+        data: { statusPagamento: 'CANCELADO' },
+      });
+      console.log(`[Webhook UnicopAg] 🚫 Matrícula ${pagamento.matriculaId} marcada como CANCELADO (status gateway: "${status}")`);
+      return res.status(200).send('Cancelamento processado com sucesso');
+    }
+
     if (!ehSucesso) {
       console.log(`[Webhook UnicopAg] Status "${status}" ainda não é de sucesso para o Pagamento ${pagamento.id}; nada a atualizar por ora.`);
       return res.status(200).send('Status recebido, aguardando confirmação de pagamento.');

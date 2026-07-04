@@ -87,12 +87,20 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
   const resultado = inscricaoSchema.safeParse(req.body);
   if (!resultado.success) return reRenderErro(resultado.error.issues.map((i) => i.message)[0]);
-  
-  const { plano, forma, numero, titular, mesExpiracao, anoExpiracao, cvv } = resultado.data;
+
+  const { plano, forma, numero, titular, validade, cvv } = resultado.data;
   const usaGateway = forma !== 'DINHEIRO';
 
+  // Separa "MM/AA" em mês e ano completo (ex: "12/28" -> mesExpiracao="12", anoExpiracao="2028")
+  let mesExpiracao, anoExpiracao;
+  if (forma === 'CREDITO' && validade) {
+    const [mes, anoCurto] = validade.split('/');
+    mesExpiracao = mes;
+    anoExpiracao = '20' + anoCurto;
+  }
+
   const total = plano === 'A_VISTA' ? Number(turma.curso.precoAvista) : Number(turma.curso.precoCheio);
-    
+
   let matricula;
   try {
     matricula = await prisma.matricula.create({

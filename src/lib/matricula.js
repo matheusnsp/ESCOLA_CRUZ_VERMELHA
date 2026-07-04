@@ -41,7 +41,16 @@ async function calcularValores(curso, plano, alunoId) {
   const valorCurso = valorCursoPorPlano(curso, plano);
   const valorTaxaMatricula = await obterTaxaMatricula(curso, alunoId);
   const total = new Prisma.Decimal(valorCurso).add(valorTaxaMatricula);
-  return { valorCurso, valorTaxaMatricula, total };
+
+  // Valor de cada parcela, apenas quando o plano for PARCELADO.
+  // Divide o total (curso + taxa) pelo numero de parcelas do curso.
+  let valorParcela = null;
+  if (plano === 'PARCELADO') {
+    const parcelas = Number(curso.parcelas) || 1;
+    valorParcela = total.div(parcelas);
+  }
+
+  return { valorCurso, valorTaxaMatricula, total, valorParcela };
 }
 
 // Formata um Decimal/numero como moeda BRL.

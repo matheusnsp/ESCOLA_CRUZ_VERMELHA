@@ -46,15 +46,20 @@ const inscricaoSchema = z.object({
   forma: z.enum(['PIX', 'CREDITO', 'DINHEIRO']),
   numero: z.string().optional(),
   titular: z.string().optional(),
-  mesExpiracao: z.string().optional(),
-  anoExpiracao: z.string().optional(),
+  validade: z.string().optional(),
   cvv: z.string().optional(),
 }).refine(d => {
   if (d.forma === 'CREDITO') {
-    return !!(d.numero && d.titular && d.cvv && d.mesExpiracao && d.anoExpiracao);
+    return !!(d.numero && d.titular && d.cvv && d.validade);
   }
   return true;
 }, { message: "Dados do cartão incompletos.", path: ["numero"] })
+.refine(d => {
+  if (d.forma === 'CREDITO' && d.validade) {
+    return /^\d{2}\/\d{2}$/.test(d.validade);
+  }
+  return true;
+}, { message: "Validade inválida. Use o formato MM/AA.", path: ["validade"] })
 .refine(d => !(d.plano === 'PARCELADO' && d.forma === 'PIX'), { path: ['forma'], message: 'Parcelamento apenas no crédito ou presencial.' });
 
 const turmaSchema = z.object({

@@ -27,7 +27,7 @@
 
       <label class="campo">
         <span>Plano</span>
-        <select name="plano">
+        <select name="plano" id="selectPlano">
           <option value="A_VISTA">À vista (<%= formatBRL(aVista.total) %>)</option>
           <option value="PARCELADO">Parcelado (<%= turma.curso.parcelas %>x de <%= formatBRL(parcelado.valorParcela) %> = <%= formatBRL(parcelado.total) %>)</option>
         </select>
@@ -44,7 +44,7 @@
 
       <div id="dadosDoCartao" style="display: none; border: 1px dashed #ccc; padding: 14px; margin-bottom: 14px; border-radius: 4px; background: #fafafa;">
         <h3 style="margin-top:0; font-size:15px; color:#333;">Dados do Cartão de Crédito</h3>
-        
+
         <label class="campo">
           <span style="font-size: 13px;">Número do Cartão</span>
           <input type="text" name="numero" placeholder="0000 0000 0000 0000" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
@@ -57,13 +57,8 @@
 
         <div style="display: flex; gap: 10px;">
           <label class="campo" style="flex: 1;">
-            <span style="font-size: 13px;">Mês Exp. (MM)</span>
-            <input type="text" name="mesExpiracao" placeholder="12" maxlength="2" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
-          </label>
-
-          <label class="campo" style="flex: 1;">
-            <span style="font-size: 13px;">Ano Exp. (AAAA)</span>
-            <input type="text" name="anoExpiracao" placeholder="2028" maxlength="4" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+            <span style="font-size: 13px;">Validade (MM/AA)</span>
+            <input type="text" name="validade" id="inputValidade" placeholder="12/28" maxlength="5" inputmode="numeric" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
           </label>
 
           <label class="campo" style="flex: 1;">
@@ -80,10 +75,43 @@
 </main>
 
 <script>
+  const selectPlano = document.getElementById('selectPlano');
+  const selectForma = document.getElementById('selectForma');
+
+  const OPCOES = {
+    A_VISTA: [
+      { value: 'PIX', label: 'Pix (Liberação imediata)' },
+      { value: 'CREDITO', label: 'Cartão de Crédito' },
+      { value: 'DINHEIRO', label: 'Dinheiro / Espécie (Pagar na secretaria)' }
+    ],
+    PARCELADO: [
+      { value: 'CREDITO', label: 'Cartão de Crédito' },
+      { value: 'DINHEIRO', label: 'Dinheiro / Espécie (Pagar na secretaria)' }
+    ]
+  };
+
+  function atualizarOpcoesForma() {
+    const formaAtual = selectForma.value;
+    const opcoes = OPCOES[selectPlano.value] || OPCOES.A_VISTA;
+
+    selectForma.innerHTML = '';
+    opcoes.forEach(op => {
+      const opt = document.createElement('option');
+      opt.value = op.value;
+      opt.textContent = op.label;
+      selectForma.appendChild(opt);
+    });
+
+    const aindaExiste = opcoes.some(op => op.value === formaAtual);
+    selectForma.value = aindaExiste ? formaAtual : opcoes[0].value;
+
+    selectForma.dispatchEvent(new Event('change'));
+  }
+
   document.getElementById('selectForma').addEventListener('change', function() {
     const blocoCartao = document.getElementById('dadosDoCartao');
     const inputsCartao = blocoCartao.querySelectorAll('input');
-    
+
     if (this.value === 'CREDITO') {
       blocoCartao.style.display = 'block';
       inputsCartao.forEach(input => input.removeAttribute('disabled'));
@@ -93,7 +121,21 @@
     }
   });
 
-  document.getElementById('selectForma').dispatchEvent(new Event('change'));
+  document.getElementById('inputValidade').addEventListener('input', function(e) {
+    let valor = e.target.value.replace(/\D/g, '');
+
+    if (valor.length > 4) valor = valor.slice(0, 4);
+
+    if (valor.length >= 3) {
+      valor = valor.slice(0, 2) + '/' + valor.slice(2);
+    }
+
+    e.target.value = valor;
+  });
+
+  selectPlano.addEventListener('change', atualizarOpcoesForma);
+
+  atualizarOpcoesForma();
 </script>
 
 <%- include('partials/site-footer') %>
