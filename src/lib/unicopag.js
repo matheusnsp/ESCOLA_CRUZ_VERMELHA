@@ -42,6 +42,14 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
     payment_method: paymentMethod,
     installments: isCredito ? Number(dadosCartao.parcelas || 1) : 1,
     postback_url: `${appUrl}/webhook/unicopag`,
+    // 💡 CORRIGIDO (PIX): o script de teste que a Únicopag confirmou funcionar manda
+    // "expire_in_days" e "origin" — campos que o código antigo não mandava. Faz sentido pro
+    // Pix especificamente (precisa de uma validade pro QR code, diferente do cartão que é
+    // processado na hora) e é bem provável que a ausência desses campos seja a causa real dos
+    // 504 no vps1.unicopag.com.br: a rota fica "pendurada" tentando gerar um Pix sem prazo de
+    // expiração em vez de responder rápido com erro de validação. Mandamos só no Pix pra não
+    // mudar nada do payload que já funciona no cartão.
+    ...(!isCredito ? { expire_in_days: 1, origin: 'escola-cruz-vermelha' } : {}),
     // Confirmado por log real de produção: a Únicopag NÃO ecoa esse metadata de volta no
     // webhook nem no GET /transactions/:hash. Mantemos o envio porque não faz mal e pode ser
     // útil pra consulta manual no painel deles, mas o webhook (cursos.js) não depende disso
