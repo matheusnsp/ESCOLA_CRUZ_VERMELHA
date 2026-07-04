@@ -129,8 +129,14 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
     paymentStatus: result.payment_status || 'pending',
     installments: result.installments || (isCredito ? Number(dadosCartao.parcelas || 1) : 1),
     checkoutUrl: result.checkout_url || null,
-    pixQrCode: result.pix?.qrcode || null,
-    pixUrl: result.pix?.url || null
+    // 💡 CORRIGIDO (PIX): o campo real que a Únicopag devolve é "pix_qr_code" (confirmado tanto
+    // na documentação oficial quanto em todo webhook real recebido em produção), não "qrcode".
+    // O mesmo vale pra "pix_url". Com os nomes errados, pixQrCode e pixUrl sempre voltavam
+    // null — a transação era criada normalmente do lado da Únicopag, só que a gente nunca
+    // conseguia extrair o QR code da resposta pra mostrar pro aluno, mesmo sem nenhum erro de
+    // rede ou timeout envolvido.
+    pixQrCode: result.pix?.pix_qr_code || null,
+    pixUrl: result.pix?.pix_url || null
   };
 }
 
