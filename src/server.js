@@ -118,6 +118,27 @@ app.post('/webhook/unicopag', async (req, res) => {
         });
         if (pagamento) {
           console.log(`[Webhook UnicopAg] Casado por e-mail (corrida de dados) — Pagamento ${pagamento.id}`);
+
+          // 💡 CORRIGIDO (PIX): grava o gatewayRef JÁ NESSE MOMENTO, mesmo que esse webhook
+          // ainda não seja de sucesso (ex.: "waiting_payment"). Isso é essencial pro PIX:
+          // o gateway (vps1.unicopag.com.br) às vezes demora tanto pra responder a criação da
+          // transação que o nginx deles devolve 504 pro nosso lado — mesmo a transação já
+          // tendo sido criada de verdade (é por isso que esse webhook está chegando aqui).
+          // Quando isso acontece, cursos.js marca a linha como CANCELADO por não ter como
+          // saber que deu certo do lado deles. Sem o gatewayRef gravado aqui, o webhook de
+          // pagamento CONFIRMADO que chega depois não encontra mais nenhuma linha PENDENTE
+          // pra casar por e-mail (ela virou CANCELADO) e cai em "Pagamento não identificado"
+          // pra sempre, mesmo com o cliente já tendo pago. Gravando o hash aqui, o próximo
+          // webhook casa direto por gatewayRef (esse find abaixo não filtra por status) e o
+          // pagamento é confirmado normalmente, não importa o que aconteceu com a chamada
+          // HTTP original de criação.
+          if (!pagamento.gatewayRef) {
+            await prisma.pagamento.updateMany({
+              where: { id: pagamento.id, gatewayRef: null },
+              data: { gatewayRef: String(hash) },
+            });
+            pagamento.gatewayRef = String(hash);
+          }
         }
       }
     }

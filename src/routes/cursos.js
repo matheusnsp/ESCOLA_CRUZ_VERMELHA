@@ -187,8 +187,30 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
   } catch (err) {
     console.error('[UnicopAg] Erro no Gateway:', err.message);
-    // Se a chamada ao gateway falhou (ex.: rejeição de cartão, erro 422, timeout), marca a
-    // linha PENDENTE criada acima como CANCELADO para não deixar registros órfãos no banco.
+
+    // 💡 CORRIGIDO (PIX): o gateway do Pix (vps1.unicopag.com.br) tem histórico de responder
+    // devagar/instável (504 do nginx deles) mesmo quando a transação FOI criada com sucesso do
+    // lado da Únicopag — confirmado em produção: o webhook "transaction.created" chega e já
+    // casa esse mesmo Pagamento por e-mail (corrida de dados, ver server.js) antes da nossa
+    // chamada aqui sequer terminar de estourar esse erro. Se cancelássemos a linha nesse caso,
+    // o webhook de pagamento CONFIRMADO que chega depois não teria mais onde gravar o status
+    // PAGO (a corrida por e-mail só olha pagamentos PENDENTE) e a matrícula ficaria pra sempre
+    // sem ser liberada, mesmo com o Pix pago. Isso NÃO se aplica ao cartão: a API de cartão
+    // (api.cloud.unicopag.com.br) responde de forma síncrona e confiável, então o comportamento
+    // de cancelar continua exatamente igual pra CREDITO (à vista e parcelado).
+    if (forma === 'PIX') {
+      const pagamentoAtual = await prisma.pagamento.findUnique({ where: { id: pagamentoPendente.id } });
+      if (pagamentoAtual?.gatewayRef) {
+        console.log(`[UnicopAg] Pix ${pagamentoAtual.gatewayRef} já havia sido confirmado pelo webhook antes da resposta do gateway chegar; mantendo Pagamento ${pagamentoPendente.id} como PENDENTE.`);
+        return res.render('erro', {
+          mensagem: 'Seu Pix está sendo processado. Acompanhe a confirmação em "Minha conta" em alguns instantes.',
+        });
+      }
+    }
+
+    // Se a chamada ao gateway falhou (ex.: rejeição de cartão, erro 422, timeout) e não há
+    // confirmação de que a transação existe do lado deles, marca a linha PENDENTE criada acima
+    // como CANCELADO para não deixar registros órfãos no banco.
     await prisma.pagamento.updateMany({
       where: { id: pagamentoPendente.id, status: 'PENDENTE' },
       data: { status: 'CANCELADO' },

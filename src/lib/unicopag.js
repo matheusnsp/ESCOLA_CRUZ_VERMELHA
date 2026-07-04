@@ -87,11 +87,31 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
   console.log(`[MONITORAMENTO CARTÃO] ➡️ 1. Enviando Transação. Matrícula Original: ${matriculaId} | Método: ${paymentMethod}`);
 
   const urlFinal = `${baseUrl}${endpoint}?api_token=${token.trim()}`;
-  const response = await fetch(urlFinal, {
-    method: 'POST', 
-    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+
+  // 💡 CORRIGIDO (PIX): o domínio do Pix (vps1.unicopag.com.br) é separado do domínio do
+  // cartão (api.cloud.unicopag.com.br, usado acima) e tem histórico de ficar lento/instável
+  // (504 do nginx deles). Sem limite, o node-fetch esperaria indefinidamente até o proxy deles
+  // desistir sozinho. Aplicamos um timeout de 20s só nessa chamada pra falhar mais rápido — o
+  // cartão continua exatamente como estava, sem nenhum timeout novo.
+  const controller = isCredito ? null : new AbortController();
+  const timeoutId = isCredito ? null : setTimeout(() => controller.abort(), 20000);
+
+  let response;
+  try {
+    response = await fetch(urlFinal, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      ...(controller ? { signal: controller.signal } : {}),
+    });
+  } catch (fetchErr) {
+    if (fetchErr.name === 'AbortError') {
+      throw new Error('Gateway: tempo limite excedido ao gerar o Pix (a transação pode ter sido criada mesmo assim; o webhook confirmará)');
+    }
+    throw fetchErr;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 
   const textBody = await response.text();
 
