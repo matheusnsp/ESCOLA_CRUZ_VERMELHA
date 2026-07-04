@@ -13,7 +13,6 @@ const authRoutes = require('./routes/auth');
 const painelRoutes = require('./routes/painel');
 const cursosRoutes = require('./routes/cursos');
 const adminRoutes = require('./routes/admin');
-const prisma = require('./db'); // Importado para uso no Webhook direto
 
 const app = express();
 
@@ -66,82 +65,13 @@ app.use(
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// 💡 ROTA DO WEBHOOK CORRIGIDA E SINCRONIZADA COM O SEU BANCO DE DADOS:
-app.post('/webhook/unicopag', async (req, res) => {
-  try {
-    const payload = req.body;
-    console.log('[Webhook UnicopAg] Notificação recebida no servidor:', JSON.stringify(payload));
-
-    const idPrincipal = payload.gatewaytransaction || payload.id;
-    const hashMenor = payload.transactionhash || payload.hash || payload.result?.hash;
-    const orderId = payload.order_id || payload.metadata?.order_id || payload.result?.metadata?.order_id;
-    
-    // Normaliza o status vindo do gateway para letras minúsculas
-    const payment_status = String(payload.payment_status || payload.status || payload.result?.status).toLowerCase();
-
-    if (!payment_status) {
-      console.error('[Webhook UnicopAg] Erro: Status de pagamento ausente.');
-      return res.status(400).send('Status inválido');
-    }
-
-    const pagamento = await prisma.pagamento.findFirst({
-      where: {
-        OR: [
-          idPrincipal ? { gatewayRef: String(idPrincipal) } : null,
-          hashMenor ? { gatewayRef: String(hashMenor) } : null,
-          orderId ? { matriculaId: String(orderId) } : null
-        ].filter(Boolean)
-      }
-    });
-
-    if (!pagamento) {
-      console.error(`[Webhook UnicopAg] Nenhum pagamento achado no banco.`);
-      return res.status(200).send('Não localizado');
-    }
-
-    const matriculaId = pagamento.matriculaId;
-    console.log(`[Webhook UnicopAg] Localizado! Matrícula associada: ${matriculaId}`);
-
-    // Mapeamento e atualização direta das tabelas no Banco de Dados
-// 💡 MODIFICADO: Identifica se é parcelado e aplica a tag correta no banco
-    if (payment_status === 'paid' || payment_status === 'pago' || payment_status === 'success') {
-      
-      // Verifica no payload da Únicopag se o método usado foi cartão de crédito
-      const metodoPagamento = String(payload.payment_method || payload.result?.payment_method).toLowerCase();
-      const novoStatus = (metodoPagamento === 'credit_card' || metodoPagamento === 'cartao_credito') ? 'PARCELADO' : 'PAGO';
-
-      await prisma.$transaction([
-        prisma.pagamento.updateMany({ 
-          where: { matriculaId }, 
-          data: { status: novoStatus, atualizadoEm: new Date() } 
-        }),
-        prisma.matricula.update({ 
-          where: { id: matriculaId }, 
-          data: { statusPagamento: novoStatus, confirmadaEm: new Date(), confirmadaPor: 'unicopag' } 
-        })
-      ]);
-      console.log(`[Webhook UnicopAg] 🎉 Matrícula ${matriculaId} atualizada para ${novoStatus}!`);
-    } else if (payment_status === 'refunded' || payment_status === 'estornado') {
-      await prisma.$transaction([
-        prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'ESTORNADO', atualizadoEm: new Date() } }),
-        prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'ESTORNADO' } })
-      ]);
-      console.log(`[Webhook UnicopAg] ↩️ Matrícula ${matriculaId} atualizada para ESTORNADO.`);
-    } else if (payment_status === 'refused' || payment_status === 'failed' || payment_status === 'cancelado') {
-      await prisma.$transaction([
-        // 💡 CORRIGIDO: Nome do campo corrigido de AIC/updatedAt para o padrão do seu banco: atualizadoEm
-        prisma.pagamento.updateMany({ where: { matriculaId }, data: { status: 'CANCELADO', atualizadoEm: new Date() } }),
-        prisma.matricula.update({ where: { id: matriculaId }, data: { statusPagamento: 'CANCELADO' } })
-      ]);
-      console.log(`[Webhook UnicopAg] ❌ Matrícula ${matriculaId} atualizada para CANCELADO.`);
-    }
-
-    return res.status(200).send('Webhook processado');
-  } catch (error) {
-    console.error('[Webhook UnicopAg] Erro crítico no banco:', error.message);
-    return res.status(500).send('Erro interno');
-  }
-});
+// 💡 O webhook da Únicopag é tratado em src/routes/cursos.js (router.post('/webhook/unicopag')).
+// Havia uma segunda definição dessa mesma rota aqui no server.js, registrada ANTES do
+// cursosRoutes ser montado — como o Express casa rotas na ordem de registro, essa versão
+// duplicada sempre respondia primeiro e a do cursos.js nunca era executada. Ela também tinha
+// um bug próprio (marcava qualquer pagamento em cartão como PARCELADO, mesmo à vista, e não
+// tratava a corrida de dados do webhook chegando antes do gatewayRef ser salvo). Removida
+// para não haver mais duas fontes de verdade conflitantes para o mesmo webhook.
 
 // Arquivos estaticos (CSS, JS, imagens). index:false para a home ser a rota '/'.
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
