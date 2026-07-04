@@ -208,31 +208,7 @@ body > section {
 }
 .btn-sair-sutil:hover { border-color: #cc0000; color: #cc0000; }
 
-/* ===== Painel da conta com menu lateral ===== */
-.conta-layout { display: grid; grid-template-columns: 230px 1fr; gap: 28px; align-items: start; }
-.conta-side {
-  display: flex; flex-direction: column; gap: 4px;
-  background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 10px;
-  position: sticky; top: 24px;
-}
-.conta-side-item {
-  display: flex; align-items: center; gap: 11px;
-  padding: 12px 14px; border-radius: 9px;
-  text-decoration: none; color: #4a5568; font-size: 14px; font-weight: 600;
-}
-.conta-side-item i { width: 18px; }
-.conta-side-item:hover { background: #f7f8fa; }
-.conta-side-item.ativo { background: #fef2f2; color: #cc0000; }
-.conta-side-item.ativo i { color: #cc0000; }
-.conta-side-perigo { color: #991b1b; }
-.conta-main { min-width: 0; }
-@media (max-width: 760px) {
-  .conta-layout { grid-template-columns: 1fr; }
-  .conta-side { flex-direction: row; flex-wrap: wrap; position: static; }
-  .conta-side-item { flex: 1; justify-content: center; }
-}
-
-/* ===== Painel da conta — visual repaginado (sobrepõe regras anteriores) ===== */
+/* ===== Painel da conta — visual repaginado ===== */
 .interna-wrap { max-width: 1040px; }
 .conta-layout {
   display: grid; grid-template-columns: 290px 1fr; gap: 28px; align-items: start;
@@ -408,7 +384,7 @@ body > section {
 /* Marca d'água dos 3 símbolos estilizados no banner do Sobre */
 .hero-simbolos {
   position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background: url('/img/emblemas.png') center 38% no-repeat;
+  background: url('/img/emblemas.webp') center 38% no-repeat;
   background-size: min(760px, 82%);
   opacity: 0.13;
 }

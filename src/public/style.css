@@ -218,7 +218,7 @@ body {
     position: relative;
     color: var(--white);
     padding: 130px 24px 150px;
-    background: var(--black) url('/img/capa.png') center 35% / cover no-repeat;
+    background: var(--black) url('/img/capa.webp') center 35% / cover no-repeat;
 }
 
 .hero-section::before {
