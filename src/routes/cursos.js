@@ -118,6 +118,23 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
   if (!aluno?.cpfCnpj) return res.render('erro', { mensagem: 'CPF obrigatório.' });
 
+  // Cria o registro de Pagamento ANTES de chamar o gateway, com gatewayRef ainda em branco.
+  // Isso garante que já existe uma linha PENDENTE vinculada à matrícula no banco no instante
+  // em que o cartão é cobrado — mesmo que o webhook da Únicopag chegue antes desta função
+  // terminar de rodar (o que acontece com frequência na API Cloud, que é assíncrona e rápida).
+  // Também evita criar uma segunda linha duplicada caso o webhook já tenha processado tudo
+  // enquanto aguardávamos a resposta do gateway.
+  const pagamentoPendente = await prisma.pagamento.create({
+    data: {
+      matriculaId: matricula.id,
+      gateway: 'unicopag',
+      gatewayRef: null,
+      metodo: forma,
+      valor: total,
+      status: 'PENDENTE',
+    },
+  });
+
   try {
     const parcelasFinais = plano === 'PARCELADO' ? Number(turma.curso.parcelas || 1) : 1;
 
@@ -140,15 +157,13 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       } : null
     });
 
-    await prisma.pagamento.create({
-      data: {
-        matriculaId: matricula.id,
-        gateway: 'unicopag',
-        gatewayRef: String(resultadoGateway.gatewayRef || resultadoGateway.id || resultadoGateway.hash),
-        metodo: forma,
-        valor: total,
-        status: 'PENDENTE',
-      },
+    const gatewayRef = String(resultadoGateway.gatewayRef || resultadoGateway.id || resultadoGateway.hash);
+
+    // Só atualiza a linha se ela ainda estiver PENDENTE — se o webhook já chegou e marcou
+    // como PAGO nesse meio-tempo, não queremos sobrescrever o status de volta.
+    await prisma.pagamento.updateMany({
+      where: { id: pagamentoPendente.id, status: 'PENDENTE' },
+      data: { gatewayRef },
     });
 
     if (resultadoGateway.checkoutUrl) {
@@ -164,6 +179,12 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
   } catch (err) {
     console.error('[UnicopAg] Erro no Gateway:', err.message);
+    // Se a chamada ao gateway falhou (ex.: rejeição de cartão, erro 422, timeout), marca a
+    // linha PENDENTE criada acima como CANCELADO para não deixar registros órfãos no banco.
+    await prisma.pagamento.updateMany({
+      where: { id: pagamentoPendente.id, status: 'PENDENTE' },
+      data: { status: 'CANCELADO' },
+    });
     return res.render('erro', { mensagem: 'Houve um problema ao processar o pagamento. Tente novamente.' });
   }
 });
@@ -185,91 +206,84 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
 router.post('/webhook/unicopag', async (req, res) => {
   try {
     const payload = req.body;
-    console.log('[MONITORAMENTO CARTÃO] 🔔 Webhook disparado pelo gateway!');
+    console.log('[Webhook UnicopAg] Notificação recebida:', JSON.stringify(payload));
 
-    const id = payload.id || payload.gatewaytransaction || '';
-    const hash = payload.hash || payload.transactionhash || '';
-    let status = payload.payment_status || payload.status || '';
+    // Formato real confirmado em log de produção (payload achatado, sem "data"/"result"):
+    // { event, id, hash, payment_method, payment_status, amount_total, customer: {...},
+    //   items: [{ hash, title, price, quantity, operation_type }], ... }
+    // IMPORTANTE: esse payload NÃO tem metadata/order_id. O único jeito de saber a que
+    // matrícula ele se refere é pelo hash (== gatewayRef que salvamos) ou, na janela de
+    // corrida em que o gatewayRef ainda não foi gravado, pelo CPF do cliente.
+    const hash = payload.hash || payload.id || '';
+    const status = payload.payment_status || payload.status || '';
+    const amountTotal = Number(payload.amount_total ?? payload.amount ?? 0) / 100;
+    const documentoCliente = String(payload.customer?.document || '').replace(/\D/g, '');
 
     if (!hash) return res.status(200).send('Sem hash para processar');
 
-    // 1. TENTA BUSCAR LOGO DE PRIMEIRA PELO HASH DA TRANSAÇÃO
-    let pagamento = await prisma.pagamento.findFirst({
-      where: { gatewayRef: String(hash) }
+    // 1. Caminho normal: casa pelo hash da transação já salvo no Pagamento.
+    let pagamento = await prisma.pagamento.findFirst({ where: { gatewayRef: String(hash) } });
+
+    // 2. Corrida de dados: o webhook chegou antes de terminarmos de gravar o gatewayRef
+    //    (a linha PENDENTE já existe, criada antes de chamar o gateway — ver POST
+    //    /inscrever/:turmaId — só falta o gatewayRef). Casa pelo CPF do cliente + valor +
+    //    status PENDENTE mais recente, já que é o único vínculo disponível nesse payload.
+    if (!pagamento && documentoCliente) {
+      const aluno = await prisma.usuario.findUnique({ where: { cpfCnpj: documentoCliente } });
+      if (aluno) {
+        pagamento = await prisma.pagamento.findFirst({
+          where: {
+            status: 'PENDENTE',
+            valor: amountTotal,
+            matricula: { alunoId: aluno.id },
+          },
+          orderBy: { criadoEm: 'desc' },
+        });
+        if (pagamento) {
+          console.log(`[Webhook UnicopAg] Casado por CPF (corrida de dados) — Pagamento ${pagamento.id}`);
+        }
+      }
+    }
+
+    if (!pagamento) {
+      console.error(`[Webhook UnicopAg] Pagamento não identificado. hash=${hash} doc=${documentoCliente} valor=${amountTotal} payload=${JSON.stringify(payload)}`);
+      return res.status(200).send('Pagamento não identificado');
+    }
+
+    // Idempotência: se um retry do webhook chegar depois de já termos processado, não refaz.
+    if (pagamento.status === 'PAGO') {
+      return res.status(200).send('Já processado');
+    }
+
+    const ehSucesso = ['paid', 'pago', 'success', 'captured', 'approved'].includes(String(status).toLowerCase());
+    if (!ehSucesso) {
+      console.log(`[Webhook UnicopAg] Status "${status}" ainda não é de sucesso para o Pagamento ${pagamento.id}; nada a atualizar por ora.`);
+      return res.status(200).send('Status recebido, aguardando confirmação de pagamento.');
+    }
+
+    await prisma.pagamento.updateMany({
+      where: { id: pagamento.id },
+      data: { status: 'PAGO', gatewayRef: String(hash), atualizadoEm: new Date() },
     });
 
-    let matriculaId = pagamento ? pagamento.matriculaId : null;
+    const dadosMatricula = await prisma.matricula.findUnique({ where: { id: pagamento.matriculaId } });
+    const novoStatusMatricula = dadosMatricula?.plano === 'PARCELADO' ? 'PARCELADO' : 'PAGO';
 
-    // 2. SE NÃO ACHOU (RACE CONDITION OU NOVO), CONSULTA DIRETAMENTE A API DELES PARA PEGAR OS METADADOS REAIS!
-    if (!matriculaId) {
-      console.log(`[MONITORAMENTO CARTÃO] 🔍 Buscando metadados oficiais da transação ${hash} na API Cloud...`);
-      const token = process.env.UNICOPAG_API_TOKEN || '';
-      
-      try {
-        const response = await fetch(`https://api.cloud.unicopag.com.br/public/v1/transactions/${hash}?api_token=${token.trim()}`);
-        if (response.ok) {
-          const dadosApi = await response.json();
-          const transacaoReal = dadosApi.result || dadosApi;
-          
-          // Pega o order_id seguro que salvamos no metadata
-          matriculaId = transacaoReal.metadata?.order_id || null;
-          status = transacaoReal.payment_status || status;
-          console.log(`[MONITORAMENTO CARTÃO] 🎯 API respondeu! Matrícula encontrada via Metadata: ${matriculaId}`);
-        }
-      } catch (errApi) {
-        console.error('[MONITORAMENTO CARTÃO] Erro ao consultar transação na API:', errApi.message);
-      }
-    }
+    await prisma.matricula.update({
+      where: { id: pagamento.matriculaId },
+      data: {
+        statusPagamento: novoStatusMatricula,
+        confirmadaEm: new Date(),
+        confirmadaPor: 'unicopag',
+      },
+    });
 
-    // Se mesmo consultando a API não achar a matrícula associada, encerra com aviso
-    if (!matriculaId) {
-      console.error(`[MONITORAMENTO CARTÃO] ❌ IMPOSSÍVEL IDENTIFICAR A MATRÍCULA PARA O HASH: ${hash}`);
-      return res.status(200).send('Matrícula não identificada');
-    }
-
-    const ehSucesso = ['paid', 'PAGO', 'success', 'captured'].includes(status);
-
-    if (ehSucesso) {
-      // 3. SE O PAGAMENTO NÃO EXISTIA NO BANCO AINDA, CRIA ELE AGORA (Garante a baixa mesmo com o Webhook sendo mais rápido)
-      if (!pagamento) {
-        console.log(`[MONITORAMENTO CARTÃO] ⚠️ Criando pagamento de emergência imediato para a Matrícula: ${matriculaId}`);
-        pagamento = await prisma.pagamento.create({
-          data: {
-            matriculaId: matriculaId,
-            gateway: 'unicopag',
-            gatewayRef: String(hash),
-            metodo: 'CREDITO',
-            valor: Number(payload.amount_total || 500) / 100,
-            status: 'PAGO'
-          }
-        });
-      } else {
-        await prisma.pagamento.updateMany({
-          where: { id: pagamento.id },
-          data: { status: 'PAGO', atualizadoEm: new Date() }
-        });
-      }
-
-      // 4. ATUALIZA A TAG DA MATRÍCULA NO SITE
-      const dadosMatricula = await prisma.matricula.findUnique({ where: { id: matriculaId } });
-      const novoStatusMatricula = dadosMatricula?.plano === 'PARCELADO' ? 'PARCELADO' : 'PAGO';
-
-      await prisma.matricula.update({
-        where: { id: matriculaId },
-        data: { 
-          statusPagamento: novoStatusMatricula, 
-          confirmadaEm: new Date(),
-          confirmadaPor: 'unicopag'
-        }
-      });
-
-      console.log(`[MONITORAMENTO CARTÃO] ✅ SUCESSO ABSOLUTO: Matrícula ${matriculaId} atualizada para ${novoStatusMatricula}`);
-    }
+    console.log(`[Webhook UnicopAg] ✅ Matrícula ${pagamento.matriculaId} atualizada para ${novoStatusMatricula}`);
 
     return res.status(200).send('Webhook processado com segurança');
 
   } catch (error) {
-    console.error('[MONITORAMENTO CARTÃO] 💥 Erro interno no processamento do webhook:', error);
+    console.error('[Webhook UnicopAg] 💥 Erro interno no processamento do webhook:', error);
     return res.status(500).send('Erro interno');
   }
 });

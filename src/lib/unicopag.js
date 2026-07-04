@@ -30,11 +30,23 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
   const valorTratado = parseFloat(valorTotal || 0).toFixed(2);
   const amountCentavos = Math.round(parseFloat(valorTratado) * 100);
 
+  // ⚠️ Sobre antifraude: a documentação da Únicopag diz que a integração com o sistema de
+  // antifraude (ThreatMetrix) é obrigatória para cartão. O log real de uma transação de teste
+  // mostrou "payment_status":"paid" — ou seja, o gateway ESTÁ aprovando a transação
+  // normalmente mesmo sem esse profiling implementado. Então isso não é a causa do problema
+  // relatado (matrícula não atualiza); o problema era 100% reconciliação no /webhook/unicopag,
+  // já corrigido em cursos.js. Ainda assim, vale implementar o antifraude a médio prazo — sem
+  // ele você fica mais exposto a fraude/chargeback, mesmo que hoje as transações passem.
   const payload = {
     amount: amountCentavos,
     payment_method: paymentMethod,
     installments: isCredito ? Number(dadosCartao.parcelas || 1) : 1,
     postback_url: `${appUrl}/webhook/unicopag`,
+    // Confirmado por log real de produção: a Únicopag NÃO ecoa esse metadata de volta no
+    // webhook nem no GET /transactions/:hash. Mantemos o envio porque não faz mal e pode ser
+    // útil pra consulta manual no painel deles, mas o webhook (cursos.js) não depende disso
+    // pra identificar a matrícula — ele casa pelo hash da transação (gatewayRef) e, na janela
+    // de corrida, pelo CPF do cliente.
     metadata: {
       order_id: String(matriculaId)
     },
