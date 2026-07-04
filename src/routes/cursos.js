@@ -198,10 +198,25 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
     // sem ser liberada, mesmo com o Pix pago. Isso NÃO se aplica ao cartão: a API de cartão
     // (api.cloud.unicopag.com.br) responde de forma síncrona e confiável, então o comportamento
     // de cancelar continua exatamente igual pra CREDITO (à vista e parcelado).
+    // 💡 CORRIGIDO (PIX): o gateway do Pix (vps1.unicopag.com.br) tem histórico de responder
+    // devagar/instável (504 do nginx deles) mesmo quando a transação FOI criada com sucesso do
+    // lado da Únicopag — confirmado em produção: o webhook "transaction.created" chega e já
+    // casa esse mesmo Pagamento por e-mail (corrida de dados, ver server.js), só que às vezes
+    // com um atraso de 1-2 segundos em relação ao instante em que nossa chamada aqui estoura o
+    // erro. Por isso, antes de cancelar, esperamos até 5s (checando a cada 1s) se esse webhook
+    // chega e grava o gatewayRef nesse meio-tempo. Só cancelamos se, depois dessa janela, ainda
+    // não houver nenhuma confirmação — isso NÃO se aplica ao cartão: a API de cartão
+    // (api.cloud.unicopag.com.br) responde de forma síncrona e confiável, então o comportamento
+    // continua exatamente igual pra CREDITO (à vista e parcelado), sem essa espera.
     if (forma === 'PIX') {
-      const pagamentoAtual = await prisma.pagamento.findUnique({ where: { id: pagamentoPendente.id } });
+      let pagamentoAtual = null;
+      for (let tentativa = 0; tentativa < 5; tentativa++) {
+        pagamentoAtual = await prisma.pagamento.findUnique({ where: { id: pagamentoPendente.id } });
+        if (pagamentoAtual?.gatewayRef) break;
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
       if (pagamentoAtual?.gatewayRef) {
-        console.log(`[UnicopAg] Pix ${pagamentoAtual.gatewayRef} já havia sido confirmado pelo webhook antes da resposta do gateway chegar; mantendo Pagamento ${pagamentoPendente.id} como PENDENTE.`);
+        console.log(`[UnicopAg] Pix ${pagamentoAtual.gatewayRef} foi confirmado pelo webhook durante a espera; mantendo Pagamento ${pagamentoPendente.id} como PENDENTE.`);
         return res.render('erro', {
           mensagem: 'Seu Pix está sendo processado. Acompanhe a confirmação em "Minha conta" em alguns instantes.',
         });

@@ -88,30 +88,20 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
 
   const urlFinal = `${baseUrl}${endpoint}?api_token=${token.trim()}`;
 
-  // 💡 CORRIGIDO (PIX): o domínio do Pix (vps1.unicopag.com.br) é separado do domínio do
-  // cartão (api.cloud.unicopag.com.br, usado acima) e tem histórico de ficar lento/instável
-  // (504 do nginx deles). Sem limite, o node-fetch esperaria indefinidamente até o proxy deles
-  // desistir sozinho. Aplicamos um timeout de 20s só nessa chamada pra falhar mais rápido — o
-  // cartão continua exatamente como estava, sem nenhum timeout novo.
-  const controller = isCredito ? null : new AbortController();
-  const timeoutId = isCredito ? null : setTimeout(() => controller.abort(), 20000);
-
-  let response;
-  try {
-    response = await fetch(urlFinal, {
-      method: 'POST',
-      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      ...(controller ? { signal: controller.signal } : {}),
-    });
-  } catch (fetchErr) {
-    if (fetchErr.name === 'AbortError') {
-      throw new Error('Gateway: tempo limite excedido ao gerar o Pix (a transação pode ter sido criada mesmo assim; o webhook confirmará)');
-    }
-    throw fetchErr;
-  } finally {
-    if (timeoutId) clearTimeout(timeoutId);
-  }
+  // O domínio do Pix (vps1.unicopag.com.br) é separado do domínio do cartão
+  // (api.cloud.unicopag.com.br, usado acima) e tem histórico de ficar lento/instável (504 do
+  // nginx deles). Chegamos a testar um timeout curto (AbortController, 20s) aqui, mas isso
+  // piorou o problema: em produção o webhook "transaction.created" costuma chegar durante a
+  // espera do 504 real (que pode passar de 20s) — cortando a chamada mais cedo, a gente
+  // cancelava o Pagamento ANTES do webhook ter chance de chegar e gravar o gatewayRef (ver
+  // server.js e o catch em cursos.js), criando exatamente a mesma corrida que estávamos
+  // tentando resolver. Por isso deixamos sem timeout aqui: se a Únicopag demorar, esperamos —
+  // é o catch em cursos.js (com um pequeno período de tolerância) que decide se cancela ou não.
+  const response = await fetch(urlFinal, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
 
   const textBody = await response.text();
 
