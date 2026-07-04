@@ -116,6 +116,14 @@ body {
     line-height: 1;
 }
 
+/* Logo do header (imagem) */
+.logo-img {
+    height: 46px;
+    width: auto;
+    display: block;
+    flex-shrink: 0;
+}
+
 .brand-text {
     display: flex;
     flex-direction: column;
@@ -543,6 +551,7 @@ body {
 }
 
 .impact-title {
+    text-align: center;
     font-size: 28px;
     font-weight: 900;
     line-height: 1.2;
@@ -1016,6 +1025,13 @@ body {
     color: var(--red);
 }
 
+/* Logo do rodapé (imagem) */
+.footer-logo-img {
+    height: 64px;
+    width: auto;
+    display: block;
+}
+
 .footer-logo strong {
     display: block;
     font-weight: 900;
@@ -1221,31 +1237,89 @@ button:focus-visible {
     }
     .feature-item:last-child { border-bottom: none; padding-bottom: 0 !important; }
 
+    /* Impacto: mesmo espaçamento lateral das outras seções (igual .courses-section) */
+    .impact-container {
+        padding: 0 24px;
+    }
+
+    .news-grid { grid-template-columns: 1fr; }
+
+    .footer-grid {
+        grid-template-columns: 1fr;
+        gap: 32px;
+        text-align: center;
+    }
+
+    .footer-brand,
+    .footer-col {
+        align-items: center;
+    }
+
+    .footer-logo {
+        justify-content: center;
+    }
+
+    .footer-logo-img {
+        height: 54px;
+    }
+
+    .footer-social {
+        justify-content: center;
+    }
+
+    .section-title { font-size: 26px; }
+    .faq-title, .news-title { font-size: 26px; }
+    .impact-title { font-size: 26px; }
+}
+
+/* Impacto + Depoimentos: empilha só em telas menores, mantendo 2 colunas em tablets */
+@media (max-width: 860px) {
     .impact-container {
         grid-template-columns: 1fr;
         gap: 40px;
     }
 
-    .testi-card { flex: 0 0 85%; }
-
-    .news-grid { grid-template-columns: 1fr; }
-
-    .footer-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 28px;
+    .impact-title {
+        margin-top: 8px;
     }
 
-    .section-title { font-size: 26px; }
-    .faq-title, .news-title { font-size: 26px; }
-    .impact-title { font-size: 22px; }
+    .testi-card { flex: 0 0 85%; }
+}
+
+/* Evita que as seções fiquem coladas no header fixo (sticky) ao rolar */
+.impact-section,
+.courses-section,
+.faq-section,
+.news-section,
+.support-section {
+    scroll-margin-top: 90px;
+}
+
+/* Cursos: mostra só os 2 primeiros nessa faixa (o resto fica acessível pelo botão "Ver todos os cursos") */
+@media (min-width: 601px) and (max-width: 1024px) {
+    .courses-grid .course-card:nth-child(n+3) {
+        display: none;
+    }
 }
 
 @media (max-width: 600px) {
     .hero-buttons { flex-direction: column; align-items: flex-start; }
-    .footer-grid { grid-template-columns: 1fr; }
     .wpp-float-text { display: none; }
     .nav-links { gap: 14px; }
     .courses-section::before { font-size: 26px; }
+
+    .impact-container { padding: 0 20px; }
+
+    .footer-logo-img { height: 46px; }
+
+    .footer-inner {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .footer-inner .sep {
+        display: none; /* remove os "|" quando quebra em coluna */
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1350,4 +1424,68 @@ button:focus-visible {
   .header-actions .user-menu,
   .header-actions .user-menu summary,
   .header-actions form { width: 100%; }
+}
+
+/* ============================================================
+   MARCA (LOGO + NOME) — estilo do print, aplicado no mobile
+   ============================================================ */
+@media (max-width: 1024px) {
+
+    .header-container {
+      padding: 14px 20px !important;
+    }
+
+    .logo-area {
+      display: flex !important;
+      align-items: center !important;
+      gap: 16px !important;
+      min-width: 0 !important; /* evita que o flex esprema o texto */
+    }
+
+    .logo-img {
+      height: 56px !important;
+      width: auto !important;
+      flex-shrink: 0 !important;
+    }
+
+    .brand-text {
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: center !important;
+      line-height: 1.15 !important;
+      border-left: 2px solid var(--gray-200, #e2e8f0) !important;
+      padding-left: 14px !important;
+      white-space: normal !important;
+    }
+
+    .brand-title {
+      font-size: 19px !important;
+      font-weight: 900 !important;
+      color: var(--black) !important;
+      text-transform: uppercase !important;
+      letter-spacing: -0.3px !important;
+    }
+
+    .brand-subtitle {
+      font-size: 13px !important;
+      font-weight: 800 !important;
+      color: var(--red) !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.5px !important;
+      margin-top: 2px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .logo-img { height: 46px !important; }
+    .brand-title { font-size: 16px !important; }
+    .brand-subtitle { font-size: 11px !important; }
+    .footer-logo-img { margin: 0 auto; }
+    .footer-grid { text-align: center; }
+    .footer-social {
+        display: flex;
+        justify-content: center; /* centraliza horizontalmente */
+        align-items: center;     /* centraliza verticalmente (se necessário) */
+        gap: 10px;
+    }
 }
