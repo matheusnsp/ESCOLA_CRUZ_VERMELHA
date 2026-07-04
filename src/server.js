@@ -84,6 +84,13 @@ app.post('/webhook/unicopag', async (req, res) => {
     // foi gravado, pelo e-mail do cliente (customer.email, esse sim presente no payload).
     const hash = payload.hash || payload.id || '';
     const status = payload.payment_status || payload.status || '';
+    // 💡 CORRIGIDO: em parcelamento a Únicopag manda "amount" (valor base, o mesmo que
+    // enviamos e que fica salvo em Pagamento.valor) e "amount_total" (base + juros do
+    // parcelamento — ex.: amount:1000, amount_total:1060 pra 2x). O matching de contingência
+    // abaixo usava amount_total, e como o banco guarda o valor SEM juros, a comparação nunca
+    // casava em compras parceladas ("Pagamento não identificado" mesmo com email certo).
+    // amount_total é mantido só pra log/exibição do valor real cobrado do cliente.
+    const amountBase = Number(payload.amount ?? payload.amount_total ?? 0) / 100;
     const amountTotal = Number(payload.amount_total ?? payload.amount ?? 0) / 100;
     // Confirmado em log real: customer.document NÃO vem no payload do webhook (só vinha na
     // requisição de criação). O campo confiável disponível aqui é customer.email.
@@ -104,7 +111,7 @@ app.post('/webhook/unicopag', async (req, res) => {
         pagamento = await prisma.pagamento.findFirst({
           where: {
             status: 'PENDENTE',
-            valor: amountTotal,
+            valor: amountBase,
             matricula: { alunoId: aluno.id },
           },
           orderBy: { criadoEm: 'desc' },
