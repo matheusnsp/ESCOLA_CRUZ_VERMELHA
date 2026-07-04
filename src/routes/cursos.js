@@ -203,89 +203,9 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
   });
 });
 
-router.post('/webhook/unicopag', async (req, res) => {
-  try {
-    const payload = req.body;
-    console.log('[Webhook UnicopAg] Notificação recebida:', JSON.stringify(payload));
-
-    // Formato real confirmado em log de produção (payload achatado, sem "data"/"result"):
-    // { event, id, hash, payment_method, payment_status, amount_total, customer: {...},
-    //   items: [{ hash, title, price, quantity, operation_type }], ... }
-    // IMPORTANTE: esse payload NÃO tem metadata/order_id. O único jeito de saber a que
-    // matrícula ele se refere é pelo hash (== gatewayRef que salvamos) ou, na janela de
-    // corrida em que o gatewayRef ainda não foi gravado, pelo CPF do cliente.
-    const hash = payload.hash || payload.id || '';
-    const status = payload.payment_status || payload.status || '';
-    const amountTotal = Number(payload.amount_total ?? payload.amount ?? 0) / 100;
-    const documentoCliente = String(payload.customer?.document || '').replace(/\D/g, '');
-
-    if (!hash) return res.status(200).send('Sem hash para processar');
-
-    // 1. Caminho normal: casa pelo hash da transação já salvo no Pagamento.
-    let pagamento = await prisma.pagamento.findFirst({ where: { gatewayRef: String(hash) } });
-
-    // 2. Corrida de dados: o webhook chegou antes de terminarmos de gravar o gatewayRef
-    //    (a linha PENDENTE já existe, criada antes de chamar o gateway — ver POST
-    //    /inscrever/:turmaId — só falta o gatewayRef). Casa pelo CPF do cliente + valor +
-    //    status PENDENTE mais recente, já que é o único vínculo disponível nesse payload.
-    if (!pagamento && documentoCliente) {
-      const aluno = await prisma.usuario.findUnique({ where: { cpfCnpj: documentoCliente } });
-      if (aluno) {
-        pagamento = await prisma.pagamento.findFirst({
-          where: {
-            status: 'PENDENTE',
-            valor: amountTotal,
-            matricula: { alunoId: aluno.id },
-          },
-          orderBy: { criadoEm: 'desc' },
-        });
-        if (pagamento) {
-          console.log(`[Webhook UnicopAg] Casado por CPF (corrida de dados) — Pagamento ${pagamento.id}`);
-        }
-      }
-    }
-
-    if (!pagamento) {
-      console.error(`[Webhook UnicopAg] Pagamento não identificado. hash=${hash} doc=${documentoCliente} valor=${amountTotal} payload=${JSON.stringify(payload)}`);
-      return res.status(200).send('Pagamento não identificado');
-    }
-
-    // Idempotência: se um retry do webhook chegar depois de já termos processado, não refaz.
-    if (pagamento.status === 'PAGO') {
-      return res.status(200).send('Já processado');
-    }
-
-    const ehSucesso = ['paid', 'pago', 'success', 'captured', 'approved'].includes(String(status).toLowerCase());
-    if (!ehSucesso) {
-      console.log(`[Webhook UnicopAg] Status "${status}" ainda não é de sucesso para o Pagamento ${pagamento.id}; nada a atualizar por ora.`);
-      return res.status(200).send('Status recebido, aguardando confirmação de pagamento.');
-    }
-
-    await prisma.pagamento.updateMany({
-      where: { id: pagamento.id },
-      data: { status: 'PAGO', gatewayRef: String(hash), atualizadoEm: new Date() },
-    });
-
-    const dadosMatricula = await prisma.matricula.findUnique({ where: { id: pagamento.matriculaId } });
-    const novoStatusMatricula = dadosMatricula?.plano === 'PARCELADO' ? 'PARCELADO' : 'PAGO';
-
-    await prisma.matricula.update({
-      where: { id: pagamento.matriculaId },
-      data: {
-        statusPagamento: novoStatusMatricula,
-        confirmadaEm: new Date(),
-        confirmadaPor: 'unicopag',
-      },
-    });
-
-    console.log(`[Webhook UnicopAg] ✅ Matrícula ${pagamento.matriculaId} atualizada para ${novoStatusMatricula}`);
-
-    return res.status(200).send('Webhook processado com segurança');
-
-  } catch (error) {
-    console.error('[Webhook UnicopAg] 💥 Erro interno no processamento do webhook:', error);
-    return res.status(500).send('Erro interno');
-  }
-});
+// O webhook /webhook/unicopag foi movido para server.js, registrado ANTES do middleware de
+// CSRF (app.use(csrfProtection)). Aqui, dentro do cursosRoutes, a rota ficaria depois do CSRF
+// e o Únicopag (que não manda cookie de sessão nem token CSRF) tomaria 403 antes mesmo de
+// chegar no handler — foi exatamente isso que aconteceu quando testamos com a rota aqui.
 
 module.exports = router;
