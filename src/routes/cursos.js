@@ -79,6 +79,19 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   });
   if (!turma || turma.status !== 'ABERTA') return res.status(404).render('erro', { mensagem: 'Turma não encontrada ou não está aberta.' });
 
+  // 💡 CORRIGIDO: o GET /inscrever já checava isso, mas o POST não. O Pix pode demorar bastante
+  // pra responder (o gateway vps1 às vezes leva dezenas de segundos), então se o aluno clicar
+  // em "Confirmar inscrição" de novo enquanto a primeira tentativa ainda está em andamento, essa
+  // segunda submissão batia direto no unique constraint (alunoId, turmaId) do banco ao tentar
+  // criar outra matrícula e caía num "Não foi possível concluir a inscrição" genérico e confuso
+  // — mesmo a primeira tentativa (que continuava rodando por trás) tendo dado certo. Agora
+  // detectamos isso ANTES de tentar criar de novo e mandamos o aluno pra "Minha conta", onde a
+  // matrícula da primeira tentativa (PENDENTE, aguardando o pagamento) já vai aparecer.
+  const jaInscrito = await prisma.matricula.findUnique({
+    where: { alunoId_turmaId: { alunoId: req.session.usuarioId, turmaId: turma.id } },
+  });
+  if (jaInscrito) return res.redirect('/minha-conta?jaInscrito=1');
+
   const reRenderErro = async (msg) => {
     const aVista = await calcularValores(turma.curso, 'A_VISTA', req.session.usuarioId);
     const parcelado = await calcularValores(turma.curso, 'PARCELADO', req.session.usuarioId);

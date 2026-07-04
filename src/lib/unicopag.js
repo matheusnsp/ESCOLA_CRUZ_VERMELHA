@@ -21,8 +21,7 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
   const isCredito = forma === 'CREDITO';
   const baseUrl = isCredito 
     ? 'https://api.cloud.unicopag.com.br' 
-    : 'https://api.cloud.unicopag.com.br';
-    // : 'https://vps1.unicopag.com.br';
+    : 'https://vps1.unicopag.com.br';
     
   const appUrl = process.env.APP_URL || 'https://escola-cruz-vermelha.onrender.com';
   const paymentMethod = isCredito ? 'credit_card' : 'pix';
