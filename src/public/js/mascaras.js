@@ -4,7 +4,6 @@
   function soDigitos(v) {
     return (v || '').replace(/\D/g, '');
   }
-
   // Preenche um padrao tipo "##.###.###-##" com os digitos, na ordem.
   function aplicarPadrao(digitos, padrao) {
     var resultado = '';
@@ -19,40 +18,35 @@
     }
     return resultado;
   }
-
   // Celular: 10 digitos -> (00) 0000-0000 | 11 digitos -> (00) 00000-0000
   function mascararCelular(valor) {
     var d = soDigitos(valor).slice(0, 11);
     var padrao = d.length > 10 ? '(##) #####-####' : '(##) ####-####';
     return aplicarPadrao(d, padrao);
   }
-
   // CPF/CNPJ no mesmo campo: ate 11 digitos vira CPF, a partir do 12º vira CNPJ.
   function mascararCpfCnpj(valor) {
     var d = soDigitos(valor).slice(0, 14);
     if (d.length > 11) return aplicarPadrao(d, '##.###.###/####-##');
     return aplicarPadrao(d, '###.###.###-##');
   }
-
-  // RG: formato mais comum (00.000.000-0). Aceita uma letra no final (ex.: dígito "X"),
-  // já que RG não segue um padrão único nacional — isso é só uma ajuda visual.
+  // 💡 CORRIGIDO: RG no formato "12.345.678-9" — 8 dígitos + 1 dígito verificador (9 no
+  // total), com o traço separando só o último. A versão anterior cortava em 8 dígitos e só
+  // colocava o traço se a pessoa digitasse uma LETRA no final (ex.: "X" de alguns RGs de SP) —
+  // com isso, o 9º dígito (o verificador numérico, que é o formato pedido) nunca aparecia e o
+  // traço nunca era mostrado quando a pessoa só digitava números. Isso também bate com o
+  // validation.js do servidor, que exige exatamente \d{2}\.\d{3}\.\d{3}-\d (dígito no final,
+  // não letra) — antes as duas coisas estavam desalinhadas.
   function mascararRG(valor) {
-    var bruto = (valor || '').toUpperCase();
-    var letraFinal = '';
-    if (/[A-Z]$/.test(bruto)) {
-      letraFinal = bruto.slice(-1);
-      bruto = bruto.slice(0, -1);
-    }
-    var d = soDigitos(bruto).slice(0, 8);
+    var d = soDigitos(valor).slice(0, 9);
     var partes = [];
     if (d.length > 0) partes.push(d.slice(0, 2));
     if (d.length > 2) partes.push(d.slice(2, 5));
     if (d.length > 5) partes.push(d.slice(5, 8));
     var resultado = partes.join('.');
-    if (letraFinal) resultado += (resultado ? '-' : '') + letraFinal;
+    if (d.length > 8) resultado += '-' + d.slice(8, 9);
     return resultado;
   }
-
   function conectar(seletor, fn) {
     document.querySelectorAll(seletor).forEach(function (el) {
       if (el.value) el.value = fn(el.value); // formata o valor que já veio preenchido
@@ -66,7 +60,6 @@
       });
     });
   }
-
   conectar('[data-mask="celular"]', mascararCelular);
   conectar('[data-mask="cpfCnpj"]', mascararCpfCnpj);
   conectar('[data-mask="rg"]', mascararRG);

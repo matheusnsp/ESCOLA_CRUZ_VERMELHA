@@ -12,6 +12,14 @@ const escolaridadeSituacaoField = z.string().trim().min(1, 'Selecione se está c
 const generoField = z.string().trim().optional().transform(v => v || '').refine(v => v === '' || GENEROS.includes(v), { message: 'Gênero inválido.' });
 const opcionalTexto = (max, msg) => z.string().trim().max(max, msg).optional().transform(v => v || '');
 
+// 💡 CORRIGIDO: RG precisa estar no formato "12.345.678-9" (2 dígitos, ponto, 3 dígitos, ponto,
+// 3 dígitos, traço, 1 dígito verificador). Continua opcional — string vazia passa — mas se o
+// campo vier preenchido, tem que bater exatamente com esse padrão.
+const rgField = z.string().trim().optional().transform(v => v || '').refine(
+  (v) => v === '' || /^\d{2}\.\d{3}\.\d{3}-\d$/.test(v),
+  { message: 'RG deve estar no formato 12.345.678-9.' }
+);
+
 const cepField = z.string().trim().transform(v => v ? v.replace(/\D/g, '') : '').refine(v => v.length === 8, { message: 'CEP inválido.' });
 const ufField = z.string().trim().transform(v => v.toUpperCase()).refine(v => UFS.includes(v), { message: 'Selecione a UF.' });
 
@@ -30,7 +38,7 @@ const cadastroSchema = z.object({
   nome: z.string().trim().min(3, 'Nome completo obrigatório.').refine(v => v.split(/\s+/).filter(Boolean).length >= 2, { message: 'Informe nome e sobrenome.' }),
   email: z.string().trim().toLowerCase().email('E-mail inválido.').max(180),
   documento: z.string().trim().transform(v => v.replace(/\D/g, '')).refine(v => v.length >= 11, { message: 'CPF/CNPJ inválido.' }),
-  rg: opcionalTexto(20, 'RG muito longo.'),
+  rg: rgField,
   celular: z.string().trim().transform(v => v.replace(/\D/g, '')).refine(v => v.length === 10 || v.length === 11, { message: 'Celular inválido.' }),
   escolaridade: escolaridadeField,
   escolaridadeSituacao: escolaridadeSituacaoField,
