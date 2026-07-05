@@ -429,8 +429,10 @@ body > section {
 }
 .curso-card:hover { transform: translateY(-5px); box-shadow: 0 18px 38px rgba(15,19,24,0.12); }
 
-.curso-card-img { position: relative; height: 170px; background: #f1f5f9; }
+.curso-card-img { position: relative; height: 235px; background: #f1f5f9; }
+
 .curso-card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
 .curso-card-fallback {
   width: 100%; height: 100%; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 7px;
@@ -549,6 +551,7 @@ body > section {
 
 /* Hero */
 .cd-hero { border-bottom: 1px solid #e8e6e1; padding-bottom: 26px; margin-bottom: 34px; }
+
 .cd-eyebrow {
   font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase;
   color: #cc0000; margin: 0 0 12px; position: relative; padding-left: 26px;
@@ -590,7 +593,7 @@ body > section {
 .cd-faq-resp { padding: 0 4px 20px; font-size: 15.5px; line-height: 1.75; color: #5b636e; max-width: 64ch; }
 
 /* Ficha (sidebar sticky) */
-.cd-aside { position: sticky; top: 24px; }
+.cd-aside { position: static; }
 .cd-ficha {
   background: #fff; border: 1px solid #e6e3dd; border-radius: 16px; overflow: hidden;
   box-shadow: 0 1px 2px rgba(20,20,20,.03), 0 12px 32px rgba(20,20,20,.05);
@@ -659,14 +662,20 @@ body > section {
 .cd-turma-date { font-size: 12px !important; color: #97928c !important; }
 .cd-cta {
   flex: none; background: #cc0000; color: #fff; text-decoration: none;
-  font-size: 13px; font-weight: 700; padding: 9px 16px; border-radius: 9px;
-  transition: background .15s;
+  font-size: 15px; font-weight: 800; padding: 13px 22px; border-radius: 10px;
+  transition: background .15s, transform .15s;
+  box-shadow: 0 6px 16px rgba(204,0,0,0.28);
 }
-.cd-cta:hover { background: #a30000; }
+.cd-cta:hover { background: #a30000; transform: translateY(-1px); }
+/* .cd-cta:hover { background: #a30000; } */
 .cd-cta:focus-visible { outline: 3px solid rgba(204,0,0,.35); outline-offset: 2px; }
 
 /* Responsivo */
-@media (max-width: 900px) {
+@media (max-width: 900px) and (min-width: 681px) {
+  .cd-grid { grid-template-columns: 1fr 300px; gap: 28px; }
+}
+
+@media (max-width: 680px) {
   .cd-grid { grid-template-columns: 1fr; gap: 32px; }
   .cd-aside { position: static; order: -1; }
 }
