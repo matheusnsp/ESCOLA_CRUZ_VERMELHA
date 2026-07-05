@@ -415,7 +415,7 @@ body > section {
 .cursos-hero { padding-top: 64px; padding-bottom: 64px; }
 .cursos-hero h1 { font-size: 40px; }
 
-.cursos-wrap { max-width: 1160px; margin: 0 auto; padding: 48px 24px 68px; }
+.cursos-wrap { max-width: 1160px; margin: 0 auto; padding: 48px 0; }
 .cursos-vazio { text-align: center; color: #718096; padding: 50px 20px; }
 
 .cursos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
