@@ -1,5 +1,4 @@
 const fetch = require('node-fetch');
-// AbortController é global no Node 18+ — sem require necessário
 
 /**
  * Sanitiza strings deixando apenas números
@@ -82,10 +81,6 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
       }
     };
   } else {
-    // Schema CreatePixPaymentRequest conforme doc oficial (xpix.unicopag.com.br/api).
-    // - phone_number e document são type:number (sem formatação, só dígitos como inteiro)
-    // - operation_type é enum de strings: "1" | "2" | "3"
-    // - Não há payment_method, installments, metadata, expire_in_days nem campos de endereço
     payload = {
       amount: amountCentavos,
       postback_url: `${appUrl}/webhook/unicopag`,
@@ -101,74 +96,53 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
         title: nomeCurso,
         price: amountCentavos,
         quantity: 1,
-        // 🔄 CORRIGIDO: o enum da doc define os valores como strings ("1","2","3"),
-        // não como número inteiro 1. Enviamos "1" (direct_sale) conforme o schema.
         operation_type: "1"
       }]
     };
   }
 
   console.log(`[MONITORAMENTO CARTÃO] ➡️ 1. Enviando Transação. Matrícula Original: ${matriculaId} | Método: ${isCredito ? 'credit_card' : 'pix'}`);
-  if (!isCredito) {
-    // Log do payload completo do Pix para diagnóstico — remova após confirmar funcionamento
-    console.log('[PIX] Payload enviado:', JSON.stringify(payload));
-  }
 
-  // 🔄 CORRIGIDO: adicionamos um AbortController com timeout de 35s para o Pix.
-  // O nginx do gateway deles retorna 504 depois de ~30s. Com esse timeout, garantimos
-  // que o fetch não fica pendurado indefinidamente, mas ainda segura tempo suficiente
-  // para que o webhook "transaction.created" (que chega em paralelo) possa ser
-  // processado pelo server.js e gravar o gatewayRef antes de espirarmos a espera
-  // em cursos.js. Para cartão mantemos sem timeout (API síncrona e confiável).
-  let fetchOptions = {
+  const fetchOptions = {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
   };
 
+  // PIX: FIRE-AND-FORGET
+  // O gateway xpix.unicopag.com.br sempre retorna 504 depois de ~30s, mas a transação
+  // É criada do lado deles — confirmado pelo webhook "transaction.created" que chega
+  // normalmente. Não faz sentido bloquear o usuário esperando uma resposta que nunca vem.
+  // Disparamos o fetch em background (sem await) e retornamos imediatamente com
+  // fireAndForget:true. O cursos.js vai redirecionar o usuário para a página de espera
+  // e o webhook vai atualizar o status quando o Pix for confirmado.
   if (!isCredito) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 35000);
-    fetchOptions.signal = controller.signal;
+    console.log('[PIX] Payload enviado:', JSON.stringify(payload));
+    fetch(urlComAuth, fetchOptions)
+      .then(async (response) => {
+        const textBody = await response.text();
+        if (!response.ok) {
+          console.error(`[PIX] ❌ Resposta de erro do gateway (${response.status}):`, textBody);
+          return;
+        }
+        try {
+          const json = JSON.parse(textBody);
+          const result = json.result || json;
+          console.log(`[PIX] ✅ Resposta assíncrona recebida. hash: ${result.hash} | id: ${result.id}`);
+          console.log('[PIX] Objeto pix completo:', JSON.stringify(result.pix));
+        } catch (e) {
+          console.warn('[PIX] Resposta não era JSON:', textBody.slice(0, 200));
+        }
+      })
+      .catch((err) => {
+        // 504/timeout esperado — a transação pode ter sido criada mesmo assim. O webhook confirma.
+        console.warn(`[PIX] ⚠️ Fetch em background encerrou com erro (normal se 504): ${err.message}`);
+      });
 
-    let response, textBody;
-    try {
-      response = await fetch(urlComAuth, fetchOptions);
-      clearTimeout(timeoutId);
-      textBody = await response.text();
-    } catch (fetchErr) {
-      clearTimeout(timeoutId);
-      // AbortError significa que estouramos os 35s — tratamos como erro de gateway
-      // para que o bloco de espera em cursos.js tome conta do fluxo.
-      const msg = fetchErr.name === 'AbortError' ? 'Gateway: timeout após 35s' : `Gateway: ${fetchErr.message}`;
-      throw new Error(msg);
-    }
-
-    if (!response.ok) {
-      console.error(`[MONITORAMENTO CARTÃO] ❌ Erro na API Unicopag Pix (${response.status}):`, textBody);
-      throw new Error(`Gateway: ${textBody || 'Erro desconhecido'}`);
-    }
-
-    const json = JSON.parse(textBody);
-    const result = json.result || json;
-
-    console.log(`[MONITORAMENTO CARTÃO] ⬅️ 2. Resposta Pix recebida. hash: ${result.hash} | id: ${result.id}`);
-    console.log('[PIX] Objeto pix na resposta:', JSON.stringify(result.pix));
-
-    return {
-      success: true,
-      gatewayRef: String(result.hash || result.id || matriculaId),
-      paymentStatus: result.payment_status || 'pending',
-      installments: 1,
-      checkoutUrl: result.checkout_url || null,
-      // ⚠️ Os nomes dos campos dentro de result.pix não estão documentados na spec.
-      // Logamos o objeto completo acima — ajuste os campos abaixo após ver o log real.
-      pixQrCode: result.pix?.pix_qr_code || result.pix?.qr_code || result.pix?.emv || null,
-      pixUrl: result.pix?.pix_url || result.pix?.url || result.pix?.copy_paste || null
-    };
+    return { success: true, fireAndForget: true };
   }
 
-  // Cartão: fluxo original sem timeout
+  // CARTÃO: fluxo síncrono normal
   const response = await fetch(urlComAuth, fetchOptions);
   const textBody = await response.text();
 
