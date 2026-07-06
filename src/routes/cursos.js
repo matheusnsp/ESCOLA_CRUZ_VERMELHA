@@ -79,14 +79,6 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   });
   if (!turma || turma.status !== 'ABERTA') return res.status(404).render('erro', { mensagem: 'Turma não encontrada ou não está aberta.' });
 
-  // 💡 CORRIGIDO: o GET /inscrever já checava isso, mas o POST não. O Pix pode demorar bastante
-  // pra responder (o gateway vps1 às vezes leva dezenas de segundos), então se o aluno clicar
-  // em "Confirmar inscrição" de novo enquanto a primeira tentativa ainda está em andamento, essa
-  // segunda submissão batia direto no unique constraint (alunoId, turmaId) do banco ao tentar
-  // criar outra matrícula e caía num "Não foi possível concluir a inscrição" genérico e confuso
-  // — mesmo a primeira tentativa (que continuava rodando por trás) tendo dado certo. Agora
-  // detectamos isso ANTES de tentar criar de novo e mandamos o aluno pra "Minha conta", onde a
-  // matrícula da primeira tentativa (PENDENTE, aguardando o pagamento) já vai aparecer.
   const jaInscrito = await prisma.matricula.findUnique({
     where: { alunoId_turmaId: { alunoId: req.session.usuarioId, turmaId: turma.id } },
   });
@@ -104,7 +96,6 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const { plano, forma, numero, titular, validade, cvv } = resultado.data;
   const usaGateway = forma !== 'DINHEIRO';
 
-  // Separa "MM/AA" em mês e ano completo (ex: "12/28" -> mesExpiracao="12", anoExpiracao="2028")
   let mesExpiracao, anoExpiracao;
   if (forma === 'CREDITO' && validade) {
     const [mes, anoCurto] = validade.split('/');
@@ -139,12 +130,6 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
   if (!aluno?.cpfCnpj) return res.render('erro', { mensagem: 'CPF obrigatório.' });
 
-  // Cria o registro de Pagamento ANTES de chamar o gateway, com gatewayRef ainda em branco.
-  // Isso garante que já existe uma linha PENDENTE vinculada à matrícula no banco no instante
-  // em que o cartão é cobrado — mesmo que o webhook da Únicopag chegue antes desta função
-  // terminar de rodar (o que acontece com frequência na API Cloud, que é assíncrona e rápida).
-  // Também evita criar uma segunda linha duplicada caso o webhook já tenha processado tudo
-  // enquanto aguardávamos a resposta do gateway.
   const pagamentoPendente = await prisma.pagamento.create({
     data: {
       matriculaId: matricula.id,
@@ -180,8 +165,6 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
     const gatewayRef = String(resultadoGateway.gatewayRef || resultadoGateway.id || resultadoGateway.hash);
 
-    // Só atualiza a linha se ela ainda estiver PENDENTE — se o webhook já chegou e marcou
-    // como PAGO nesse meio-tempo, não queremos sobrescrever o status de volta.
     await prisma.pagamento.updateMany({
       where: { id: pagamentoPendente.id, status: 'PENDENTE' },
       data: { gatewayRef },
@@ -201,44 +184,27 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   } catch (err) {
     console.error('[UnicopAg] Erro no Gateway:', err.message);
 
-    // 💡 CORRIGIDO (PIX): o gateway do Pix (vps1.unicopag.com.br) tem histórico de responder
-    // devagar/instável (504 do nginx deles) mesmo quando a transação FOI criada com sucesso do
-    // lado da Únicopag — confirmado em produção: o webhook "transaction.created" chega e já
-    // casa esse mesmo Pagamento por e-mail (corrida de dados, ver server.js) antes da nossa
-    // chamada aqui sequer terminar de estourar esse erro. Se cancelássemos a linha nesse caso,
-    // o webhook de pagamento CONFIRMADO que chega depois não teria mais onde gravar o status
-    // PAGO (a corrida por e-mail só olha pagamentos PENDENTE) e a matrícula ficaria pra sempre
-    // sem ser liberada, mesmo com o Pix pago. Isso NÃO se aplica ao cartão: a API de cartão
-    // (api.cloud.unicopag.com.br) responde de forma síncrona e confiável, então o comportamento
-    // de cancelar continua exatamente igual pra CREDITO (à vista e parcelado).
-    // 💡 CORRIGIDO (PIX): o gateway do Pix (vps1.unicopag.com.br) tem histórico de responder
-    // devagar/instável (504 do nginx deles) mesmo quando a transação FOI criada com sucesso do
-    // lado da Únicopag — confirmado em produção: o webhook "transaction.created" chega e já
-    // casa esse mesmo Pagamento por e-mail (corrida de dados, ver server.js), só que às vezes
-    // com um atraso de 1-2 segundos em relação ao instante em que nossa chamada aqui estoura o
-    // erro. Por isso, antes de cancelar, esperamos até 5s (checando a cada 1s) se esse webhook
-    // chega e grava o gatewayRef nesse meio-tempo. Só cancelamos se, depois dessa janela, ainda
-    // não houver nenhuma confirmação — isso NÃO se aplica ao cartão: a API de cartão
-    // (api.cloud.unicopag.com.br) responde de forma síncrona e confiável, então o comportamento
-    // continua exatamente igual pra CREDITO (à vista e parcelado), sem essa espera.
     if (forma === 'PIX') {
+      // 🔄 CORRIGIDO: janela de espera aumentada de 5×1s para 15×2s (30s total).
+      // O gateway do Pix (xpix.unicopag.com.br) retorna 504 depois de ~30s,
+      // mas a transação pode ter sido criada com sucesso do lado deles — o webhook
+      // "transaction.created" chega em paralelo e pode levar até ~20-25s após o
+      // início da requisição. Com a janela maior garantimos que não cancelamos a
+      // linha PENDENTE antes do webhook ter chance de gravar o gatewayRef.
       let pagamentoAtual = null;
-      for (let tentativa = 0; tentativa < 5; tentativa++) {
+      for (let tentativa = 0; tentativa < 15; tentativa++) {
         pagamentoAtual = await prisma.pagamento.findUnique({ where: { id: pagamentoPendente.id } });
         if (pagamentoAtual?.gatewayRef) break;
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
       if (pagamentoAtual?.gatewayRef) {
-        console.log(`[UnicopAg] Pix ${pagamentoAtual.gatewayRef} foi confirmado pelo webhook durante a espera; mantendo Pagamento ${pagamentoPendente.id} como PENDENTE.`);
+        console.log(`[UnicopAg] Pix ${pagamentoAtual.gatewayRef} confirmado pelo webhook durante a espera; mantendo Pagamento ${pagamentoPendente.id} como PENDENTE.`);
         return res.render('erro', {
           mensagem: 'Seu Pix está sendo processado. Acompanhe a confirmação em "Minha conta" em alguns instantes.',
         });
       }
     }
 
-    // Se a chamada ao gateway falhou (ex.: rejeição de cartão, erro 422, timeout) e não há
-    // confirmação de que a transação existe do lado deles, marca a linha PENDENTE criada acima
-    // como CANCELADO para não deixar registros órfãos no banco.
     await prisma.pagamento.updateMany({
       where: { id: pagamentoPendente.id, status: 'PENDENTE' },
       data: { status: 'CANCELADO' },
@@ -260,10 +226,5 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
     pixUrl: url ? decodeURIComponent(url) : null,
   });
 });
-
-// O webhook /webhook/unicopag foi movido para server.js, registrado ANTES do middleware de
-// CSRF (app.use(csrfProtection)). Aqui, dentro do cursosRoutes, a rota ficaria depois do CSRF
-// e o Únicopag (que não manda cookie de sessão nem token CSRF) tomaria 403 antes mesmo de
-// chegar no handler — foi exatamente isso que aconteceu quando testamos com a rota aqui.
 
 module.exports = router;

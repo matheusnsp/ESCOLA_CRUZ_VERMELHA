@@ -1,4 +1,5 @@
 const fetch = require('node-fetch');
+const AbortController = require('abort-controller');
 
 /**
  * Sanitiza strings deixando apenas números
@@ -24,10 +25,6 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
   const valorTratado = parseFloat(valorTotal || 0).toFixed(2);
   const amountCentavos = Math.round(parseFloat(valorTratado) * 100);
 
-  // 🔄 ATUALIZADO conforme a doc oficial (openapi ÚnicoPag API, servidor
-  // https://xpix.unicopag.com.br/api): o Pix agora passa por um microserviço próprio
-  // (MagenPay), diferente do domínio antigo vps1.unicopag.com.br. O cartão continua
-  // sem documentação nova, então mantemos api.cloud.unicopag.com.br como estava.
   const baseUrl = isCredito
     ? 'https://api.cloud.unicopag.com.br'
     : 'https://xpix.unicopag.com.br/api';
@@ -35,10 +32,6 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
   const endpoint = isCredito ? '/public/v1/payments' : '/v1/payments/pix';
   const urlFinal = `${baseUrl}${endpoint}`;
 
-  // 🔄 ATUALIZADO: a doc nova do Pix diz explicitamente "Envie o token da API pública no
-  // header Authorization: Bearer {token}". Antes mandávamos o token via query string
-  // (?api_token=...). Pro cartão, como não tem doc nova, mantemos o api_token na URL
-  // (igual já funcionava) e mandamos os dois formatos de auth não atrapalha.
   const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
   let urlComAuth = urlFinal;
 
@@ -89,12 +82,10 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
       }
     };
   } else {
-    // 🔄 ATUALIZADO: o schema CreatePixPaymentRequest da doc nova só aceita amount,
-    // postback_url, customer{name,email,phone_number,document,complement} e
-    // cart[{hash,title,price,quantity,operation_type}]. Removi payment_method,
-    // installments, metadata, expire_in_days, origin e os campos de endereço
-    // (zip_code/street_name/number/neighborhood/city/state) do customer — nenhum deles
-    // existe nesse schema, e phone_number/document agora são number, não string.
+    // Schema CreatePixPaymentRequest conforme doc oficial (xpix.unicopag.com.br/api).
+    // - phone_number e document são type:number (sem formatação, só dígitos como inteiro)
+    // - operation_type é enum de strings: "1" | "2" | "3"
+    // - Não há payment_method, installments, metadata, expire_in_days nem campos de endereço
     payload = {
       amount: amountCentavos,
       postback_url: `${appUrl}/webhook/unicopag`,
@@ -110,23 +101,75 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
         title: nomeCurso,
         price: amountCentavos,
         quantity: 1,
-        operation_type: 1
+        // 🔄 CORRIGIDO: o enum da doc define os valores como strings ("1","2","3"),
+        // não como número inteiro 1. Enviamos "1" (direct_sale) conforme o schema.
+        operation_type: "1"
       }]
     };
   }
 
   console.log(`[MONITORAMENTO CARTÃO] ➡️ 1. Enviando Transação. Matrícula Original: ${matriculaId} | Método: ${isCredito ? 'credit_card' : 'pix'}`);
+  if (!isCredito) {
+    // Log do payload completo do Pix para diagnóstico — remova após confirmar funcionamento
+    console.log('[PIX] Payload enviado:', JSON.stringify(payload));
+  }
 
-  // O domínio do Pix antigo (vps1.unicopag.com.br) tinha histórico de 504 e por isso não
-  // colocávamos timeout aqui — o catch em cursos.js (com tolerância) que decidia cancelar
-  // ou não. Mantemos essa mesma filosofia agora com o novo domínio (xpix.unicopag.com.br)
-  // até termos confirmação de que ele não sofre do mesmo problema.
-  const response = await fetch(urlComAuth, {
+  // 🔄 CORRIGIDO: adicionamos um AbortController com timeout de 35s para o Pix.
+  // O nginx do gateway deles retorna 504 depois de ~30s. Com esse timeout, garantimos
+  // que o fetch não fica pendurado indefinidamente, mas ainda segura tempo suficiente
+  // para que o webhook "transaction.created" (que chega em paralelo) possa ser
+  // processado pelo server.js e gravar o gatewayRef antes de espirarmos a espera
+  // em cursos.js. Para cartão mantemos sem timeout (API síncrona e confiável).
+  let fetchOptions = {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
-  });
+  };
 
+  if (!isCredito) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 35000);
+    fetchOptions.signal = controller.signal;
+
+    let response, textBody;
+    try {
+      response = await fetch(urlComAuth, fetchOptions);
+      clearTimeout(timeoutId);
+      textBody = await response.text();
+    } catch (fetchErr) {
+      clearTimeout(timeoutId);
+      // AbortError significa que estouramos os 35s — tratamos como erro de gateway
+      // para que o bloco de espera em cursos.js tome conta do fluxo.
+      const msg = fetchErr.name === 'AbortError' ? 'Gateway: timeout após 35s' : `Gateway: ${fetchErr.message}`;
+      throw new Error(msg);
+    }
+
+    if (!response.ok) {
+      console.error(`[MONITORAMENTO CARTÃO] ❌ Erro na API Unicopag Pix (${response.status}):`, textBody);
+      throw new Error(`Gateway: ${textBody || 'Erro desconhecido'}`);
+    }
+
+    const json = JSON.parse(textBody);
+    const result = json.result || json;
+
+    console.log(`[MONITORAMENTO CARTÃO] ⬅️ 2. Resposta Pix recebida. hash: ${result.hash} | id: ${result.id}`);
+    console.log('[PIX] Objeto pix na resposta:', JSON.stringify(result.pix));
+
+    return {
+      success: true,
+      gatewayRef: String(result.hash || result.id || matriculaId),
+      paymentStatus: result.payment_status || 'pending',
+      installments: 1,
+      checkoutUrl: result.checkout_url || null,
+      // ⚠️ Os nomes dos campos dentro de result.pix não estão documentados na spec.
+      // Logamos o objeto completo acima — ajuste os campos abaixo após ver o log real.
+      pixQrCode: result.pix?.pix_qr_code || result.pix?.qr_code || result.pix?.emv || null,
+      pixUrl: result.pix?.pix_url || result.pix?.url || result.pix?.copy_paste || null
+    };
+  }
+
+  // Cartão: fluxo original sem timeout
+  const response = await fetch(urlComAuth, fetchOptions);
   const textBody = await response.text();
 
   if (!response.ok) {
@@ -139,19 +182,14 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
 
   console.log(`[MONITORAMENTO CARTÃO] ⬅️ 2. Resposta da API recebida. hash gerado: ${result.hash} | id gerado: ${result.id}`);
 
-  // ⚠️ ATENÇÃO: a doc nova (PaymentResource) define "pix" só como "object | null", sem
-  // detalhar os campos internos. Mantive pix_qr_code/pix_url como primeira tentativa
-  // (era o que funcionava confirmado por log real antes da mudança), mas isso NÃO está
-  // confirmado pra esse novo endpoint. Se vier null mesmo com a transação criada, cole
-  // aqui o `textBody` de uma transação de teste real que eu ajusto os nomes certos.
   return {
     success: true,
     gatewayRef: String(result.hash || result.id || matriculaId),
     paymentStatus: result.payment_status || 'pending',
-    installments: result.installments || (isCredito ? Number(dadosCartao.parcelas || 1) : 1),
+    installments: result.installments || Number(dadosCartao.parcelas || 1),
     checkoutUrl: result.checkout_url || null,
-    pixQrCode: result.pix?.pix_qr_code || null,
-    pixUrl: result.pix?.pix_url || null
+    pixQrCode: null,
+    pixUrl: null
   };
 }
 
