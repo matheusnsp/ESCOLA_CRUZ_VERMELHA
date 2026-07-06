@@ -1,5 +1,5 @@
 const fetch = require('node-fetch');
-const AbortController = require('abort-controller');
+// AbortController é global no Node 18+ — sem require necessário
 
 /**
  * Sanitiza strings deixando apenas números
