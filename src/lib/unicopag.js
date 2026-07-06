@@ -109,37 +109,45 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
     body: JSON.stringify(payload),
   };
 
-  // PIX: FIRE-AND-FORGET
-  // O gateway xpix.unicopag.com.br sempre retorna 504 depois de ~30s, mas a transação
-  // É criada do lado deles — confirmado pelo webhook "transaction.created" que chega
-  // normalmente. Não faz sentido bloquear o usuário esperando uma resposta que nunca vem.
-  // Disparamos o fetch em background (sem await) e retornamos imediatamente com
-  // fireAndForget:true. O cursos.js vai redirecionar o usuário para a página de espera
-  // e o webhook vai atualizar o status quando o Pix for confirmado.
+  // PIX: fluxo síncrono com timeout de 35s.
+  // O gateway responde com sucesso em ~30s na maioria dos casos.
+  // Se estourar o timeout, lançamos erro para o cursos.js tratar com a
+  // janela de espera pelo webhook (comportamento anterior mantido como fallback).
   if (!isCredito) {
     console.log('[PIX] Payload enviado:', JSON.stringify(payload));
-    fetch(urlComAuth, fetchOptions)
-      .then(async (response) => {
-        const textBody = await response.text();
-        if (!response.ok) {
-          console.error(`[PIX] ❌ Resposta de erro do gateway (${response.status}):`, textBody);
-          return;
-        }
-        try {
-          const json = JSON.parse(textBody);
-          const result = json.result || json;
-          console.log(`[PIX] ✅ Resposta assíncrona recebida. hash: ${result.hash} | id: ${result.id}`);
-          console.log('[PIX] Objeto pix completo:', JSON.stringify(result.pix));
-        } catch (e) {
-          console.warn('[PIX] Resposta não era JSON:', textBody.slice(0, 200));
-        }
-      })
-      .catch((err) => {
-        // 504/timeout esperado — a transação pode ter sido criada mesmo assim. O webhook confirma.
-        console.warn(`[PIX] ⚠️ Fetch em background encerrou com erro (normal se 504): ${err.message}`);
-      });
 
-    return { success: true, fireAndForget: true };
+    const response = await fetch(urlComAuth, {
+      ...fetchOptions,
+      signal: AbortSignal.timeout(35000),
+    });
+
+    const textBody = await response.text();
+
+    if (!response.ok) {
+      console.error(`[PIX] ❌ Resposta de erro do gateway (${response.status}):`, textBody);
+      throw new Error(`Gateway Pix: ${textBody || 'Erro desconhecido'}`);
+    }
+
+    let result;
+    try {
+      const json = JSON.parse(textBody);
+      result = json.result || json;
+    } catch (e) {
+      console.warn('[PIX] Resposta não era JSON:', textBody.slice(0, 200));
+      throw new Error('Gateway Pix retornou resposta inválida.');
+    }
+
+    const pix = result.pix || {};
+    console.log(`[PIX] ✅ Resposta recebida. hash: ${result.hash} | id: ${result.id}`);
+    console.log('[PIX] Objeto pix completo:', JSON.stringify(pix));
+
+    return {
+      success: true,
+      gatewayRef: String(result.hash || result.id || matriculaId),
+      paymentStatus: result.payment_status || 'pending',
+      pixQrCode: pix.pix_qr_code || null,
+      pixUrl: pix.pix_url || null,
+    };
   }
 
   // CARTÃO: fluxo síncrono normal

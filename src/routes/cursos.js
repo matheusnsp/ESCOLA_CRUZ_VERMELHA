@@ -163,34 +163,31 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       } : null
     });
 
-    const gatewayRef = String(resultadoGateway.gatewayRef || resultadoGateway.id || resultadoGateway.hash);
+    const gatewayRef = String(resultadoGateway.gatewayRef || resultadoGateway.id || resultadoGateway.hash || matricula.id);
 
+    // Salva gatewayRef + dados do Pix no registro de pagamento
     await prisma.pagamento.updateMany({
       where: { id: pagamentoPendente.id, status: 'PENDENTE' },
-      data: { gatewayRef },
+      data: {
+        gatewayRef,
+        pixQrCode: resultadoGateway.pixQrCode || null,
+        pixUrl: resultadoGateway.pixUrl || null,
+      },
     });
 
     if (resultadoGateway.checkoutUrl) {
       return res.redirect(resultadoGateway.checkoutUrl);
     }
 
-    const rawQr = resultadoGateway.pixQrCode || resultadoGateway.pixUrl || '';
-    const rawUrl = resultadoGateway.pixUrl || resultadoGateway.pixQrCode || '';
-
-    const qrParam = encodeURIComponent(rawQr);
-    const urlParam = encodeURIComponent(rawUrl);
-    return res.redirect(`/inscricao/retorno?matriculaId=${matricula.id}&pix=${forma === 'PIX' ? '1' : '0'}&qr=${qrParam}&url=${urlParam}`);
+    // Redireciona para a página de retorno — os dados do Pix serão lidos do banco lá
+    return res.redirect(`/inscricao/retorno?matriculaId=${matricula.id}&pix=${forma === 'PIX' ? '1' : '0'}`);
 
   } catch (err) {
     console.error('[UnicopAg] Erro no Gateway:', err.message);
 
     if (forma === 'PIX') {
-      // 🔄 CORRIGIDO: janela de espera aumentada de 5×1s para 15×2s (30s total).
-      // O gateway do Pix (xpix.unicopag.com.br) retorna 504 depois de ~30s,
-      // mas a transação pode ter sido criada com sucesso do lado deles — o webhook
-      // "transaction.created" chega em paralelo e pode levar até ~20-25s após o
-      // início da requisição. Com a janela maior garantimos que não cancelamos a
-      // linha PENDENTE antes do webhook ter chance de gravar o gatewayRef.
+      // Fallback: se o gateway estourou timeout mas o webhook pode ter chegado,
+      // aguarda até 30s checando se o gatewayRef foi gravado pelo webhook.
       let pagamentoAtual = null;
       for (let tentativa = 0; tentativa < 15; tentativa++) {
         pagamentoAtual = await prisma.pagamento.findUnique({ where: { id: pagamentoPendente.id } });
@@ -198,10 +195,9 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
       if (pagamentoAtual?.gatewayRef) {
-        console.log(`[UnicopAg] Pix ${pagamentoAtual.gatewayRef} confirmado pelo webhook durante a espera; mantendo Pagamento ${pagamentoPendente.id} como PENDENTE.`);
-        return res.render('erro', {
-          mensagem: 'Seu Pix está sendo processado. Acompanhe a confirmação em "Minha conta" em alguns instantes.',
-        });
+        console.log(`[UnicopAg] Pix ${pagamentoAtual.gatewayRef} confirmado pelo webhook durante a espera.`);
+        // Tenta redirecionar para retorno mesmo sem QR (webhook não traz QR code)
+        return res.redirect(`/inscricao/retorno?matriculaId=${matricula.id}&pix=1`);
       }
     }
 
@@ -214,16 +210,27 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 });
 
 router.get('/inscricao/retorno', requireLogin, async (req, res) => {
-  const { matriculaId, pix, qr, url } = req.query;
+  const { matriculaId, pix } = req.query;
+
   const matricula = matriculaId
-    ? await prisma.matricula.findUnique({ where: { id: matriculaId }, include: { turma: { include: { curso: true } } } })
+    ? await prisma.matricula.findUnique({
+        where: { id: matriculaId },
+        include: {
+          turma: { include: { curso: true } },
+          // Busca o pagamento mais recente para pegar pixQrCode e pixUrl salvos
+          pagamentos: { orderBy: { criadoEm: 'desc' }, take: 1 },
+        },
+      })
     : null;
+
+  const pagamento = matricula?.pagamentos?.[0] || null;
+
   res.render('inscricao-retorno', {
     matricula,
     formatBRL,
     isPix: pix === '1',
-    pixQrCode: qr ? decodeURIComponent(qr) : null,
-    pixUrl: url ? decodeURIComponent(url) : null,
+    pixQrCode: pagamento?.pixQrCode || null,
+    pixUrl: pagamento?.pixUrl || null,
   });
 });
 
