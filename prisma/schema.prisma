@@ -110,18 +110,35 @@ model Matricula {
 }
 
 model Pagamento {
-  id           String          @id @default(uuid())
-  matriculaId  String
-  gateway      String?
-  gatewayRef   String?
-  metodo       FormaPagamento
-  valor        Decimal         @db.Decimal(10, 2)
-  status       StatusPagamento @default(PENDENTE)
-  criadoEm     DateTime        @default(now())
-  atualizadoEm DateTime        @updatedAt
-  matricula    Matricula       @relation(fields: [matriculaId], references: [id])
-}
+  id               String            @id @default(uuid())
+  matriculaId      String
 
+  // Gateway
+  gateway          String?
+  gatewayRef       String?
+  gatewayHash      String?
+  gatewayStatus    String?
+  gatewayResponse  Json?
+
+  // PIX
+  pixQrCode        String?           @db.Text
+  pixUrl           String?           @db.Text
+  pixBase64        String?           @db.Text
+
+  metodo           FormaPagamento
+  valor            Decimal           @db.Decimal(10, 2)
+  status           StatusPagamento   @default(PENDENTE)
+
+  criadoEm         DateTime          @default(now())
+  atualizadoEm     DateTime          @updatedAt
+
+  matricula        Matricula         @relation(fields: [matriculaId], references: [id])
+
+  @@index([matriculaId])
+  @@index([gatewayRef])
+  @@index([gatewayHash])
+  @@index([status])
+}
 model TokenAuth {
   id        String    @id @default(uuid())
   usuarioId String

@@ -87,8 +87,8 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
       customer: {
         name: aluno.nome,
         email: aluno.email,
-        phone_number: Number(apenasNumeros(aluno.celular)) || 0,
-        document: Number(apenasNumeros(aluno.cpfCnpj)) || 0,
+        phone_number: apenasNumeros(aluno.celular),
+        document: apenasNumeros(aluno.cpfCnpj),
         complement: aluno.complemento || null
       },
       cart: [{
@@ -143,11 +143,18 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
 
     return {
       success: true,
+  
+      id: result.id || null,
+      hash: result.hash || null,
+  
       gatewayRef: String(result.hash || result.id || matriculaId),
+  
       paymentStatus: result.payment_status || 'pending',
+  
       pixQrCode: pix.pix_qr_code || null,
       pixUrl: pix.pix_url || null,
-    };
+      pixBase64: pix.pix_base64 || null
+  };
   }
 
   // CARTÃO: fluxo síncrono normal
@@ -159,19 +166,35 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
     throw new Error(`Gateway: ${textBody || 'Erro desconhecido'}`);
   }
 
-  const json = JSON.parse(textBody);
+  let json;
+
+  try {
+      json = JSON.parse(textBody);
+  } catch {
+      console.error(textBody);
+      throw new Error('Resposta inválida da UnicoPag.');
+  }  
   const result = json.result || json;
 
   console.log(`[MONITORAMENTO CARTÃO] ⬅️ 2. Resposta da API recebida. hash gerado: ${result.hash} | id gerado: ${result.id}`);
 
   return {
     success: true,
+  
+    id: result.id || null,
+    hash: result.hash || null,
+  
     gatewayRef: String(result.hash || result.id || matriculaId),
+  
     paymentStatus: result.payment_status || 'pending',
+  
     installments: result.installments || Number(dadosCartao.parcelas || 1),
+  
     checkoutUrl: result.checkout_url || null,
+  
     pixQrCode: null,
-    pixUrl: null
+    pixUrl: null,
+    pixBase64: null
   };
 }
 

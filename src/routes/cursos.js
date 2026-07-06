@@ -167,11 +167,20 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
     // Salva gatewayRef + dados do Pix no registro de pagamento
     await prisma.pagamento.updateMany({
-      where: { id: pagamentoPendente.id, status: 'PENDENTE' },
+      where: {
+        id: pagamentoPendente.id,
+        status: 'PENDENTE',
+      },
       data: {
+        gateway: 'unicopag',
         gatewayRef,
+        gatewayHash: resultadoGateway.hash || null,
+        gatewayStatus: resultadoGateway.paymentStatus || resultadoGateway.status || null,
+        gatewayResponse: resultadoGateway,
+    
         pixQrCode: resultadoGateway.pixQrCode || null,
         pixUrl: resultadoGateway.pixUrl || null,
+        pixBase64: resultadoGateway.pixBase64 || null,
       },
     });
 
@@ -231,6 +240,7 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
     isPix: pix === '1',
     pixQrCode: pagamento?.pixQrCode || null,
     pixUrl: pagamento?.pixUrl || null,
+    pixBase64: pagamento?.pixBase64 || null,
   });
 });
 
