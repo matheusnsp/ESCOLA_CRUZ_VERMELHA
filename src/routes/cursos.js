@@ -165,19 +165,25 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
     const gatewayRef = String(resultadoGateway.gatewayRef || resultadoGateway.id || resultadoGateway.hash || matricula.id);
 
-    // Salva gatewayRef + dados do Pix no registro de pagamento
-    await prisma.pagamento.updateMany({
-      where: {
-        id: pagamentoPendente.id,
-        status: 'PENDENTE',
-      },
+    // 💡 CORRIGIDO: trocado de updateMany({ where: { id, status: 'PENDENTE' } }) para
+    // update({ where: { id } }) simples. Para Pix, o webhook da Únicopag pode chegar e já
+    // mudar o status do Pagamento de PENDENTE para PAGO ANTES desta linha rodar (a criação
+    // da transação no gateway deles dispara o webhook quase em paralelo com a resposta HTTP
+    // que estamos esperando aqui). Quando isso acontecia, o updateMany não encontrava
+    // nenhuma linha com status ainda PENDENTE, então rodava com 0 linhas afetadas — sem
+    // erro nenhum — e o pixQrCode/pixUrl/pixBase64 nunca eram gravados no banco, mesmo o
+    // gateway tendo retornado o QR Code certinho (por isso aparecia no log mas não na tela
+    // de retorno, que lê esses campos do banco). Usando update() pelo id, a gravação
+    // acontece independente do status atual do pagamento.
+    await prisma.pagamento.update({
+      where: { id: pagamentoPendente.id },
       data: {
         gateway: 'unicopag',
         gatewayRef,
         gatewayHash: resultadoGateway.hash || null,
         gatewayStatus: resultadoGateway.paymentStatus || resultadoGateway.status || null,
         gatewayResponse: resultadoGateway,
-    
+
         pixQrCode: resultadoGateway.pixQrCode || null,
         pixUrl: resultadoGateway.pixUrl || null,
         pixBase64: resultadoGateway.pixBase64 || null,
