@@ -13,101 +13,117 @@ function apenasNumeros(valor) {
  */
 async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno, dadosCartao }) {
   const token = process.env.UNICOPAG_API_TOKEN;
-  
+
   if (!token) {
     throw new Error('Chave UNICOPAG_API_TOKEN não configurada no ambiente (.env)');
   }
 
   const isCredito = forma === 'CREDITO';
-  const baseUrl = isCredito 
-    ? 'https://api.cloud.unicopag.com.br' 
-    : 'https://vps1.unicopag.com.br';
-    
   const appUrl = process.env.APP_URL || 'https://escola-cruz-vermelha.onrender.com';
-  const paymentMethod = isCredito ? 'credit_card' : 'pix';
-  const endpoint = '/public/v1/payments';
 
   const valorTratado = parseFloat(valorTotal || 0).toFixed(2);
   const amountCentavos = Math.round(parseFloat(valorTratado) * 100);
 
-  // ⚠️ Sobre antifraude: a documentação da Únicopag diz que a integração com o sistema de
-  // antifraude (ThreatMetrix) é obrigatória para cartão. O log real de uma transação de teste
-  // mostrou "payment_status":"paid" — ou seja, o gateway ESTÁ aprovando a transação
-  // normalmente mesmo sem esse profiling implementado. Então isso não é a causa do problema
-  // relatado (matrícula não atualiza); o problema era 100% reconciliação no /webhook/unicopag,
-  // já corrigido em cursos.js. Ainda assim, vale implementar o antifraude a médio prazo — sem
-  // ele você fica mais exposto a fraude/chargeback, mesmo que hoje as transações passem.
-  const payload = {
-    amount: amountCentavos,
-    payment_method: paymentMethod,
-    installments: isCredito ? Number(dadosCartao.parcelas || 1) : 1,
-    postback_url: `${appUrl}/webhook/unicopag`,
-    // 💡 CORRIGIDO (PIX): o script de teste que a Únicopag confirmou funcionar manda
-    // "expire_in_days" e "origin" — campos que o código antigo não mandava. Faz sentido pro
-    // Pix especificamente (precisa de uma validade pro QR code, diferente do cartão que é
-    // processado na hora) e é bem provável que a ausência desses campos seja a causa real dos
-    // 504 no vps1.unicopag.com.br: a rota fica "pendurada" tentando gerar um Pix sem prazo de
-    // expiração em vez de responder rápido com erro de validação. Mandamos só no Pix pra não
-    // mudar nada do payload que já funciona no cartão.
-    ...(!isCredito ? { expire_in_days: 1, origin: 'escola-cruz-vermelha' } : {}),
-    // Confirmado por log real de produção: a Únicopag NÃO ecoa esse metadata de volta no
-    // webhook nem no GET /transactions/:hash. Mantemos o envio porque não faz mal e pode ser
-    // útil pra consulta manual no painel deles, mas o webhook (cursos.js) não depende disso
-    // pra identificar a matrícula — ele casa pelo hash da transação (gatewayRef) e, na janela
-    // de corrida, pelo CPF do cliente.
-    metadata: {
-      order_id: String(matriculaId)
-    },
-    customer: {
-      name: aluno.nome,
-      email: aluno.email,
-      phone_number: apenasNumeros(aluno.celular),
-      document: apenasNumeros(aluno.cpfCnpj),
-      zip_code: apenasNumeros(aluno.cep),
-      street_name: aluno.logradouro || 'Rua não informada',
-      number: aluno.numero || 'SN',
-      complement: aluno.complemento || '',
-      neighborhood: aluno.bairro || 'Bairro não informado',
-      city: aluno.cidade || 'Rio de Janeiro',
-      state: aluno.uf || 'RJ'
-    },
-    // 🔥 CONFIGURAÇÃO COMPLETA: Enviando múltiplos identificadores para alinhar com o validador da nuvem
-    cart: [{
-      id: String(matriculaId),
-      hash: String(matriculaId), // Fornece o hash exigido no erro 422
-      title: nomeCurso,
-      price: amountCentavos,
-      quantity: 1,
-      operation_type: 1 // 1 = Venda Direta (conforme especificado no documento)
-    }]
-  };
+  // 🔄 ATUALIZADO conforme a doc oficial (openapi ÚnicoPag API, servidor
+  // https://xpix.unicopag.com.br/api): o Pix agora passa por um microserviço próprio
+  // (MagenPay), diferente do domínio antigo vps1.unicopag.com.br. O cartão continua
+  // sem documentação nova, então mantemos api.cloud.unicopag.com.br como estava.
+  const baseUrl = isCredito
+    ? 'https://api.cloud.unicopag.com.br'
+    : 'https://xpix.unicopag.com.br/api';
 
-  if (isCredito && dadosCartao) {
-    payload.card = {
-      number: apenasNumeros(dadosCartao.numero),
-      holdername: dadosCartao.titular,
-      exp_month: String(dadosCartao.mesExpiracao).padStart(2, '0'),
-      exp_year: String(dadosCartao.anoExpiracao),
-      cvv: String(dadosCartao.cvv)
+  const endpoint = isCredito ? '/public/v1/payments' : '/v1/payments/pix';
+  const urlFinal = `${baseUrl}${endpoint}`;
+
+  // 🔄 ATUALIZADO: a doc nova do Pix diz explicitamente "Envie o token da API pública no
+  // header Authorization: Bearer {token}". Antes mandávamos o token via query string
+  // (?api_token=...). Pro cartão, como não tem doc nova, mantemos o api_token na URL
+  // (igual já funcionava) e mandamos os dois formatos de auth não atrapalha.
+  const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
+  let urlComAuth = urlFinal;
+
+  if (isCredito) {
+    urlComAuth = `${urlFinal}?api_token=${token.trim()}`;
+  } else {
+    headers['Authorization'] = `Bearer ${token.trim()}`;
+  }
+
+  let payload;
+
+  if (isCredito) {
+    payload = {
+      amount: amountCentavos,
+      payment_method: 'credit_card',
+      installments: Number(dadosCartao.parcelas || 1),
+      postback_url: `${appUrl}/webhook/unicopag`,
+      metadata: {
+        order_id: String(matriculaId)
+      },
+      customer: {
+        name: aluno.nome,
+        email: aluno.email,
+        phone_number: apenasNumeros(aluno.celular),
+        document: apenasNumeros(aluno.cpfCnpj),
+        zip_code: apenasNumeros(aluno.cep),
+        street_name: aluno.logradouro || 'Rua não informada',
+        number: aluno.numero || 'SN',
+        complement: aluno.complemento || '',
+        neighborhood: aluno.bairro || 'Bairro não informado',
+        city: aluno.cidade || 'Rio de Janeiro',
+        state: aluno.uf || 'RJ'
+      },
+      cart: [{
+        id: String(matriculaId),
+        hash: String(matriculaId),
+        title: nomeCurso,
+        price: amountCentavos,
+        quantity: 1,
+        operation_type: 1
+      }],
+      card: {
+        number: apenasNumeros(dadosCartao.numero),
+        holdername: dadosCartao.titular,
+        exp_month: String(dadosCartao.mesExpiracao).padStart(2, '0'),
+        exp_year: String(dadosCartao.anoExpiracao),
+        cvv: String(dadosCartao.cvv)
+      }
+    };
+  } else {
+    // 🔄 ATUALIZADO: o schema CreatePixPaymentRequest da doc nova só aceita amount,
+    // postback_url, customer{name,email,phone_number,document,complement} e
+    // cart[{hash,title,price,quantity,operation_type}]. Removi payment_method,
+    // installments, metadata, expire_in_days, origin e os campos de endereço
+    // (zip_code/street_name/number/neighborhood/city/state) do customer — nenhum deles
+    // existe nesse schema, e phone_number/document agora são number, não string.
+    payload = {
+      amount: amountCentavos,
+      postback_url: `${appUrl}/webhook/unicopag`,
+      customer: {
+        name: aluno.nome,
+        email: aluno.email,
+        phone_number: Number(apenasNumeros(aluno.celular)) || 0,
+        document: Number(apenasNumeros(aluno.cpfCnpj)) || 0,
+        complement: aluno.complemento || null
+      },
+      cart: [{
+        hash: String(matriculaId),
+        title: nomeCurso,
+        price: amountCentavos,
+        quantity: 1,
+        operation_type: 1
+      }]
     };
   }
 
-  console.log(`[MONITORAMENTO CARTÃO] ➡️ 1. Enviando Transação. Matrícula Original: ${matriculaId} | Método: ${paymentMethod}`);
+  console.log(`[MONITORAMENTO CARTÃO] ➡️ 1. Enviando Transação. Matrícula Original: ${matriculaId} | Método: ${isCredito ? 'credit_card' : 'pix'}`);
 
-  const urlFinal = `${baseUrl}${endpoint}?api_token=${token.trim()}`;
-
-  // O domínio do Pix (vps1.unicopag.com.br) é separado do domínio do cartão
-  // (api.cloud.unicopag.com.br, usado acima) e tem histórico de ficar lento/instável (504 do
-  // nginx deles). Chegamos a testar um timeout curto (AbortController, 20s) aqui, mas isso
-  // piorou o problema: em produção o webhook "transaction.created" costuma chegar durante a
-  // espera do 504 real (que pode passar de 20s) — cortando a chamada mais cedo, a gente
-  // cancelava o Pagamento ANTES do webhook ter chance de chegar e gravar o gatewayRef (ver
-  // server.js e o catch em cursos.js), criando exatamente a mesma corrida que estávamos
-  // tentando resolver. Por isso deixamos sem timeout aqui: se a Únicopag demorar, esperamos —
-  // é o catch em cursos.js (com um pequeno período de tolerância) que decide se cancela ou não.
-  const response = await fetch(urlFinal, {
+  // O domínio do Pix antigo (vps1.unicopag.com.br) tinha histórico de 504 e por isso não
+  // colocávamos timeout aqui — o catch em cursos.js (com tolerância) que decidia cancelar
+  // ou não. Mantemos essa mesma filosofia agora com o novo domínio (xpix.unicopag.com.br)
+  // até termos confirmação de que ele não sofre do mesmo problema.
+  const response = await fetch(urlComAuth, {
     method: 'POST',
-    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(payload),
   });
 
@@ -120,21 +136,20 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
 
   const json = JSON.parse(textBody);
   const result = json.result || json;
-  
+
   console.log(`[MONITORAMENTO CARTÃO] ⬅️ 2. Resposta da API recebida. hash gerado: ${result.hash} | id gerado: ${result.id}`);
 
+  // ⚠️ ATENÇÃO: a doc nova (PaymentResource) define "pix" só como "object | null", sem
+  // detalhar os campos internos. Mantive pix_qr_code/pix_url como primeira tentativa
+  // (era o que funcionava confirmado por log real antes da mudança), mas isso NÃO está
+  // confirmado pra esse novo endpoint. Se vier null mesmo com a transação criada, cole
+  // aqui o `textBody` de uma transação de teste real que eu ajusto os nomes certos.
   return {
     success: true,
     gatewayRef: String(result.hash || result.id || matriculaId),
     paymentStatus: result.payment_status || 'pending',
     installments: result.installments || (isCredito ? Number(dadosCartao.parcelas || 1) : 1),
     checkoutUrl: result.checkout_url || null,
-    // 💡 CORRIGIDO (PIX): o campo real que a Únicopag devolve é "pix_qr_code" (confirmado tanto
-    // na documentação oficial quanto em todo webhook real recebido em produção), não "qrcode".
-    // O mesmo vale pra "pix_url". Com os nomes errados, pixQrCode e pixUrl sempre voltavam
-    // null — a transação era criada normalmente do lado da Únicopag, só que a gente nunca
-    // conseguia extrair o QR code da resposta pra mostrar pro aluno, mesmo sem nenhum erro de
-    // rede ou timeout envolvido.
     pixQrCode: result.pix?.pix_qr_code || null,
     pixUrl: result.pix?.pix_url || null
   };
