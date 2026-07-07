@@ -82,10 +82,6 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
     return reRender(['CPF ou CNPJ inválido.']);
   }
 
-  // RG é obrigatório para pessoa física (CPF); para CNPJ não é exigido.
-  if (doc.tipo === 'CPF' && !rg) {
-    return reRender(['Informe o RG (obrigatório para pessoa física).']);
-  }
 
   // Forca da senha (servidor manda). Penaliza usar nome/e-mail na senha.
   if (!avaliarSenha(senha, [nome, email]).ok) {
