@@ -167,6 +167,7 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
         // Continua com o valor original se a consulta falhar
       }
     }
+    
 
     const resultadoGateway = await criarTransacao({
       matriculaId: matricula.id,
