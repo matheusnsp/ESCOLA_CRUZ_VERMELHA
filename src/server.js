@@ -235,7 +235,9 @@ app.use('/uploads', express.static(uploadsDir));
 // Sessao guardada no PostgreSQL (nao no MemoryStore padrao).
 const sessionPool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ...(process.env.DATABASE_SSL === 'true' ? { ssl: { rejectUnauthorized: false } } : {}),
+  max: 2,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
 });
 app.use(
   session({

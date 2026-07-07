@@ -1,6 +1,11 @@
-// Cliente Prisma único, reaproveitado em toda a aplicação.
 const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL + '?pgbouncer=true&connection_limit=1',
+    },
+  },
+});
 
 module.exports = prisma;
