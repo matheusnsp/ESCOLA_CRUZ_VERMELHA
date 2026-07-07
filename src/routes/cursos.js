@@ -74,6 +74,7 @@ router.get('/inscrever/:turmaId', requireLogin, async (req, res) => {
 });
 
 router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
+  console.log('[DEBUG POST INSCREVER] body:', JSON.stringify(req.body));
   const turma = await prisma.turma.findUnique({
     where: { id: req.params.turmaId },
     include: { curso: true },
@@ -145,6 +146,8 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   try {
     const parcelasFinais = plano === 'PARCELADO' ? Number(turma.curso.parcelas || 1) : 1;
 
+    console.log('[DEBUG PARCELAS]', { plano, forma, parcelasFinais, total });
+
     // Busca o valor total com juros do gateway antes de criar a transação.
     // Sem isso, o gateway aplica os juros por cima do valor original,
     // resultando em um valor incorreto cobrado do aluno.
@@ -167,7 +170,6 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
         // Continua com o valor original se a consulta falhar
       }
     }
-    
 
     const resultadoGateway = await criarTransacao({
       matriculaId: matricula.id,
