@@ -166,7 +166,7 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
           console.log(`[PARCELAMENTO] ${parcelasFinais}x | valor original: R$${total} | valor com juros (${opcao.interest_rate}%): R$${valorFinal}`);
         }
       } catch (errInstallments) {
-        console.warn('[PARCELAMENTO] Falha ao consultar juros, usando valor original:', errInstallments.message);
+        console.warn('[PARCELAMENTO] Falha ao consultar juros:', errInstallments);
         // Continua com o valor original se a consulta falhar
       }
     }
