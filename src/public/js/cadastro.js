@@ -25,7 +25,7 @@
       if (labelDoc) labelDoc.textContent = 'CPF';
       if (inputDoc) inputDoc.placeholder = '000.000.000-00';
       if (campoRg) campoRg.style.display = '';
-      if (inputRg) inputRg.required = true;
+      if (inputRg) inputRg.required = false;
     }
   }
 

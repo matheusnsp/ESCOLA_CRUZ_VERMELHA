@@ -51,9 +51,9 @@
       </label>
 
       <label class="auth-field" id="campo-rg" style="display:none;">
-        <span>RG</span>
+        <span>RG <span style="font-weight:400;color:#718096;font-size:.85em;">(opcional)</span></span>
         <input type="text" name="rg" value="<%= valores.rg || '' %>" maxlength="14" placeholder="Número do RG" data-mask="rg">
-        <small>Obrigatório para pessoa física.</small>
+        <small>Preenchimento opcional.</small>
       </label>
 
       <label class="auth-field">
@@ -161,7 +161,7 @@
         <input type="checkbox" name="consentimento">
         <span>
           Li e aceito a
-          <a href="/privacidade" target="_blank" rel="noopener">Política de Privacidade</a>
+          <a href="/arquivo/privacidade.pdf" target="_blank">Política de Privacidade</a>
           e o tratamento dos meus dados conforme a LGPD.
         </span>
       </label>
