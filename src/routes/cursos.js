@@ -1,4 +1,5 @@
 const express = require('express');
+const fetch = require('node-fetch');
 const prisma = require('../db');
 const { requireLogin } = require('../middleware/auth');
 const { inscricaoSchema } = require('../lib/validation');
@@ -144,10 +145,33 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   try {
     const parcelasFinais = plano === 'PARCELADO' ? Number(turma.curso.parcelas || 1) : 1;
 
+    // Busca o valor total com juros do gateway antes de criar a transação.
+    // Sem isso, o gateway aplica os juros por cima do valor original,
+    // resultando em um valor incorreto cobrado do aluno.
+    let valorFinal = total;
+    if (forma === 'CREDITO' && parcelasFinais > 1) {
+      try {
+        const amountCentavos = Math.round(parseFloat(total) * 100);
+        const token = process.env.UNICOPAG_API_TOKEN.trim();
+        const installmentsResp = await fetch(
+          `https://api.cloud.unicopag.com.br/public/v1/installments?amount=${amountCentavos}&api_token=${token}`
+        );
+        const installmentsData = await installmentsResp.json();
+        const opcao = installmentsData.installments?.find(i => i.installment === parcelasFinais);
+        if (opcao) {
+          valorFinal = opcao.total / 100; // total já com juros, em reais
+          console.log(`[PARCELAMENTO] ${parcelasFinais}x | valor original: R$${total} | valor com juros (${opcao.interest_rate}%): R$${valorFinal}`);
+        }
+      } catch (errInstallments) {
+        console.warn('[PARCELAMENTO] Falha ao consultar juros, usando valor original:', errInstallments.message);
+        // Continua com o valor original se a consulta falhar
+      }
+    }
+
     const resultadoGateway = await criarTransacao({
       matriculaId: matricula.id,
       nomeCurso: turma.curso.nome,
-      valorTotal: total,
+      valorTotal: valorFinal,
       forma,
       aluno: {
         ...aluno,
@@ -165,16 +189,6 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
     const gatewayRef = String(resultadoGateway.gatewayRef || resultadoGateway.id || resultadoGateway.hash || matricula.id);
 
-    // 💡 CORRIGIDO: trocado de updateMany({ where: { id, status: 'PENDENTE' } }) para
-    // update({ where: { id } }) simples. Para Pix, o webhook da Únicopag pode chegar e já
-    // mudar o status do Pagamento de PENDENTE para PAGO ANTES desta linha rodar (a criação
-    // da transação no gateway deles dispara o webhook quase em paralelo com a resposta HTTP
-    // que estamos esperando aqui). Quando isso acontecia, o updateMany não encontrava
-    // nenhuma linha com status ainda PENDENTE, então rodava com 0 linhas afetadas — sem
-    // erro nenhum — e o pixQrCode/pixUrl/pixBase64 nunca eram gravados no banco, mesmo o
-    // gateway tendo retornado o QR Code certinho (por isso aparecia no log mas não na tela
-    // de retorno, que lê esses campos do banco). Usando update() pelo id, a gravação
-    // acontece independente do status atual do pagamento.
     await prisma.pagamento.update({
       where: { id: pagamentoPendente.id },
       data: {
@@ -194,15 +208,12 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       return res.redirect(resultadoGateway.checkoutUrl);
     }
 
-    // Redireciona para a página de retorno — os dados do Pix serão lidos do banco lá
     return res.redirect(`/inscricao/retorno?matriculaId=${matricula.id}&pix=${forma === 'PIX' ? '1' : '0'}`);
 
   } catch (err) {
     console.error('[UnicopAg] Erro no Gateway:', err.message);
 
     if (forma === 'PIX') {
-      // Fallback: se o gateway estourou timeout mas o webhook pode ter chegado,
-      // aguarda até 30s checando se o gatewayRef foi gravado pelo webhook.
       let pagamentoAtual = null;
       for (let tentativa = 0; tentativa < 15; tentativa++) {
         pagamentoAtual = await prisma.pagamento.findUnique({ where: { id: pagamentoPendente.id } });
@@ -211,7 +222,6 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       }
       if (pagamentoAtual?.gatewayRef) {
         console.log(`[UnicopAg] Pix ${pagamentoAtual.gatewayRef} confirmado pelo webhook durante a espera.`);
-        // Tenta redirecionar para retorno mesmo sem QR (webhook não traz QR code)
         return res.redirect(`/inscricao/retorno?matriculaId=${matricula.id}&pix=1`);
       }
     }
@@ -232,7 +242,6 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
         where: { id: matriculaId },
         include: {
           turma: { include: { curso: true } },
-          // Busca o pagamento mais recente para pegar pixQrCode e pixUrl salvos
           pagamentos: { orderBy: { criadoEm: 'desc' }, take: 1 },
         },
       })
