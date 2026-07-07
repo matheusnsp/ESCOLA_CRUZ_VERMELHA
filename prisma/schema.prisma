@@ -94,6 +94,11 @@ model Matricula {
   valorCurso         Decimal            @db.Decimal(10, 2)
   valorTaxaMatricula Decimal            @default(0) @db.Decimal(10, 2)
   alimentoEntregue   Boolean            @default(false)
+  alimentoEntreguePor String?
+  alimentoEntregueEm  DateTime?
+  taxaConfirmada     Boolean            @default(false)
+  taxaConfirmadaPor  String?
+  taxaConfirmadaEm   DateTime?
   statusPagamento    StatusPagamento    @default(PENDENTE)
   nota               Float?
   situacao           SituacaoAcademica?

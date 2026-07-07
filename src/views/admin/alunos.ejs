@@ -26,8 +26,9 @@
           <td><%= a.escolaridade ? (a.escolaridade + (a.escolaridadeSituacao ? ' (' + a.escolaridadeSituacao + ')' : '')) : '—' %></td>
           <td><%= a._count.matriculas %></td>
           <td class="adm-acoes">
+            <a href="/alunos/<%= a.id %>/matriculas" class="adm-mini" title="Ver matrículas"><i class="fa-solid fa-list-check"></i></a>
             <a href="/alunos/<%= a.id %>/editar" class="adm-mini" title="Editar dados"><i class="fa-solid fa-pen-to-square"></i></a>
-          </td>
+            </td>
         </tr>
       <% }) %>
     </tbody>

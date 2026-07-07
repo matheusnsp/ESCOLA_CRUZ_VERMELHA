@@ -12,9 +12,6 @@ const escolaridadeSituacaoField = z.string().trim().min(1, 'Selecione se está c
 const generoField = z.string().trim().optional().transform(v => v || '').refine(v => v === '' || GENEROS.includes(v), { message: 'Gênero inválido.' });
 const opcionalTexto = (max, msg) => z.string().trim().max(max, msg).optional().transform(v => v || '');
 
-// 💡 CORRIGIDO: RG precisa estar no formato "12.345.678-9" (2 dígitos, ponto, 3 dígitos, ponto,
-// 3 dígitos, traço, 1 dígito verificador). Continua opcional — string vazia passa — mas se o
-// campo vier preenchido, tem que bater exatamente com esse padrão.
 const rgField = z.string().trim().optional().transform(v => v || '').refine(
   (v) => v === '' || /^\d{2}\.\d{3}\.\d{3}-\d$/.test(v),
   { message: 'RG deve estar no formato 12.345.678-9.' }
@@ -51,24 +48,8 @@ const cadastroSchema = z.object({
 
 const inscricaoSchema = z.object({
   plano: z.enum(['A_VISTA', 'PARCELADO']),
-  forma: z.enum(['PIX', 'CREDITO', 'DINHEIRO']),
-  numero: z.string().optional(),
-  titular: z.string().optional(),
-  validade: z.string().optional(),
-  cvv: z.string().optional(),
-}).refine(d => {
-  if (d.forma === 'CREDITO') {
-    return !!(d.numero && d.titular && d.cvv && d.validade);
-  }
-  return true;
-}, { message: "Dados do cartão incompletos.", path: ["numero"] })
-.refine(d => {
-  if (d.forma === 'CREDITO' && d.validade) {
-    return /^\d{2}\/\d{2}$/.test(d.validade);
-  }
-  return true;
-}, { message: "Validade inválida. Use o formato MM/AA.", path: ["validade"] })
-.refine(d => !(d.plano === 'PARCELADO' && d.forma === 'PIX'), { path: ['forma'], message: 'Parcelamento apenas no crédito ou presencial.' });
+  forma: z.enum(['PIX', 'CREDITO', 'DEBITO', 'DINHEIRO']),
+});
 
 const turmaSchema = z.object({
   cursoId: z.string().min(1),

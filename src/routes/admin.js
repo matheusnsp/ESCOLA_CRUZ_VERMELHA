@@ -70,6 +70,17 @@ function back(req, msg) {
   return `${url}${queryConector}ok=${encodeURIComponent(msg)}`;
 }
 
+function statusBadge(s) {
+  const map = {
+    PENDENTE:  '<span style="background:#fef9c3;color:#854d0e;padding:3px 8px;border-radius:6px;font-size:12px;font-weight:600;">PENDENTE</span>',
+    PAGO:      '<span style="background:#dcfce7;color:#166534;padding:3px 8px;border-radius:6px;font-size:12px;font-weight:600;">PAGO</span>',
+    PARCELADO: '<span style="background:#dbeafe;color:#1e40af;padding:3px 8px;border-radius:6px;font-size:12px;font-weight:600;">PARCELADO</span>',
+    CANCELADO: '<span style="background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:6px;font-size:12px;font-weight:600;">CANCELADO</span>',
+    ESTORNADO: '<span style="background:#f3e8ff;color:#6b21a8;padding:3px 8px;border-radius:6px;font-size:12px;font-weight:600;">ESTORNADO</span>',
+  };
+  return map[s] || `<span>${s}</span>`;
+}
+
 const ESCOLARIDADES = ['', 'Ensino Fundamental', 'Ensino Médio', 'Ensino Superior'];
 const STATUS_TURMA = ['ABERTA', 'CONFIRMADA', 'CANCELADA', 'ENCERRADA'];
 
@@ -462,7 +473,7 @@ router.post('/cursos/:id/ativar', async (req, res) => {
 router.get('/turmas', async (req, res) => {
   const turmas = await prisma.turma.findMany({
     orderBy: { inicioPrevisto: 'asc' },
-    include: { curso: true, _count: { select: { matriculas: { where: { statusPagamento: 'PAGO' } } } } },
+    include: { curso: true, _count: { select: { matriculas: { where: { taxaConfirmada: true, statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] } } } } } },
   });
   res.render('admin/turmas', { turmas, statusTurma: STATUS_TURMA, flash: req.query.ok || null, erro: req.query.erro || null });
 });
@@ -600,6 +611,7 @@ router.get('/inscricoes', async (req, res) => {
   
   // 💡 FIX: Reintroduzido o status 'PENDENTE'. Sem ele, compras PIX novas sumiam do painel impossibilitando a alteração de tag
   const where = {
+    taxaConfirmada: true,
     statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] },
     ...(turmaId ? { turmaId } : {})
   };
@@ -612,7 +624,8 @@ router.get('/inscricoes', async (req, res) => {
     }),
     prisma.turma.findMany({ orderBy: { inicioPrevisto: 'asc' }, include: { curso: true } }),
   ]);
-  res.render('admin/inscricoes', { inscricoes, turmas, turmaId, formatBRL, flash: req.query.ok || null });
+  // res.render('admin/inscricoes', { inscricoes, turmas, turmaId, formatBRL, flash: req.query.ok || null });
+  res.render('admin/inscricoes', { inscricoes, turmas, turmaId, formatBRL, statusBadge, flash: req.query.ok || null });
 });
 
 router.post('/inscricoes/:id/confirmar', async (req, res) => {
@@ -648,6 +661,113 @@ router.post('/inscricoes/:id/alimento', async (req, res) => {
   await prisma.matricula.update({ where: { id: m.id }, data: { alimentoEntregue: !m.alimentoEntregue } });
   await auditar(req, 'ALTEROU_ALIMENTO', 'Matricula', m.id, { entregue: !m.alimentoEntregue });
   res.redirect(back(req, 'Atualizado.'));
+});
+
+router.get('/inscricoes/:id/nota', async (req, res) => {
+  const m = await prisma.matricula.findUnique({
+    where: { id: req.params.id },
+    include: { aluno: true, turma: { include: { curso: true } }, avaliacoes: { orderBy: { criadoEm: 'asc' } } },
+  });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
+  res.render('admin/nota', { m, erro: null });
+});
+
+router.post('/inscricoes/:id/avaliacoes', async (req, res) => {
+  const m = await prisma.matricula.findUnique({ where: { id: req.params.id }, include: { aluno: true, turma: { include: { curso: true } }, avaliacoes: true } });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
+
+  const reErro = (msg) => res.status(400).render('admin/nota', { m, erro: msg });
+  const nome = String(req.body.nome || '').trim();
+  const nota = Number(String(req.body.nota || '').replace(',', '.'));
+  const peso = Number(String(req.body.peso || '1').replace(',', '.'));
+
+  if (!nome || nome.length > 60) return reErro('Dê um nome à avaliação (ex.: Prova 1).');
+  if (Number.isNaN(nota) || nota < 0 || nota > 10) return reErro('A nota deve ser um número entre 0 e 10.');
+  if (Number.isNaN(peso) || peso <= 0 || peso > 100) return reErro('O peso deve ser um número maior que zero.');
+
+  await prisma.avaliacao.create({ data: { matriculaId: m.id, nome, nota: Math.round(nota * 100) / 100, peso } });
+  const media = await recalcularMedia(m.id);
+  await auditar(req, 'ADICIONOU_AVALIACAO', 'Matricula', m.id, { nome, nota, peso, media });
+  res.redirect(`/inscricoes/${m.id}/nota`);
+});
+
+router.post('/inscricoes/:id/avaliacoes/:avalId/remover', async (req, res) => {
+  const aval = await prisma.avaliacao.findUnique({ where: { id: req.params.avalId } });
+  if (!aval || aval.matriculaId !== req.params.id) return res.status(404).render('admin/erro', { mensagem: 'Avaliação não encontrada.' });
+  await prisma.avaliacao.delete({ where: { id: aval.id } });
+  await recalcularMedia(req.params.id);
+  await auditar(req, 'REMOVEU_AVALIACAO', 'Matricula', req.params.id, { nome: aval.nome });
+  res.redirect(`/inscricoes/${req.params.id}/nota`);
+});
+
+router.post('/inscricoes/:id/situacao', async (req, res) => {
+  const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
+  const s = String(req.body.situacao || '').trim();
+  let situacao = null;
+  if (s === 'APROVADO' || s === 'REPROVADO') situacao = s;
+  else if (s !== '') return res.status(400).render('admin/erro', { mensagem: 'Situação inválida.' });
+  await prisma.matricula.update({ where: { id: m.id }, data: { situacao } });
+  await auditar(req, 'DEFINIU_SITUACAO', 'Matricula', m.id, { situacao });
+  res.redirect(`/inscricoes/${m.id}/nota`);
+});
+
+router.get('/inscricoes/:id/transferir', async (req, res) => {
+  const m = await prisma.matricula.findUnique({
+    where: { id: req.params.id },
+    include: { aluno: true, turma: { include: { curso: true } } },
+  });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
+  const turmas = await prisma.turma.findMany({
+    where: { id: { not: m.turmaId } },
+    orderBy: { inicioPrevisto: 'asc' },
+    include: { curso: true },
+  });
+  res.render('admin/transferir', { m, turmas, formatBRL, erro: null });
+});
+
+router.post('/inscricoes/:id/transferir', async (req, res) => {
+  const m = await prisma.matricula.findUnique({
+    where: { id: req.params.id },
+    include: { turma: { include: { curso: true } } },
+  });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
+
+  const destinoId = String(req.body.turmaDestino || '');
+  const reRenderErro = async (erro) => {
+    const turmas = await prisma.turma.findMany({
+      where: { id: { not: m.turmaId } }, orderBy: { inicioPrevisto: 'asc' }, include: { curso: true },
+    });
+    const mCompleto = await prisma.matricula.findUnique({ where: { id: m.id }, include: { aluno: true, turma: { include: { curso: true } } } });
+    return res.status(400).render('admin/transferir', { m: mCompleto, turmas, formatBRL, erro });
+  };
+
+  if (!destinoId || destinoId === m.turmaId) return reRenderErro('Selecione uma turma de destino diferente da atual.');
+
+  const destino = await prisma.turma.findUnique({ where: { id: destinoId }, include: { curso: true } });
+  if (!destino) return reRenderErro('Turma de destino não encontrada.');
+
+  const mesmoCurso = destino.cursoId === m.turma.cursoId;
+  const dados = { turmaId: destino.id };
+  let msg = `Aluno transferido para "${destino.curso.nome}".`;
+
+  if (!mesmoCurso) {
+    const novoValor = m.plano === 'A_VISTA' ? Number(destino.curso.precoAvista) : Number(destino.curso.precoCheio);
+    const valorAntigo = Number(m.valorCurso);
+    const diff = novoValor - valorAntigo;
+    dados.valorCurso = novoValor;
+    if (diff > 0) msg += ` Diferença a COBRAR do aluno: ${formatBRL(diff)}.`;
+    else if (diff < 0) msg += ` Valor a ESTORNAR ao aluno: ${formatBRL(Math.abs(diff))}.`;
+    else msg += ' Sem diferença de valor.';
+  } else {
+    msg += ' Mesmo curso — sem alteração de valores.';
+  }
+
+  await prisma.matricula.update({ where: { id: m.id }, data: dados });
+  await auditar(req, 'TRANSFERIU_ALUNO', 'Matricula', m.id, {
+    de: m.turmaId, para: destino.id, mesmoCurso, novoValorCurso: dados.valorCurso ?? Number(m.valorCurso),
+  });
+  res.redirect('/inscricoes?ok=' + encodeURIComponent(msg));
 });
 
 // ---------- Alunos (listar, buscar, editar dados básicos) ----------
@@ -781,111 +901,37 @@ router.post('/alunos/:id/editar', async (req, res) => {
   res.redirect('/alunos?ok=' + encodeURIComponent(`Dados de ${nome.split(' ')[0]} atualizados.`));
 });
 
-router.get('/inscricoes/:id/nota', async (req, res) => {
-  const m = await prisma.matricula.findUnique({
-    where: { id: req.params.id },
-    include: { aluno: true, turma: { include: { curso: true } }, avaliacoes: { orderBy: { criadoEm: 'asc' } } },
-  });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
-  res.render('admin/nota', { m, erro: null });
-});
+// ---------- Matrículas do aluno (confirmações) ----------
 
-router.post('/inscricoes/:id/avaliacoes', async (req, res) => {
-  const m = await prisma.matricula.findUnique({ where: { id: req.params.id }, include: { aluno: true, turma: { include: { curso: true } }, avaliacoes: true } });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
+router.get('/alunos/:id/matriculas', async (req, res) => {
+  const aluno = await prisma.usuario.findUnique({ where: { id: req.params.id } });
+  if (!aluno || aluno.papel !== 'ALUNO') return res.status(404).render('admin/erro', { mensagem: 'Aluno não encontrado.' });
 
-  const reErro = (msg) => res.status(400).render('admin/nota', { m, erro: msg });
-  const nome = String(req.body.nome || '').trim();
-  const nota = Number(String(req.body.nota || '').replace(',', '.'));
-  const peso = Number(String(req.body.peso || '1').replace(',', '.'));
-
-  if (!nome || nome.length > 60) return reErro('Dê um nome à avaliação (ex.: Prova 1).');
-  if (Number.isNaN(nota) || nota < 0 || nota > 10) return reErro('A nota deve ser um número entre 0 e 10.');
-  if (Number.isNaN(peso) || peso <= 0 || peso > 100) return reErro('O peso deve ser um número maior que zero.');
-
-  await prisma.avaliacao.create({ data: { matriculaId: m.id, nome, nota: Math.round(nota * 100) / 100, peso } });
-  const media = await recalcularMedia(m.id);
-  await auditar(req, 'ADICIONOU_AVALIACAO', 'Matricula', m.id, { nome, nota, peso, media });
-  res.redirect(`/inscricoes/${m.id}/nota`);
-});
-
-router.post('/inscricoes/:id/avaliacoes/:avalId/remover', async (req, res) => {
-  const aval = await prisma.avaliacao.findUnique({ where: { id: req.params.avalId } });
-  if (!aval || aval.matriculaId !== req.params.id) return res.status(404).render('admin/erro', { mensagem: 'Avaliação não encontrada.' });
-  await prisma.avaliacao.delete({ where: { id: aval.id } });
-  await recalcularMedia(req.params.id);
-  await auditar(req, 'REMOVEU_AVALIACAO', 'Matricula', req.params.id, { nome: aval.nome });
-  res.redirect(`/inscricoes/${req.params.id}/nota`);
-});
-
-router.post('/inscricoes/:id/situacao', async (req, res) => {
-  const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
-  const s = String(req.body.situacao || '').trim();
-  let situacao = null;
-  if (s === 'APROVADO' || s === 'REPROVADO') situacao = s;
-  else if (s !== '') return res.status(400).render('admin/erro', { mensagem: 'Situação inválida.' });
-  await prisma.matricula.update({ where: { id: m.id }, data: { situacao } });
-  await auditar(req, 'DEFINIU_SITUACAO', 'Matricula', m.id, { situacao });
-  res.redirect(`/inscricoes/${m.id}/nota`);
-});
-
-router.get('/inscricoes/:id/transferir', async (req, res) => {
-  const m = await prisma.matricula.findUnique({
-    where: { id: req.params.id },
-    include: { aluno: true, turma: { include: { curso: true } } },
-  });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
-  const turmas = await prisma.turma.findMany({
-    where: { id: { not: m.turmaId } },
-    orderBy: { inicioPrevisto: 'asc' },
-    include: { curso: true },
-  });
-  res.render('admin/transferir', { m, turmas, formatBRL, erro: null });
-});
-
-router.post('/inscricoes/:id/transferir', async (req, res) => {
-  const m = await prisma.matricula.findUnique({
-    where: { id: req.params.id },
+  const matriculas = await prisma.matricula.findMany({
+    where: { alunoId: req.params.id },
     include: { turma: { include: { curso: true } } },
+    orderBy: { criadoEm: 'desc' },
   });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
 
-  const destinoId = String(req.body.turmaDestino || '');
-  const reRenderErro = async (erro) => {
-    const turmas = await prisma.turma.findMany({
-      where: { id: { not: m.turmaId } }, orderBy: { inicioPrevisto: 'asc' }, include: { curso: true },
-    });
-    const mCompleto = await prisma.matricula.findUnique({ where: { id: m.id }, include: { aluno: true, turma: { include: { curso: true } } } });
-    return res.status(400).render('admin/transferir', { m: mCompleto, turmas, formatBRL, erro });
-  };
+  res.render('admin/aluno-matriculas', { aluno, matriculas, formatBRL, ok: req.query.ok || null });
+});
 
-  if (!destinoId || destinoId === m.turmaId) return reRenderErro('Selecione uma turma de destino diferente da atual.');
+router.post('/alunos/:id/matriculas/:matriculaId/confirmar-taxa', async (req, res) => {
+  const m = await prisma.matricula.findUnique({ where: { id: req.params.matriculaId } });
+  if (!m || m.alunoId !== req.params.id) return res.status(404).render('admin/erro', { mensagem: 'Matrícula não encontrada.' });
 
-  const destino = await prisma.turma.findUnique({ where: { id: destinoId }, include: { curso: true } });
-  if (!destino) return reRenderErro('Turma de destino não encontrada.');
-
-  const mesmoCurso = destino.cursoId === m.turma.cursoId;
-  const dados = { turmaId: destino.id };
-  let msg = `Aluno transferido para "${destino.curso.nome}".`;
-
-  if (!mesmoCurso) {
-    const novoValor = m.plano === 'A_VISTA' ? Number(destino.curso.precoAvista) : Number(destino.curso.precoCheio);
-    const valorAntigo = Number(m.valorCurso);
-    const diff = novoValor - valorAntigo;
-    dados.valorCurso = novoValor;
-    if (diff > 0) msg += ` Diferença a COBRAR do aluno: ${formatBRL(diff)}.`;
-    else if (diff < 0) msg += ` Valor a ESTORNAR ao aluno: ${formatBRL(Math.abs(diff))}.`;
-    else msg += ' Sem diferença de valor.';
-  } else {
-    msg += ' Mesmo curso — sem alteração de valores.';
-  }
-
-  await prisma.matricula.update({ where: { id: m.id }, data: dados });
-  await auditar(req, 'TRANSFERIU_ALUNO', 'Matricula', m.id, {
-    de: m.turmaId, para: destino.id, mesmoCurso, novoValorCurso: dados.valorCurso ?? Number(m.valorCurso),
+  await prisma.matricula.update({
+    where: { id: m.id },
+    data: {
+      taxaConfirmada: true,
+      taxaConfirmadaPor: req.session.usuarioId,
+      taxaConfirmadaEm: new Date(),
+      // só muda pra PENDENTE se ainda não tiver um status de pagamento ativo
+      ...(m.statusPagamento === 'PAGO' || m.statusPagamento === 'PARCELADO' ? {} : { statusPagamento: 'PENDENTE' }),
+    },
   });
-  res.redirect('/inscricoes?ok=' + encodeURIComponent(msg));
+  await auditar(req, 'CONFIRMOU_TAXA_INSCRICAO', 'Matricula', m.id, null);
+  res.redirect(`/alunos/${req.params.id}/matriculas?ok=` + encodeURIComponent('Taxa de inscrição confirmada. Aluno adicionado à turma como pendente.'));
 });
 
 module.exports = router;

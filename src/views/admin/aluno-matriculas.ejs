@@ -1,0 +1,42 @@
+<%- include('head', { titulo: 'Matrículas do aluno' }) %>
+<%- include('header', { ativo: 'alunos' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Matrículas de <%= aluno.nome %></h1>
+  <a href="/alunos" style="display:inline-flex;align-items:center;gap:5px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;text-decoration:none;color:inherit;white-space:nowrap;">
+    <i class="fa-solid fa-arrow-left"></i> Voltar
+  </a>
+</div>
+
+<% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
+
+<div class="adm-box" style="padding:0;">
+  <% if (!matriculas.length) { %>
+    <div class="adm-vazio" style="padding:24px;">Este aluno ainda não possui matrículas.</div>
+  <% } else { %>
+    <% matriculas.forEach(function (m, i) { %>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;<%= i > 0 ? 'border-top:1px solid #f0f2f5;' : '' %>">
+        <div>
+          <strong style="font-size:14px;"><%= m.turma.curso.nome %></strong>
+          <div><small class="adm-mut"><%= m.turma.diasSemana %> · <%= m.turma.horario %></small></div>
+        </div>
+        <div style="flex-shrink:0;margin-left:12px;">
+          <% if (m.taxaConfirmada) { %>
+            <span style="display:inline-flex;align-items:center;gap:5px;background:#dcfce7;color:#166534;padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap;">
+              <i class="fa-solid fa-check"></i> Confirmada
+            </span>
+          <% } else { %>
+            <form method="POST" action="/alunos/<%= aluno.id %>/matriculas/<%= m.id %>/confirmar-taxa">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button type="submit" style="display:inline-flex;align-items:center;gap:5px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
+                <i class="fa-solid fa-money-bill"></i> Confirmar (R$ 100)
+              </button>
+            </form>
+          <% } %>
+        </div>
+      </div>
+    <% }) %>
+  <% } %>
+</div>
+
+<%- include('foot') %>

@@ -56,6 +56,20 @@
                     <%= m.turma.diasSemana %> · <%= m.turma.horario %> ·
                     início <%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
                   </small>
+                  <small class="mat-sub" style="margin-top:4px;display:block;">
+                    Inscrito em <%= new Date(m.criadoEm).toLocaleDateString('pt-BR') %>
+                  </small>
+                  <div style="margin-top:8px;margin-bottom:8px;">
+                    <% if (m.taxaConfirmada) { %>
+                      <span style="display:inline-flex;align-items:center;gap:5px;background:#dcfce7;color:#166534;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid #86efac;">
+                        <i class="fa-solid fa-check-circle"></i> Taxa de inscrição confirmada
+                      </span>
+                    <% } else { %>
+                      <span style="display:inline-flex;align-items:center;gap:5px;background:#fefce8;color:#854d0e;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid #fde047;">
+                        <i class="fa-solid fa-clock"></i> Taxa aguardando confirmação
+                      </span>
+                    <% } %>
+                  </div>
                   <div class="course-meta">
                     <span class="duration"><%= m.plano === 'A_VISTA' ? 'À vista' : 'Parcelado' %> · <%= m.forma %></span>
                     <span class="price"><%= formatBRL(Number(m.valorCurso) + Number(m.valorTaxaMatricula)) %></span>

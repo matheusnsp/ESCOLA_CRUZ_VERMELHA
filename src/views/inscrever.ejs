@@ -2,165 +2,410 @@
 <%- include('partials/site-header') %>
 
 <main class="interna-wrap">
-  <a href="/cursos/<%= curso.id %>" class="cat-back" style="margin:0;"><i class="fa-solid fa-arrow-left"></i> Voltar ao curso</a>
+  <a href="/cursos/<%= curso.id %>" class="cat-back" style="margin:0;">
+    <i class="fa-solid fa-arrow-left"></i> Voltar ao curso
+  </a>
 
-  <div class="painel-card">
+  <div class="painel-card" style="max-width:540px">
     <h1><%= curso.nome %></h1>
     <p class="painel-sub">
-      <%= turma.diasSemana %> · <%= turma.horario %> ·
-      início em <%= new Date(turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
+      <%= turma.diasSemana %> · <%= turma.horario %> · início em
+      <%= new Date(turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
     </p>
 
     <% if (erro) { %>
-      <div class="aviso-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div>
+    <div class="aviso-erro">
+      <i class="fa-solid fa-circle-exclamation"></i> <%= erro %>
+    </div>
     <% } %>
 
-    <div class="resumo-box">
-      <div><span>Curso (à vista)</span><strong><%= formatBRL(aVista.valorCurso) %></strong></div>
-      <div><span>Curso (parcelado)</span><strong><%= formatBRL(parcelado.valorCurso) %></strong></div>
-      <div><span>Taxa de matrícula</span><strong><%= formatBRL(aVista.valorTaxaMatricula) %></strong></div>
-      <small>+ 1 kg de alimento não perecível, entregue na secretaria.</small>
+    <div id="progressBar" style="display:flex;gap:5px;margin:20px 0 24px">
+      <div class="prog-step active" data-step="1"></div>
+      <div class="prog-step" data-step="2"></div>
+      <div class="prog-step" data-step="3"></div>
     </div>
 
-    <% if (parceladoComJuros) { %>
-      <div class="aviso-info" style="background:#fff8e6;border:1px solid #f0d896;border-radius:4px;padding:10px 12px;margin-bottom:14px;font-size:13px;color:#7a5a00;">
-        <i class="fa-solid fa-circle-info"></i>
-        No cartão de crédito, o parcelamento em <%= turma.curso.parcelas %>x tem juros da operadora
-        (<%= parceladoComJuros.taxaJuros %>%). Valor final no cartão:
-        <strong><%= turma.curso.parcelas %>x de <%= formatBRL(parceladoComJuros.valorParcela) %> = <%= formatBRL(parceladoComJuros.total) %></strong>.
-        No PIX, o valor parcelado é <%= formatBRL(parcelado.total) %>, sem juros.
+    <!-- ETAPA 1: CONTRATO -->
+    <div id="etapa1" class="inscricao-etapa">
+      <p style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#cc0000;margin:0 0 10px">
+        Etapa 1 de 3 — Contrato
+      </p>
+      <p style="font-size:14px;color:#718096;margin:0 0 16px">
+        Leia os termos e confirme que concorda antes de prosseguir.
+      </p>
+
+      <div style="background:#f7f8fa;border:1px solid #e2e8f0;border-radius:10px;padding:16px;
+                  font-size:13px;line-height:1.75;color:#4a5568;max-height:280px;
+                  overflow-y:auto;margin-bottom:16px">
+        <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS</strong><br><br>
+
+        <strong>CONTRATADA</strong><br>
+        CRUZ VERMELHA BRASILEIRA – FILIAL DO ESTADO DO RIO DE JANEIRO, neste ato
+        representada por seu Presidente, LUIZ CARLOS DOS SANTOS.<br><br>
+
+        <strong>Fundamento Legal</strong><br>
+        Constituição Federal art. 209; Lei 9.394/96; Lei 8.078/90; Lei 13.709/18;
+        arts. 421, 422 e 593 a 609 do Código Civil; legislação educacional aplicável.<br><br>
+
+        <strong>Cláusula 1 - Objeto</strong><br>
+        A prestação de serviços educacionais relativos ao curso identificado neste
+        instrumento, compreendendo aulas, atividades práticas, avaliações, material
+        institucional quando previsto, certificação e demais atividades constantes
+        do plano pedagógico.<br><br>
+
+        <strong>Cláusula 2 - Início da Turma</strong><br>
+        O curso somente terá início após a confirmação de, no mínimo, 15 (quinze)
+        alunos regularmente matriculados. Caso o número mínimo não seja atingido,
+        a CONTRATADA poderá remarcar a data de início ou cancelar a turma,
+        assegurando a restituição integral dos valores pagos, observada a
+        legislação consumerista.<br><br>
+
+        <strong>Cláusula 3 - Vigência</strong><br>
+        O contrato vigorará da assinatura até a conclusão do curso ou sua rescisão.<br><br>
+
+        <strong>Cláusula 4 - Obrigações da Contratada</strong><br>
+        Executar o curso; disponibilizar docentes qualificados; infraestrutura
+        adequada; calendário; avaliações; certificados; substituir docentes quando
+        necessário; alterar cronograma por motivo pedagógico, força maior ou caso
+        fortuito.<br><br>
+
+        <strong>Cláusula 5 - Obrigações do Contratante</strong><br>
+        Cumprir o regimento; manter frequência mínima; respeitar docentes e alunos;
+        manter adimplência; apresentar documentação; utilizar corretamente
+        instalações e materiais.<br><br>
+
+        <strong>Cláusula 6 - Matrícula</strong><br>
+        A matrícula somente será efetivada após entrega dos documentos exigidos e
+        pagamento previsto.<br><br>
+
+        <strong>Cláusula 7 - Preço e Pagamento</strong><br>
+        Os valores constantes neste contrato poderão ser pagos conforme plano
+        financeiro acima. Incidirão reajustes apenas na forma da legislação
+        aplicável.<br><br>
+
+        <strong>Cláusula 8 - Inadimplemento</strong><br>
+        Multa de 2%, juros de 1% ao mês e correção monetária, sem prejuízo da
+        cobrança judicial ou extrajudicial.<br><br>
+
+        <strong>Cláusula 9 - Cancelamento</strong><br>
+        O cancelamento deverá ser solicitado por escrito, observadas as regras do
+        regimento escolar e do Código de Defesa do Consumidor.<br><br>
+
+        <strong>Cláusula 10 - Certificação</strong><br>
+        A certificação dependerá da aprovação acadêmica, frequência mínima,
+        estágio quando exigido e inexistência de pendências documentais.<br><br>
+
+        <strong>Cláusula 11 - LGPD</strong><br>
+        A CONTRATADA atuará como Controladora dos dados pessoais coletados para
+        execução deste contrato. Os dados serão tratados exclusivamente para
+        matrícula, gestão acadêmica, emissão de certificados, obrigações legais e
+        comunicações institucionais, observando a Lei nº 13.709/2018. O aluno
+        poderá exercer os direitos previstos no art. 18 da LGPD. Os dados somente
+        serão compartilhados quando exigido por lei, determinação judicial ou
+        indispensáveis à execução deste contrato.<br><br>
+
+        <strong>Cláusula 12 - Propriedade Intelectual</strong><br>
+        Todo material didático permanece protegido pela legislação de direitos
+        autorais, sendo vedada sua reprodução sem autorização.<br><br>
+
+        <strong>Cláusula 13 - Anticorrupção e Integridade</strong><br>
+        As partes comprometem-se a observar a Lei nº 12.846/2013 e princípios de
+        integridade institucional.<br><br>
+
+        <strong>Cláusula 14 - Assinatura Eletrônica</strong><br>
+        As partes reconhecem a validade de assinatura eletrônica, conforme Lei nº
+        14.063/2020.<br><br>
+
+        <strong>Cláusula 15 - Disposições Gerais</strong><br>
+        Aplicam-se subsidiariamente o Regimento Escolar e a legislação vigente.<br><br>
+
+        <strong>Cláusula 16 - Foro</strong><br>
+        Fica eleito o foro da Comarca da Capital do Estado do Rio de Janeiro.
       </div>
-    <% } %>
 
-    <form method="POST" action="/inscrever/<%= turma.id %>" novalidate>
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-
-      <label class="campo">
-        <span>Plano</span>
-        <select name="plano" id="selectPlano">
-          <option value="A_VISTA">À vista (<%= formatBRL(aVista.total) %>)</option>
-          <option value="PARCELADO">
-            Parcelado (<%= turma.curso.parcelas %>x de <%= formatBRL(parcelado.valorParcela) %> = <%= formatBRL(parcelado.total) %> no PIX<% if (parceladoComJuros) { %>, ou <%= formatBRL(parceladoComJuros.valorParcela) %>/parcela = <%= formatBRL(parceladoComJuros.total) %> no cartão<% } %>)
-          </option>
-        </select>
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;
+                    font-size:14px;color:#4a5568;margin-bottom:20px">
+        <input type="checkbox" id="aceiteContrato"
+               style="margin-top:2px;width:16px;height:16px;accent-color:#cc0000;cursor:pointer;flex:none">
+        Li e concordo com os termos do contrato de matrícula.
       </label>
 
-      <label class="campo">
-        <span>Forma de pagamento</span>
-        <select name="forma" id="selectForma">
-          <option value="PIX">PIX</option>
-          <option value="CREDITO">Cartão de Crédito</option>
-          <option value="DINHEIRO">Pessoalmente (Pagar na secretaria)</option>
-        </select>
-      </label>
+      <button id="btnAceite" class="btn-acao" type="button" disabled>
+        Aceitar e continuar
+      </button>
+    </div>
 
-      <div id="dadosDoCartao" style="display: none; border: 1px dashed #ccc; padding: 14px; margin-bottom: 14px; border-radius: 4px; background: #fafafa;">
-        <h3 style="margin-top:0; font-size:15px; color:#333;">Dados do Cartão de Crédito</h3>
+    <!-- ETAPA 2: PIX -->
+    <div id="etapa2" class="inscricao-etapa" style="display:none">
+      <p style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#cc0000;margin:0 0 10px">
+        Etapa 2 de 3 — Taxa de inscrição
+      </p>
+      <p style="font-size:14px;color:#718096;margin:0 0 18px">
+        Pague R$ 100,00 via PIX para garantir sua vaga.
+      </p>
 
-        <% if (parceladoComJuros) { %>
-          <p id="avisoJurosCartao" style="display:none; font-size:13px; color:#7a5a00; background:#fff8e6; border:1px solid #f0d896; border-radius:4px; padding:8px 10px; margin-bottom:12px;">
-            <i class="fa-solid fa-circle-info"></i>
-            Parcelado no cartão: <%= turma.curso.parcelas %>x de <%= formatBRL(parceladoComJuros.valorParcela) %>
-            (total <%= formatBRL(parceladoComJuros.total) %>, com <%= parceladoComJuros.taxaJuros %>% de juros da operadora).
-          </p>
-        <% } %>
+      <div style="background:#f7f8fa;border:1px solid #e2e8f0;border-radius:12px;
+                  padding:22px;text-align:center;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#718096">
+          Valor
+        </div>
+        <div style="font-size:38px;font-weight:900;color:#0f1318;line-height:1.1;margin:4px 0 16px">
+          R$ 100,00
+        </div>
 
-        <label class="campo">
-          <span style="font-size: 13px;">Número do Cartão</span>
-          <input type="text" name="numero" placeholder="0000 0000 0000 0000" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
-        </label>
+        <div id="qr" style="display:inline-block;border:1px solid #e2e8f0;border-radius:8px;padding:8px;background:#fff;margin:0 auto 14px;"></div>
 
-        <label class="campo">
-          <span style="font-size: 13px;">Nome do Titular (como no cartão)</span>
-          <input type="text" name="titular" placeholder="JOAO S SILVA" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
-        </label>
+        <div style="font-size:13px;font-weight:700;color:#4a5568;margin-bottom:6px">
+          Chave PIX — CNPJ
+        </div>
+        <div style="font-family:monospace;font-size:15px;color:#0f1318;font-weight:800;
+                    background:#fff;border:1px solid #e2e8f0;border-radius:8px;
+                    padding:8px 14px;display:inline-block;letter-spacing:.5px;margin-bottom:14px">
+          67.733.551/0001-35
+        </div>
 
-        <div style="display: flex; gap: 10px;">
-          <label class="campo" style="flex: 1;">
-            <span style="font-size: 13px;">Validade (MM/AA)</span>
-            <input type="text" name="validade" id="inputValidade" placeholder="12/28" maxlength="5" inputmode="numeric" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
-          </label>
+        <div style="font-size:13px;font-weight:700;color:#4a5568;margin-bottom:6px">
+          Código Pix copia e cola
+        </div>
+        <div id="payload" style="font-family:monospace;font-size:11px;color:#4a5568;
+                    background:#fff;border:1px solid #e2e8f0;border-radius:8px;
+                    padding:10px 12px;text-align:left;word-break:break-all;margin-bottom:10px"></div>
 
-          <label class="campo" style="flex: 1;">
-            <span style="font-size: 13px;">CVV</span>
-            <input type="text" name="cvv" placeholder="123" maxlength="4" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
-          </label>
+        <button id="btnCopiarPix" type="button"
+                style="display:block;width:100%;background:#fff5f5;border:1px solid #f0c0c0;
+                       border-radius:8px;padding:10px;cursor:pointer;
+                       font-size:13px;color:#cc0000;font-weight:700;">
+          <i class="fa-regular fa-copy"></i> Copiar código copia e cola
+        </button>
+
+      </div>
+
+      <div style="background:#fff8e6;border:1px solid #f0d896;border-radius:8px;
+                  padding:12px 14px;margin-bottom:16px;font-size:13px;color:#7a5a00;
+                  display:flex;gap:9px;align-items:flex-start">
+        <i class="fa-solid fa-circle-info" style="margin-top:1px;flex:none"></i>
+        <span>Após pagar, envie o comprovante para o WhatsApp da escola. Nossa equipe confirmará o pagamento.</span>
+      </div>
+
+      <a href="https://wa.me/5521999922864?text=Ol%C3%A1%2C+segue+meu+comprovante+de+pagamento+da+taxa+de+inscri%C3%A7%C3%A3o."
+         target="_blank" rel="noopener"
+         style="display:flex;align-items:center;justify-content:center;gap:9px;
+                border:1px solid #e2e8f0;border-radius:10px;padding:12px;
+                font-size:14px;font-weight:700;color:#0f1318;text-decoration:none;margin-bottom:10px">
+        <i class="fa-brands fa-whatsapp" style="color:#25d366;font-size:18px"></i>
+        Enviar comprovante — (21) 99992-2864
+      </a>
+
+      <button id="btnEnviouComprovante" class="btn-acao" type="button">
+        Já enviei o comprovante — continuar
+      </button>
+    </div>
+
+    <!-- ETAPA 3: PAGAMENTO DO CURSO (PRESENCIAL) -->
+    <div id="etapa3" class="inscricao-etapa" style="display:none">
+      <p style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#cc0000;margin:0 0 10px">
+        Etapa 3 de 3 — Pagamento do curso
+      </p>
+      <p style="font-size:14px;color:#718096;margin:0 0 6px">
+        O pagamento do curso é realizado <strong>presencialmente na secretaria</strong>.
+      </p>
+
+      <div class="resumo-box" style="margin-bottom:18px">
+        <div><span>Valor do curso</span><strong><%= formatBRL(aVista.valorCurso) %></strong></div>
+        <div><span>Taxa de matrícula</span><strong><%= formatBRL(aVista.valorTaxaMatricula) %></strong></div>
+        <div><span>Total</span><strong><%= formatBRL(aVista.total) %></strong></div>
+        <small>+ 1 kg de alimento não perecível, entregue na secretaria.</small>
+      </div>
+
+      <p style="font-size:13px;font-weight:700;color:#4a5568;margin:0 0 10px">
+        Formas de pagamento aceitas na secretaria
+      </p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+        <div class="forma-pagto-info">
+          <i class="fa-solid fa-mobile-screen-button"></i>
+          <span>PIX</span>
+        </div>
+        <div class="forma-pagto-info">
+          <i class="fa-solid fa-credit-card"></i>
+          <span>Cartão de Crédito</span>
+        </div>
+        <div class="forma-pagto-info">
+          <i class="fa-solid fa-credit-card"></i>
+          <span>Cartão de Débito</span>
+        </div>
+        <div class="forma-pagto-info">
+          <i class="fa-solid fa-money-bill-wave"></i>
+          <span>Parcelado</span>
         </div>
       </div>
 
-      <button type="submit" class="btn-acao">Confirmar inscrição</button>
-    </form>
-    <p class="painel-sub" style="margin:14px 0 0;font-size:12px;">Sua matrícula ficará como "pendente" até a confirmation do pagamento.</p>
+      <p style="font-size:12.5px;color:#718096;margin:0 0 18px">
+        A escolha da forma de pagamento será feita no momento do atendimento na secretaria.
+      </p>
+
+      <form method="POST" action="/inscrever/<%= turma.id %>" novalidate id="formInscricao">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="plano" value="A_VISTA">
+        <input type="hidden" name="forma" value="DINHEIRO">
+      <button id="btnConfirmar" class="btn-acao" type="submit">
+          Confirmar inscrição
+        </button>
+      </form>
+    </div>
+
+    <!-- ETAPA 4: DOCUMENTOS -->
+    <div id="etapa4" class="inscricao-etapa" style="display:none">
+      <div style="text-align:center;margin-bottom:22px">
+        <div style="width:56px;height:56px;background:#dcfce7;border-radius:50%;
+                    display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+          <i class="fa-solid fa-circle-check" style="color:#166534;font-size:22px"></i>
+        </div>
+        <h2 style="font-size:20px;font-weight:900;margin:0 0 4px">Inscrição confirmada!</h2>
+        <p style="font-size:14px;color:#718096;margin:0">
+          Compareça à secretaria com os documentos abaixo.
+        </p>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+        <div class="doc-item-inscricao">
+          <i class="fa-solid fa-id-card"></i>
+          Documento de identidade (RG ou CNH)
+        </div>
+        <div class="doc-item-inscricao">
+          <i class="fa-solid fa-house"></i>
+          Comprovante de residência recente
+        </div>
+        <div class="doc-item-inscricao">
+          <i class="fa-solid fa-graduation-cap"></i>
+          Comprovante de escolaridade
+        </div>
+        <div class="doc-item-inscricao">
+          <i class="fa-solid fa-wheat-awn"></i>
+          <div>
+            1 kg de alimento não perecível
+            <small style="display:block;font-size:12px;color:#718096;margin-top:2px;font-weight:400">
+              Entregue na secretaria no dia da matrícula
+            </small>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;
+                  padding:13px 15px;font-size:13.5px;color:#166534;
+                  display:flex;gap:9px;align-items:flex-start">
+        <i class="fa-solid fa-circle-info" style="margin-top:1px;flex:none"></i>
+        <span>Sua matrícula ficará <strong>pendente</strong> até a confirmação do pagamento presencial pela nossa equipe.</span>
+      </div>
+    </div>
+
   </div>
 </main>
 
-<script>
-  const selectPlano = document.getElementById('selectPlano');
-  const selectForma = document.getElementById('selectForma');
-
-  const OPCOES = {
-    A_VISTA: [
-      { value: 'PIX', label: 'PIX' },
-      { value: 'CREDITO', label: 'Cartão de Crédito' },
-      { value: 'DINHEIRO', label: 'Pessoalmente (Pagar na secretaria)' }
-    ],
-    PARCELADO: [
-      { value: 'CREDITO', label: 'Cartão de Crédito' },
-      { value: 'DINHEIRO', label: 'Pessoalmente (Pagar na secretaria)' }
-    ]
-  };
-
-  function atualizarOpcoesForma() {
-    const formaAtual = selectForma.value;
-    const opcoes = OPCOES[selectPlano.value] || OPCOES.A_VISTA;
-
-    selectForma.innerHTML = '';
-    opcoes.forEach(op => {
-      const opt = document.createElement('option');
-      opt.value = op.value;
-      opt.textContent = op.label;
-      selectForma.appendChild(opt);
-    });
-
-    const aindaExiste = opcoes.some(op => op.value === formaAtual);
-    selectForma.value = aindaExiste ? formaAtual : opcoes[0].value;
-
-    selectForma.dispatchEvent(new Event('change'));
-  }
-
-  document.getElementById('selectForma').addEventListener('change', function() {
-    const blocoCartao = document.getElementById('dadosDoCartao');
-    const inputsCartao = blocoCartao.querySelectorAll('input');
-    const avisoJuros = document.getElementById('avisoJurosCartao');
-
-    if (this.value === 'CREDITO') {
-      blocoCartao.style.display = 'block';
-      inputsCartao.forEach(input => input.removeAttribute('disabled'));
-      if (avisoJuros && selectPlano.value === 'PARCELADO') {
-        avisoJuros.style.display = 'block';
-      }
-    } else {
-      blocoCartao.style.display = 'none';
-      inputsCartao.forEach(input => input.setAttribute('disabled', 'true'));
-      if (avisoJuros) avisoJuros.style.display = 'none';
-    }
-  });
-
-  document.getElementById('inputValidade').addEventListener('input', function(e) {
-    let valor = e.target.value.replace(/\D/g, '');
-
-    if (valor.length > 4) valor = valor.slice(0, 4);
-
-    if (valor.length >= 3) {
-      valor = valor.slice(0, 2) + '/' + valor.slice(2);
-    }
-
-    e.target.value = valor;
-  });
-
-  selectPlano.addEventListener('change', atualizarOpcoesForma);
-
-  atualizarOpcoesForma();
-</script>
-
 <%- include('partials/site-footer') %>
+
+<style>
+.prog-step {
+  flex: 1; height: 3px; background: #e2e8f0; border-radius: 2px; transition: background 0.3s;
+}
+.prog-step.active { background: #cc0000; }
+
+.forma-pagto-info {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 10px;
+  text-align: center; background: #f7f8fa;
+}
+.forma-pagto-info i { font-size: 20px; color: #cc0000; }
+.forma-pagto-info span { font-size: 13px; font-weight: 700; color: #1f2733; }
+
+.doc-item-inscricao {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: #f7f8fa; border: 1px solid #e2e8f0; border-radius: 9px;
+  padding: 13px 14px; font-size: 14px; font-weight: 600; color: #1f2733;
+}
+.doc-item-inscricao i { color: #cc0000; font-size: 16px; margin-top: 2px; flex: none; }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+function irEtapa(n) {
+  document.querySelectorAll('.inscricao-etapa').forEach(function(el, i) {
+    el.style.display = (i + 1 === n) ? 'block' : 'none';
+  });
+  document.querySelectorAll('.prog-step').forEach(function(el, i) {
+    el.classList.toggle('active', i < n);
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ---- Geração do payload PIX (BR Code / EMV) ----
+function crc16(s) {
+  let c = 0xFFFF;
+  for (let i = 0; i < s.length; i++) {
+    c ^= s.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) c = (c & 0x8000) ? ((c << 1) ^ 0x1021) : (c << 1);
+  }
+  return (c & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+}
+function f(id, v) {
+  const l = v.length.toString().padStart(2, '0');
+  return id + l + v;
+}
+
+var pixPayload = '';
+
+function gerarPixPayload() {
+  const chave = '67733551000135';
+  const nome = 'Recebedor';
+  const cidade = 'BRASIL';
+  const valor = '100.00';
+
+  const mi = f('00', 'BR.GOV.BCB.PIX') + f('01', chave);
+  const gui = f('26', mi);
+  let p = f('00', '01') + gui + f('52', '0000') + f('53', '986') + f('54', valor)
+        + f('58', 'BR') + f('59', nome) + f('60', cidade) + f('62', f('05', '***')) + '6304';
+  p += crc16(p);
+  return p;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  // Gera o QR Code PIX (valor fixo R$ 100,00) e exibe o código copia e cola
+  pixPayload = gerarPixPayload();
+  document.getElementById('payload').textContent = pixPayload;
+  new QRCode(document.getElementById('qr'), {
+    text: pixPayload,
+    width: 160,
+    height: 160,
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  // Etapa 1 — habilitar botão ao aceitar contrato
+  var checkbox = document.getElementById('aceiteContrato');
+  var btnAceite = document.getElementById('btnAceite');
+  checkbox.addEventListener('change', function () {
+    btnAceite.disabled = !this.checked;
+  });
+  btnAceite.addEventListener('click', function () {
+    irEtapa(2);
+  });
+
+  // Etapa 2 — copiar código PIX (copia e cola)
+  document.getElementById('btnCopiarPix').addEventListener('click', function (e) {
+    var btn = e.currentTarget;
+    navigator.clipboard.writeText(pixPayload).then(function () {
+      var original = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiado!';
+      setTimeout(function () { btn.innerHTML = original; }, 2000);
+    });
+  });
+
+  // Etapa 2 — avançar após enviar comprovante
+  document.getElementById('btnEnviouComprovante').addEventListener('click', function () {
+    irEtapa(3);
+  });
+
+  // Etapa 3 — apenas exibe as formas de pagamento aceitas, sem seleção do usuário
+
+});
+</script>
