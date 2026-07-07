@@ -518,6 +518,7 @@ body > section {
 .card-link-overlay {
   position: absolute; inset: 0; z-index: 1;
   border-radius: inherit; text-indent: -9999px; overflow: hidden;
+  border-top: 5px solid red;
 }
 /* O botão visível e a tag de escolaridade ficam acima do overlay */
 .curso-card .curso-btn, .course-card .btn-buy { position: relative; z-index: 2; }

@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/sobre', (req, res) => res.render('sobre'));
-router.get('/seguranca', (req, res) => res.render('seguranca'));
+router.get('/duvidas', (req, res) => res.render('duvidas'));
 
 router.get('/cursos', async (req, res) => {
   const [cursos, cfgMap] = await Promise.all([

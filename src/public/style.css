@@ -418,7 +418,7 @@ body {
 
 /* subtítulo real da seção */
 .courses-section::before {
-    content: 'CURSOS DISPONÍVEIS';
+    /* content: 'CURSOS DISPONÍVEIS'; */
     display: block;
     text-align: center;
     font-size: 32px;
