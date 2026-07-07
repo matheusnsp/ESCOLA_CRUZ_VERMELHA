@@ -22,6 +22,16 @@
       <small>+ 1 kg de alimento não perecível, entregue na secretaria.</small>
     </div>
 
+    <% if (parceladoComJuros) { %>
+      <div class="aviso-info" style="background:#fff8e6;border:1px solid #f0d896;border-radius:4px;padding:10px 12px;margin-bottom:14px;font-size:13px;color:#7a5a00;">
+        <i class="fa-solid fa-circle-info"></i>
+        No cartão de crédito, o parcelamento em <%= turma.curso.parcelas %>x tem juros da operadora
+        (<%= parceladoComJuros.taxaJuros %>%). Valor final no cartão:
+        <strong><%= turma.curso.parcelas %>x de <%= formatBRL(parceladoComJuros.valorParcela) %> = <%= formatBRL(parceladoComJuros.total) %></strong>.
+        No PIX, o valor parcelado é <%= formatBRL(parcelado.total) %>, sem juros.
+      </div>
+    <% } %>
+
     <form method="POST" action="/inscrever/<%= turma.id %>" novalidate>
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
@@ -29,7 +39,9 @@
         <span>Plano</span>
         <select name="plano" id="selectPlano">
           <option value="A_VISTA">À vista (<%= formatBRL(aVista.total) %>)</option>
-          <option value="PARCELADO">Parcelado (<%= turma.curso.parcelas %>x de <%= formatBRL(parcelado.valorParcela) %> = <%= formatBRL(parcelado.total) %>)</option>
+          <option value="PARCELADO">
+            Parcelado (<%= turma.curso.parcelas %>x de <%= formatBRL(parcelado.valorParcela) %> = <%= formatBRL(parcelado.total) %> no PIX<% if (parceladoComJuros) { %>, ou <%= formatBRL(parceladoComJuros.valorParcela) %>/parcela = <%= formatBRL(parceladoComJuros.total) %> no cartão<% } %>)
+          </option>
         </select>
       </label>
 
@@ -38,12 +50,20 @@
         <select name="forma" id="selectForma">
           <option value="PIX">PIX</option>
           <option value="CREDITO">Cartão de Crédito</option>
-          <option value="DINHEIRO">Dinheiro / Espécie (Pagar na secretaria)</option>
+          <option value="DINHEIRO">Pessoalmente (Pagar na secretaria)</option>
         </select>
       </label>
 
       <div id="dadosDoCartao" style="display: none; border: 1px dashed #ccc; padding: 14px; margin-bottom: 14px; border-radius: 4px; background: #fafafa;">
         <h3 style="margin-top:0; font-size:15px; color:#333;">Dados do Cartão de Crédito</h3>
+
+        <% if (parceladoComJuros) { %>
+          <p id="avisoJurosCartao" style="display:none; font-size:13px; color:#7a5a00; background:#fff8e6; border:1px solid #f0d896; border-radius:4px; padding:8px 10px; margin-bottom:12px;">
+            <i class="fa-solid fa-circle-info"></i>
+            Parcelado no cartão: <%= turma.curso.parcelas %>x de <%= formatBRL(parceladoComJuros.valorParcela) %>
+            (total <%= formatBRL(parceladoComJuros.total) %>, com <%= parceladoComJuros.taxaJuros %>% de juros da operadora).
+          </p>
+        <% } %>
 
         <label class="campo">
           <span style="font-size: 13px;">Número do Cartão</span>
@@ -82,11 +102,11 @@
     A_VISTA: [
       { value: 'PIX', label: 'PIX' },
       { value: 'CREDITO', label: 'Cartão de Crédito' },
-      { value: 'DINHEIRO', label: 'Dinheiro / Espécie (Pagar na secretaria)' }
+      { value: 'DINHEIRO', label: 'Pessoalmente (Pagar na secretaria)' }
     ],
     PARCELADO: [
       { value: 'CREDITO', label: 'Cartão de Crédito' },
-      { value: 'DINHEIRO', label: 'Dinheiro / Espécie (Pagar na secretaria)' }
+      { value: 'DINHEIRO', label: 'Pessoalmente (Pagar na secretaria)' }
     ]
   };
 
@@ -111,13 +131,18 @@
   document.getElementById('selectForma').addEventListener('change', function() {
     const blocoCartao = document.getElementById('dadosDoCartao');
     const inputsCartao = blocoCartao.querySelectorAll('input');
+    const avisoJuros = document.getElementById('avisoJurosCartao');
 
     if (this.value === 'CREDITO') {
       blocoCartao.style.display = 'block';
       inputsCartao.forEach(input => input.removeAttribute('disabled'));
+      if (avisoJuros && selectPlano.value === 'PARCELADO') {
+        avisoJuros.style.display = 'block';
+      }
     } else {
       blocoCartao.style.display = 'none';
       inputsCartao.forEach(input => input.setAttribute('disabled', 'true'));
+      if (avisoJuros) avisoJuros.style.display = 'none';
     }
   });
 

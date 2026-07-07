@@ -1,5 +1,4 @@
 const express = require('express');
-const fetch = require('node-fetch');
 const prisma = require('../db');
 const { requireLogin } = require('../middleware/auth');
 const { inscricaoSchema } = require('../lib/validation');
@@ -9,7 +8,7 @@ const {
   lerConfigMatricula,
   totalExibicao,
 } = require('../lib/matricula');
-const { criarTransacao } = require('../lib/unicopag');
+const { criarTransacao, obterOpcaoParcelamento } = require('../lib/unicopag');
 
 const router = express.Router();
 
@@ -70,11 +69,28 @@ router.get('/inscrever/:turmaId', requireLogin, async (req, res) => {
   if (jaInscrito) return res.render('erro', { mensagem: 'Você já está inscrito nesta turma. Veja em "Minha conta".' });
   const aVista = await calcularValores(turma.curso, 'A_VISTA', req.session.usuarioId);
   const parcelado = await calcularValores(turma.curso, 'PARCELADO', req.session.usuarioId);
-  res.render('inscrever', { turma, curso: turma.curso, formatBRL, aVista, parcelado, erro: null });
+
+  // Consulta o juros real do cartão de crédito para o número de parcelas do curso,
+  // para exibir ao aluno o valor final ANTES dele confirmar (evita surpresa no cartão).
+  // Se a consulta falhar, cai de volta pro valor sem juros (comportamento antigo).
+  const numParcelas = Number(turma.curso.parcelas) || 1;
+  let parceladoComJuros = null;
+  if (numParcelas > 1) {
+    const amountCentavos = Math.round(parseFloat(parcelado.total) * 100);
+    const opcao = await obterOpcaoParcelamento(amountCentavos, numParcelas);
+    if (opcao) {
+      parceladoComJuros = {
+        valorParcela: opcao.installment_amount / 100,
+        total: opcao.total_amount / 100,
+        taxaJuros: opcao.installment_rate,
+      };
+    }
+  }
+
+  res.render('inscrever', { turma, curso: turma.curso, formatBRL, aVista, parcelado, parceladoComJuros, erro: null });
 });
 
 router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
-  console.log('[DEBUG POST INSCREVER] body:', JSON.stringify(req.body));
   const turma = await prisma.turma.findUnique({
     where: { id: req.params.turmaId },
     include: { curso: true },
@@ -89,7 +105,22 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const reRenderErro = async (msg) => {
     const aVista = await calcularValores(turma.curso, 'A_VISTA', req.session.usuarioId);
     const parcelado = await calcularValores(turma.curso, 'PARCELADO', req.session.usuarioId);
-    return res.status(400).render('inscrever', { turma, curso: turma.curso, formatBRL, aVista, parcelado, erro: msg });
+
+    const numParcelas = Number(turma.curso.parcelas) || 1;
+    let parceladoComJuros = null;
+    if (numParcelas > 1) {
+      const amountCentavos = Math.round(parseFloat(parcelado.total) * 100);
+      const opcao = await obterOpcaoParcelamento(amountCentavos, numParcelas);
+      if (opcao) {
+        parceladoComJuros = {
+          valorParcela: opcao.installment_amount / 100,
+          total: opcao.total_amount / 100,
+          taxaJuros: opcao.installment_rate,
+        };
+      }
+    }
+
+    return res.status(400).render('inscrever', { turma, curso: turma.curso, formatBRL, aVista, parcelado, parceladoComJuros, erro: msg });
   };
 
   const resultado = inscricaoSchema.safeParse(req.body);
@@ -146,28 +177,18 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   try {
     const parcelasFinais = plano === 'PARCELADO' ? Number(turma.curso.parcelas || 1) : 1;
 
-    console.log('[DEBUG PARCELAS]', { plano, forma, parcelasFinais, total });
-
     // Busca o valor total com juros do gateway antes de criar a transação.
     // Sem isso, o gateway aplica os juros por cima do valor original,
     // resultando em um valor incorreto cobrado do aluno.
     let valorFinal = total;
     if (forma === 'CREDITO' && parcelasFinais > 1) {
-      try {
-        const amountCentavos = Math.round(parseFloat(total) * 100);
-        const token = process.env.UNICOPAG_API_TOKEN.trim();
-        const installmentsResp = await fetch(
-          `https://api.cloud.unicopag.com.br/public/v1/installments?amount=${amountCentavos}&api_token=${token}`
-        );
-        const installmentsData = await installmentsResp.json();
-        const opcao = installmentsData.installments?.find(i => i.installment === parcelasFinais);
-        if (opcao) {
-          valorFinal = opcao.total / 100; // total já com juros, em reais
-          console.log(`[PARCELAMENTO] ${parcelasFinais}x | valor original: R$${total} | valor com juros (${opcao.interest_rate}%): R$${valorFinal}`);
-        }
-      } catch (errInstallments) {
-        console.warn('[PARCELAMENTO] Falha ao consultar juros:', errInstallments);
-        // Continua com o valor original se a consulta falhar
+      const amountCentavos = Math.round(parseFloat(total) * 100);
+      const opcao = await obterOpcaoParcelamento(amountCentavos, parcelasFinais);
+      if (opcao) {
+        valorFinal = opcao.total_amount / 100; // total já com juros, em reais
+        console.log(`[PARCELAMENTO] ${parcelasFinais}x | valor original: R$${total} | valor com juros (${opcao.installment_rate}%): R$${valorFinal}`);
+      } else {
+        console.warn(`[PARCELAMENTO] Não foi possível obter juros para ${parcelasFinais}x, usando valor original.`);
       }
     }
 

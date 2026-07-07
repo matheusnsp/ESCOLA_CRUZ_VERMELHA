@@ -9,6 +9,53 @@ function apenasNumeros(valor) {
 }
 
 /**
+ * Consulta o parcelamento com juros reais para um valor em centavos.
+ * Retorna o array de opções (uma por número de parcelas) ou null se falhar.
+ *
+ * Formato real da resposta da Únicopag (a documentação oficial mostra campos
+ * diferentes, então use este formato, confirmado por teste direto na API):
+ * {
+ *   data: [
+ *     { installments: 2, installment_rate: 6, installment_amount: 530, total_amount: 1060 },
+ *     ...
+ *   ]
+ * }
+ */
+async function consultarParcelamento(amountCentavos) {
+  const token = process.env.UNICOPAG_API_TOKEN;
+  if (!token) {
+    console.warn('[PARCELAMENTO] UNICOPAG_API_TOKEN não configurado.');
+    return null;
+  }
+
+  try {
+    const url = `https://api.cloud.unicopag.com.br/public/v1/installments?amount=${amountCentavos}&api_token=${token.trim()}`;
+    const resp = await fetch(url);
+    const json = await resp.json();
+
+    if (!resp.ok || !Array.isArray(json.data)) {
+      console.warn('[PARCELAMENTO] Resposta inesperada da API:', JSON.stringify(json));
+      return null;
+    }
+
+    return json.data;
+  } catch (err) {
+    console.warn('[PARCELAMENTO] Falha ao consultar parcelamento:', err);
+    return null;
+  }
+}
+
+/**
+ * Retorna a opção de parcelamento (com juros) para um número específico de parcelas.
+ * Se não encontrar ou a consulta falhar, retorna null — quem chamar deve decidir o fallback.
+ */
+async function obterOpcaoParcelamento(amountCentavos, numeroParcelas) {
+  const opcoes = await consultarParcelamento(amountCentavos);
+  if (!opcoes) return null;
+  return opcoes.find((o) => o.installments === numeroParcelas) || null;
+}
+
+/**
  * Cria uma transação transparente na Únicopag (Pix ou Crédito)
  */
 async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno, dadosCartao }) {
@@ -198,4 +245,4 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
   };
 }
 
-module.exports = { criarTransacao };
+module.exports = { criarTransacao, consultarParcelamento, obterOpcaoParcelamento };
