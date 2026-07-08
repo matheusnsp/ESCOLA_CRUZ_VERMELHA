@@ -37,6 +37,9 @@ model Usuario {
   celular              String?
   rg                   String?
   matriculas           Matricula[]
+
+  // Consulta frequente ao listar/gerenciar contas administrativas (tela de "Usuários do painel")
+  @@index([papel])
 }
 
 model Curso {
@@ -86,30 +89,30 @@ model Turma {
 }
 
 model Matricula {
-  id                 String             @id @default(uuid())
-  alunoId            String
-  turmaId            String
-  plano              PlanoPagamento
-  forma              FormaPagamento
-  valorCurso         Decimal            @db.Decimal(10, 2)
-  valorTaxaMatricula Decimal            @default(0) @db.Decimal(10, 2)
-  alimentoEntregue   Boolean            @default(false)
+  id                  String             @id @default(uuid())
+  alunoId             String
+  turmaId             String
+  plano               PlanoPagamento
+  forma               FormaPagamento
+  valorCurso          Decimal            @db.Decimal(10, 2)
+  valorTaxaMatricula  Decimal            @default(0) @db.Decimal(10, 2)
+  alimentoEntregue    Boolean            @default(false)
   alimentoEntreguePor String?
   alimentoEntregueEm  DateTime?
-  taxaConfirmada     Boolean            @default(false)
-  taxaConfirmadaPor  String?
-  taxaConfirmadaEm   DateTime?
-  statusPagamento    StatusPagamento    @default(PENDENTE)
-  nota               Float?
-  situacao           SituacaoAcademica?
-  confirmadaPor      String?
-  confirmadaEm       DateTime?
-  criadoEm           DateTime           @default(now())
-  atualizadoEm       DateTime           @updatedAt
-  avaliacoes         Avaliacao[]
-  aluno              Usuario            @relation(fields: [alunoId], references: [id])
-  turma              Turma              @relation(fields: [turmaId], references: [id])
-  pagamentos         Pagamento[]
+  taxaConfirmada      Boolean            @default(false)
+  taxaConfirmadaPor   String?
+  taxaConfirmadaEm    DateTime?
+  statusPagamento     StatusPagamento    @default(PENDENTE)
+  nota                Float?
+  situacao            SituacaoAcademica?
+  confirmadaPor       String?
+  confirmadaEm        DateTime?
+  criadoEm            DateTime           @default(now())
+  atualizadoEm        DateTime           @updatedAt
+  avaliacoes          Avaliacao[]
+  aluno               Usuario            @relation(fields: [alunoId], references: [id])
+  turma               Turma              @relation(fields: [turmaId], references: [id])
+  pagamentos          Pagamento[]
 
   @@unique([alunoId, turmaId])
 }
@@ -144,6 +147,7 @@ model Pagamento {
   @@index([gatewayHash])
   @@index([status])
 }
+
 model TokenAuth {
   id        String    @id @default(uuid())
   usuarioId String
@@ -152,6 +156,9 @@ model TokenAuth {
   expiraEm  DateTime
   usadoEm   DateTime?
   criadoEm  DateTime  @default(now())
+
+  // O login admin cria/consulta por usuarioId+tipo (ex.: código 2FA) a cada tentativa
+  @@index([usuarioId, tipo])
 }
 
 model Configuracao {
@@ -167,6 +174,12 @@ model LogAuditoria {
   alvoId   String?
   detalhe  Json?
   criadoEm DateTime @default(now())
+
+  // Com 4 papéis admin gerando eventos, a trilha cresce rápido — index para
+  // permitir "ver histórico deste usuário" e "ver todos os eventos de X ação"
+  @@index([atorId])
+  @@index([acao])
+  @@index([criadoEm])
 }
 
 model Avaliacao {
@@ -192,6 +205,9 @@ model session {
 enum Papel {
   ALUNO
   SECRETARIA
+  COORDENADOR
+  FINANCEIRO
+  DEV
 }
 
 enum StatusTurma {

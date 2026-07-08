@@ -14,6 +14,7 @@ const { ESCOLARIDADES: ESCOLARIDADES_ALUNO, SITUACOES_ESCOLARIDADE, GENEROS, UFS
 const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
 const { formatBRL } = require('../lib/matricula');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
+const { temPermissao, PAPEIS_ADMIN } = require('../lib/permissoes');
 
 const router = express.Router();
 
