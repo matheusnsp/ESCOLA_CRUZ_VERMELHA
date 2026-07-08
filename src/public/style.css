@@ -1010,7 +1010,7 @@ body {
     padding: 48px 24px 36px;
     display: grid;
     grid-template-columns: 1.5fr 1fr 1.3fr 1fr;
-    gap: 40px;
+    gap: 20px;
 }
 
 .footer-logo {
