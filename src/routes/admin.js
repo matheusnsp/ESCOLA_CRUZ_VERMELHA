@@ -567,60 +567,103 @@ router.post('/cursos/:id/ativar', requirePermissao('cursos:gerenciar'), async (r
 
 router.get('/turmas', requirePermissao('turmas:gerenciar', 'secretaria:leitura'), async (req, res) => {
   const turmas = await prisma.turma.findMany({
-    orderBy: { inicioPrevisto: 'asc' },
-    include: { curso: true, _count: { select: { matriculas: { where: { taxaConfirmada: true, statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] } } } } } },
+    orderBy: { criadoEm: 'desc' },
+    include: {
+      curso: true,
+      aulas: { orderBy: { data: 'asc' }, take: 1 },
+      _count: { select: { matriculas: { where: { taxaConfirmada: true, statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] } } } } },
+    },
   });
   res.render('admin/turmas', { turmas, statusTurma: STATUS_TURMA, flash: req.query.ok || null, erro: req.query.erro || null });
 });
 
 router.get('/turmas/nova', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const cursos = await prisma.curso.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' } });
-  res.render('admin/turma-form', { turma: null, cursos, statusTurma: STATUS_TURMA, erro: null });
+  res.render('admin/turma-form', { turma: null, aulas: [], cursos, statusTurma: STATUS_TURMA, erro: null });
 });
+
+function parseDateOnly(data) {
+  if (!data) return null;
+
+  const [ano, mes, dia] = data.split('-').map(Number);
+
+  // Meio-dia evita problemas de fuso horário
+  return new Date(ano, mes - 1, dia, 12, 0, 0);
+}
 
 function lerTurmaDoForm(body) {
   const dados = {
     cursoId: String(body.cursoId || ''),
-    inicioPrevisto: body.inicioPrevisto ? new Date(body.inicioPrevisto) : null,
-    fimPrevisto: body.fimPrevisto ? new Date(body.fimPrevisto) : null,
-    horario: String(body.horario || '').trim(),
-    diasSemana: String(body.diasSemana || '').trim(),
+    inicioPrevisto: parseDateOnly(body.inicioPrevisto),
     vagas: parseInteiro(body.vagas, { min: 1 }),
     minimoAlunos: parseInteiro(body.minimoAlunos, { min: 0 }),
     status: STATUS_TURMA.includes(body.status) ? body.status : 'ABERTA',
   };
+
+  const aulasRaw = body.aulas || {};
+
+  const aulas = Object.values(aulasRaw)
+    .map(a => ({
+      data: parseDateOnly(a.data),
+      horario: String(a.horario || '').trim(),
+    }))
+    .filter(a => a.data && !isNaN(a.data.getTime()) && a.horario);
+
   let erro = null;
+
   if (!dados.cursoId) erro = 'Selecione o curso.';
-  else if (!dados.inicioPrevisto || isNaN(dados.inicioPrevisto.getTime())) erro = 'Data de inicio invalida.';
-  else if (!dados.horario) erro = 'Informe o horario.';
-  else if (!dados.diasSemana) erro = 'Informe os dias da semana.';
+  else if (!dados.inicioPrevisto) erro = 'Informe a data de início prevista.';
   else if (Number.isNaN(dados.vagas)) erro = 'Numero de vagas invalido.';
   else if (Number.isNaN(dados.minimoAlunos)) erro = 'Minimo de alunos invalido.';
-  return { dados, erro };
+  // else if (!aulas.length) erro = 'Adicione pelo menos uma aula.';
+
+  return { dados, aulas, erro };
 }
 
 router.post('/turmas', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  const { dados, erro } = lerTurmaDoForm(req.body);
+  const { dados, aulas, erro } = lerTurmaDoForm(req.body);
   if (erro) {
     const cursos = await prisma.curso.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' } });
-    return res.status(400).render('admin/turma-form', { turma: req.body, cursos, statusTurma: STATUS_TURMA, erro });
+    return res.status(400).render('admin/turma-form', { turma: req.body, aulas: [], cursos, statusTurma: STATUS_TURMA, erro });
   }
-  const turma = await prisma.turma.create({ data: dados });
+  const turma = await prisma.turma.create({
+    data: {
+      ...dados,
+      aulas: { create: aulas },
+    },
+  });
   await auditar(req, 'CRIOU_TURMA', 'Turma', turma.id, { cursoId: dados.cursoId });
   res.redirect('/turmas?ok=Turma criada.');
 });
 
-router.get('/turmas/:id/notas', requirePermissao('turmas:gerenciar', 'secretaria:leitura'), async (req, res) => {
-  const { id } = req.params;
-  const turma = await prisma.turma.findUnique({
-    where: { id },
-    include: {
-      curso: true,
-      matriculas: { include: { aluno: true }, orderBy: { criadoEm: 'asc' } },
+router.get('/turmas/:id/editar', requirePermissao('turmas:gerenciar'), async (req, res) => {
+  const [turma, cursos] = await Promise.all([
+    prisma.turma.findUnique({ where: { id: req.params.id }, include: { aulas: { orderBy: { data: 'asc' } } } }),
+    prisma.curso.findMany({ orderBy: { nome: 'asc' } }),
+  ]);
+  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
+  res.render('admin/turma-form', { turma, aulas: turma.aulas, cursos, statusTurma: STATUS_TURMA, erro: null });
+});
+
+router.post('/turmas/:id', requirePermissao('turmas:gerenciar'), async (req, res) => {
+  const existe = await prisma.turma.findUnique({ where: { id: req.params.id } });
+  if (!existe) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
+  const { dados, aulas, erro } = lerTurmaDoForm(req.body);
+  if (erro) {
+    const cursos = await prisma.curso.findMany({ orderBy: { nome: 'asc' } });
+    return res.status(400).render('admin/turma-form', { turma: { ...req.body, id: req.params.id }, aulas: [], cursos, statusTurma: STATUS_TURMA, erro });
+  }
+  // Apaga as aulas antigas e recria (mais simples que diff)
+  await prisma.aulaData.deleteMany({ where: { turmaId: req.params.id } });
+  await prisma.turma.update({
+    where: { id: req.params.id },
+    data: {
+      ...dados,
+      aulas: { create: aulas },
     },
   });
-  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
-  res.render('admin/turma-notas', { turma, erro: null, ok: req.query.ok || null });
+  await auditar(req, 'EDITOU_TURMA', 'Turma', req.params.id, null);
+  res.redirect('/turmas?ok=Turma atualizada.');
 });
 
 async function recalcularMedia(matriculaId) {
@@ -663,28 +706,6 @@ router.post('/turmas/:id/notas', requirePermissao('turmas:gerenciar'), async (re
   res.redirect(`/turmas/${turma.id}/notas?ok=` + encodeURIComponent(`Avaliacao "${nome}" lancada para ${lancadas} aluno(s).`));
 });
 
-router.get('/turmas/:id/editar', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  const [turma, cursos] = await Promise.all([
-    prisma.turma.findUnique({ where: { id: req.params.id } }),
-    prisma.curso.findMany({ orderBy: { nome: 'asc' } }),
-  ]);
-  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
-  res.render('admin/turma-form', { turma, cursos, statusTurma: STATUS_TURMA, erro: null });
-});
-
-router.post('/turmas/:id', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  const existe = await prisma.turma.findUnique({ where: { id: req.params.id } });
-  if (!existe) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
-  const { dados, erro } = lerTurmaDoForm(req.body);
-  if (erro) {
-    const cursos = await prisma.curso.findMany({ orderBy: { nome: 'asc' } });
-    return res.status(400).render('admin/turma-form', { turma: { ...req.body, id: req.params.id }, cursos, statusTurma: STATUS_TURMA, erro });
-  }
-  await prisma.turma.update({ where: { id: req.params.id }, data: dados });
-  await auditar(req, 'EDITOU_TURMA', 'Turma', req.params.id, null);
-  res.redirect('/turmas?ok=Turma atualizada.');
-});
-
 router.post('/turmas/:id/excluir', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const turma = await prisma.turma.findUnique({ where: { id: req.params.id }, include: { curso: true } });
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
@@ -718,10 +739,10 @@ router.get('/inscricoes', requirePermissao('doacao:confirmar', 'financeiro:aprov
     prisma.matricula.findMany({
       where,
       orderBy: { criadoEm: 'desc' },
-      include: { aluno: true, turma: { include: { curso: true } } },
+      include: { aluno: true, turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } },
     }),
-    prisma.turma.findMany({ orderBy: { inicioPrevisto: 'asc' }, include: { curso: true } }),
-  ]);
+    prisma.turma.findMany({ orderBy: { criadoEm: 'desc' }, include: { curso: true } }),
+]);
   res.render('admin/inscricoes', { inscricoes, turmas, turmaId, formatBRL, statusBadge, flash: req.query.ok || null });
 });
 
@@ -766,7 +787,7 @@ router.post('/inscricoes/:id/alimento', requirePermissao('doacao:confirmar'), as
 router.get('/inscricoes/:id/nota', requirePermissao('turmas:gerenciar', 'secretaria:leitura'), async (req, res) => {
   const m = await prisma.matricula.findUnique({
     where: { id: req.params.id },
-    include: { aluno: true, turma: { include: { curso: true } }, avaliacoes: { orderBy: { criadoEm: 'asc' } } },
+    include: { aluno: true, turma: { include: { curso: true } }, avaliacoes: { orderBy: { criadoEm: 'desc' } } },
   });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
   res.render('admin/nota', { m, erro: null });
@@ -816,13 +837,13 @@ router.post('/inscricoes/:id/situacao', requirePermissao('turmas:gerenciar'), as
 router.get('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), async (req, res) => {
   const m = await prisma.matricula.findUnique({
     where: { id: req.params.id },
-    include: { aluno: true, turma: { include: { curso: true } } },
-  });
+    include: { aluno: true, turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } },
+});
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
   const turmas = await prisma.turma.findMany({
     where: { id: { not: m.turmaId } },
-    orderBy: { inicioPrevisto: 'asc' },
-    include: { curso: true },
+    orderBy: { criadoEm: 'desc' },
+    include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
   });
   res.render('admin/transferir', { m, turmas, formatBRL, erro: null });
 });
@@ -837,7 +858,9 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
   const destinoId = String(req.body.turmaDestino || '');
   const reRenderErro = async (erro) => {
     const turmas = await prisma.turma.findMany({
-      where: { id: { not: m.turmaId } }, orderBy: { inicioPrevisto: 'asc' }, include: { curso: true },
+      where: { id: { not: m.turmaId } },
+      orderBy: { criadoEm: 'desc' },
+      include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
     });
     const mCompleto = await prisma.matricula.findUnique({ where: { id: m.id }, include: { aluno: true, turma: { include: { curso: true } } } });
     return res.status(400).render('admin/transferir', { m: mCompleto, turmas, formatBRL, erro });

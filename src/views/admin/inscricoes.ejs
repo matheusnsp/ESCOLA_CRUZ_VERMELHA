@@ -24,7 +24,7 @@
         <% inscricoes.forEach(function(m){ %>
           <tr>
             <td><strong><%= m.aluno.nome %></strong><br><small class="adm-mut"><%= m.aluno.email %></small></td>
-            <td><%= m.turma.curso.nome %><br><small class="adm-mut"><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %> · <%= m.turma.horario %></small></td>
+            <td><%= m.turma.curso.nome %><br><small class="adm-mut"><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %><% if (m.turma.aulas && m.turma.aulas.length) { %> · <%= m.turma.aulas[0].horario %><% } %></small></td>
             <td><%= m.plano === 'A_VISTA' ? 'À vista' : 'Parcelado' %><br><small class="adm-mut"><%= m.forma %></small></td>
             <td><%= formatBRL(Number(m.valorCurso) + Number(m.valorTaxaMatricula)) %></td>
             <td>

@@ -9,7 +9,7 @@
   <div class="painel-card" style="max-width:540px">
     <h1><%= curso.nome %></h1>
     <p class="painel-sub">
-      <%= turma.diasSemana %> · <%= turma.horario %> · início em
+      <% if (turma.aulas && turma.aulas.length) { %><%= turma.aulas[0].horario %> · <% } %>início em
       <%= new Date(turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
     </p>
 

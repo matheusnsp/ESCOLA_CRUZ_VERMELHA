@@ -8,7 +8,7 @@
 <% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
 
 <p class="adm-mut" style="font-size:13px;margin-bottom:16px;">
-  Início <%= new Date(turma.inicioPrevisto).toLocaleDateString('pt-BR') %> · <%= turma.diasSemana %> · <%= turma.horario %>.
+  Início <%= new Date(turma.inicioPrevisto).toLocaleDateString('pt-BR') %><% if (turma.aulas && turma.aulas.length) { %> · <%= turma.aulas[0].horario %><% } %>.
   Lance uma avaliação (com peso) para a turma toda de uma vez. Deixe em branco quem não tem nota nessa avaliação.
 </p>
 

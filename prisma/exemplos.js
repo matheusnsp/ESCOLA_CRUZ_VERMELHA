@@ -118,12 +118,14 @@ async function inserirExemplos(prisma) {
         data: {
           cursoId: curso.id,
           inicioPrevisto: new Date(turma.inicio + 'T18:00:00'),
-          fimPrevisto: turma.fim ? new Date(turma.fim + 'T22:00:00') : null,
-          horario: turma.horario,
-          diasSemana: turma.dias,
           vagas: 30,
           minimoAlunos: 15,
           status: 'ABERTA',
+          aulas: {
+            create: [
+              { data: new Date(turma.inicio), horario: turma.horario },
+            ],
+          },
         },
       });
       console.log(`[exemplo] Turma criada para: ${curso.nome}`);

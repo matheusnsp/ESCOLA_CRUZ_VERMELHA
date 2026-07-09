@@ -94,8 +94,9 @@
               <% curso.turmas.forEach(function (t) { %>
                 <div class="cd-turma">
                   <div class="cd-turma-info">
-                    <strong><%= t.diasSemana %></strong>
-                    <span><%= t.horario %></span>
+                    <% if (t.aulas && t.aulas.length) { %>
+                      <span><%= t.aulas[0].horario %></span>
+                    <% } %>
                     <span class="cd-turma-date">Início em <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %></span>
                   </div>
                   <a class="cd-cta" href="/inscrever/<%= t.id %>">Inscrever-se</a>

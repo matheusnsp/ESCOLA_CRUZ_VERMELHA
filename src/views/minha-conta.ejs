@@ -53,8 +53,7 @@
                 <div class="course-body">
                   <h3><%= m.turma.curso.nome %></h3>
                   <small class="mat-sub">
-                    <%= m.turma.diasSemana %> · <%= m.turma.horario %> ·
-                    início <%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
+                    <% if (m.turma.aulas && m.turma.aulas.length) { %><%= m.turma.aulas[0].horario %> · <% } %>início <%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
                   </small>
                   <small class="mat-sub" style="margin-top:4px;display:block;">
                     Inscrito em <%= new Date(m.criadoEm).toLocaleDateString('pt-BR') %>

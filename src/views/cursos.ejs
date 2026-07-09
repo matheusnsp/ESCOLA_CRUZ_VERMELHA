@@ -41,13 +41,12 @@
 
               <ul class="curso-infos">
                 <li><i class="fa-regular fa-clock"></i> <%= curso.cargaHoraria %> horas</li>
-                <% if (turma) { %>
-                  <li><i class="fa-regular fa-calendar"></i> <%= turma.diasSemana %></li>
-                  <li>
-                    <i class="fa-solid fa-flag-checkered"></i>
-                    Início <%= new Date(turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
-                  </li>
-                <% } %>
+                  <% if (turma) { %>
+                    <li>
+                      <i class="fa-solid fa-flag-checkered"></i>
+                      Início <%= new Date(turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
+                    </li>
+                  <% } %>
               </ul>
 
               <div class="curso-preco">

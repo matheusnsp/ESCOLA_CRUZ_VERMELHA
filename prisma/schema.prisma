@@ -38,7 +38,6 @@ model Usuario {
   rg                   String?
   matriculas           Matricula[]
 
-  // Consulta frequente ao listar/gerenciar contas administrativas (tela de "Usuários do painel")
   @@index([papel])
 }
 
@@ -55,7 +54,7 @@ model Curso {
   valorParcela       Decimal    @db.Decimal(10, 2)
   taxaMatricula      Decimal?   @db.Decimal(10, 2)
   ativo              Boolean    @default(true)
-  criadoEm           DateTime   @default(now())
+  criadoEm          DateTime   @default(now())
   descricaoLonga     String?
   faqs               FaqCurso[]
   turmas             Turma[]
@@ -76,16 +75,25 @@ model FaqCurso {
 model Turma {
   id             String      @id @default(uuid())
   cursoId        String
-  inicioPrevisto DateTime
-  fimPrevisto    DateTime?
-  horario        String
-  diasSemana     String
+  inicioPrevisto DateTime @default(now())
   vagas          Int         @default(30)
   minimoAlunos   Int         @default(15)
   status         StatusTurma @default(ABERTA)
   criadoEm       DateTime    @default(now())
+  aulas          AulaData[]
   matriculas     Matricula[]
   curso          Curso       @relation(fields: [cursoId], references: [id])
+}
+
+model AulaData {
+  id      String   @id @default(uuid())
+  turmaId String
+  data    DateTime @db.Date
+  horario String
+  turma   Turma    @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+
+  @@index([turmaId])
+  @@index([data])
 }
 
 model Matricula {
@@ -118,29 +126,22 @@ model Matricula {
 }
 
 model Pagamento {
-  id               String            @id @default(uuid())
-  matriculaId      String
-
-  // Gateway
-  gateway          String?
-  gatewayRef       String?
-  gatewayHash      String?
-  gatewayStatus    String?
-  gatewayResponse  Json?
-
-  // PIX
-  pixQrCode        String?           @db.Text
-  pixUrl           String?           @db.Text
-  pixBase64        String?           @db.Text
-
-  metodo           FormaPagamento
-  valor            Decimal           @db.Decimal(10, 2)
-  status           StatusPagamento   @default(PENDENTE)
-
-  criadoEm         DateTime          @default(now())
-  atualizadoEm     DateTime          @updatedAt
-
-  matricula        Matricula         @relation(fields: [matriculaId], references: [id])
+  id              String          @id @default(uuid())
+  matriculaId     String
+  gateway         String?
+  gatewayRef      String?
+  gatewayHash     String?
+  gatewayStatus   String?
+  gatewayResponse Json?
+  pixQrCode       String?         @db.Text
+  pixUrl          String?         @db.Text
+  pixBase64       String?         @db.Text
+  metodo          FormaPagamento
+  valor           Decimal         @db.Decimal(10, 2)
+  status          StatusPagamento @default(PENDENTE)
+  criadoEm        DateTime        @default(now())
+  atualizadoEm    DateTime        @updatedAt
+  matricula       Matricula       @relation(fields: [matriculaId], references: [id])
 
   @@index([matriculaId])
   @@index([gatewayRef])
@@ -157,7 +158,6 @@ model TokenAuth {
   usadoEm   DateTime?
   criadoEm  DateTime  @default(now())
 
-  // O login admin cria/consulta por usuarioId+tipo (ex.: código 2FA) a cada tentativa
   @@index([usuarioId, tipo])
 }
 
@@ -175,8 +175,6 @@ model LogAuditoria {
   detalhe  Json?
   criadoEm DateTime @default(now())
 
-  // Com 4 papéis admin gerando eventos, a trilha cresce rápido — index para
-  // permitir "ver histórico deste usuário" e "ver todos os eventos de X ação"
   @@index([atorId])
   @@index([acao])
   @@index([criadoEm])

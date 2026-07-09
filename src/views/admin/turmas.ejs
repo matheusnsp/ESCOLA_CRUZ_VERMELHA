@@ -19,7 +19,13 @@
 <tr>
 <td><strong><%= t.curso.nome %></strong></td>
 <td><%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %></td>
-<td><%= t.diasSemana %><br><small class="adm-mut"><%= t.horario %></small></td>
+<td>
+<% if (t.aulas && t.aulas.length) { %>
+  <%= t.aulas[0].horario %>
+<% } else { %>
+  <span class="adm-mut">—</span>
+<% } %>
+</td>
 <td><a href="/inscricoes?turma=<%= t.id %>"><%= t._count.matriculas %>/<%= t.vagas %></a></td>
 <td><span class="badge st-<%= t.status.toLowerCase() %>"><%= t.status %></span></td>
 <td class="adm-acoes">

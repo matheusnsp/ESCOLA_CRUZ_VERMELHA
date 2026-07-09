@@ -1,33 +1,106 @@
 <%- include('head', { titulo: 'Turma' }) %>
 <%- include('header', { ativo: 'turmas' }) %>
-<% var t = turma || {}; var novo = !t.id;
-   function dtLocal(v){ if(!v) return ''; var d=new Date(v); if(isNaN(d)) return v; return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16); }
+<%
+var t = turma || {};
+var novo = !t.id;
+
+function formatarDataInput(data) {
+  if (!data) return '';
+  const d = new Date(data);
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
 %>
-<div class="adm-h1-row"><h1 class="adm-h1"><%= novo ? 'Nova turma' : 'Editar turma' %></h1><a href="/turmas" class="adm-link">← Voltar</a></div>
-<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= novo ? 'Nova turma' : 'Editar turma' %></h1>
+  <a href="/turmas" class="adm-link">← Voltar</a>
+</div>
+
+<% if (erro) { %>
+<div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div>
+<% } %>
+
 <form method="POST" action="<%= novo ? '/turmas' : '/turmas/' + t.id %>" class="adm-form adm-box">
-  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-  <label class="full">Curso
-    <select name="cursoId" required>
-      <option value="">— selecione —</option>
-      <% cursos.forEach(function(cur){ %>
-        <option value="<%= cur.id %>" <%= (t.cursoId||'')===cur.id ? 'selected' : '' %>><%= cur.nome %></option>
-      <% }) %>
-    </select>
-  </label>
-  <label>Início previsto<input type="datetime-local" name="inicioPrevisto" value="<%= dtLocal(t.inicioPrevisto) %>" required></label>
-  <label>Fim previsto (opcional)<input type="datetime-local" name="fimPrevisto" value="<%= dtLocal(t.fimPrevisto) %>"></label>
-  <label>Horário<input type="text" name="horario" value="<%= t.horario || '18:00-22:00' %>" required></label>
-  <label>Dias da semana<input type="text" name="diasSemana" value="<%= t.diasSemana || '' %>" placeholder="Terças e Quintas" required></label>
-  <label>Vagas<input type="number" name="vagas" min="1" value="<%= t.vagas || 30 %>" required></label>
-  <label>Mínimo de alunos<input type="number" name="minimoAlunos" min="0" value="<%= t.minimoAlunos != null ? t.minimoAlunos : 15 %>" required></label>
-  <label>Status
-    <select name="status">
-      <% statusTurma.forEach(function(s){ %>
-        <option value="<%= s %>" <%= (t.status||'ABERTA')===s ? 'selected' : '' %>><%= s %></option>
-      <% }) %>
-    </select>
-  </label>
-  <div class="full"><button type="submit" class="adm-btn"><%= novo ? 'Criar turma' : 'Salvar alterações' %></button></div>
+<input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+<label class="full">
+Curso
+<select name="cursoId" required>
+<option value="">— selecione —</option>
+<% cursos.forEach(function(cur){ %>
+<option value="<%= cur.id %>" <%= (t.cursoId||'')===cur.id ? 'selected' : '' %>><%= cur.nome %></option>
+<% }) %>
+</select>
+</label>
+
+<label>
+Início previsto
+<input type="date" name="inicioPrevisto" value="<%= formatarDataInput(t.inicioPrevisto) %>" required>
+</label>
+
+<label>Vagas<input type="number" name="vagas" min="1" value="<%= t.vagas || 30 %>" required></label>
+
+<label>Mínimo de alunos<input type="number" name="minimoAlunos" min="0" value="<%= t.minimoAlunos != null ? t.minimoAlunos : 15 %>" required></label>
+
+<label>Status
+<select name="status">
+<% statusTurma.forEach(function(s){ %>
+<option value="<%= s %>" <%= (t.status||'ABERTA')===s ? 'selected' : '' %>><%= s %></option>
+<% }) %>
+</select>
+</label>
+
+<div class="full">
+<div class="adm-label">Aulas (opcional)</div>
+
+<div id="aulas-lista">
+<% (aulas || []).forEach(function(a, i){ %>
+<div class="aula-linha" data-idx="<%= i %>">
+<input type="date" name="aulas[<%= i %>][data]" value="<%= formatarDataInput(a.data) %>">
+<input type="text" name="aulas[<%= i %>][horario]" value="<%= a.horario || '' %>" placeholder="18:00 – 22:00">
+<button type="button" class="adm-mini danger btn-remover-aula"><i class="fa-solid fa-trash"></i></button>
+</div>
+<% }) %>
+</div>
+
+<button type="button" id="btnAdicionarAula" class="adm-btn-sec" style="margin-top:8px;">
+<i class="fa-solid fa-plus"></i> Adicionar aula
+</button>
+</div>
+
+<div class="full">
+<button type="submit" class="adm-btn"><%= novo ? 'Criar turma' : 'Salvar alterações' %></button>
+</div>
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  let idx = <%= (aulas || []).length %>;
+  const lista = document.getElementById('aulas-lista');
+
+  function criarLinhaAula() {
+    const div = document.createElement('div');
+    div.className = 'aula-linha';
+    div.dataset.idx = idx;
+    div.innerHTML = `
+      <input type="date" name="aulas[${idx}][data]">
+      <input type="text" name="aulas[${idx}][horario]" placeholder="18:00 – 22:00">
+      <button type="button" class="adm-mini danger btn-remover-aula"><i class="fa-solid fa-trash"></i></button>
+    `;
+    lista.appendChild(div);
+    idx++;
+  }
+
+  document.getElementById('btnAdicionarAula').addEventListener('click', criarLinhaAula);
+
+  lista.addEventListener('click', function(e){
+    const btn = e.target.closest('.btn-remover-aula');
+    if(btn) btn.closest('.aula-linha').remove();
+  });
+});
+</script>
+
 <%- include('foot') %>

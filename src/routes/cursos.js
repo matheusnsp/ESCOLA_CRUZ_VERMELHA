@@ -42,12 +42,16 @@ router.get('/cursos/:cursoId', async (req, res) => {
     prisma.curso.findUnique({
       where: { id: req.params.cursoId },
       include: {
-        turmas: { where: { status: 'ABERTA' }, orderBy: { inicioPrevisto: 'asc' } },
+        turmas: {
+          where: { status: 'ABERTA' },
+          orderBy: { inicioPrevisto: 'asc' },
+          include: { aulas: { orderBy: { data: 'asc' }, take: 1 } },   // ← adicionar
+        },
         faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] },
       },
     }),
     lerConfigMatricula(),
-  ]);
+]);
   if (!curso || !curso.ativo)
     return res.status(404).render('erro', { mensagem: 'Curso não encontrado.' });
 
@@ -72,8 +76,8 @@ router.get('/cursos/:cursoId', async (req, res) => {
 router.get('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const turma = await prisma.turma.findUnique({
     where: { id: req.params.turmaId },
-    include: { curso: true },
-  });
+    include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
+});
   if (!turma || turma.status !== 'ABERTA')
     return res.status(404).render('erro', { mensagem: 'Turma não encontrada ou não está aberta.' });
 
@@ -91,8 +95,8 @@ router.get('/inscrever/:turmaId', requireLogin, async (req, res) => {
 router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const turma = await prisma.turma.findUnique({
     where: { id: req.params.turmaId },
-    include: { curso: true },
-  });
+    include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
+});
   if (!turma || turma.status !== 'ABERTA')
     return res.status(404).render('erro', { mensagem: 'Turma não encontrada ou não está aberta.' });
 

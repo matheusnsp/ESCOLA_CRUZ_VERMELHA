@@ -23,7 +23,7 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
     prisma.matricula.findMany({
       where: { alunoId: usuario.id },
       orderBy: { criadoEm: 'desc' },
-      include: { turma: { include: { curso: true } } },
+      include: { turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } },
     }),
     prisma.matricula.count({
       where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' } },
@@ -58,7 +58,7 @@ router.post('/conta/dados', requireLogin, async (req, res) => {
   const resultado = perfilSchema.safeParse(req.body);
   if (!resultado.success) {
     const [matriculas, matriculasAtivas] = await Promise.all([
-      prisma.matricula.findMany({ where: { alunoId: usuario.id }, orderBy: { criadoEm: 'desc' }, include: { turma: { include: { curso: true } } } }),
+      prisma.matricula.findMany({ where: { alunoId: usuario.id }, orderBy: { criadoEm: 'desc' }, include: { turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } } }),
       prisma.matricula.count({ where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' } } }),
     ]);
     return res.status(400).render('minha-conta', {
@@ -100,7 +100,7 @@ router.post('/conta/excluir', requireLogin, async (req, res) => {
       prisma.matricula.findMany({
         where: { alunoId: usuario.id },
         orderBy: { criadoEm: 'desc' },
-        include: { turma: { include: { curso: true } } },
+        include: { turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } },
       }),
       prisma.matricula.count({
         where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' } },

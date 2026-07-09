@@ -51,12 +51,10 @@ const inscricaoSchema = z.object({
   forma: z.enum(['PIX', 'CREDITO', 'DEBITO', 'DINHEIRO']),
 });
 
+
 const turmaSchema = z.object({
   cursoId: z.string().min(1),
   inicioPrevisto: z.coerce.date(),
-  fimPrevisto: z.preprocess(v => (v === '' ? undefined : v), z.coerce.date().optional()),
-  horario: z.string().min(1).max(50),
-  diasSemana: z.string().min(1).max(60),
   vagas: z.coerce.number().int().min(1),
   minimoAlunos: z.coerce.number().int().min(1),
 });
