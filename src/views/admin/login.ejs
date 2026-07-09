@@ -1,47 +1,49 @@
 <%- include('../partials/head', { titulo: 'Entrar · Secretaria' }) %>
 <main class="auth-wrap">
-  <div class="auth-card">
-    <div class="auth-brand">
-      <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro" class="auth-logo">
-      <div class="auth-brand-text">
-        <strong>ESCOLA DE EDUCAÇÃO</strong>
-        <span>E SAÚDE CVB-RJ</span>
-      </div>
-    </div>
-    <h1>Acesso da secretaria</h1>
-    <p class="auth-sub">Área restrita. Entre com seu e-mail e senha.</p>
+<div class="auth-card">
+<div class="auth-brand">
+<img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro" class="auth-logo">
+<div class="auth-brand-text">
+<strong>ESCOLA DE EDUCAÇÃO</strong>
+<span>E SAÚDE CVB-RJ</span>
+</div>
+</div>
+<h1>Acesso da secretaria</h1>
+<p class="auth-sub">Área restrita. Entre com seu e-mail e senha.</p>
 
-    <% if (typeof info !== 'undefined' && info) { %>
-      <div class="auth-erros" style="background:#f0fdf4;border-color:#86efac;">
-        <p style="color:#16a34a;"><i class="fa-solid fa-circle-check"></i> <%= info %></p>
-      </div>
-    <% } %>
-    <% if (erro) { %>
-      <div class="auth-erros" role="alert">
-        <p><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></p>
-      </div>
-    <% } %>
+<% if (typeof info !== 'undefined' && info) { %>
+<div class="auth-erros" style="background:#f0fdf4;border-color:#86efac;">
+<p style="color:#16a34a;"><i class="fa-solid fa-circle-check"></i> <%= info %></p>
+</div>
+<% } %>
+<% if (erro) { %>
+<div class="auth-erros" role="alert">
+<p><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></p>
+</div>
+<% } %>
 
-    <form method="POST" action="/login" novalidate>
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <label class="auth-field">
-        <span>E-mail</span>
-        <input type="email" name="email" required autocomplete="email" autofocus>
-      </label>
-      <label class="auth-field">
-        <span>Senha</span>
-        <input type="password" name="senha" required autocomplete="current-password">
-      </label>
-      <button type="submit" class="auth-btn">Entrar</button>
-    </form>
+<form method="POST" action="/login" novalidate>
+<input type="hidden" name="_csrf" value="<%= csrfToken %>">
+<label class="auth-field">
+<span>E-mail</span>
+<input type="email" name="email" required autocomplete="email" autofocus>
+</label>
+<label class="auth-field">
+<span>Senha</span>
+<input type="password" name="senha" required autocomplete="current-password">
+</label>
+<button type="submit" class="auth-btn">Entrar</button>
+</form>
 
-    <% if (typeof mostrarReenvio !== 'undefined' && mostrarReenvio) { %>
-    <form method="POST" action="/desbloquear/solicitar" style="margin-top:18px;text-align:center;">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <input type="hidden" name="email" value="<%= typeof emailTentado !== 'undefined' ? emailTentado : '' %>">
-      <button type="submit" style="background:none;border:none;color:var(--red);font-weight:700;cursor:pointer;text-decoration:underline;font-size:14px;">Reenviar link de desbloqueio</button>
-    </form>
-    <% } %>
-  </div>
+<p class="auth-alt"><a href="/esqueci-senha">Esqueci minha senha</a></p>
+
+<% if (typeof mostrarReenvio !== 'undefined' && mostrarReenvio) { %>
+<form method="POST" action="/desbloquear/solicitar" style="margin-top:18px;text-align:center;">
+<input type="hidden" name="_csrf" value="<%= csrfToken %>">
+<input type="hidden" name="email" value="<%= typeof emailTentado !== 'undefined' ? emailTentado : '' %>">
+<button type="submit" style="background:none;border:none;color:var(--red);font-weight:700;cursor:pointer;text-decoration:underline;font-size:14px;">Reenviar link de desbloqueio</button>
+</form>
+<% } %>
+</div>
 </main>
 <%- include('../partials/foot') %>

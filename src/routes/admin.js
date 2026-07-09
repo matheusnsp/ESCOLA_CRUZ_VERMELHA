@@ -1,15 +1,15 @@
 // ============================================================
-//  Painel da SECRETARIA (área administrativa)
-//  Servido por subdomínio (secretaria.<dominio>) em produção
-//  ou por porta separada (ADMIN_PORT) in desenvolvimento.
-//  Sessão é independente da do aluno (host/porta diferente).
+//  Painel Administrativo (Secretaria / Coordenacao / Financeiro / Dev)
+//  Servido por subdominio (secretaria.<dominio>) em producao
+//  ou por porta separada (ADMIN_PORT) em desenvolvimento.
+//  Sessao e independente da do aluno (host/porta diferente).
 // ============================================================
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const prisma = require('../db');
-const { verificarSenha } = require('../lib/password');
-const { criarCodigo2fa, verificarCodigo2fa, consumirToken, criarTokenDesbloqueio, verificarTokenDesbloqueio } = require('../lib/tokens');
-const { enviarCodigo2fa, enviarAlertaLoginSecretaria, enviarLinkDesbloqueio } = require('../lib/email');
+const { verificarSenha, hashSenha } = require('../lib/password');
+const { criarCodigo2fa, verificarCodigo2fa, consumirToken, criarTokenDesbloqueio, verificarTokenDesbloqueio, criarTokenReset, verificarTokenReset } = require('../lib/tokens');
+const { enviarCodigo2fa, enviarAlertaLoginSecretaria, enviarLinkDesbloqueio, enviarEmailResetSenha } = require('../lib/email');
 const { ESCOLARIDADES: ESCOLARIDADES_ALUNO, SITUACOES_ESCOLARIDADE, GENEROS, UFS } = require('../lib/validation');
 const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
 const { formatBRL } = require('../lib/matricula');
@@ -20,11 +20,13 @@ const router = express.Router();
 
 // ---------- Helpers ----------
 
-// Tempo máximo de inatividade no painel antes de deslogar (15 min).
+// Tempo maximo de inatividade no painel antes de deslogar (15 min).
 const IDLE_MS = 15 * 60 * 1000;
 
+// Qualquer um dos 4 papeis administrativos pode entrar no painel.
+// O que cada um pode FAZER dentro dele e controlado por requirePermissao() em cada rota.
 function requireAdmin(req, res, next) {
-  if (req.session && req.session.usuarioId && req.session.papel === 'SECRETARIA') {
+  if (req.session && req.session.usuarioId && PAPEIS_ADMIN.includes(req.session.papel)) {
     const agora = Date.now();
     if (req.session.adminLastSeen && agora - req.session.adminLastSeen > IDLE_MS) {
       return req.session.destroy(() => res.redirect('/login?expirado=1'));
@@ -35,7 +37,17 @@ function requireAdmin(req, res, next) {
   return res.redirect('/login');
 }
 
-// Registra uma ação da secretaria (trilha de auditoria).
+// Bloqueia a rota a menos que o papel logado tenha pelo menos UMA das permissoes passadas.
+// Aceita varias (OR) porque algumas telas sao compartilhadas: quem gerencia OU so le, ve a pagina;
+// so quem gerencia ve os botoes de acao (isso e tratado na view com res.locals.pode(...)).
+function requirePermissao(...perms) {
+  return (req, res, next) => {
+    if (perms.some((p) => temPermissao(req.session.papel, p))) return next();
+    return res.status(403).render('admin/erro', { mensagem: 'Voce nao tem permissao para esta acao.' });
+  };
+}
+
+// Registra uma acao administrativa (trilha de auditoria).
 async function auditar(req, acao, alvoTipo, alvoId, detalhe) {
   try {
     await prisma.logAuditoria.create({
@@ -52,7 +64,7 @@ async function auditar(req, acao, alvoTipo, alvoId, detalhe) {
   }
 }
 
-// Converte texto de formulário em número decimal válido (ou null se vazio/opcional).
+// Converte texto de formulario em numero decimal valido (ou null se vazio/opcional).
 function parseDecimal(v, { opcional = false } = {}) {
   if (v == null || String(v).trim() === '') return opcional ? null : NaN;
   const n = Number(String(v).replace(',', '.'));
@@ -64,7 +76,7 @@ function parseInteiro(v, { min = 0 } = {}) {
   return Number.isInteger(n) && n >= min ? n : NaN;
 }
 
-// Auxiliar para retornar à página anterior de forma segura com mensagem de sucesso
+// Auxiliar para retornar a pagina anterior de forma segura com mensagem de sucesso
 function back(req, msg) {
   const url = req.get('Referer') || '/inscricoes';
   const queryConector = url.includes('?') ? '&' : '?';
@@ -82,10 +94,10 @@ function statusBadge(s) {
   return map[s] || `<span>${s}</span>`;
 }
 
-const ESCOLARIDADES = ['', 'Ensino Fundamental', 'Ensino Médio', 'Ensino Superior'];
+const ESCOLARIDADES = ['', 'Ensino Fundamental', 'Ensino Medio', 'Ensino Superior'];
 const STATUS_TURMA = ['ABERTA', 'CONFIRMADA', 'CANCELADA', 'ENCERRADA'];
 
-// ---------- Login da secretaria (senha → 2FA por e-mail) ----------
+// ---------- Login administrativo (senha -> 2FA por e-mail) ----------
 
 const MAX_FALHAS = 5;                          
 const STRIKE_DURACOES_MIN = [15, 30, 60];      
@@ -133,34 +145,34 @@ async function logSeguranca(req, acao, usuarioId, detalhe) {
       },
     });
   } catch (e) {
-    console.error('Falha ao gravar log de segurança:', e.message);
+    console.error('Falha ao gravar log de seguranca:', e.message);
   }
 }
 
 router.get('/login', (req, res) => {
-  if (req.session && req.session.usuarioId && req.session.papel === 'SECRETARIA') {
+  if (req.session && req.session.usuarioId && PAPEIS_ADMIN.includes(req.session.papel)) {
     return res.redirect('/');
   }
-  const info = req.query.expirado ? 'Sessão encerrada por inatividade. Entre novamente.' : null;
+  const info = req.query.expirado ? 'Sessao encerrada por inatividade. Entre novamente.' : null;
   res.render('admin/login', { erro: null, info });
 });
 
 router.post('/login', loginAdminLimiter, async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   const senha = String(req.body.senha || '');
-  const falha = () => res.status(401).render('admin/login', { erro: 'E-mail ou senha inválidos.' });
+  const falha = () => res.status(401).render('admin/login', { erro: 'E-mail ou senha invalidos.' });
 
   try {
     const usuario = await prisma.usuario.findUnique({ where: { email } });
-    if (!usuario || usuario.papel !== 'SECRETARIA') {
-      await logSeguranca(req, 'LOGIN_FALHO', null, { email, motivo: 'usuario_inexistente_ou_nao_secretaria' });
+    if (!usuario || !PAPEIS_ADMIN.includes(usuario.papel)) {
+      await logSeguranca(req, 'LOGIN_FALHO', null, { email, motivo: 'usuario_inexistente_ou_nao_admin' });
       return falha();
     }
 
     if (usuario.bloqueioTotal) {
       await logSeguranca(req, 'LOGIN_BLOQUEADO', usuario.id, { email, motivo: 'bloqueio_total' });
       return res.status(403).render('admin/login', {
-        erro: 'Conta bloqueada por segurança após várias tentativas. Use o link de desbloqueio enviado ao e-mail oficial — ou reenvie abaixo.',
+        erro: 'Conta bloqueada por seguranca apos varias tentativas. Use o link de desbloqueio enviado ao e-mail oficial — ou reenvie abaixo.',
         info: null, mostrarReenvio: true, emailTentado: email,
       });
     }
@@ -191,7 +203,7 @@ router.post('/login', loginAdminLimiter, async (req, res) => {
         try { await enviarDesbloqueio(usuario); } catch (e) { console.error('Falha ao enviar desbloqueio:', e); }
         await logSeguranca(req, 'BLOQUEIO_TOTAL', usuario.id, { email, strikes });
         return res.status(403).render('admin/login', {
-          erro: 'Conta bloqueada por segurança. Enviamos um link de desbloqueio para o e-mail oficial da secretaria.',
+          erro: 'Conta bloqueada por seguranca. Enviamos um link de desbloqueio para o e-mail oficial.',
           info: null, mostrarReenvio: true, emailTentado: email,
         });
       }
@@ -216,7 +228,7 @@ router.post('/login', loginAdminLimiter, async (req, res) => {
       return res.redirect('/login/2fa');
     });
   } catch (err) {
-    console.error('Erro no login da secretaria:', err);
+    console.error('Erro no login administrativo:', err);
     return res.status(500).render('admin/erro', { mensagem: 'Erro ao processar o login.' });
   }
 });
@@ -224,7 +236,7 @@ router.post('/login', loginAdminLimiter, async (req, res) => {
 router.get('/login/2fa', (req, res) => {
   const pend = req.session.pendingAdmin2fa;
   if (!pend) return res.redirect('/login');
-  const sucesso = req.query.reenviado ? 'Enviamos um novo código para o seu e-mail.' : null;
+  const sucesso = req.query.reenviado ? 'Enviamos um novo codigo para o seu e-mail.' : null;
   res.render('admin/login-2fa', { erro: null, sucesso, emailMasc: mascararEmail(pend.email) });
 });
 
@@ -234,37 +246,37 @@ router.post('/login/2fa', codigo2faLimiter, async (req, res) => {
 
   if (Date.now() - pend.em > PENDENTE_2FA_MS) {
     delete req.session.pendingAdmin2fa;
-    return res.status(401).render('admin/login', { erro: 'Tempo esgotado. Faça login novamente.' });
+    return res.status(401).render('admin/login', { erro: 'Tempo esgotado. Faca login novamente.' });
   }
 
   const codigo = String(req.body.codigo || '').replace(/\D/g, '');
   const registro = await verificarCodigo2fa(pend.id, codigo);
   if (!registro) {
     await logSeguranca(req, 'LOGIN_2FA_FALHO', pend.id, { email: pend.email, motivo: 'codigo_invalido' });
-    return res.status(401).render('admin/login-2fa', { erro: 'Código inválido ou expirado.', sucesso: null, emailMasc: mascararEmail(pend.email) });
+    return res.status(401).render('admin/login-2fa', { erro: 'Codigo invalido ou expirado.', sucesso: null, emailMasc: mascararEmail(pend.email) });
   }
   await consumirToken(registro.id);
 
   const usuario = await prisma.usuario.findUnique({ where: { id: pend.id } });
-  if (!usuario || usuario.papel !== 'SECRETARIA') {
+  if (!usuario || !PAPEIS_ADMIN.includes(usuario.papel)) {
     delete req.session.pendingAdmin2fa;
     return res.redirect('/login');
   }
 
   const ip = req.ip;
   return req.session.regenerate((err) => {
-    if (err) { return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar a sessão.' }); }
+    if (err) { return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar a sessao.' }); }
     req.session.usuarioId = usuario.id;
     req.session.nome = usuario.nome;
     req.session.papel = usuario.papel;
     req.session.adminLastSeen = Date.now();
     req.session.save(async (err2) => {
-      if (err2) { return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar a sessão.' }); }
+      if (err2) { return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar a sessao.' }); }
       try {
         const quando = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
         await enviarAlertaLoginSecretaria(usuario.email, usuario.nome, quando, ip);
-        await auditar(req, 'LOGIN_SECRETARIA', 'Usuario', usuario.id, { ip });
-      } catch (e) { console.error('Pós-login (alerta/auditoria):', e); }
+        await auditar(req, 'LOGIN_ADMIN', 'Usuario', usuario.id, { ip, papel: usuario.papel });
+      } catch (e) { console.error('Pos-login (alerta/auditoria):', e); }
       return res.redirect('/');
     });
   });
@@ -277,7 +289,7 @@ router.post('/login/2fa/reenviar', reenvioLimiter, async (req, res) => {
   try {
     await dispararCodigo2fa(pend);
   } catch (e) {
-    console.error('Erro ao reenviar código 2FA:', e);
+    console.error('Erro ao reenviar codigo 2FA:', e);
   }
   return req.session.save(() => res.redirect('/login/2fa?reenviado=1'));
 });
@@ -286,7 +298,7 @@ router.post('/desbloquear/solicitar', desbloqueioLimiter, async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   try {
     const usuario = await prisma.usuario.findUnique({ where: { email } });
-    if (usuario && usuario.papel === 'SECRETARIA' && usuario.bloqueioTotal) {
+    if (usuario && PAPEIS_ADMIN.includes(usuario.papel) && usuario.bloqueioTotal) {
       await enviarDesbloqueio(usuario);
     }
   } catch (e) {
@@ -299,14 +311,89 @@ router.get('/desbloquear', async (req, res) => {
   const token = String(req.query.token || '');
   const registro = await verificarTokenDesbloqueio(token);
   if (!registro) {
-    return res.status(400).render('admin/login', { erro: 'Link de desbloqueio inválido ou expirado.', info: null });
+    return res.status(400).render('admin/login', { erro: 'Link de desbloqueio invalido ou expirado.', info: null });
   }
   await prisma.usuario.update({
     where: { id: registro.usuarioId },
     data: { bloqueioTotal: false, loginStrikes: 0, loginFalhas: 0, bloqueadoAte: null },
   });
   await consumirToken(registro.id);
-  return res.render('admin/login', { erro: null, info: 'Acesso liberado. Faça login normalmente.' });
+  return res.render('admin/login', { erro: null, info: 'Acesso liberado. Faca login normalmente.' });
+});
+
+// ---------- Esqueci minha senha (fluxo para pessoas adicionadas sem senha definida) ----------
+// Usado tanto por quem esqueceu a senha quanto por conta nova cadastrada pelo script
+// scripts/criar-admin.js (que cria o usuário com senhaHash nulo, sem nenhuma senha temporária
+// para ninguém digitar ou saber).
+
+const resetSenhaLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false });
+
+router.get('/esqueci-senha', (req, res) => {
+  res.render('admin/esqueci-senha', { erro: null, sucesso: false });
+});
+
+router.post('/esqueci-senha', resetSenhaLimiter, async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  try {
+    const usuario = await prisma.usuario.findUnique({ where: { email } });
+    // So envia se a conta existir E for de fato um papel administrativo — mas a mensagem
+    // de resposta e sempre a mesma, exista ou nao, pra nao confirmar quem tem cadastro.
+    if (usuario && PAPEIS_ADMIN.includes(usuario.papel)) {
+      const token = await criarTokenReset(usuario.id);
+      const link = `${ADMIN_URL}/redefinir-senha?token=${token}`;
+      await enviarEmailResetSenha(usuario.email, usuario.nome, link);
+      await logSeguranca(req, 'RESET_SENHA_SOLICITADO', usuario.id, { email });
+    }
+  } catch (e) {
+    console.error('Erro ao solicitar redefinicao de senha:', e);
+  }
+  // sucesso:true mesmo se a conta nao existir — a propria view esconde o formulario
+  // e mostra so a mensagem generica, evitando confirmar quem tem cadastro ou nao.
+  return res.render('admin/esqueci-senha', { erro: null, sucesso: true });
+});
+
+router.get('/redefinir-senha', async (req, res) => {
+  const token = String(req.query.token || '');
+  const registro = await verificarTokenReset(token);
+  if (!registro) {
+    // Sem token valido nao ha o que preencher no formulario de redefinir-senha;
+    // manda de volta pra tela de solicitar um novo link.
+    return res.status(400).render('admin/esqueci-senha', { erro: 'Link invalido ou expirado. Solicite um novo abaixo.', sucesso: false });
+  }
+  res.render('admin/redefinir-senha', { erro: null, token });
+});
+
+router.post('/redefinir-senha', resetSenhaLimiter, async (req, res) => {
+  const token = String(req.body.token || '');
+  const senha = String(req.body.senha || '');
+  const confirmar = String(req.body.confirmarSenha || '');
+
+  const registro = await verificarTokenReset(token);
+  if (!registro) {
+    return res.status(400).render('admin/esqueci-senha', { erro: 'Link invalido ou expirado. Solicite um novo abaixo.', sucesso: false });
+  }
+  // Mesmo minimo exigido no atributo minlength do campo em redefinir-senha.ejs.
+  if (senha.length < 10) {
+    return res.status(400).render('admin/redefinir-senha', { erro: 'A senha precisa ter pelo menos 10 caracteres.', token });
+  }
+  if (senha !== confirmar) {
+    return res.status(400).render('admin/redefinir-senha', { erro: 'As senhas nao coincidem.', token });
+  }
+
+  const senhaHash = await hashSenha(senha);
+  await prisma.usuario.update({
+    where: { id: registro.usuarioId },
+    data: {
+      senhaHash,
+      // Redefinir a senha tambem limpa qualquer bloqueio de login anterior.
+      loginFalhas: 0, loginStrikes: 0, bloqueadoAte: null, bloqueioTotal: false,
+      emailVerificado: true,
+    },
+  });
+  await consumirToken(registro.id);
+  await logSeguranca(req, 'RESET_SENHA_CONCLUIDO', registro.usuarioId, {});
+
+  return res.render('admin/login', { erro: null, info: 'Senha definida com sucesso. Faca login normalmente.' });
 });
 
 router.post('/logout', (req, res) => {
@@ -316,11 +403,15 @@ router.post('/logout', (req, res) => {
 // Middleware Global de Contexto para as views administradas
 router.use((req, res, next) => {
   res.locals.admUsuarioNome = req.session?.nome || '';
+  res.locals.admPapel = req.session?.papel || null;
   res.locals.path = req.path;
+  // Disponivel em toda view admin/*: <% if (pode('financeiro:aprovar')) { %> ... <% } %>
+  res.locals.pode = (perm) => temPermissao(req.session?.papel, perm);
   next();
 });
 
-// Restrição global para as rotas abaixo
+// Restricao global para as rotas abaixo: precisa estar logado como algum papel admin.
+// O QUE cada papel pode fazer dentro das rotas e refinado rota a rota com requirePermissao().
 router.use(requireAdmin);
 
 // ---------- Dashboard ----------
@@ -346,8 +437,10 @@ router.get('/', async (req, res) => {
 });
 
 // ---------- Cursos ----------
+// Escrita: so quem tem 'cursos:gerenciar' (Secretaria, Coordenador, Dev).
+// Leitura: tambem quem tem 'secretaria:leitura' (Financeiro, modo consulta).
 
-router.get('/cursos', async (req, res) => {
+router.get('/cursos', requirePermissao('cursos:gerenciar', 'secretaria:leitura'), async (req, res) => {
   const cursos = await prisma.curso.findMany({
     orderBy: { nome: 'asc' },
     include: { _count: { select: { turmas: true } } },
@@ -355,7 +448,7 @@ router.get('/cursos', async (req, res) => {
   res.render('admin/cursos', { cursos, formatBRL, flash: req.query.ok || null, erro: req.query.erro || null });
 });
 
-router.get('/cursos/novo', (req, res) => {
+router.get('/cursos/novo', requirePermissao('cursos:gerenciar'), (req, res) => {
   res.render('admin/curso-form', { curso: null, escolaridades: ESCOLARIDADES, erro: null });
 });
 
@@ -375,14 +468,14 @@ function lerCursoDoForm(body) {
   };
   let erro = null;
   if (!dados.nome) erro = 'Informe o nome do curso.';
-  else if (Number.isNaN(dados.cargaHoraria)) erro = 'Carga horária inválida.';
-  else if (Number.isNaN(dados.precoAvista) || Number.isNaN(dados.precoCheio) || Number.isNaN(dados.valorParcela)) erro = 'Verifique os valores (use números, ex.: 150.00).';
-  else if (Number.isNaN(dados.parcelas)) erro = 'Número de parcelas inválido.';
-  else if (Number.isNaN(dados.taxaMatricula)) erro = 'Taxa de matrícula inválida (deixe em branco para usar o padrão).';
+  else if (Number.isNaN(dados.cargaHoraria)) erro = 'Carga horaria invalida.';
+  else if (Number.isNaN(dados.precoAvista) || Number.isNaN(dados.precoCheio) || Number.isNaN(dados.valorParcela)) erro = 'Verifique os valores (use numeros, ex.: 150.00).';
+  else if (Number.isNaN(dados.parcelas)) erro = 'Numero de parcelas invalido.';
+  else if (Number.isNaN(dados.taxaMatricula)) erro = 'Taxa de matricula invalida (deixe em branco para usar o padrao).';
   return { dados, erro };
 }
 
-router.post('/cursos', uploadFoto, async (req, res) => {
+router.post('/cursos', requirePermissao('cursos:gerenciar'), uploadFoto, async (req, res) => {
   if (req.uploadErro) return res.status(400).render('admin/curso-form', { curso: req.body, escolaridades: ESCOLARIDADES, erro: req.uploadErro });
   const { dados, erro } = lerCursoDoForm(req.body);
   if (erro) return res.status(400).render('admin/curso-form', { curso: req.body, escolaridades: ESCOLARIDADES, erro });
@@ -392,18 +485,18 @@ router.post('/cursos', uploadFoto, async (req, res) => {
   res.redirect('/cursos?ok=Curso criado.');
 });
 
-router.get('/cursos/:id/editar', async (req, res) => {
+router.get('/cursos/:id/editar', requirePermissao('cursos:gerenciar'), async (req, res) => {
   const curso = await prisma.curso.findUnique({
     where: { id: req.params.id },
     include: { faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] } },
   });
-  if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso não encontrado.' });
+  if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
   res.render('admin/curso-form', { curso, escolaridades: ESCOLARIDADES, erro: null, erroFaq: req.query.erroFaq || null });
 });
 
-router.post('/cursos/:id/faqs', async (req, res) => {
+router.post('/cursos/:id/faqs', requirePermissao('cursos:gerenciar'), async (req, res) => {
   const curso = await prisma.curso.findUnique({ where: { id: req.params.id } });
-  if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso não encontrado.' });
+  if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
   const pergunta = String(req.body.pergunta || '').trim();
   const resposta = String(req.body.resposta || '').trim();
   if (!pergunta || !resposta) {
@@ -415,17 +508,17 @@ router.post('/cursos/:id/faqs', async (req, res) => {
   res.redirect(`/cursos/${curso.id}/editar#duvidas`);
 });
 
-router.post('/cursos/:id/faqs/:faqId/remover', async (req, res) => {
+router.post('/cursos/:id/faqs/:faqId/remover', requirePermissao('cursos:gerenciar'), async (req, res) => {
   const faq = await prisma.faqCurso.findUnique({ where: { id: req.params.faqId } });
-  if (!faq || faq.cursoId !== req.params.id) return res.status(404).render('admin/erro', { mensagem: 'Dúvida não encontrada.' });
+  if (!faq || faq.cursoId !== req.params.id) return res.status(404).render('admin/erro', { mensagem: 'Duvida nao encontrada.' });
   await prisma.faqCurso.delete({ where: { id: faq.id } });
   await auditar(req, 'REMOVEU_FAQ', 'Curso', req.params.id, { pergunta: faq.pergunta });
   res.redirect(`/cursos/${req.params.id}/editar#duvidas`);
 });
 
-router.post('/cursos/:id', uploadFoto, async (req, res) => {
+router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, async (req, res) => {
   const existe = await prisma.curso.findUnique({ where: { id: req.params.id } });
-  if (!existe) return res.status(404).render('admin/erro', { mensagem: 'Curso não encontrado.' });
+  if (!existe) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
   if (req.uploadErro) return res.status(400).render('admin/curso-form', { curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro: req.uploadErro });
   const { dados, erro } = lerCursoDoForm(req.body);
   if (erro) return res.status(400).render('admin/curso-form', { curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro });
@@ -443,35 +536,36 @@ router.post('/cursos/:id', uploadFoto, async (req, res) => {
   res.redirect('/cursos?ok=Curso atualizado.');
 });
 
-router.post('/cursos/:id/excluir', async (req, res) => {
+router.post('/cursos/:id/excluir', requirePermissao('cursos:gerenciar'), async (req, res) => {
   const curso = await prisma.curso.findUnique({ where: { id: req.params.id } });
-  if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso não encontrado.' });
+  if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
 
   const turmas = await prisma.turma.findMany({ where: { cursoId: curso.id }, select: { id: true } });
   const turmaIds = turmas.map((t) => t.id);
   const matriculas = turmaIds.length ? await prisma.matricula.count({ where: { turmaId: { in: turmaIds } } }) : 0;
 
   if (turmas.length > 0 || matriculas > 0) {
-    return res.redirect('/cursos?erro=' + encodeURIComponent('Não é possível excluir: o curso tem turmas e/ou matrículas. Use "desativar" para tirá-lo do site preservando o histórico.'));
+    return res.redirect('/cursos?erro=' + encodeURIComponent('Nao e possivel excluir: o curso tem turmas e/ou matriculas. Use "desativar" para tira-lo do site preservando o historico.'));
   }
 
   await prisma.curso.delete({ where: { id: curso.id } });
   await removerFotoCurso(curso.imagemUrl);
   await auditar(req, 'EXCLUIU_CURSO', 'Curso', curso.id, { nome: curso.nome });
-  res.redirect('/cursos?ok=Curso excluído.');
+  res.redirect('/cursos?ok=Curso excluido.');
 });
 
-router.post('/cursos/:id/ativar', async (req, res) => {
+router.post('/cursos/:id/ativar', requirePermissao('cursos:gerenciar'), async (req, res) => {
   const curso = await prisma.curso.findUnique({ where: { id: req.params.id } });
-  if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso não encontrado.' });
+  if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
   await prisma.curso.update({ where: { id: curso.id }, data: { ativo: !curso.ativo } });
   await auditar(req, curso.ativo ? 'DESATIVOU_CURSO' : 'ATIVOU_CURSO', 'Curso', curso.id, null);
   res.redirect('/cursos?ok=' + (curso.ativo ? 'Curso desativado.' : 'Curso ativado.'));
 });
 
 // ---------- Turmas ----------
+// Mesma logica: escrita exige 'turmas:gerenciar'; leitura tambem aceita 'secretaria:leitura'.
 
-router.get('/turmas', async (req, res) => {
+router.get('/turmas', requirePermissao('turmas:gerenciar', 'secretaria:leitura'), async (req, res) => {
   const turmas = await prisma.turma.findMany({
     orderBy: { inicioPrevisto: 'asc' },
     include: { curso: true, _count: { select: { matriculas: { where: { taxaConfirmada: true, statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] } } } } } },
@@ -479,7 +573,7 @@ router.get('/turmas', async (req, res) => {
   res.render('admin/turmas', { turmas, statusTurma: STATUS_TURMA, flash: req.query.ok || null, erro: req.query.erro || null });
 });
 
-router.get('/turmas/nova', async (req, res) => {
+router.get('/turmas/nova', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const cursos = await prisma.curso.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' } });
   res.render('admin/turma-form', { turma: null, cursos, statusTurma: STATUS_TURMA, erro: null });
 });
@@ -497,15 +591,15 @@ function lerTurmaDoForm(body) {
   };
   let erro = null;
   if (!dados.cursoId) erro = 'Selecione o curso.';
-  else if (!dados.inicioPrevisto || isNaN(dados.inicioPrevisto.getTime())) erro = 'Data de início inválida.';
-  else if (!dados.horario) erro = 'Informe o horário.';
+  else if (!dados.inicioPrevisto || isNaN(dados.inicioPrevisto.getTime())) erro = 'Data de inicio invalida.';
+  else if (!dados.horario) erro = 'Informe o horario.';
   else if (!dados.diasSemana) erro = 'Informe os dias da semana.';
-  else if (Number.isNaN(dados.vagas)) erro = 'Número de vagas inválido.';
-  else if (Number.isNaN(dados.minimoAlunos)) erro = 'Mínimo de alunos inválido.';
+  else if (Number.isNaN(dados.vagas)) erro = 'Numero de vagas invalido.';
+  else if (Number.isNaN(dados.minimoAlunos)) erro = 'Minimo de alunos invalido.';
   return { dados, erro };
 }
 
-router.post('/turmas', async (req, res) => {
+router.post('/turmas', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const { dados, erro } = lerTurmaDoForm(req.body);
   if (erro) {
     const cursos = await prisma.curso.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' } });
@@ -516,7 +610,7 @@ router.post('/turmas', async (req, res) => {
   res.redirect('/turmas?ok=Turma criada.');
 });
 
-router.get('/turmas/:id/notas', async (req, res) => {
+router.get('/turmas/:id/notas', requirePermissao('turmas:gerenciar', 'secretaria:leitura'), async (req, res) => {
   const { id } = req.params;
   const turma = await prisma.turma.findUnique({
     where: { id },
@@ -525,7 +619,7 @@ router.get('/turmas/:id/notas', async (req, res) => {
       matriculas: { include: { aluno: true }, orderBy: { criadoEm: 'asc' } },
     },
   });
-  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma não encontrada.' });
+  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
   res.render('admin/turma-notas', { turma, erro: null, ok: req.query.ok || null });
 });
 
@@ -540,17 +634,17 @@ async function recalcularMedia(matriculaId) {
   return media;
 }
 
-router.post('/turmas/:id/notas', async (req, res) => {
+router.post('/turmas/:id/notas', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const turma = await prisma.turma.findUnique({
     where: { id: req.params.id },
     include: { matriculas: true },
   });
-  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma não encontrada.' });
+  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
 
   const nome = String(req.body.nome || '').trim();
   const peso = Number(String(req.body.peso || '1').replace(',', '.'));
-  if (!nome || nome.length > 60) return res.status(400).render('admin/erro', { mensagem: 'Dê um nome à avaliação.' });
-  if (Number.isNaN(peso) || peso <= 0 || peso > 100) return res.status(400).render('admin/erro', { mensagem: 'Peso inválido.' });
+  if (!nome || nome.length > 60) return res.status(400).render('admin/erro', { mensagem: 'De um nome a avaliacao.' });
+  if (Number.isNaN(peso) || peso <= 0 || peso > 100) return res.status(400).render('admin/erro', { mensagem: 'Peso invalido.' });
 
   const mapNotas = req.body || {}; 
   let lancadas = 0;
@@ -559,28 +653,28 @@ router.post('/turmas/:id/notas', async (req, res) => {
     if (raw === undefined || String(raw).trim() === '') continue; 
     const nota = Number(String(raw).replace(',', '.'));
     if (Number.isNaN(nota) || nota < 0 || nota > 10) {
-      return res.status(400).render('admin/erro', { mensagem: `Nota inválida (${nome}). Use valores de 0 a 10.` });
+      return res.status(400).render('admin/erro', { mensagem: `Nota invalida (${nome}). Use valores de 0 a 10.` });
     }
     await prisma.avaliacao.create({ data: { matriculaId: m.id, nome, nota: Math.round(nota * 100) / 100, peso } });
     await recalcularMedia(m.id);
     lancadas++;
   }
   await auditar(req, 'LANCOU_NOTAS_LOTE', 'Turma', turma.id, { nome, peso, lancadas });
-  res.redirect(`/turmas/${turma.id}/notas?ok=` + encodeURIComponent(`Avaliação "${nome}" lançada para ${lancadas} aluno(s).`));
+  res.redirect(`/turmas/${turma.id}/notas?ok=` + encodeURIComponent(`Avaliacao "${nome}" lancada para ${lancadas} aluno(s).`));
 });
 
-router.get('/turmas/:id/editar', async (req, res) => {
+router.get('/turmas/:id/editar', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const [turma, cursos] = await Promise.all([
     prisma.turma.findUnique({ where: { id: req.params.id } }),
     prisma.curso.findMany({ orderBy: { nome: 'asc' } }),
   ]);
-  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma não encontrada.' });
+  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
   res.render('admin/turma-form', { turma, cursos, statusTurma: STATUS_TURMA, erro: null });
 });
 
-router.post('/turmas/:id', async (req, res) => {
+router.post('/turmas/:id', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const existe = await prisma.turma.findUnique({ where: { id: req.params.id } });
-  if (!existe) return res.status(404).render('admin/erro', { mensagem: 'Turma não encontrada.' });
+  if (!existe) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
   const { dados, erro } = lerTurmaDoForm(req.body);
   if (erro) {
     const cursos = await prisma.curso.findMany({ orderBy: { nome: 'asc' } });
@@ -591,26 +685,29 @@ router.post('/turmas/:id', async (req, res) => {
   res.redirect('/turmas?ok=Turma atualizada.');
 });
 
-router.post('/turmas/:id/excluir', async (req, res) => {
+router.post('/turmas/:id/excluir', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const turma = await prisma.turma.findUnique({ where: { id: req.params.id }, include: { curso: true } });
-  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma não encontrada.' });
+  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
 
   const matriculas = await prisma.matricula.count({ where: { turmaId: turma.id } });
   if (matriculas > 0) {
-    return res.redirect('/turmas?erro=' + encodeURIComponent('Não é possível excluir: a turma tem aluno(s) matriculado(s). Use o status "CANCELADA" ou "ENCERRADA" para tirá-la do site preservando o histórico.'));
+    return res.redirect('/turmas?erro=' + encodeURIComponent('Nao e possivel excluir: a turma tem aluno(s) matriculado(s). Use o status "CANCELADA" ou "ENCERRADA" para tira-la do site preservando o historico.'));
   }
 
   await prisma.turma.delete({ where: { id: turma.id } });
   await auditar(req, 'EXCLUIU_TURMA', 'Turma', turma.id, { cursoId: turma.cursoId, curso: turma.curso.nome });
-  res.redirect('/turmas?ok=Turma excluída.');
+  res.redirect('/turmas?ok=Turma excluida.');
 });
 
-// ---------- Inscrições / Pagamentos ----------
+// ---------- Inscricoes / Pagamentos ----------
+// A pagina e compartilhada: Secretaria (doacao/alimento), Coordenador e Financeiro (pagamento) todos entram,
+// mas os BOTOES de acao (confirmar/cancelar/estornar pagamento vs. marcar alimento entregue) sao
+// controlados na view via res.locals.pode(...). Cada acao POST tem sua propria permissao especifica.
 
-router.get('/inscricoes', async (req, res) => {
+router.get('/inscricoes', requirePermissao('doacao:confirmar', 'financeiro:aprovar', 'financeiro:leitura'), async (req, res) => {
   const turmaId = req.query.turma || null;
   
-  // 💡 FIX: Reintroduzido o status 'PENDENTE'. Sem ele, compras PIX novas sumiam do painel impossibilitando a alteração de tag
+  // FIX: Reintroduzido o status 'PENDENTE'. Sem ele, compras PIX novas sumiam do painel impossibilitando a alteracao de tag
   const where = {
     taxaConfirmada: true,
     statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] },
@@ -625,13 +722,14 @@ router.get('/inscricoes', async (req, res) => {
     }),
     prisma.turma.findMany({ orderBy: { inicioPrevisto: 'asc' }, include: { curso: true } }),
   ]);
-  // res.render('admin/inscricoes', { inscricoes, turmas, turmaId, formatBRL, flash: req.query.ok || null });
   res.render('admin/inscricoes', { inscricoes, turmas, turmaId, formatBRL, statusBadge, flash: req.query.ok || null });
 });
 
-router.post('/inscricoes/:id/confirmar', async (req, res) => {
+// Aprovacao de pagamento do curso: EXCLUSIVO de quem tem 'financeiro:aprovar' (Financeiro e Dev).
+// Secretaria e Coordenador NAO tem essa permissao (Coordenador so tem financeiro:leitura).
+router.post('/inscricoes/:id/confirmar', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
   await prisma.matricula.update({
     where: { id: m.id },
     data: { statusPagamento: 'PAGO', confirmadaPor: req.session.usuarioId, confirmadaEm: new Date() },
@@ -640,51 +738,52 @@ router.post('/inscricoes/:id/confirmar', async (req, res) => {
   res.redirect(back(req, 'Pagamento confirmado.'));
 });
 
-router.post('/inscricoes/:id/cancelar', async (req, res) => {
+router.post('/inscricoes/:id/cancelar', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
   await prisma.matricula.update({ where: { id: m.id }, data: { statusPagamento: 'CANCELADO' } });
   await auditar(req, 'CANCELOU_INSCRICAO', 'Matricula', m.id, null);
-  res.redirect(back(req, 'Inscrição cancelada.'));
+  res.redirect(back(req, 'Inscricao cancelada.'));
 });
 
-router.post('/inscricoes/:id/estornar', async (req, res) => {
+router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
   await prisma.matricula.update({ where: { id: m.id }, data: { statusPagamento: 'ESTORNADO' } });
   await auditar(req, 'ESTORNOU_PAGAMENTO', 'Matricula', m.id, null);
   res.redirect(back(req, 'Pagamento estornado.'));
 });
 
-router.post('/inscricoes/:id/alimento', async (req, res) => {
+// Confirmacao de doacao (entrega de alimento): permissao da Secretaria, nao do Financeiro.
+router.post('/inscricoes/:id/alimento', requirePermissao('doacao:confirmar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
   await prisma.matricula.update({ where: { id: m.id }, data: { alimentoEntregue: !m.alimentoEntregue } });
   await auditar(req, 'ALTEROU_ALIMENTO', 'Matricula', m.id, { entregue: !m.alimentoEntregue });
   res.redirect(back(req, 'Atualizado.'));
 });
 
-router.get('/inscricoes/:id/nota', async (req, res) => {
+router.get('/inscricoes/:id/nota', requirePermissao('turmas:gerenciar', 'secretaria:leitura'), async (req, res) => {
   const m = await prisma.matricula.findUnique({
     where: { id: req.params.id },
     include: { aluno: true, turma: { include: { curso: true } }, avaliacoes: { orderBy: { criadoEm: 'asc' } } },
   });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
   res.render('admin/nota', { m, erro: null });
 });
 
-router.post('/inscricoes/:id/avaliacoes', async (req, res) => {
+router.post('/inscricoes/:id/avaliacoes', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id }, include: { aluno: true, turma: { include: { curso: true } }, avaliacoes: true } });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
 
   const reErro = (msg) => res.status(400).render('admin/nota', { m, erro: msg });
   const nome = String(req.body.nome || '').trim();
   const nota = Number(String(req.body.nota || '').replace(',', '.'));
   const peso = Number(String(req.body.peso || '1').replace(',', '.'));
 
-  if (!nome || nome.length > 60) return reErro('Dê um nome à avaliação (ex.: Prova 1).');
-  if (Number.isNaN(nota) || nota < 0 || nota > 10) return reErro('A nota deve ser um número entre 0 e 10.');
-  if (Number.isNaN(peso) || peso <= 0 || peso > 100) return reErro('O peso deve ser um número maior que zero.');
+  if (!nome || nome.length > 60) return reErro('De um nome a avaliacao (ex.: Prova 1).');
+  if (Number.isNaN(nota) || nota < 0 || nota > 10) return reErro('A nota deve ser um numero entre 0 e 10.');
+  if (Number.isNaN(peso) || peso <= 0 || peso > 100) return reErro('O peso deve ser um numero maior que zero.');
 
   await prisma.avaliacao.create({ data: { matriculaId: m.id, nome, nota: Math.round(nota * 100) / 100, peso } });
   const media = await recalcularMedia(m.id);
@@ -692,33 +791,34 @@ router.post('/inscricoes/:id/avaliacoes', async (req, res) => {
   res.redirect(`/inscricoes/${m.id}/nota`);
 });
 
-router.post('/inscricoes/:id/avaliacoes/:avalId/remover', async (req, res) => {
+router.post('/inscricoes/:id/avaliacoes/:avalId/remover', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const aval = await prisma.avaliacao.findUnique({ where: { id: req.params.avalId } });
-  if (!aval || aval.matriculaId !== req.params.id) return res.status(404).render('admin/erro', { mensagem: 'Avaliação não encontrada.' });
+  if (!aval || aval.matriculaId !== req.params.id) return res.status(404).render('admin/erro', { mensagem: 'Avaliacao nao encontrada.' });
   await prisma.avaliacao.delete({ where: { id: aval.id } });
   await recalcularMedia(req.params.id);
   await auditar(req, 'REMOVEU_AVALIACAO', 'Matricula', req.params.id, { nome: aval.nome });
   res.redirect(`/inscricoes/${req.params.id}/nota`);
 });
 
-router.post('/inscricoes/:id/situacao', async (req, res) => {
+router.post('/inscricoes/:id/situacao', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
   const s = String(req.body.situacao || '').trim();
   let situacao = null;
   if (s === 'APROVADO' || s === 'REPROVADO') situacao = s;
-  else if (s !== '') return res.status(400).render('admin/erro', { mensagem: 'Situação inválida.' });
+  else if (s !== '') return res.status(400).render('admin/erro', { mensagem: 'Situacao invalida.' });
   await prisma.matricula.update({ where: { id: m.id }, data: { situacao } });
   await auditar(req, 'DEFINIU_SITUACAO', 'Matricula', m.id, { situacao });
   res.redirect(`/inscricoes/${m.id}/nota`);
 });
 
-router.get('/inscricoes/:id/transferir', async (req, res) => {
+// Mover aluno de turma: permissao especifica da Secretaria.
+router.get('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), async (req, res) => {
   const m = await prisma.matricula.findUnique({
     where: { id: req.params.id },
     include: { aluno: true, turma: { include: { curso: true } } },
   });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
   const turmas = await prisma.turma.findMany({
     where: { id: { not: m.turmaId } },
     orderBy: { inicioPrevisto: 'asc' },
@@ -727,12 +827,12 @@ router.get('/inscricoes/:id/transferir', async (req, res) => {
   res.render('admin/transferir', { m, turmas, formatBRL, erro: null });
 });
 
-router.post('/inscricoes/:id/transferir', async (req, res) => {
+router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), async (req, res) => {
   const m = await prisma.matricula.findUnique({
     where: { id: req.params.id },
     include: { turma: { include: { curso: true } } },
   });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
 
   const destinoId = String(req.body.turmaDestino || '');
   const reRenderErro = async (erro) => {
@@ -746,7 +846,7 @@ router.post('/inscricoes/:id/transferir', async (req, res) => {
   if (!destinoId || destinoId === m.turmaId) return reRenderErro('Selecione uma turma de destino diferente da atual.');
 
   const destino = await prisma.turma.findUnique({ where: { id: destinoId }, include: { curso: true } });
-  if (!destino) return reRenderErro('Turma de destino não encontrada.');
+  if (!destino) return reRenderErro('Turma de destino nao encontrada.');
 
   const mesmoCurso = destino.cursoId === m.turma.cursoId;
   const dados = { turmaId: destino.id };
@@ -757,11 +857,11 @@ router.post('/inscricoes/:id/transferir', async (req, res) => {
     const valorAntigo = Number(m.valorCurso);
     const diff = novoValor - valorAntigo;
     dados.valorCurso = novoValor;
-    if (diff > 0) msg += ` Diferença a COBRAR do aluno: ${formatBRL(diff)}.`;
+    if (diff > 0) msg += ` Diferenca a COBRAR do aluno: ${formatBRL(diff)}.`;
     else if (diff < 0) msg += ` Valor a ESTORNAR ao aluno: ${formatBRL(Math.abs(diff))}.`;
-    else msg += ' Sem diferença de valor.';
+    else msg += ' Sem diferenca de valor.';
   } else {
-    msg += ' Mesmo curso — sem alteração de valores.';
+    msg += ' Mesmo curso — sem alteracao de valores.';
   }
 
   await prisma.matricula.update({ where: { id: m.id }, data: dados });
@@ -771,9 +871,9 @@ router.post('/inscricoes/:id/transferir', async (req, res) => {
   res.redirect('/inscricoes?ok=' + encodeURIComponent(msg));
 });
 
-// ---------- Alunos (listar, buscar, editar dados básicos) ----------
+// ---------- Alunos (listar, buscar, editar dados basicos) ----------
 
-router.get('/alunos', async (req, res) => {
+router.get('/alunos', requirePermissao('aluno:gerenciar', 'secretaria:leitura'), async (req, res) => {
   const busca = String(req.query.q || '').trim();
   const soDigitos = busca.replace(/\D/g, '');
   const where = { papel: 'ALUNO' };
@@ -806,9 +906,9 @@ router.get('/alunos', async (req, res) => {
   }
 });
 
-router.get('/alunos/:id/editar', async (req, res) => {
+router.get('/alunos/:id/editar', requirePermissao('aluno:gerenciar'), async (req, res) => {
   const aluno = await prisma.usuario.findUnique({ where: { id: req.params.id } });
-  if (!aluno || aluno.papel !== 'ALUNO') return res.status(404).render('admin/erro', { mensagem: 'Aluno não encontrado.' });
+  if (!aluno || aluno.papel !== 'ALUNO') return res.status(404).render('admin/erro', { mensagem: 'Aluno nao encontrado.' });
   res.render('admin/aluno-form', {
     aluno,
     cpfCnpjDigitado: '', cpfCnpjAtualMascarado: aluno.cpfCnpj ? mascarar(aluno.cpfCnpj) : null,
@@ -817,9 +917,9 @@ router.get('/alunos/:id/editar', async (req, res) => {
   });
 });
 
-router.post('/alunos/:id/editar', async (req, res) => {
+router.post('/alunos/:id/editar', requirePermissao('aluno:gerenciar'), async (req, res) => {
   const aluno = await prisma.usuario.findUnique({ where: { id: req.params.id } });
-  if (!aluno || aluno.papel !== 'ALUNO') return res.status(404).render('admin/erro', { mensagem: 'Aluno não encontrado.' });
+  if (!aluno || aluno.papel !== 'ALUNO') return res.status(404).render('admin/erro', { mensagem: 'Aluno nao encontrado.' });
 
   const reErro = (erro) => res.status(400).render('admin/aluno-form', {
     aluno: { ...aluno, ...req.body },
@@ -846,26 +946,26 @@ router.post('/alunos/:id/editar', async (req, res) => {
 
   if (nome.split(/\s+/).filter(Boolean).length < 2) return reErro('Informe o nome completo (nome e sobrenome).');
   if (nome.length > 120) return reErro('Nome muito longo.');
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reErro('Informe um e-mail válido.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reErro('Informe um e-mail valido.');
   if (email.length > 180) return reErro('E-mail muito longo.');
   if (rgDigitado.length > 20) return reErro('RG muito longo.');
-  if (celular && celular.length !== 10 && celular.length !== 11) return reErro('Celular deve ter 10 ou 11 dígitos (com DDD).');
+  if (celular && celular.length !== 10 && celular.length !== 11) return reErro('Celular deve ter 10 ou 11 digitos (com DDD).');
 
   let cpfCnpjNormalizado = aluno.cpfCnpj; 
   if (documentoDigitado) {
     const doc = validarCpfCnpj(documentoDigitado);
-    if (!doc.ok) return reErro('CPF/CNPJ inválido.');
+    if (!doc.ok) return reErro('CPF/CNPJ invalido.');
     cpfCnpjNormalizado = doc.normalizado;
   }
 
   const rgFinal = rgDigitado || aluno.rg; 
 
-  if (escolaridade && !ESCOLARIDADES_ALUNO.includes(escolaridade)) return reErro('Escolaridade inválida.');
-  if (escolaridadeSituacao && !SITUACOES_ESCOLARIDADE.includes(escolaridadeSituacao)) return reErro('Situação de escolaridade inválida.');
-  if (escolaridade && !escolaridadeSituacao) return reErro('Selecione se o aluno está cursando ou já concluiu.');
-  if (genero && !GENEROS.includes(genero)) return reErro('Gênero inválido.');
-  if (cep && cep.length !== 8) return reErro('CEP deve ter 8 dígitos.');
-  if (uf && !UFS.includes(uf)) return reErro('UF inválida.');
+  if (escolaridade && !ESCOLARIDADES_ALUNO.includes(escolaridade)) return reErro('Escolaridade invalida.');
+  if (escolaridadeSituacao && !SITUACOES_ESCOLARIDADE.includes(escolaridadeSituacao)) return reErro('Situacao de escolaridade invalida.');
+  if (escolaridade && !escolaridadeSituacao) return reErro('Selecione se o aluno esta cursando ou ja concluiu.');
+  if (genero && !GENEROS.includes(genero)) return reErro('Genero invalido.');
+  if (cep && cep.length !== 8) return reErro('CEP deve ter 8 digitos.');
+  if (uf && !UFS.includes(uf)) return reErro('UF invalida.');
 
   const antes = {
     nome: aluno.nome, email: aluno.email, celular: aluno.celular,
@@ -886,7 +986,7 @@ router.post('/alunos/:id/editar', async (req, res) => {
   } catch (err) {
     if (err.code === 'P2002') {
       const alvo = String(err.meta && err.meta.target);
-      return reErro(alvo.includes('cpfCnpj') ? 'Já existe outra conta com este CPF/CNPJ.' : 'Já existe outra conta com este e-mail.');
+      return reErro(alvo.includes('cpfCnpj') ? 'Ja existe outra conta com este CPF/CNPJ.' : 'Ja existe outra conta com este e-mail.');
     }
     throw err;
   }
@@ -902,11 +1002,11 @@ router.post('/alunos/:id/editar', async (req, res) => {
   res.redirect('/alunos?ok=' + encodeURIComponent(`Dados de ${nome.split(' ')[0]} atualizados.`));
 });
 
-// ---------- Matrículas do aluno (confirmações) ----------
+// ---------- Matriculas do aluno (confirmacoes) ----------
 
-router.get('/alunos/:id/matriculas', async (req, res) => {
+router.get('/alunos/:id/matriculas', requirePermissao('aluno:gerenciar', 'secretaria:leitura'), async (req, res) => {
   const aluno = await prisma.usuario.findUnique({ where: { id: req.params.id } });
-  if (!aluno || aluno.papel !== 'ALUNO') return res.status(404).render('admin/erro', { mensagem: 'Aluno não encontrado.' });
+  if (!aluno || aluno.papel !== 'ALUNO') return res.status(404).render('admin/erro', { mensagem: 'Aluno nao encontrado.' });
 
   const matriculas = await prisma.matricula.findMany({
     where: { alunoId: req.params.id },
@@ -917,9 +1017,10 @@ router.get('/alunos/:id/matriculas', async (req, res) => {
   res.render('admin/aluno-matriculas', { aluno, matriculas, formatBRL, ok: req.query.ok || null });
 });
 
-router.post('/alunos/:id/matriculas/:matriculaId/confirmar-taxa', async (req, res) => {
+// Aprovar taxa de inscricao: permissao especifica da Secretaria.
+router.post('/alunos/:id/matriculas/:matriculaId/confirmar-taxa', requirePermissao('taxa:aprovar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.matriculaId } });
-  if (!m || m.alunoId !== req.params.id) return res.status(404).render('admin/erro', { mensagem: 'Matrícula não encontrada.' });
+  if (!m || m.alunoId !== req.params.id) return res.status(404).render('admin/erro', { mensagem: 'Matricula nao encontrada.' });
 
   await prisma.matricula.update({
     where: { id: m.id },
@@ -927,12 +1028,12 @@ router.post('/alunos/:id/matriculas/:matriculaId/confirmar-taxa', async (req, re
       taxaConfirmada: true,
       taxaConfirmadaPor: req.session.usuarioId,
       taxaConfirmadaEm: new Date(),
-      // só muda pra PENDENTE se ainda não tiver um status de pagamento ativo
+      // so muda pra PENDENTE se ainda nao tiver um status de pagamento ativo
       ...(m.statusPagamento === 'PAGO' || m.statusPagamento === 'PARCELADO' ? {} : { statusPagamento: 'PENDENTE' }),
     },
   });
   await auditar(req, 'CONFIRMOU_TAXA_INSCRICAO', 'Matricula', m.id, null);
-  res.redirect(`/alunos/${req.params.id}/matriculas?ok=` + encodeURIComponent('Taxa de inscrição confirmada. Aluno adicionado à turma como pendente.'));
+  res.redirect(`/alunos/${req.params.id}/matriculas?ok=` + encodeURIComponent('Taxa de inscricao confirmada. Aluno adicionado a turma como pendente.'));
 });
 
 module.exports = router;

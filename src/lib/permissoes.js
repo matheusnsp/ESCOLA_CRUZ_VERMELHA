@@ -5,17 +5,16 @@ const PERMISSOES = {
       'aluno:mover_turma', 'aluno:gerenciar', 'taxa:aprovar',
     ],
     COORDENADOR: [],
-    FINANCEIRO: ['financeiro:aprovar'],
-    DEV: [],
   };
   
+  // Coordenador = tudo da Secretaria + financeiro em modo leitura
   PERMISSOES.COORDENADOR = [...PERMISSOES.SECRETARIA, 'financeiro:leitura'];
-  PERMISSOES.FINANCEIRO = [...PERMISSOES.FINANCEIRO, 'secretaria:leitura'];
   
   const PAPEIS_ADMIN = ['SECRETARIA', 'COORDENADOR', 'FINANCEIRO', 'DEV'];
   
+  // Financeiro e Dev têm acesso total — não passam pela lista de permissões, são liberados direto.
   function temPermissao(papel, perm) {
-    if (papel === 'DEV') return true;
+    if (papel === 'FINANCEIRO' || papel === 'DEV') return true;
     return (PERMISSOES[papel] || []).includes(perm);
   }
   
