@@ -21,7 +21,7 @@ const {
   consumirToken,
 } = require('../lib/tokens');
 const { enviarEmailResetSenha, enviarEmailConfirmacao } = require('../lib/email');
-const { avaliarSenha, MENSAGEM_SENHA_FRACA } = require('../lib/senha-forte');
+const { avaliarSenhaAsync, MENSAGEM_SENHA_FRACA } = require('../lib/senha-forte');
 const { validarCpfCnpj } = require('../lib/documento');
 
 const router = express.Router();
@@ -82,9 +82,8 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
     return reRender(['CPF ou CNPJ inválido.']);
   }
 
-
   // Forca da senha (servidor manda). Penaliza usar nome/e-mail na senha.
-  if (!avaliarSenha(senha, [nome, email]).ok) {
+  if (!(await avaliarSenhaAsync(senha, [nome, email])).ok) {
     return reRender([MENSAGEM_SENHA_FRACA]);
   }
 
@@ -335,7 +334,7 @@ router.post('/redefinir-senha', resetLimiter, async (req, res) => {
 
     // Forca da senha (servidor manda), usando os dados do dono da conta.
     const usuario = await prisma.usuario.findUnique({ where: { id: registro.usuarioId } });
-    if (!avaliarSenha(senha, [usuario && usuario.nome, usuario && usuario.email]).ok) {
+    if (!(await avaliarSenhaAsync(senha, [usuario && usuario.nome, usuario && usuario.email])).ok) {
       return res.status(400).render('redefinir-senha', { erro: MENSAGEM_SENHA_FRACA, token });
     }
 

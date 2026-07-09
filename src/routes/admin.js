@@ -94,7 +94,7 @@ function statusBadge(s) {
   return map[s] || `<span>${s}</span>`;
 }
 
-const ESCOLARIDADES = ['', 'Ensino Fundamental', 'Ensino Medio', 'Ensino Superior'];
+const ESCOLARIDADES = ['', 'Ensino Fundamental', 'Ensino Médio', 'Ensino Superior'];
 const STATUS_TURMA = ['ABERTA', 'CONFIRMADA', 'CANCELADA', 'ENCERRADA'];
 
 // ---------- Login administrativo (senha -> 2FA por e-mail) ----------

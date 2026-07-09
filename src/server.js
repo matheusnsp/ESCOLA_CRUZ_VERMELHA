@@ -3,7 +3,13 @@ require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
+const compression = require('compression');
 const session = require('express-session');
+
+const app = express();   // <- primeiro cria o app
+
+app.use(compression());  // <- depois usa os middlewares
+
 const PgSession = require('connect-pg-simple')(session);
 const { Pool } = require('pg');
 
@@ -15,7 +21,7 @@ const cursosRoutes = require('./routes/cursos');
 const adminRoutes = require('./routes/admin');
 const prisma = require('./db'); // usado diretamente pelo webhook da Únicopag, ver abaixo
 
-const app = express();
+
 
 // Atras de um proxy reverso (nginx, Caddy, etc.) que termina o TLS.
 app.set('trust proxy', 1);
@@ -226,7 +232,8 @@ app.post('/webhook/unicopag', async (req, res) => {
 });
 
 // Arquivos estaticos (CSS, JS, imagens). index:false para a home ser a rota '/'.
-app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+app.use(express.static(path.join(__dirname, 'public'), { index: false, maxAge: '7d' }));
+
 
 // Serve a pasta de uploads tambem quando ela fica FORA de public/
 const { uploadsDir } = require('./lib/upload');
