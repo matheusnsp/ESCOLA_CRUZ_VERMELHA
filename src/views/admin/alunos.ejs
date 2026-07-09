@@ -3,24 +3,30 @@
 <div class="adm-h1-row"><h1 class="adm-h1">Alunos</h1></div>
 <% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
 
-<form method="GET" action="/alunos" class="adm-filtro" style="margin-bottom:18px;display:flex;gap:14px;flex-wrap:wrap;align-items:end;">
-  <label style="max-width:520px;flex:1;">Buscar
+<form method="GET" action="/alunos" class="adm-filtro" style="margin-bottom:18px;display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;">
+  <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:6px;">
+    <label style="font-size:13px;font-weight:600;color:#555;">Buscar</label>
     <input type="text" name="q" value="<%= busca %>" placeholder="Nome, e-mail ou CPF"
-      style="border:1px solid #e7ebf1;border-radius:10px;padding:11px 13px;font:inherit;font-size:14px;width:100%;">
-  </label>
+      style="border:1px solid #e7ebf1;border-radius:10px;padding:11px 13px;font:inherit;font-size:14px;height:44px;box-sizing:border-box;">
+  </div>
 
-  <label>Inscrição
-    <select name="inscricao" style="border:1px solid #e7ebf1;border-radius:10px;padding:11px 13px;font:inherit;font-size:14px;">
+  <div style="display:flex;flex-direction:column;gap:6px;">
+    <label style="font-size:13px;font-weight:600;color:#555;">Inscrição</label>
+    <select name="inscricao"
+      style="border:1px solid #e7ebf1;border-radius:10px;padding:0 13px;font:inherit;font-size:14px;height:44px;box-sizing:border-box;min-width:140px;">
       <option value="" <%= inscricao === '' ? 'selected' : '' %>>Todos</option>
       <option value="com" <%= inscricao === 'com' ? 'selected' : '' %>>Com inscrição</option>
       <option value="sem" <%= inscricao === 'sem' ? 'selected' : '' %>>Sem inscrição</option>
     </select>
-  </label>
+  </div>
 
-  <button type="submit" class="adm-mini" style="padding:11px 16px;">Filtrar</button>
+  <button type="submit"
+    style="height:44px;padding:0 22px;border:1px solid #e7ebf1;border-radius:10px;background:#fff;font:inherit;font-size:14px;font-weight:600;cursor:pointer;">
+    Filtrar
+  </button>
 </form>
 
-<p class="adm-mut" style="margin-bottom:10px;font-size:13px;">
+<p class="adm-mut" style="margin:-4px 0 16px;font-size:13px;">
   Total de alunos: <strong><%= total %></strong>
 </p>
 
