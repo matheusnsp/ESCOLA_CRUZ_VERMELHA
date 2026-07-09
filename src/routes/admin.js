@@ -6,6 +6,7 @@
 // ============================================================
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
 const prisma = require('../db');
 const { verificarSenha, hashSenha } = require('../lib/password');
 const { criarCodigo2fa, verificarCodigo2fa, consumirToken, criarTokenDesbloqueio, verificarTokenDesbloqueio, criarTokenReset, verificarTokenReset } = require('../lib/tokens');
@@ -97,6 +98,63 @@ function statusBadge(s) {
 const ESCOLARIDADES = ['', 'Ensino Fundamental', 'Ensino Médio', 'Ensino Superior'];
 const STATUS_TURMA = ['ABERTA', 'CONFIRMADA', 'CANCELADA', 'ENCERRADA'];
 
+// ---------- "Lembrar dispositivo" do 2FA (até a proxima meia-noite em Brasilia) ----------
+
+const DEVICE_2FA_COOKIE = 'cvbrj_admin_2fa';
+
+// Data de hoje no fuso de Brasília, formato YYYY-MM-DD (usada como "carimbo do dia").
+function hojeSPStr() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+}
+
+// Assina usuarioId + dia com o SESSION_SECRET, pra ninguém falsificar o cookie manualmente.
+function assinarDispositivo(usuarioId, dia) {
+  const segredo = process.env.SESSION_SECRET || 'troque-este-segredo';
+  return crypto.createHmac('sha256', segredo).update(`${usuarioId}:${dia}`).digest('hex');
+}
+
+// Le cookies manualmente (sem depender do cookie-parser estar instalado).
+function lerCookies(req) {
+  const header = req.headers.cookie;
+  const out = {};
+  if (!header) return out;
+  header.split(';').forEach((par) => {
+    const idx = par.indexOf('=');
+    if (idx === -1) return;
+    out[par.slice(0, idx).trim()] = decodeURIComponent(par.slice(idx + 1).trim());
+  });
+  return out;
+}
+
+// Este dispositivo/navegador já confirmou o 2FA hoje, para este usuario especifico?
+function dispositivoConfirmadoHoje(req, usuarioId) {
+  const val = lerCookies(req)[DEVICE_2FA_COOKIE];
+  if (!val) return false;
+  const [uid, dia, assinatura] = val.split('.');
+  if (uid !== usuarioId || dia !== hojeSPStr()) return false;
+  return assinatura === assinarDispositivo(usuarioId, dia);
+}
+
+// Quanto tempo (ms) falta até a próxima meia-noite em Brasília — usado como validade do cookie.
+function msAteMeiaNoiteSP() {
+  const agora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const meia = new Date(agora);
+  meia.setHours(24, 0, 0, 0);
+  return meia.getTime() - agora.getTime();
+}
+
+// Marca este dispositivo como "2FA confirmado hoje" para o usuario.
+function marcarDispositivoConfirmado(res, usuarioId) {
+  const dia = hojeSPStr();
+  const valor = `${usuarioId}.${dia}.${assinarDispositivo(usuarioId, dia)}`;
+  res.cookie(DEVICE_2FA_COOKIE, valor, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: msAteMeiaNoiteSP(),
+  });
+}
+
 // ---------- Login administrativo (senha -> 2FA por e-mail) ----------
 
 const MAX_FALHAS = 5;                          
@@ -147,6 +205,28 @@ async function logSeguranca(req, acao, usuarioId, detalhe) {
   } catch (e) {
     console.error('Falha ao gravar log de seguranca:', e.message);
   }
+}
+
+// Login efetivo: cria a sessao do admin, envia alerta e registra auditoria.
+// Usado tanto pelo fluxo normal (apos 2FA) quanto pelo fluxo de dispositivo já confirmado.
+async function logarComoAdmin(req, res, usuario) {
+  const ip = req.ip;
+  return req.session.regenerate((err) => {
+    if (err) { return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar a sessao.' }); }
+    req.session.usuarioId = usuario.id;
+    req.session.nome = usuario.nome;
+    req.session.papel = usuario.papel;
+    req.session.adminLastSeen = Date.now();
+    req.session.save(async (err2) => {
+      if (err2) { return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar a sessao.' }); }
+      try {
+        const quando = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        await enviarAlertaLoginSecretaria(usuario.email, usuario.nome, quando, ip);
+        await auditar(req, 'LOGIN_ADMIN', 'Usuario', usuario.id, { ip, papel: usuario.papel });
+      } catch (e) { console.error('Pos-login (alerta/auditoria):', e); }
+      return res.redirect('/');
+    });
+  });
 }
 
 router.get('/login', (req, res) => {
@@ -221,6 +301,11 @@ router.post('/login', loginAdminLimiter, async (req, res) => {
       await prisma.usuario.update({ where: { id: usuario.id }, data: { loginFalhas: 0, bloqueadoAte: null, loginStrikes: 0 } });
     }
 
+    // Dispositivo já confirmou o 2FA hoje: pula direto pro login, sem pedir codigo de novo.
+    if (dispositivoConfirmadoHoje(req, usuario.id)) {
+      return logarComoAdmin(req, res, usuario);
+    }
+
     req.session.pendingAdmin2fa = { id: usuario.id, email: usuario.email, nome: usuario.nome, em: Date.now() };
     await dispararCodigo2fa(req.session.pendingAdmin2fa);
     return req.session.save((e) => {
@@ -263,23 +348,8 @@ router.post('/login/2fa', codigo2faLimiter, async (req, res) => {
     return res.redirect('/login');
   }
 
-  const ip = req.ip;
-  return req.session.regenerate((err) => {
-    if (err) { return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar a sessao.' }); }
-    req.session.usuarioId = usuario.id;
-    req.session.nome = usuario.nome;
-    req.session.papel = usuario.papel;
-    req.session.adminLastSeen = Date.now();
-    req.session.save(async (err2) => {
-      if (err2) { return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar a sessao.' }); }
-      try {
-        const quando = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-        await enviarAlertaLoginSecretaria(usuario.email, usuario.nome, quando, ip);
-        await auditar(req, 'LOGIN_ADMIN', 'Usuario', usuario.id, { ip, papel: usuario.papel });
-      } catch (e) { console.error('Pos-login (alerta/auditoria):', e); }
-      return res.redirect('/');
-    });
-  });
+  marcarDispositivoConfirmado(res, usuario.id);
+  return logarComoAdmin(req, res, usuario);
 });
 
 router.post('/login/2fa/reenviar', reenvioLimiter, async (req, res) => {
