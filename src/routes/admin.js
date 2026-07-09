@@ -899,6 +899,8 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
 router.get('/alunos', requirePermissao('aluno:gerenciar', 'secretaria:leitura'), async (req, res) => {
   const busca = String(req.query.q || '').trim();
   const soDigitos = busca.replace(/\D/g, '');
+  const inscricao = String(req.query.inscricao || ''); // '', 'com' ou 'sem'
+
   const where = { papel: 'ALUNO' };
 
   if (busca) {
@@ -909,17 +911,28 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'secretaria:leitura'),
     ];
   }
 
+  if (inscricao === 'com') {
+    where.matriculas = { some: {} };
+  } else if (inscricao === 'sem') {
+    where.matriculas = { none: {} };
+  }
+
   try {
-    const alunos = await prisma.usuario.findMany({
-      where,
-      orderBy: { nome: 'asc' },
-      take: 200,
-      include: { _count: { select: { matriculas: true } } }
-    });
+    const [alunos, total] = await Promise.all([
+      prisma.usuario.findMany({
+        where,
+        orderBy: { nome: 'asc' },
+        take: 200,
+        include: { _count: { select: { matriculas: true } } }
+      }),
+      prisma.usuario.count({ where }),
+    ]);
 
     res.render('admin/alunos', { 
       alunos, 
+      total,
       busca, 
+      inscricao,
       ok: req.query.ok || null,
       mascarar 
     });
