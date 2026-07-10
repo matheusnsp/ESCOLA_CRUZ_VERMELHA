@@ -40,7 +40,7 @@
 <% alunos.forEach(function (a) { %>
 <tr>
 <td><strong><%= a.nome %></strong><br><small class="adm-mut"><%= a.email %></small></td>
-<td><%= a.cpfCnpj ? mascarar(a.cpfCnpj) : '—' %></td>
+<td><%= a.cpfCnpj ? mascarar(a.cpfCnpj) : a.passaporte ? a.passaporte : '—' %></td>
 <td><%= a.escolaridade ? (a.escolaridade + (a.escolaridadeSituacao ? ' (' + a.escolaridadeSituacao + ')' : '')) : '—' %></td>
 <td><%= a._count.matriculas %></td>
 <td class="adm-acoes">

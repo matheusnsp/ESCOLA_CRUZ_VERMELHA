@@ -978,6 +978,7 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'secretaria:leitura'),
       { nome: { contains: busca, mode: 'insensitive' } },
       { email: { contains: busca, mode: 'insensitive' } },
       ...(soDigitos ? [{ cpfCnpj: { contains: soDigitos } }] : []),
+      { passaporte: { contains: busca, mode: 'insensitive' } },
     ];
   }
 
@@ -1017,7 +1018,7 @@ router.get('/alunos/:id/editar', requirePermissao('aluno:gerenciar'), async (req
   if (!aluno || aluno.papel !== 'ALUNO') return res.status(404).render('admin/erro', { mensagem: 'Aluno nao encontrado.' });
   res.render('admin/aluno-form', {
     aluno,
-    cpfCnpjDigitado: '', cpfCnpjAtualMascarado: aluno.cpfCnpj ? mascarar(aluno.cpfCnpj) : null,
+    cpfCnpjDigitado: '', cpfCnpjAtualMascarado: aluno.cpfCnpj ? mascarar(aluno.cpfCnpj) : null, passaporteDigitado: '',
     rgDigitado: '', rgAtualMascarado: aluno.rg ? mascararRG(aluno.rg) : null,
     escolaridades: ESCOLARIDADES_ALUNO, situacoes: SITUACOES_ESCOLARIDADE, generos: GENEROS, ufs: UFS, erro: null, mascarar,
   });
@@ -1039,6 +1040,8 @@ router.post('/alunos/:id/editar', requirePermissao('aluno:gerenciar'), async (re
   const rgDigitado = String(req.body.rg || '').trim();
   const celular = String(req.body.celular || '').replace(/\D/g, '');
   const documentoDigitado = String(req.body.cpfCnpj || '').trim();
+  const passaporteDigitado = String(req.body.passaporte || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const paisOrigemDigitado = String(req.body.paisOrigem || '').trim();
   const escolaridade = String(req.body.escolaridade || '').trim();
   const escolaridadeSituacao = String(req.body.escolaridadeSituacao || '').trim();
   const genero = String(req.body.genero || '').trim();
@@ -1083,6 +1086,8 @@ router.post('/alunos/:id/editar', requirePermissao('aluno:gerenciar'), async (re
   const depois = {
     nome, email, celular: celular || null, rg: rgFinal || null,
     cpfCnpj: cpfCnpjNormalizado,
+    passaporte: passaporteNormalizado || null,
+    paisOrigem: paisOrigemFinal || null,
     escolaridade: escolaridade || null, escolaridadeSituacao: escolaridadeSituacao || null, genero: genero || null,
     cep: cep || null, logradouro: logradouro || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, uf: uf || null,
   };
@@ -1092,7 +1097,7 @@ router.post('/alunos/:id/editar', requirePermissao('aluno:gerenciar'), async (re
   } catch (err) {
     if (err.code === 'P2002') {
       const alvo = String(err.meta && err.meta.target);
-      return reErro(alvo.includes('cpfCnpj') ? 'Ja existe outra conta com este CPF/CNPJ.' : 'Ja existe outra conta com este e-mail.');
+      return reErro(alvo.includes('cpfCnpj') ? 'Ja existe outra conta com este CPF/CNPJ.' : alvo.includes('passaporte') ? 'Ja existe outra conta com este passaporte.' : 'Ja existe outra conta com este e-mail.');
     }
     throw err;
   }

@@ -28,14 +28,24 @@
   <fieldset style="border:1px solid #e7ebf1;border-radius:12px;padding:18px;margin-top:18px;">
     <legend style="font-size:13px;font-weight:700;padding:0 6px;">Documentos</legend>
     <div class="adm-form" style="padding:0;display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-      <label>CPF ou CNPJ
-        <input type="text" name="cpfCnpj" value="<%= cpfCnpjDigitado %>" inputmode="numeric" placeholder="<%= cpfCnpjAtualMascarado ? 'Atual: ' + cpfCnpjAtualMascarado : 'Somente números' %>" maxlength="18" data-mask="cpfCnpj">
-        <small style="color:#6b7689;font-weight:400;">Deixe em branco para manter o documento atual<%= cpfCnpjAtualMascarado ? '' : ' (nenhum cadastrado)' %>.</small>
-      </label>
-      <label>RG
-        <input type="text" name="rg" value="<%= rgDigitado %>" maxlength="14" placeholder="<%= rgAtualMascarado ? 'Atual: ' + rgAtualMascarado : 'Número do RG' %>" data-mask="rg">
-        <small style="color:#6b7689;font-weight:400;">Deixe em branco para manter o RG atual<%= rgAtualMascarado ? '' : ' (nenhum cadastrado)' %>.</small>
-      </label>
+      <% if (aluno.tipoDocumento === 'PASSAPORTE') { %>
+        <label>Passaporte
+          <input type="text" name="passaporte" value="<%= passaporteDigitado || aluno.passaporte || '' %>" maxlength="20" placeholder="Ex: AB1234567">
+          <small style="color:#6b7689;font-weight:400;">Deixe em branco para manter o atual.</small>
+        </label>
+        <label>País de origem
+          <input type="text" name="paisOrigem" value="<%= aluno.paisOrigem || '' %>" placeholder="Ex: Argentina">
+        </label>
+      <% } else { %>
+        <label>CPF ou CNPJ
+          <input type="text" name="cpfCnpj" value="<%= cpfCnpjDigitado %>" inputmode="numeric" placeholder="<%= cpfCnpjAtualMascarado ? 'Atual: ' + cpfCnpjAtualMascarado : 'Somente números' %>" maxlength="18" data-mask="cpfCnpj">
+          <small style="color:#6b7689;font-weight:400;">Deixe em branco para manter o documento atual<%= cpfCnpjAtualMascarado ? '' : ' (nenhum cadastrado)' %>.</small>
+        </label>
+        <label>RG
+          <input type="text" name="rg" value="<%= rgDigitado %>" maxlength="14" placeholder="<%= rgAtualMascarado ? 'Atual: ' + rgAtualMascarado : 'Número do RG' %>" data-mask="rg">
+          <small style="color:#6b7689;font-weight:400;">Deixe em branco para manter o RG atual<%= rgAtualMascarado ? '' : ' (nenhum cadastrado)' %>.</small>
+        </label>
+      <% } %>
     </div>
   </fieldset>
 
