@@ -1,14 +1,31 @@
 <%- include('partials/site-head', { titulo: 'Inscrição' }) %>
 <%- include('partials/site-header') %>
 
-<main class="interna-wrap">
-  <a href="/cursos/<%= curso.id %>" class="cat-back" style="margin:0;">
-    <i class="fa-solid fa-arrow-left"></i> Voltar ao curso
-  </a>
+<main class="interna-wrap" style="padding-top:15px">
 
-  <div class="painel-card" style="max-width:540px">
-    <h1><%= curso.nome %></h1>
-    <p class="painel-sub">
+  <div class="painel-card" style="max-width:540px;position:relative;margin-top:0">
+    <a href="/cursos/<%= curso.id %>" class="cat-back"
+       title="Voltar ao curso"
+       style="position:absolute;top:16px;left:16px;width:34px;height:34px;
+              display:flex;align-items:center;justify-content:center;
+              background:#f7f8fa;border:1px solid #e2e8f0;border-radius:50%;
+              color:#4a5568;text-decoration:none;margin:0;z-index:2">
+      <i class="fa-solid fa-arrow-left"></i>
+    </a>
+
+    <div id="progressBar" style="display:flex;gap:5px;margin:0 0 14px;max-width:260px;margin-left:auto;margin-right:auto">
+      <div class="prog-step active" data-step="1"></div>
+      <div class="prog-step" data-step="2"></div>
+      <div class="prog-step" data-step="3"></div>
+    </div>
+
+    <p id="etapaLabel" style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;
+                              color:#cc0000;margin:0 0 8px;text-align:center">
+      Etapa 1 de 3 — Contrato
+    </p>
+
+    <h1 style="text-align:center"><%= curso.nome %></h1>
+    <p class="painel-sub" style="text-align:center">
       <% if (turma.aulas && turma.aulas.length) { %><%= turma.aulas[0].horario %> · <% } %>início em
       <%= new Date(turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
     </p>
@@ -19,18 +36,9 @@
     </div>
     <% } %>
 
-    <div id="progressBar" style="display:flex;gap:5px;margin:20px 0 24px">
-      <div class="prog-step active" data-step="1"></div>
-      <div class="prog-step" data-step="2"></div>
-      <div class="prog-step" data-step="3"></div>
-    </div>
-
     <!-- ETAPA 1: CONTRATO -->
     <div id="etapa1" class="inscricao-etapa">
-      <p style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#cc0000;margin:0 0 10px">
-        Etapa 1 de 3 — Contrato
-      </p>
-      <p style="font-size:14px;color:#718096;margin:0 0 16px">
+      <p style="font-size:14px;text-align:center;color:#718096;margin:0 0 16px">
         Leia os termos e confirme que concorda antes de prosseguir.
       </p>
 
@@ -136,123 +144,137 @@
     </div>
 
     <!-- ETAPA 2: PIX -->
-    <div id="etapa2" class="inscricao-etapa" style="display:none">
-      <p style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#cc0000;margin:0 0 10px">
-        Etapa 2 de 3 — Taxa de inscrição
-      </p>
-      <p style="font-size:14px;color:#718096;margin:0 0 18px">
-        Pague R$ 100,00 via PIX para garantir sua vaga.
-      </p>
+<div id="etapa2" class="inscricao-etapa" style="display:none">
 
-      <div style="background:#f7f8fa;border:1px solid #e2e8f0;border-radius:12px;
-                  padding:22px;text-align:center;margin-bottom:16px">
-        <div style="font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#718096">
-          Valor
-        </div>
-        <div style="font-size:38px;font-weight:900;color:#0f1318;line-height:1.1;margin:4px 0 16px">
-          R$ 100,00
-        </div>
+  <div style="background:#f7f8fa;border:1px solid #e2e8f0;border-radius:12px;padding:22px;text-align:center;margin-bottom:16px;">
 
-        <div id="qr" style="display:inline-block;border:1px solid #e2e8f0;border-radius:8px;padding:8px;background:#fff;margin:0 auto 14px;"></div>
-
-        <div style="font-size:13px;font-weight:700;color:#4a5568;margin-bottom:6px">
-          Chave PIX — CNPJ
-        </div>
-        <div style="font-family:monospace;font-size:15px;color:#0f1318;font-weight:800;
-                    background:#fff;border:1px solid #e2e8f0;border-radius:8px;
-                    padding:8px 14px;display:inline-block;letter-spacing:.5px;margin-bottom:14px">
-          67.733.551/0001-35
-        </div>
-
-        <div style="font-size:13px;font-weight:700;color:#4a5568;margin-bottom:6px">
-          Código Pix copia e cola
-        </div>
-        <div id="payload" style="font-family:monospace;font-size:11px;color:#4a5568;
-                    background:#fff;border:1px solid #e2e8f0;border-radius:8px;
-                    padding:10px 12px;text-align:left;word-break:break-all;margin-bottom:10px"></div>
-
-        <button id="btnCopiarPix" type="button"
-                style="display:block;width:100%;background:#fff5f5;border:1px solid #f0c0c0;
-                       border-radius:8px;padding:10px;cursor:pointer;
-                       font-size:13px;color:#cc0000;font-weight:700;">
-          <i class="fa-regular fa-copy"></i> Copiar código copia e cola
-        </button>
-
-      </div>
-
-      <div style="background:#fff8e6;border:1px solid #f0d896;border-radius:8px;
-                  padding:12px 14px;margin-bottom:16px;font-size:13px;color:#7a5a00;
-                  display:flex;gap:9px;align-items:flex-start">
-        <i class="fa-solid fa-circle-info" style="margin-top:1px;flex:none"></i>
-        <span>Após pagar, envie o comprovante para o WhatsApp da escola. Nossa equipe confirmará o pagamento.</span>
-      </div>
-
-      <a href="https://wa.me/5521999922864?text=Ol%C3%A1%2C+segue+meu+comprovante+de+pagamento+da+taxa+de+inscri%C3%A7%C3%A3o."
-         target="_blank" rel="noopener"
-         style="display:flex;align-items:center;justify-content:center;gap:9px;
-                border:1px solid #e2e8f0;border-radius:10px;padding:12px;
-                font-size:14px;font-weight:700;color:#0f1318;text-decoration:none;margin-bottom:10px">
-        <i class="fa-brands fa-whatsapp" style="color:#25d366;font-size:18px"></i>
-        Enviar comprovante — (21) 99992-2864
-      </a>
-
-      <button id="btnEnviouComprovante" class="btn-acao" type="button">
-        Já enviei o comprovante — continuar
-      </button>
+    <div style="font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#718096;margin-bottom:8px;">
+      Valor
     </div>
+
+    <div style="font-size:38px;font-weight:900;color:#0f1318;line-height:1.1;margin-bottom:16px;">
+      R$ 100,00
+    </div>
+
+    <div id="qr" style="display:inline-block;border:1px solid #e2e8f0;border-radius:8px;padding:8px;background:#fff;margin-bottom:16px;"></div>
+
+    <!-- Toggle -->
+    <button id="btnToggleChavePix"
+            type="button"
+            style="display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;cursor:pointer;font-size:13px;font-weight:700;color:#4a5568;">
+      Ver chave PIX e copiar chave PIX
+      <i id="iconeChavePix" class="fa-solid fa-chevron-down" style="font-size:11px;transition:transform .2s;"></i>
+    </button>
+
+    <div id="blocoChavePix" style="display:none;margin-top:16px;text-align:center;">
+
+      <div style="font-size:13px;font-weight:700;color:#4a5568;margin-bottom:8px;">
+        Chave PIX — CNPJ
+      </div>
+
+      <div style="font-family:monospace;font-size:15px;color:#0f1318;font-weight:800;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;display:inline-block;letter-spacing:.5px;margin-bottom:16px;">
+        67.733.551/0001-35
+      </div>
+
+      <div style="font-size:13px;font-weight:700;color:#4a5568;margin-bottom:8px;">
+        Código Pix copia e cola
+      </div>
+
+      <div id="payload" style="font-family:monospace;font-size:11px;color:#4a5568;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;text-align:left;word-break:break-all;margin-bottom:16px;"></div>
+
+      <button id="btnCopiarPix"
+              type="button"
+              style="display:block;width:100%;background:#fff5f5;border:1px solid #f0c0c0;border-radius:8px;padding:10px;cursor:pointer;font-size:13px;color:#cc0000;font-weight:700;">
+        <i class="fa-regular fa-copy"></i>
+        Copiar código copia e cola
+      </button>
+
+    </div>
+
+  </div>
+
+  <a href="https://wa.me/5521999922864?text=Ol%C3%A1%2C+segue+meu+comprovante+de+pagamento+da+taxa+de+inscri%C3%A7%C3%A3o."
+     target="_blank"
+     rel="noopener"
+     style="display:flex;align-items:center;justify-content:center;gap:10px;background:#25D366;border:1px solid #25D366;border-radius:10px;padding:13px;font-size:14px;font-weight:700;color:#fff;text-decoration:none;margin-bottom:16px;transition:.2s ease;box-shadow:0 4px 12px rgba(37,211,102,.25);">
+    <i class="fa-brands fa-whatsapp" style="font-size:20px;color:#fff;"></i>
+    Enviar comprovante
+  </a>
+
+  <button id="btnEnviouComprovante" class="btn-acao" type="button" style="margin-bottom:16px;">
+    Já enviei o comprovante, continuar
+  </button>
+
+  <div style="background:#fff8e6;border:1px solid #f0d896;border-radius:8px;padding:12px 14px;font-size:13px;color:#7a5a00;display:flex;gap:9px;align-items:flex-start;">
+    <i class="fa-solid fa-circle-info" style="margin-top:1px;flex:none;"></i>
+    <span>Após pagar, envie o comprovante para o WhatsApp da escola. Nossa equipe confirmará o pagamento.</span>
+  </div>
+
+</div>
 
     <!-- ETAPA 3: PAGAMENTO DO CURSO (PRESENCIAL) -->
-    <div id="etapa3" class="inscricao-etapa" style="display:none">
-      <p style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#cc0000;margin:0 0 10px">
-        Etapa 3 de 3 — Pagamento do curso
-      </p>
-      <p style="font-size:14px;color:#718096;margin:0 0 6px">
-        O pagamento do curso é realizado <strong>presencialmente na secretaria</strong>.
-      </p>
+<div id="etapa3" class="inscricao-etapa" style="display:none">
 
-      <div class="resumo-box" style="margin-bottom:18px">
-        <div><span>Valor do curso</span><strong><%= formatBRL(aVista.valorCurso) %></strong></div>
-        <div><span>Taxa de matrícula</span><strong><%= formatBRL(aVista.valorTaxaMatricula) %></strong></div>
-        <div><span>Total</span><strong><%= formatBRL(aVista.total) %></strong></div>
-        <small>+ 1 kg de alimento não perecível, entregue na secretaria.</small>
-      </div>
+  <p style="font-size:14px;color:#718096;margin:0 0 20px;text-align:center">
+    O pagamento do curso é realizado <strong>presencialmente na secretaria</strong>.
+  </p>
 
-      <p style="font-size:13px;font-weight:700;color:#4a5568;margin:0 0 10px">
-        Formas de pagamento aceitas na secretaria
-      </p>
+  <div style="background:#f7f8fa;border:1px solid #e2e8f0;border-radius:12px;padding:20px;text-align:center;margin-bottom:22px">
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
-        <div class="forma-pagto-info">
-          <i class="fa-solid fa-mobile-screen-button"></i>
-          <span>PIX</span>
-        </div>
-        <div class="forma-pagto-info">
-          <i class="fa-solid fa-credit-card"></i>
-          <span>Cartão de Crédito</span>
-        </div>
-        <div class="forma-pagto-info">
-          <i class="fa-solid fa-credit-card"></i>
-          <span>Cartão de Débito</span>
-        </div>
-        <div class="forma-pagto-info">
-          <i class="fa-solid fa-money-bill-wave"></i>
-          <span>Parcelado</span>
-        </div>
-      </div>
-
-      <p style="font-size:12.5px;color:#718096;margin:0 0 18px">
-        A escolha da forma de pagamento será feita no momento do atendimento na secretaria.
-      </p>
-
-      <form method="POST" action="/inscrever/<%= turma.id %>" novalidate id="formInscricao">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <input type="hidden" name="plano" value="A_VISTA">
-        <input type="hidden" name="forma" value="DINHEIRO">
-      <button id="btnConfirmar" class="btn-acao" type="submit">
-          Confirmar inscrição
-        </button>
-      </form>
+    <div style="font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#718096;margin-bottom:14px">
+      Resumo do investimento
     </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;color:#4a5568;padding:8px 0;border-bottom:1px solid #e2e8f0">
+      <span>Valor do curso</span>
+      <strong style="color:#0f1318"><%= formatBRL(aVista.valorCurso) %></strong>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;color:#4a5568;padding:8px 0;border-bottom:1px solid #e2e8f0">
+      <span>Taxa de matrícula</span>
+      <strong style="color:#0f1318"><%= formatBRL(aVista.valorTaxaMatricula) %></strong>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:16px;color:#1f2733;font-weight:800;padding:12px 0 4px">
+      <span>Total</span>
+      <strong style="color:#cc0000"><%= formatBRL(aVista.total) %></strong>
+    </div>
+
+    <small style="display:block;font-size:12px;color:#718096;margin-top:10px">
+      + 1 kg de alimento não perecível, entregue na secretaria.
+    </small>
+  </div>
+
+  <p style="font-size:13px;font-weight:700;color:#4a5568;margin:0 0 12px;text-align:center">
+    Formas de pagamento aceitas na secretaria
+  </p>
+
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:8px">
+    <div class="forma-pagto-info">
+      <i class="fa-solid fa-mobile-screen-button"></i>
+      <span>PIX</span>
+    </div>
+    <div class="forma-pagto-info">
+      <i class="fa-solid fa-credit-card"></i>
+      <span>Cartão de Crédito/Débito</span>
+    </div>
+    <div class="forma-pagto-info">
+      <i class="fa-solid fa-money-bill-wave"></i>
+      <span>Parcelado</span>
+    </div>
+  </div>
+
+  <p style="font-size:12.5px;color:#718096;margin:0 0 22px;text-align:center">
+    A escolha da forma de pagamento será feita no momento do atendimento na secretaria.
+  </p>
+
+  <form method="POST" action="/inscrever/<%= turma.id %>" novalidate id="formInscricao">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="plano" value="A_VISTA">
+    <input type="hidden" name="forma" value="DINHEIRO">
+    <button id="btnConfirmar" class="btn-acao" type="submit">
+      Confirmar inscrição
+    </button>
+  </form>
+</div>
 
     <!-- ETAPA 4: DOCUMENTOS -->
     <div id="etapa4" class="inscricao-etapa" style="display:none">
@@ -311,12 +333,13 @@
 .prog-step.active { background: #cc0000; }
 
 .forma-pagto-info {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 10px;
-  text-align: center; background: #f7f8fa;
+  display: inline-flex; flex-direction: row; align-items: center; gap: 10px;
+  padding: 4px 0;
 }
-.forma-pagto-info i { font-size: 20px; color: #cc0000; }
-.forma-pagto-info span { font-size: 13px; font-weight: 700; color: #1f2733; }
+.forma-pagto-info i {
+  font-size: 15px; color: #cc0000; width: 18px; text-align: center; flex: none;
+}
+.forma-pagto-info span { font-size: 15px; font-weight: 700; color: #1f2733; }
 
 .doc-item-inscricao {
   display: flex; align-items: flex-start; gap: 12px;
@@ -328,6 +351,13 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
+var etapaLabels = [
+  'Etapa 1 de 3 — Contrato',
+  'Etapa 2 de 3 — Taxa de inscrição',
+  'Etapa 3 de 3 — Pagamento do curso',
+  ''
+];
+
 function irEtapa(n) {
   document.querySelectorAll('.inscricao-etapa').forEach(function(el, i) {
     el.style.display = (i + 1 === n) ? 'block' : 'none';
@@ -335,6 +365,16 @@ function irEtapa(n) {
   document.querySelectorAll('.prog-step').forEach(function(el, i) {
     el.classList.toggle('active', i < n);
   });
+
+  var label = document.getElementById('etapaLabel');
+  var texto = etapaLabels[n - 1];
+  if (texto) {
+    label.textContent = texto;
+    label.style.display = 'block';
+  } else {
+    label.style.display = 'none';
+  }
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -388,6 +428,16 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   btnAceite.addEventListener('click', function () {
     irEtapa(2);
+  });
+
+  // Etapa 2 — expandir/recolher bloco da chave PIX
+  var btnToggle = document.getElementById('btnToggleChavePix');
+  var blocoChavePix = document.getElementById('blocoChavePix');
+  var iconeChavePix = document.getElementById('iconeChavePix');
+  btnToggle.addEventListener('click', function () {
+    var aberto = blocoChavePix.style.display === 'block';
+    blocoChavePix.style.display = aberto ? 'none' : 'block';
+    iconeChavePix.style.transform = aberto ? 'rotate(0deg)' : 'rotate(180deg)';
   });
 
   // Etapa 2 — copiar código PIX (copia e cola)
