@@ -520,7 +520,7 @@ body {
     font-weight: 800;
     font-size: 13px;
     letter-spacing: 0.5px;
-    /* text-transform: uppercase; */
+    text-transform: uppercase;
     cursor: pointer;
     width: 100%;
     transition: background-color 0.2s, transform 0.15s;
