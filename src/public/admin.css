@@ -198,3 +198,17 @@ body.adm {
 }
 .adm-btn-sm:hover { filter:brightness(.95); }
 .adm-h2 { font-weight:800; color:#1f2937; }
+
+
+
+/* ===== Mostrar/ocultar linhas extras por grupo ===== */
+.adm-table tbody tr.adm-extra { display: none; }
+.adm-box.aberto .adm-table tbody tr.adm-extra { display: table-row; }
+
+.adm-vermais {
+  display: block; width: 100%; text-align: center;
+  background: #fafbfc; border: none; border-top: 1px solid var(--linha);
+  color: var(--vermelho); font: inherit; font-weight: 700; font-size: 13px;
+  padding: 12px; cursor: pointer;
+}
+.adm-vermais:hover { background: #f4f6f9; }

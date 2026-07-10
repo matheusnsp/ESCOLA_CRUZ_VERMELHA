@@ -2,7 +2,7 @@
 <% var secaoAtiva = (typeof ativo !== 'undefined') ? ativo : ''; %>
   <a href="/" class="adm-brand">
     <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — RJ" class="adm-logo">
-    <span class="adm-brand-txt">Secretaria <small>Escola de Educação e Saúde CVB-RJ</small></span>
+    <span class="adm-brand-txt">Secretaria <small>Escola de Educação e <br>  Saúde CVB-RJ</small></span>
   </a>
   <nav class="adm-nav">
     <a href="/" class="<%= secaoAtiva === 'home' ? 'on' : '' %>"><i class="fa-solid fa-gauge"></i> Painel</a>
@@ -10,6 +10,7 @@
     <a href="/turmas" class="<%= secaoAtiva === 'turmas' ? 'on' : '' %>"><i class="fa-solid fa-calendar-days"></i> Turmas</a>
     <a href="/inscricoes" class="<%= secaoAtiva === 'inscricoes' ? 'on' : '' %>"><i class="fa-solid fa-users"></i> Matriculas</a>
     <a href="/alunos" class="<%= secaoAtiva === 'alunos' ? 'on' : '' %>"><i class="fa-solid fa-user-graduate"></i> Alunos</a>
+    <a href="/financeiro" class="<%= secaoAtiva === 'financeiro' ? 'on' : '' %>"><i class="fa-solid fa-money-bill-trend-up"></i> Financeiro</a>
   </nav>
   <form method="POST" action="/logout" class="adm-sair">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">

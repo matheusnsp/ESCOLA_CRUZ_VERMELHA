@@ -837,11 +837,133 @@ router.post('/inscricoes/:id/cancelar', requirePermissao('financeiro:aprovar'), 
   res.redirect(back(req, 'Inscricao cancelada.'));
 });
 
+// ---------- Financeiro ----------
+// Pagina de leitura financeira: quem tem 'financeiro:aprovar' OU
+// 'financeiro:leitura' pode ver (mesmo padrao das Inscricoes).
+// Não tem nenhuma acao de escrita nesta pagina — as acoes (confirmar/
+// estornar) continuam acontecendo em /inscricoes, essa tela aqui é
+// só um raio-x consolidado.
+
+// Monta um mapa { matriculaId -> motivo } a partir dos logs de auditoria
+// de estorno, pegando sempre o log mais recente de cada matrícula.
+function mapaMotivosEstorno(logs) {
+  const map = {};
+  for (const log of logs) {
+    if (map[log.alvoId]) continue; // já achou o mais recente (logs vêm ordenados desc)
+    try {
+      const detalhe = log.detalhe ? JSON.parse(log.detalhe) : {};
+      map[log.alvoId] = detalhe.motivo || 'Não informado';
+    } catch {
+      map[log.alvoId] = 'Não informado';
+    }
+  }
+  return map;
+}
+
+// Gera um "código de matrícula" curto e legível a partir do uuid,
+// só pra exibição — não existe campo dedicado no schema hoje.
+function codigoMatricula(m) {
+  return `MAT-${m.id.slice(0, 8).toUpperCase()}`;
+}
+
+router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:leitura'), async (req, res) => {
+  const [
+    taxaPagaLista,
+    matriculaGeradaLista,
+    taxaPendenteLista,
+    cursoPendenteLista,
+    estornos,
+    logsEstorno,
+  ] = await Promise.all([
+    // Quem pagou a taxa de inscrição
+    prisma.matricula.findMany({
+      where: { taxaConfirmada: true },
+      orderBy: { taxaConfirmadaEm: 'desc' },
+      include: { aluno: true, turma: { include: { curso: true } } },
+    }),
+    // Quem pagou o curso e tem matrícula gerada (mesmo criterio do dashboard: só PAGO)
+    prisma.matricula.findMany({
+      where: { statusPagamento: 'PAGO' },
+      orderBy: { confirmadaEm: 'desc' },
+      include: { aluno: true, turma: { include: { curso: true } } },
+    }),
+    // Pendente de TAXA (nem chegou a confirmar a taxa ainda)
+    prisma.matricula.findMany({
+      where: { taxaConfirmada: false },
+      orderBy: { criadoEm: 'desc' },
+      include: { aluno: true, turma: { include: { curso: true } } },
+    }),
+    // Pendente de CURSO (taxa ok, mas pagamento do curso ainda não confirmado)
+    prisma.matricula.findMany({
+      where: { taxaConfirmada: true, statusPagamento: 'PENDENTE' },
+      orderBy: { criadoEm: 'desc' },
+      include: { aluno: true, turma: { include: { curso: true } } },
+    }),
+    // Estornos
+    prisma.matricula.findMany({
+      where: { statusPagamento: 'ESTORNADO' },
+      orderBy: { atualizadoEm: 'desc' },
+      include: { aluno: true, turma: { include: { curso: true } } },
+    }),
+    prisma.logAuditoria.findMany({
+      where: { acao: 'ESTORNOU_PAGAMENTO' },
+      orderBy: { criadoEm: 'desc' },
+    }),
+  ]);
+
+  const motivos = mapaMotivosEstorno(logsEstorno);
+
+  const TAXA_MATRICULA_PADRAO = 100;
+
+
+  // Uma lista única de pendências, cada item já sabendo se é pendência
+  // de taxa ou de curso (pra view não precisar decidir nada).
+  const pendentesLista = [
+    ...taxaPendenteLista.map((m) => ({
+      m, tipo: 'Taxa inscrição', valor: Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO, desde: m.criadoEm,
+    })),
+    ...cursoPendenteLista.map((m) => ({
+      m, tipo: 'Curso', valor: Number(m.valorCurso), desde: m.criadoEm,
+    })),
+  ].sort((a, b) => b.desde - a.desde);
+  
+
+  const totalRecebido =
+    taxaPagaLista.reduce((s, m) => s + (Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO), 0) +
+    matriculaGeradaLista.reduce((s, m) => s + Number(m.valorCurso), 0);
+
+  const totalPendente = pendentesLista.reduce((s, p) => s + p.valor, 0);
+
+  const totalEstornado = estornos.reduce((s, m) => s + Number(m.valorCurso), 0);
+
+  res.render('admin/financeiro', {
+    formatBRL,
+    codigoMatricula,
+    motivos,
+    stats: {
+      taxaPagaCount: taxaPagaLista.length,
+      matriculaGeradaCount: matriculaGeradaLista.length,
+      pendentesCount: pendentesLista.length,
+      totalRecebido,
+      totalPendente,
+      estornosCount: estornos.length,
+      totalEstornado,
+    },
+    taxaPagaLista,
+    matriculaGeradaLista,
+    pendentesLista,
+    estornos,
+  });
+});
+
 router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
+
+  const motivo = String(req.body.motivo || '').trim() || 'Não informado';
+
   await prisma.matricula.update({ where: { id: m.id }, data: { statusPagamento: 'ESTORNADO' } });
-  await auditar(req, 'ESTORNOU_PAGAMENTO', 'Matricula', m.id, null);
+  await auditar(req, 'ESTORNOU_PAGAMENTO', 'Matricula', m.id, { motivo });
   res.redirect(back(req, 'Pagamento estornado.'));
 });
 

@@ -21,6 +21,8 @@ function apenasNumeros(valor) {
  *   ]
  * }
  */
+
+
 async function consultarParcelamento(amountCentavos) {
   const token = process.env.UNICOPAG_API_TOKEN;
   if (!token) {
