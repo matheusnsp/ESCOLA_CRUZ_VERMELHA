@@ -8,12 +8,15 @@ datasource db {
 }
 
 model Usuario {
-  id                   String      @id @default(uuid())
+  id                   String         @id @default(uuid())
   nome                 String
-  email                String      @unique
-  cpfCnpj              String?     @unique
+  email                String         @unique
+  tipoDocumento        TipoDocumento?
+  cpfCnpj              String?        @unique
+  passaporte           String?        @unique
+  paisOrigem           String?
   senhaHash            String?
-  papel                Papel       @default(ALUNO)
+  papel                Papel          @default(ALUNO)
   escolaridade         String?
   escolaridadeSituacao String?
   genero               String?
@@ -24,16 +27,16 @@ model Usuario {
   bairro               String?
   cidade               String?
   uf                   String?
-  emailVerificado      Boolean     @default(false)
-  loginFalhas          Int         @default(0)
+  emailVerificado      Boolean        @default(false)
+  loginFalhas          Int            @default(0)
   bloqueadoAte         DateTime?
-  loginStrikes         Int         @default(0)
-  bloqueioTotal        Boolean     @default(false)
+  loginStrikes         Int            @default(0)
+  bloqueioTotal        Boolean        @default(false)
   avatarUrl            String?
   consentimentoLgpdEm  DateTime?
   consentimentoVersao  String?
-  criadoEm             DateTime    @default(now())
-  atualizadoEm         DateTime    @updatedAt
+  criadoEm             DateTime       @default(now())
+  atualizadoEm         DateTime       @updatedAt
   celular              String?
   rg                   String?
   matriculas           Matricula[]
@@ -206,6 +209,12 @@ enum Papel {
   COORDENADOR
   FINANCEIRO
   DEV
+}
+
+enum TipoDocumento {
+  CPF
+  CNPJ
+  PASSAPORTE
 }
 
 enum StatusTurma {

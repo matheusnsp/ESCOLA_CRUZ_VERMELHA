@@ -178,11 +178,17 @@
           <div class="dados-lista" style="margin-top:24px;border-top:1px solid #e7ebf2;padding-top:18px;">
             <div><span>Nome completo</span><strong><%= usuario.nome %></strong></div>
             <div><span>E-mail</span><strong><%= usuario.email %></strong></div>
-            <div><span>CPF/CNPJ</span><strong><%= docMascarado %></strong></div>
+            <div>
+  <span><%= usuario.tipoDocumento === 'PASSAPORTE' ? 'Passaporte' : 'CPF/CNPJ' %></span>
+  <strong><%= docMascarado %></strong>
+</div>
+<% if (usuario.tipoDocumento === 'PASSAPORTE' && usuario.paisOrigem) { %>
+  <div><span>País de origem</span><strong><%= usuario.paisOrigem %></strong></div>
+<% } %>
             <div><span>E-mail confirmado</span><strong><%= usuario.emailVerificado ? 'Sim' : 'Não' %></strong></div>
             <div><span>Cadastro em</span><strong><%= new Date(usuario.criadoEm).toLocaleDateString('pt-BR') %></strong></div>
           </div>
-          <p class="painel-sub" style="font-size:12px;color:#718096;margin-top:10px;"><i class="fa-solid fa-lock"></i> Nome, e-mail e CPF não podem ser alterados por aqui — o nome é usado no certificado e o e-mail/CPF na identificação. Se precisar corrigir algum deles, fale com a secretaria.</p>
+          <p class="painel-sub" style="font-size:12px;color:#718096;margin-top:10px;"><i class="fa-solid fa-lock"></i> Nome, e-mail e CPF não podem ser alterados por aqui — o nome é usado no certificado e o e-mail e documento na identificação. Se precisar corrigir algum deles, fale com a secretaria.</p>
         </div>
 
       <% } else if (sec === 'excluir') { %>

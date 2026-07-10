@@ -12,6 +12,7 @@ const {
   SITUACOES_ESCOLARIDADE,
   GENEROS,
   UFS,
+  TIPOS_DOCUMENTO,
 } = require('../lib/validation');
 const {
   criarTokenReset,
@@ -47,7 +48,7 @@ async function enviarConfirmacao(usuario) {
 // ============================================================
 
 router.get('/cadastro', (req, res) => {
-  res.render('cadastro', { erros: [], valores: {}, politicaVersao: POLITICA_VERSAO, escolaridades: ESCOLARIDADES, situacoes: SITUACOES_ESCOLARIDADE, generos: GENEROS, ufs: UFS });
+  res.render('cadastro', { erros: [], valores: {}, politicaVersao: POLITICA_VERSAO, escolaridades: ESCOLARIDADES, situacoes: SITUACOES_ESCOLARIDADE, generos: GENEROS, ufs: UFS, tiposDocumento: TIPOS_DOCUMENTO });
 });
 
 router.post('/cadastro', cadastroLimiter, async (req, res) => {
@@ -57,7 +58,9 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
     res.status(status).render('cadastro', {
       erros,
       valores: {
-        nome: req.body.nome || '', email: req.body.email || '', documento: req.body.documento || '',
+        nome: req.body.nome || '', email: req.body.email || '',
+        tipoDocumento: req.body.tipoDocumento || '', documento: req.body.documento || '',
+        passaporte: req.body.passaporte || '', paisOrigem: req.body.paisOrigem || '',
         rg: req.body.rg || '', celular: req.body.celular || '',
         escolaridade: req.body.escolaridade || '', escolaridadeSituacao: req.body.escolaridadeSituacao || '', genero: req.body.genero || '',
         cep: req.body.cep || '', logradouro: req.body.logradouro || '', numero: req.body.numero || '',
@@ -68,18 +71,25 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
       situacoes: SITUACOES_ESCOLARIDADE,
       generos: GENEROS,
       ufs: UFS,
+      tiposDocumento: TIPOS_DOCUMENTO,
     });
 
   if (!resultado.success) {
     return reRender(resultado.error.issues.map((i) => i.message));
   }
 
-  const { nome, email, documento, senha, escolaridade, escolaridadeSituacao, genero, cep, logradouro, numero, complemento, bairro, cidade, uf, rg, celular } = resultado.data;
+  const { nome, email, tipoDocumento, documento, passaporte, paisOrigem, senha, escolaridade, escolaridadeSituacao, genero, cep, logradouro, numero, complemento, bairro, cidade, uf, rg, celular } = resultado.data;
 
-  // CPF/CNPJ válido? (dígitos verificadores)
-  const doc = validarCpfCnpj(documento);
-  if (!doc.ok) {
-    return reRender(['CPF ou CNPJ inválido.']);
+  // CPF/CNPJ válido? (dígitos verificadores) — passaporte já teve o formato checado no schema.
+  let cpfCnpjNormalizado = null;
+  if (tipoDocumento === 'PASSAPORTE') {
+    // nada a normalizar aqui: passaporte já vem em maiúsculas e no formato AA123456 do schema.
+  } else {
+    const doc = validarCpfCnpj(documento);
+    if (!doc.ok) {
+      return reRender(['CPF ou CNPJ inválido.']);
+    }
+    cpfCnpjNormalizado = doc.normalizado;
   }
 
   // Forca da senha (servidor manda). Penaliza usar nome/e-mail na senha.
@@ -93,7 +103,10 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
       data: {
         nome,
         email,
-        cpfCnpj: doc.normalizado,
+        tipoDocumento,
+        cpfCnpj: tipoDocumento === 'PASSAPORTE' ? null : cpfCnpjNormalizado,
+        passaporte: tipoDocumento === 'PASSAPORTE' ? passaporte : null,
+        paisOrigem: tipoDocumento === 'PASSAPORTE' ? (paisOrigem || null) : null,
         rg: rg || null,
         celular: celular || null,
         escolaridade: escolaridade || null,
@@ -129,9 +142,9 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
   } catch (err) {
     if (err.code === 'P2002') {
       const alvo = String(err.meta && err.meta.target);
-      const msg = alvo.includes('cpfCnpj')
-        ? 'Já existe uma conta com este CPF/CNPJ.'
-        : 'Já existe uma conta com este e-mail.';
+      let msg = 'Já existe uma conta com este e-mail.';
+      if (alvo.includes('cpfCnpj')) msg = 'Já existe uma conta com este CPF/CNPJ.';
+      else if (alvo.includes('passaporte')) msg = 'Já existe uma conta com este passaporte.';
       return reRender([msg], 409);
     }
     console.error('Erro no cadastro:', err);

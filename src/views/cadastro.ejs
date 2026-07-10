@@ -40,14 +40,28 @@
         <div class="tipo-pessoa-toggle" role="group">
           <button type="button" class="tp-btn" data-tipo="CPF"><i class="fa-solid fa-user"></i> Pessoa física (CPF)</button>
           <button type="button" class="tp-btn" data-tipo="CNPJ"><i class="fa-solid fa-building"></i> Pessoa jurídica (CNPJ)</button>
+          <button type="button" class="tp-btn" data-tipo="PASSAPORTE"><i class="fa-solid fa-passport"></i> Estrangeiro (Passaporte)</button>
         </div>
         <small id="tipo-hint" style="display:block;margin-top:6px;color:#718096;">Escolha o tipo para preencher o documento.</small>
       </div>
+
+      <input type="hidden" name="tipoDocumento" id="tipoDocumentoInput" value="<%= valores.tipoDocumento || '' %>">
 
       <label class="auth-field" id="campo-documento" style="display:none;">
         <span id="label-documento">CPF</span>
         <input type="text" name="documento" value="<%= valores.documento || '' %>" inputmode="numeric" placeholder="000.000.000-00" maxlength="18" data-mask="cpfCnpj">
         <small>Usado para emissão do certificado.</small>
+      </label>
+
+      <label class="auth-field" id="campo-passaporte" style="display:none;">
+        <span>Número do passaporte</span>
+        <input type="text" name="passaporte" value="<%= valores.passaporte || '' %>" maxlength="20" placeholder="Ex: AB1234567" autocomplete="off">
+        <small>Usado para emissão do certificado.</small>
+      </label>
+
+      <label class="auth-field" id="campo-pais-origem" style="display:none;">
+        <span>País de origem</span>
+        <input type="text" name="paisOrigem" value="<%= valores.paisOrigem || '' %>" placeholder="Ex: Argentina">
       </label>
 
       <label class="auth-field" id="campo-rg" style="display:none;">
