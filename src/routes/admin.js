@@ -928,10 +928,12 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
   ].sort((a, b) => b.desde - a.desde);
   
 
-  const totalRecebido =
-    taxaPagaLista.reduce((s, m) => s + (Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO), 0) +
-    matriculaGeradaLista.reduce((s, m) => s + Number(m.valorCurso), 0);
-
+// DEPOIS (soma taxa + curso apenas das matrículas com statusPagamento === 'PAGO',
+// já que matriculaGeradaLista é filtrada por { statusPagamento: 'PAGO' })
+const totalRecebido = matriculaGeradaLista.reduce(
+  (s, m) => s + (Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO) + Number(m.valorCurso),
+  0
+);
   const totalPendente = pendentesLista.reduce((s, p) => s + p.valor, 0);
 
   const totalEstornado = estornos.reduce((s, m) => s + Number(m.valorCurso), 0);
