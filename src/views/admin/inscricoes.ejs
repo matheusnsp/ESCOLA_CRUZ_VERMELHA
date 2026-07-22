@@ -5,13 +5,16 @@
 
 <form method="GET" action="/inscricoes" class="adm-filtro">
   <label>Filtrar por turma
-    <select name="turma" onchange="this.form.submit()">
+    <select name="turma">
       <option value="">Todas as turmas</option>
       <% turmas.forEach(function(t){ %>
         <option value="<%= t.id %>" <%= turmaId===t.id ? 'selected' : '' %>><%= t.curso.nome %> — <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %></option>
       <% }) %>
     </select>
   </label>
+  <button type="submit" class="adm-btn" style="padding:10px 18px;border:1px solid #e7ebf1;border-radius:10px;background:#fff;font:inherit;font-size:14px;font-weight:600;cursor:pointer;margin-left:10px;">
+    Filtrar
+  </button>
 </form>
 
 <div class="adm-box">
