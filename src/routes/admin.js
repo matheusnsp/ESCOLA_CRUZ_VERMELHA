@@ -915,7 +915,6 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
 
   const TAXA_MATRICULA_PADRAO = 100;
 
-
   // Uma lista única de pendências, cada item já sabendo se é pendência
   // de taxa ou de curso (pra view não precisar decidir nada).
   const pendentesLista = [
@@ -926,14 +925,13 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
       m, tipo: 'Curso', valor: Number(m.valorCurso), desde: m.criadoEm,
     })),
   ].sort((a, b) => b.desde - a.desde);
-  
 
-// DEPOIS (soma taxa + curso apenas das matrículas com statusPagamento === 'PAGO',
-// já que matriculaGeradaLista é filtrada por { statusPagamento: 'PAGO' })
-const totalRecebido = matriculaGeradaLista.reduce(
-  (s, m) => s + (Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO) + Number(m.valorCurso),
-  0
-);
+  // Soma taxa + curso apenas das matrículas com statusPagamento === 'PAGO'
+  const totalRecebido = matriculaGeradaLista.reduce(
+    (s, m) => s + (Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO) + Number(m.valorCurso),
+    0
+  );
+
   const totalPendente = pendentesLista.reduce((s, p) => s + p.valor, 0);
 
   const totalEstornado = estornos.reduce((s, m) => s + Number(m.valorCurso), 0);
@@ -941,13 +939,12 @@ const totalRecebido = matriculaGeradaLista.reduce(
   // LOG TEMPORÁRIO - remover depois
   console.log('=== DEBUG FINANCEIRO ===');
   console.log('matriculaGeradaLista.length:', matriculaGeradaLista.length);
-  console.log('matriculaGeradaLista (id, status, valorCurso, valorTaxaMatricula):');
   matriculaGeradaLista.forEach(m => {
     console.log('-', m.id, m.statusPagamento, m.valorCurso, m.valorTaxaMatricula);
   });
   console.log('totalRecebido calculado:', totalRecebido);
   console.log('========================');
-  
+
   res.render('admin/financeiro', {
     formatBRL,
     codigoMatricula,
@@ -966,7 +963,7 @@ const totalRecebido = matriculaGeradaLista.reduce(
     pendentesLista,
     estornos,
   });
-
+});
 router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
