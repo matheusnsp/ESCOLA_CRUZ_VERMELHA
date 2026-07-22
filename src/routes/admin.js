@@ -936,15 +936,6 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
 
   const totalEstornado = estornos.reduce((s, m) => s + Number(m.valorCurso), 0);
 
-  // LOG TEMPORÁRIO - remover depois
-  console.log('=== DEBUG FINANCEIRO ===');
-  console.log('matriculaGeradaLista.length:', matriculaGeradaLista.length);
-  matriculaGeradaLista.forEach(m => {
-    console.log('-', m.id, m.statusPagamento, m.valorCurso, m.valorTaxaMatricula);
-  });
-  console.log('totalRecebido calculado:', totalRecebido);
-  console.log('========================');
-
   res.render('admin/financeiro', {
     formatBRL,
     codigoMatricula,
