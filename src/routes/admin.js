@@ -1076,6 +1076,7 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'secretaria:leitura'),
   const busca = String(req.query.q || '').trim();
   const soDigitos = busca.replace(/\D/g, '');
   const inscricao = String(req.query.inscricao || ''); // '', 'com' ou 'sem'
+  const turmaId = req.query.turma || '';
 
   const where = { papel: 'ALUNO' };
 
@@ -1088,14 +1089,17 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'secretaria:leitura'),
     ];
   }
 
-  if (inscricao === 'com') {
+  // Filtro por turma tem prioridade sobre o de "com/sem inscricao" (nao faz sentido combinar os dois).
+  if (turmaId) {
+    where.matriculas = { some: { turmaId } };
+  } else if (inscricao === 'com') {
     where.matriculas = { some: {} };
   } else if (inscricao === 'sem') {
     where.matriculas = { none: {} };
   }
 
   try {
-    const [alunos, total] = await Promise.all([
+    const [alunos, total, turmas] = await Promise.all([
       prisma.usuario.findMany({
         where,
         orderBy: { nome: 'asc' },
@@ -1103,6 +1107,7 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'secretaria:leitura'),
         include: { _count: { select: { matriculas: true } } }
       }),
       prisma.usuario.count({ where }),
+      prisma.turma.findMany({ orderBy: { criadoEm: 'desc' }, include: { curso: true } }),
     ]);
 
     res.render('admin/alunos', { 
@@ -1110,6 +1115,8 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'secretaria:leitura'),
       total,
       busca, 
       inscricao,
+      turmas,
+      turmaId,
       ok: req.query.ok || null,
       mascarar 
     });
