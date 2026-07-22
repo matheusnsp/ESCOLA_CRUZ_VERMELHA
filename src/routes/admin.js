@@ -938,6 +938,16 @@ const totalRecebido = matriculaGeradaLista.reduce(
 
   const totalEstornado = estornos.reduce((s, m) => s + Number(m.valorCurso), 0);
 
+  // LOG TEMPORÁRIO - remover depois
+  console.log('=== DEBUG FINANCEIRO ===');
+  console.log('matriculaGeradaLista.length:', matriculaGeradaLista.length);
+  console.log('matriculaGeradaLista (id, status, valorCurso, valorTaxaMatricula):');
+  matriculaGeradaLista.forEach(m => {
+    console.log('-', m.id, m.statusPagamento, m.valorCurso, m.valorTaxaMatricula);
+  });
+  console.log('totalRecebido calculado:', totalRecebido);
+  console.log('========================');
+  
   res.render('admin/financeiro', {
     formatBRL,
     codigoMatricula,
@@ -956,7 +966,6 @@ const totalRecebido = matriculaGeradaLista.reduce(
     pendentesLista,
     estornos,
   });
-});
 
 router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
