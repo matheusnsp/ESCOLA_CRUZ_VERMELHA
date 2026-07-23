@@ -33,8 +33,29 @@
             <td><strong><%= m.aluno.nome %></strong><br><small class="adm-mut"><%= m.aluno.email %></small></td>
             <td><%= m.turma.curso.nome %><br><small class="adm-mut"><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %><% if (m.turma.aulas && m.turma.aulas.length) { %> · <%= m.turma.aulas[0].horario %><% } %></small></td>
             <td><%= m.plano === 'A_VISTA' ? 'À vista' : 'Parcelado' %><br><small class="adm-mut"><%= m.forma %></small></td>
-            <td><%= formatBRL(Number(m.valorCurso) + Number(m.valorTaxaMatricula)) %></td>
             <td>
+              <%= formatBRL(Number(m.valorCurso) + Number(m.valorTaxaMatricula)) %>
+            
+              <% if (m.diferencaTransferencia != null) { %>
+            
+                <% if (Number(m.diferencaTransferencia) > 0) { %>
+                  <br>
+                  <small style="color:#d97706;font-weight:600;">
+                    Diferença a receber:
+                    <%= formatBRL(Number(m.diferencaTransferencia)) %>
+                  </small>
+            
+                <% } else if (Number(m.diferencaTransferencia) < 0) { %>
+                  <br>
+                  <small style="color:#dc2626;font-weight:700;">
+                    Reembolso ao aluno:
+                    <%= formatBRL(Math.abs(Number(m.diferencaTransferencia))) %>
+                  </small>
+            
+                <% } %>
+            
+              <% } %>
+            </td>            <td>
               <% if (pode('doacao:confirmar')) { %>
                 <form method="POST" action="/inscricoes/<%= m.id %>/alimento">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>"><% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %>

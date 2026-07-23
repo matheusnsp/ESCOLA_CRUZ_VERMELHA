@@ -34,14 +34,18 @@ const LIMITE_GRUPO = 3;
   </div>
 </div>
 
-<div class="adm-cards" style="grid-template-columns:repeat(2,1fr); margin-bottom:26px;">
-  <div class="adm-stat">
+<div class="adm-cards" style="grid-template-columns:repeat(3,1fr); margin-bottom:26px;">
+    <div class="adm-stat">
     <span><%= formatBRL(stats.totalPendente) %></span>
     <small><i class="fa-solid fa-triangle-exclamation"></i> Total pendente a receber</small>
   </div>
   <div class="adm-stat">
     <span><%= stats.estornosCount %> · <%= formatBRL(stats.totalEstornado) %></span>
     <small><i class="fa-solid fa-rotate-left"></i> Estornos (qtd. · valor total)</small>
+  </div>
+  <div class="adm-stat danger">
+    <span><%= stats.reembolsosCount %> · <%= formatBRL(stats.totalAReembolsar) %></span>
+    <small><i class="fa-solid fa-money-bill-transfer"></i> Reembolsos pendentes</small>
   </div>
 </div>
 
@@ -174,6 +178,110 @@ const LIMITE_GRUPO = 3;
       </button>
     <% } %>
   <% } %>
+</div>
+
+<!-- ===== Reembolsos pendentes ===== -->
+<div class="adm-box" id="grupo-reembolsos" style="margin-top:26px;">
+  <div class="adm-box-head">
+    <h2>
+      <i class="fa-solid fa-money-bill-transfer"></i>
+      Reembolsos pendentes
+    </h2>
+
+    <span class="badge canc">
+      <%= stats.reembolsosCount %> aluno(s)
+    </span>
+  </div>
+
+  <% if (reembolsosPendentesLista.length === 0) { %>
+
+    <p class="adm-vazio">
+      Nenhum reembolso pendente.
+    </p>
+
+  <% } else { %>
+
+    <table class="adm-table">
+      <thead>
+        <tr>
+          <th>Aluno</th>
+          <th>Curso</th>
+          <th>Valor</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+      <% reembolsosPendentesLista.forEach((m,i)=>{ %>
+
+        <tr<% if(i>=LIMITE_GRUPO){ %> class="adm-extra"<% } %>>
+
+          <td>
+            <%= m.aluno.nome %>
+          </td>
+
+          <td>
+            <%= m.turma.curso.nome %>
+          </td>
+
+          <td>
+            <strong><%= formatBRL(Math.abs(Number(m.diferencaTransferencia))) %></strong>
+          </td>
+
+          <td>
+
+            <% if (pode('financeiro:aprovar')) { %>
+
+              <form
+                method="POST"
+                action="/inscricoes/<%= m.id %>/reembolso-concluido"
+                onsubmit="return confirm('Confirmar que o reembolso foi realizado?')">
+
+                <input
+                  type="hidden"
+                  name="_csrf"
+                  value="<%= csrfToken %>">
+
+                  <button class="adm-mini ok" title="Reembolso concluído">
+                    <i class="fa-solid fa-check"></i>
+                </button>
+
+              </form>
+
+            <% } else { %>
+
+              <span class="adm-mut">
+                Aguardando confirmação
+              </span>
+
+            <% } %>
+
+          </td>
+
+        </tr>
+
+      <% }) %>
+
+      </tbody>
+    </table>
+
+    <% if(reembolsosPendentesLista.length>LIMITE_GRUPO){ %>
+
+      <button
+        type="button"
+        class="adm-vermais"
+        data-grupo="grupo-reembolsos"
+        data-extra="<%= reembolsosPendentesLista.length-LIMITE_GRUPO %>">
+
+        Ver mais <%= reembolsosPendentesLista.length-LIMITE_GRUPO %>
+
+      </button>
+
+    <% } %>
+
+  <% } %>
+
 </div>
 
 <script>

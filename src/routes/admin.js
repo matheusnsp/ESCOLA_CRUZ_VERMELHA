@@ -899,30 +899,38 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
       orderBy: { taxaConfirmadaEm: 'desc' },
       include: { aluno: true, turma: { include: { curso: true } } },
     }),
-    // Quem pagou o curso e tem matrícula gerada (mesmo criterio do dashboard: só PAGO)
+
+    // Quem pagou o curso
     prisma.matricula.findMany({
       where: { statusPagamento: 'PAGO' },
       orderBy: { confirmadaEm: 'desc' },
       include: { aluno: true, turma: { include: { curso: true } } },
     }),
-    // Pendente de TAXA (nem chegou a confirmar a taxa ainda)
+
+    // Pendente de taxa
     prisma.matricula.findMany({
       where: { taxaConfirmada: false },
       orderBy: { criadoEm: 'desc' },
       include: { aluno: true, turma: { include: { curso: true } } },
     }),
-    // Pendente de CURSO (taxa ok, mas pagamento do curso ainda não confirmado)
+
+    // Pendente de curso
     prisma.matricula.findMany({
-      where: { taxaConfirmada: true, statusPagamento: 'PENDENTE' },
+      where: {
+        taxaConfirmada: true,
+        statusPagamento: 'PENDENTE',
+      },
       orderBy: { criadoEm: 'desc' },
       include: { aluno: true, turma: { include: { curso: true } } },
     }),
+
     // Estornos
     prisma.matricula.findMany({
       where: { statusPagamento: 'ESTORNADO' },
       orderBy: { atualizadoEm: 'desc' },
       include: { aluno: true, turma: { include: { curso: true } } },
     }),
+
     prisma.logAuditoria.findMany({
       where: { acao: 'ESTORNOU_PAGAMENTO' },
       orderBy: { criadoEm: 'desc' },
@@ -930,34 +938,76 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
   ]);
 
   const motivos = mapaMotivosEstorno(logsEstorno);
-
   const TAXA_MATRICULA_PADRAO = 100;
 
-  // Uma lista única de pendências, cada item já sabendo se é pendência
-  // de taxa ou de curso (pra view não precisar decidir nada).
+  // Pendências
   const pendentesLista = [
     ...taxaPendenteLista.map((m) => ({
-      m, tipo: 'Taxa inscrição', valor: Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO, desde: m.criadoEm,
+      m,
+      tipo: 'Taxa inscrição',
+      valor: Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO,
+      desde: m.criadoEm,
     })),
+
     ...cursoPendenteLista.map((m) => ({
-      m, tipo: 'Curso', valor: Number(m.valorCurso), desde: m.criadoEm,
+      m,
+      tipo:
+        m.diferencaTransferencia != null
+          ? 'Curso (diferença de transferência)'
+          : 'Curso',
+      valor:
+        m.diferencaTransferencia != null
+          ? Number(m.diferencaTransferencia)
+          : Number(m.valorCurso),
+      desde: m.criadoEm,
     })),
   ].sort((a, b) => b.desde - a.desde);
 
-  // Soma taxa + curso apenas das matrículas com statusPagamento === 'PAGO'
+  // Reembolsos pendentes de transferência
+  const reembolsosPendentesLista = await prisma.matricula.findMany({
+    where: {
+      diferencaTransferencia: {
+        lt: 0,
+      },
+    },
+    orderBy: {
+      atualizadoEm: 'desc',
+    },
+    include: {
+      aluno: true,
+      turma: {
+        include: {
+          curso: true,
+        },
+      },
+    },
+  });
+
+  const totalAReembolsar = reembolsosPendentesLista.reduce(
+    (s, m) => s + Math.abs(Number(m.diferencaTransferencia)),
+    0
+  );
+
   const totalRecebido = matriculaGeradaLista.reduce(
-    (s, m) => s + (Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO) + Number(m.valorCurso),
+    (s, m) =>
+      s +
+      (Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO) +
+      Number(m.valorCurso),
     0
   );
 
   const totalPendente = pendentesLista.reduce((s, p) => s + p.valor, 0);
 
-  const totalEstornado = estornos.reduce((s, m) => s + Number(m.valorCurso), 0);
+  const totalEstornado = estornos.reduce(
+    (s, m) => s + Number(m.valorCurso),
+    0
+  );
 
   res.render('admin/financeiro', {
     formatBRL,
     codigoMatricula,
     motivos,
+
     stats: {
       taxaPagaCount: taxaPagaLista.length,
       matriculaGeradaCount: matriculaGeradaLista.length,
@@ -966,13 +1016,61 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
       totalPendente,
       estornosCount: estornos.length,
       totalEstornado,
+
+      reembolsosCount: reembolsosPendentesLista.length,
+      totalAReembolsar,
     },
+
     taxaPagaLista,
     matriculaGeradaLista,
     pendentesLista,
     estornos,
+    reembolsosPendentesLista,
   });
 });
+
+// Confirma que o reembolso de uma transferência de turma foi pago ao aluno.
+// Só limpa a pendência negativa — não mexe em statusPagamento.
+router.post('/inscricoes/:id/reembolso-concluido', requirePermissao('financeiro:aprovar'), async (req, res) => {
+  const m = await prisma.matricula.findUnique({
+    where: { id: req.params.id },
+  });
+
+  if (!m) {
+    return res.status(404).render('admin/erro', {
+      mensagem: 'Inscricao nao encontrada.',
+    });
+  }
+
+  if (
+    m.diferencaTransferencia == null ||
+    Number(m.diferencaTransferencia) >= 0
+  ) {
+    return res.status(400).render('admin/erro', {
+      mensagem: 'Esta matricula nao tem reembolso pendente.',
+    });
+  }
+
+  const valor = m.diferencaTransferencia;
+
+  await prisma.matricula.update({
+    where: { id: m.id },
+    data: {
+      diferencaTransferencia: null,
+    },
+  });
+
+  await auditar(
+    req,
+    'CONFIRMOU_REEMBOLSO_TRANSFERENCIA',
+    'Matricula',
+    m.id,
+    { valor }
+  );
+
+  res.redirect(back(req, 'Reembolso marcado como concluido.'));
+});
+
 
 router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
