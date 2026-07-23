@@ -18,7 +18,7 @@
         <tr>
           <th>Nome</th>
           <th>E-mail</th>
-          <th>Papel</th>
+          <th style="white-space:nowrap;">Papel</th>
           <th>Permissões</th>
           <th></th>
         </tr>
@@ -28,21 +28,21 @@
           <tr>
             <td><strong><%= u.nome %></strong></td>
             <td><small class="adm-mut"><%= u.email %></small></td>
-            <td><span class="badge ok"><%= u.papel %></span></td>
+            <td style="white-space:nowrap;"><span class="badge ok"><%= u.papel %></span></td>
             <td>
               <div style="display:flex;flex-wrap:wrap;gap:4px;">
                 <% u.permissoes.forEach(function(p) { %>
-                  <code style="font-size:11px;background:#f0f2f5;border-radius:6px;padding:2px 6px;"><%= p %></code>
+                  <code style="font-size:11px;background:#f0f2f5;border-radius:6px;padding:2px 6px;white-space:nowrap;"><%= p %></code>
                 <% }) %>
               </div>
             </td>
-            <td class="adm-acoes">
+            <td class="adm-acoes" style="white-space:nowrap;">
               <% if (u.id === meuId) { %>
-                <span class="adm-mut" style="font-size:12px;">é você</span>
+                <i class="fa-solid fa-circle-user" title="Você" style="color:#adb5bd;font-size:18px;"></i>
               <% } else { %>
-                <form method="POST" action="/dev/usuarios/<%= u.id %>/papel" style="display:flex;gap:6px;align-items:center;">
+                <form method="POST" action="/dev/usuarios/<%= u.id %>/papel" style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                  <select name="papel" style="font-size:13px;">
+                  <select name="papel" style="font-size:13px;min-width:130px;">
                     <% papeis.forEach(function(p) { %>
                       <option value="<%= p %>" <%= p === u.papel ? 'selected' : '' %>><%= p %></option>
                     <% }) %>
