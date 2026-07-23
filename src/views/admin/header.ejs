@@ -10,7 +10,7 @@
       <a href="/turmas" class="<%= secaoAtiva === 'turmas' ? 'on' : '' %>"><i class="fa-solid fa-calendar-days"></i> Turmas</a>
       <a href="/inscricoes" class="<%= secaoAtiva === 'inscricoes' ? 'on' : '' %>"><i class="fa-solid fa-users"></i> Matriculas</a>
       <a href="/alunos" class="<%= secaoAtiva === 'alunos' ? 'on' : '' %>"><i class="fa-solid fa-user-graduate"></i> Alunos</a>
-      <% if (pode('financeiro:leitura') || pode('financeiro:aprovar')) { %>
+      <% if (pode('financeiro:leitura')) { %>
         <a href="/financeiro" class="<%= secaoAtiva === 'financeiro' ? 'on' : '' %>"><i class="fa-solid fa-sack-dollar"></i> Financeiro</a>
       <% } %>
       <% if (admPapel === 'DEV') { %>
