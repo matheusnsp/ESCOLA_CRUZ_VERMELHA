@@ -1215,9 +1215,11 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
     return reRenderErro('Turma de destino nao encontrada.');
   }
 
-  // A transferência sempre considera o preço normal do curso.
+  // A transferência recalcula pelo preço do novo curso, no MESMO PLANO do aluno.
   const valorAntigo = Number(m.valorCurso);
-  const valorNovo = Number(destino.curso.precoCheio);
+  const valorNovo = m.plano === 'A_VISTA'
+    ? Number(destino.curso.precoAvista)
+    : Number(destino.curso.precoCheio);
   const diferenca = Math.round((valorNovo - valorAntigo) * 100) / 100;
 
   const dados = {
