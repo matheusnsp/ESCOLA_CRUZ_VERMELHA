@@ -18,6 +18,7 @@ const PERMISSOES = {
     'aluno:mover_turma',   // transferir aluno entre turmas
     'aluno:gerenciar',     // editar dados cadastrais do aluno
     'taxa:aprovar',        // confirmar pagamento da TAXA de inscrição
+    'financeiro:aprovar',  // confirmar/cancelar/estornar pagamento do curso
     'pagamento:confirmar', // NOVO: confirmar pagamento do CURSO (só confirmar —
                             // cancelar e estornar continuam exclusivos do Financeiro/Dev)
   ],
@@ -51,6 +52,8 @@ PERMISSOES.COORDENADOR = [
   ...PERMISSOES.SECRETARIA,
   'turmas:criar',       // única coisa que a Secretaria não tem e o Coordenador ganha
   'financeiro:leitura', // vê o painel /financeiro, mas sem aprovar/cancelar/estornar
+  'financeiro:aprovar',  // confirmar/cancelar/estornar pagamento do curso
+
 ];
 
 // Papéis que conseguem logar no painel admin (independente do que cada um pode FAZER lá dentro)
