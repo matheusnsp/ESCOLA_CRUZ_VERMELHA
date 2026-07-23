@@ -510,7 +510,7 @@ router.get('/', async (req, res) => {
 // Escrita: so quem tem 'cursos:gerenciar' (Secretaria, Coordenador, Dev).
 // Leitura: tambem quem tem 'secretaria:leitura' (Financeiro, modo consulta).
 
-router.get('/cursos', requirePermissao('cursos:gerenciar', 'secretaria:leitura'), async (req, res) => {
+router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), async (req, res) => {
   const cursos = await prisma.curso.findMany({
     orderBy: { nome: 'asc' },
     include: { _count: { select: { turmas: true } } },
@@ -518,7 +518,7 @@ router.get('/cursos', requirePermissao('cursos:gerenciar', 'secretaria:leitura')
   res.render('admin/cursos', { cursos, formatBRL, flash: req.query.ok || null, erro: req.query.erro || null });
 });
 
-router.get('/cursos/novo', requirePermissao('cursos:gerenciar'), (req, res) => {
+router.get('/cursos/novo', requirePermissao('cursos:criar'), (req, res) => {
   res.render('admin/curso-form', { curso: null, escolaridades: ESCOLARIDADES, erro: null });
 });
 
@@ -545,7 +545,7 @@ function lerCursoDoForm(body) {
   return { dados, erro };
 }
 
-router.post('/cursos', requirePermissao('cursos:gerenciar'), uploadFoto, async (req, res) => {
+router.post('/cursos', requirePermissao('cursos:criar'), uploadFoto, async (req, res) => {
   if (req.uploadErro) return res.status(400).render('admin/curso-form', { curso: req.body, escolaridades: ESCOLARIDADES, erro: req.uploadErro });
   const { dados, erro } = lerCursoDoForm(req.body);
   if (erro) return res.status(400).render('admin/curso-form', { curso: req.body, escolaridades: ESCOLARIDADES, erro });
@@ -635,7 +635,7 @@ router.post('/cursos/:id/ativar', requirePermissao('cursos:gerenciar'), async (r
 // ---------- Turmas ----------
 // Mesma logica: escrita exige 'turmas:gerenciar'; leitura tambem aceita 'secretaria:leitura'.
 
-router.get('/turmas', requirePermissao('turmas:gerenciar', 'secretaria:leitura'), async (req, res) => {
+router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
   const turmas = await prisma.turma.findMany({
     orderBy: { criadoEm: 'desc' },
     include: {
@@ -647,7 +647,7 @@ router.get('/turmas', requirePermissao('turmas:gerenciar', 'secretaria:leitura')
   res.render('admin/turmas', { turmas, statusTurma: STATUS_TURMA, flash: req.query.ok || null, erro: req.query.erro || null });
 });
 
-router.get('/turmas/nova', requirePermissao('turmas:gerenciar'), async (req, res) => {
+router.get('/turmas/nova', requirePermissao('turmas:criar'), async (req, res) => {
   const cursos = await prisma.curso.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' } });
   res.render('admin/turma-form', { turma: null, aulas: [], cursos, statusTurma: STATUS_TURMA, erro: null });
 });
@@ -793,7 +793,7 @@ router.post('/turmas/:id/excluir', requirePermissao('turmas:gerenciar'), async (
 // ---------- Inscricoes / Pagamentos ----------
 // A pagina e compartilhada: Secretaria (doacao/alimento), Coordenador e Financeiro (pagamento) todos entram,
 // mas os BOTOES de acao (confirmar/cancelar/estornar pagamento vs. marcar alimento entregue) sao
-// controlados na view via res.locals.pode(...). Cada acao POST tem sua propria permissao especifica.
+// controlados na view via res.locals.pode(...). Cada ação POST tem sua propria permissao especifica.
 
 router.get('/inscricoes', requirePermissao('doacao:confirmar', 'financeiro:aprovar', 'financeiro:leitura'), async (req, res) => {
   const turmaId = req.query.turma || null;
@@ -818,7 +818,7 @@ router.get('/inscricoes', requirePermissao('doacao:confirmar', 'financeiro:aprov
 
 // Aprovacao de pagamento do curso: EXCLUSIVO de quem tem 'financeiro:aprovar' (Financeiro e Dev).
 // Secretaria e Coordenador NAO tem essa permissao (Coordenador so tem financeiro:leitura).
-router.post('/inscricoes/:id/confirmar', requirePermissao('financeiro:aprovar'), async (req, res) => {
+router.post('/inscricoes/:id/confirmar', requirePermissao('financeiro:aprovar', 'pagamento:confirmar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
   await prisma.matricula.update({
@@ -975,7 +975,7 @@ router.post('/inscricoes/:id/alimento', requirePermissao('doacao:confirmar'), as
   res.redirect(back(req, 'Atualizado.'));
 });
 
-router.get('/inscricoes/:id/nota', requirePermissao('turmas:gerenciar', 'secretaria:leitura'), async (req, res) => {
+router.get('/inscricoes/:id/nota', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
   const m = await prisma.matricula.findUnique({
     where: { id: req.params.id },
     include: { aluno: true, turma: { include: { curso: true } }, avaliacoes: { orderBy: { criadoEm: 'desc' } } },
@@ -1072,7 +1072,7 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
 
 // ---------- Alunos (listar, buscar, editar dados basicos) ----------
 
-router.get('/alunos', requirePermissao('aluno:gerenciar', 'secretaria:leitura'), async (req, res) => {
+router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), async (req, res) => {
   const busca = String(req.query.q || '').trim();
   const soDigitos = busca.replace(/\D/g, '');
   const inscricao = String(req.query.inscricao || ''); // '', 'com' ou 'sem'
@@ -1228,7 +1228,7 @@ router.post('/alunos/:id/editar', requirePermissao('aluno:gerenciar'), async (re
 
 // ---------- Matriculas do aluno (confirmacoes) ----------
 
-router.get('/alunos/:id/matriculas', requirePermissao('aluno:gerenciar', 'secretaria:leitura'), async (req, res) => {
+router.get('/alunos/:id/matriculas', requirePermissao('aluno:gerenciar', 'painel:leitura'), async (req, res) => {
   const aluno = await prisma.usuario.findUnique({ where: { id: req.params.id } });
   if (!aluno || aluno.papel !== 'ALUNO') return res.status(404).render('admin/erro', { mensagem: 'Aluno nao encontrado.' });
 
