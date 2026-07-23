@@ -13,33 +13,40 @@
   <% if (!linhas.length) { %>
     <p class="adm-vazio">Nenhum usuário admin cadastrado.</p>
   <% } else { %>
-    <table class="adm-table" style="vertical-align:middle;">
+    <table class="adm-table" style="table-layout:fixed;width:100%;">
+      <colgroup>
+        <col style="width:160px;">
+        <col style="width:200px;">
+        <col style="width:130px;">
+        <col>
+        <col style="width:210px;">
+      </colgroup>
       <thead>
         <tr>
           <th>Nome</th>
           <th>E-mail</th>
-          <th style="white-space:nowrap;">Papel</th>
+          <th>Papel</th>
           <th>Permissões</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         <% linhas.forEach(function(u) { %>
-          <tr style="vertical-align:middle;">
-            <td style="vertical-align:middle;"><strong><%= u.nome %></strong></td>
-            <td style="vertical-align:middle;"><small class="adm-mut"><%= u.email %></small></td>
-            <td style="vertical-align:middle;white-space:nowrap;"><span class="badge ok"><%= u.papel %></span></td>
-            <td style="vertical-align:middle;">
+          <tr>
+            <td style="border-bottom:none;"><strong><%= u.nome %></strong></td>
+            <td style="border-bottom:none;word-break:break-all;"><small class="adm-mut"><%= u.email %></small></td>
+            <td style="border-bottom:none;"><span class="badge ok"><%= u.papel %></span></td>
+            <td style="border-bottom:none;">
               <div style="display:flex;flex-wrap:wrap;gap:4px;">
                 <% u.permissoes.forEach(function(p) { %>
                   <code style="font-size:11px;background:#f0f2f5;border-radius:6px;padding:2px 6px;white-space:nowrap;"><%= p %></code>
                 <% }) %>
               </div>
             </td>
-            <td style="vertical-align:middle;white-space:nowrap;" class="adm-acoes">
+            <td style="border-bottom:none;" class="adm-acoes">
               <% if (u.id === meuId) { %>
                 <form style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;">
-                  <select name="papel" style="font-size:13px;min-width:130px;" disabled>
+                  <select style="font-size:13px;width:100%;" disabled>
                     <% papeis.forEach(function(p) { %>
                       <option value="<%= p %>" <%= p === u.papel ? 'selected' : '' %>><%= p %></option>
                     <% }) %>
@@ -49,7 +56,7 @@
               <% } else { %>
                 <form method="POST" action="/dev/usuarios/<%= u.id %>/papel" style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                  <select name="papel" style="font-size:13px;min-width:130px;">
+                  <select name="papel" style="font-size:13px;width:100%;">
                     <% papeis.forEach(function(p) { %>
                       <option value="<%= p %>" <%= p === u.papel ? 'selected' : '' %>><%= p %></option>
                     <% }) %>
