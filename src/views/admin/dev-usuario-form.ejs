@@ -1,0 +1,24 @@
+<%- include('head', { titulo: 'Novo Admin' }) %>
+<%- include('header', { ativo: 'dev-usuarios' }) %>
+<div class="adm-h1-row"><h1 class="adm-h1">Novo Admin</h1><a href="/dev/usuarios" class="adm-link">← Voltar</a></div>
+<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+<% var v = valores || {}; %>
+<form method="POST" action="/dev/usuarios/novo?_csrf=<%= csrfToken %>" class="adm-form adm-box">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <label class="full">Nome completo<input type="text" name="nome" value="<%= v.nome || '' %>" required></label>
+  <label class="full">E-mail<input type="email" name="email" value="<%= v.email || '' %>" required></label>
+  <label class="full">Papel
+    <select name="papel" required>
+      <option value="">— selecione —</option>
+      <% papeis.forEach(function(p){ %>
+        <option value="<%= p %>" <%= (v.papel||'')===p ? 'selected' : '' %>><%= p %></option>
+      <% }) %>
+    </select>
+  </label>
+  <p class="adm-mut full" style="font-size:13px;">
+    <i class="fa-solid fa-circle-info"></i>
+    Não é preciso definir senha aqui — enviaremos um e-mail para <strong><%= v.email || 'este endereço' %></strong> com um link para a pessoa criar a própria senha.
+  </p>
+  <div class="full"><button type="submit" class="adm-btn">Criar admin</button></div>
+</form>
+<%- include('foot') %>

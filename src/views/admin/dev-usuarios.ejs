@@ -1,0 +1,53 @@
+<%- include('head', { titulo: 'Usuários Admin' }) %>
+<%- include('header', { ativo: 'dev-usuarios' }) %>
+<div class="adm-h1-row"><h1 class="adm-h1">Usuários Admin</h1><a href="/dev/usuarios/novo" class="adm-btn-sm"><i class="fa-solid fa-plus"></i> Novo admin</a></div>
+<% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
+<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+
+<div class="adm-box" style="padding:0;overflow:hidden;">
+  <table class="adm-tabela" style="width:100%;border-collapse:collapse;">
+    <thead>
+      <tr style="text-align:left;background:#f7f9fb;">
+        <th style="padding:12px 14px;font-size:13px;">Nome</th>
+        <th style="padding:12px 14px;font-size:13px;">E-mail</th>
+        <th style="padding:12px 14px;font-size:13px;">Papel</th>
+        <th style="padding:12px 14px;font-size:13px;">Permissões liberadas</th>
+        <th style="padding:12px 14px;font-size:13px;">Ação</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% linhas.forEach(function (u) { %>
+        <tr style="border-top:1px solid #eef1f5;">
+          <td style="padding:12px 14px;font-size:14px;"><%= u.nome %></td>
+          <td style="padding:12px 14px;font-size:13px;color:#5b6472;"><%= u.email %></td>
+          <td style="padding:12px 14px;">
+            <strong style="font-size:13px;"><%= u.papel %></strong>
+          </td>
+          <td style="padding:12px 14px;">
+            <div style="display:flex;flex-wrap:wrap;gap:4px;max-width:280px;">
+              <% u.permissoes.forEach(function (p) { %>
+                <code style="font-size:11px;background:#f0f2f5;border-radius:6px;padding:2px 6px;"><%= p %></code>
+              <% }) %>
+            </div>
+          </td>
+          <td style="padding:12px 14px;">
+            <% if (u.id === meuId) { %>
+              <span class="adm-mut" style="font-size:12px;">é você</span>
+            <% } else { %>
+              <form method="POST" action="/dev/usuarios/<%= u.id %>/papel?_csrf=<%= csrfToken %>" style="display:flex;gap:6px;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <select name="papel" style="font-size:13px;">
+                  <% papeis.forEach(function (p) { %>
+                    <option value="<%= p %>" <%= p === u.papel ? 'selected' : '' %>><%= p %></option>
+                  <% }) %>
+                </select>
+                <button type="submit" class="adm-mini" title="Salvar"><i class="fa-solid fa-check"></i></button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<%- include('foot') %>

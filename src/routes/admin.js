@@ -15,7 +15,7 @@ const { ESCOLARIDADES: ESCOLARIDADES_ALUNO, SITUACOES_ESCOLARIDADE, GENEROS, UFS
 const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
 const { formatBRL } = require('../lib/matricula');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
-const { temPermissao, PAPEIS_ADMIN } = require('../lib/permissoes');
+const { temPermissao, PAPEIS_ADMIN, listarPermissoes } = require('../lib/permissoes');
 
 const router = express.Router();
 
@@ -24,7 +24,7 @@ const router = express.Router();
 // Tempo maximo de inatividade no painel antes de deslogar (15 min).
 const IDLE_MS = 15 * 60 * 1000;
 
-// Qualquer um dos 4 papeis administrativos pode entrar no painel.
+// Qualquer um dos papeis administrativos pode entrar no painel.
 // O que cada um pode FAZER dentro dele e controlado por requirePermissao() em cada rota.
 function requireAdmin(req, res, next) {
   if (req.session && req.session.usuarioId && PAPEIS_ADMIN.includes(req.session.papel)) {
@@ -46,6 +46,13 @@ function requirePermissao(...perms) {
     if (perms.some((p) => temPermissao(req.session.papel, p))) return next();
     return res.status(403).render('admin/erro', { mensagem: 'Voce nao tem permissao para esta acao.' });
   };
+}
+
+// Restringe ao papel DEV, checado direto (nao via requirePermissao), pra deixar
+// explicito que a area /dev nao depende do sistema normal de permissoes/bypass.
+function requireDev(req, res, next) {
+  if (req.session && req.session.papel === 'DEV') return next();
+  return res.status(403).render('admin/erro', { mensagem: 'Esta área é restrita ao Dev.' });
 }
 
 // Registra uma acao administrativa (trilha de auditoria).
@@ -392,9 +399,9 @@ router.get('/desbloquear', async (req, res) => {
 });
 
 // ---------- Esqueci minha senha (fluxo para pessoas adicionadas sem senha definida) ----------
-// Usado tanto por quem esqueceu a senha quanto por conta nova cadastrada pelo script
-// scripts/criar-admin.js (que cria o usuário com senhaHash nulo, sem nenhuma senha temporária
-// para ninguém digitar ou saber).
+// Usado tanto por quem esqueceu a senha quanto por conta nova criada pelo painel
+// Dev (/dev/usuarios/novo), que cria o usuário com senhaHash nulo, sem nenhuma
+// senha temporária para ninguém digitar ou saber.
 
 const resetSenhaLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false });
 
@@ -507,8 +514,10 @@ router.get('/', async (req, res) => {
 });
 
 // ---------- Cursos ----------
-// Escrita: so quem tem 'cursos:gerenciar' (Secretaria, Coordenador, Dev).
-// Leitura: tambem quem tem 'secretaria:leitura' (Financeiro, modo consulta).
+// Criar curso novo: exclusivo de quem tem 'cursos:criar' (Coordenador, Dev).
+// Editar/excluir/ativar/FAQs de curso já existente: quem tem 'cursos:gerenciar'
+// (Secretaria, Coordenador, Dev — Secretaria NÃO cria curso novo, mas mexe em todo o resto).
+// Leitura: tambem quem tem 'painel:leitura' (Financeiro e Consulta, modo consulta).
 
 router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), async (req, res) => {
   const cursos = await prisma.curso.findMany({
@@ -633,7 +642,9 @@ router.post('/cursos/:id/ativar', requirePermissao('cursos:gerenciar'), async (r
 });
 
 // ---------- Turmas ----------
-// Mesma logica: escrita exige 'turmas:gerenciar'; leitura tambem aceita 'secretaria:leitura'.
+// CRUD completo (criar/editar/excluir/notas) exige 'turmas:gerenciar' — Secretaria,
+// Coordenador e Dev todos têm essa permissão, sem restrição de criação entre eles.
+// Leitura tambem aceita 'painel:leitura' (Financeiro e Consulta).
 
 router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
   const turmas = await prisma.turma.findMany({
@@ -647,7 +658,7 @@ router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), as
   res.render('admin/turmas', { turmas, statusTurma: STATUS_TURMA, flash: req.query.ok || null, erro: req.query.erro || null });
 });
 
-router.get('/turmas/nova', requirePermissao('turmas:criar'), async (req, res) => {
+router.get('/turmas/nova', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const cursos = await prisma.curso.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' } });
   res.render('admin/turma-form', { turma: null, aulas: [], cursos, statusTurma: STATUS_TURMA, erro: null });
 });
@@ -791,8 +802,9 @@ router.post('/turmas/:id/excluir', requirePermissao('turmas:gerenciar'), async (
 });
 
 // ---------- Inscricoes / Pagamentos ----------
-// A pagina e compartilhada: Secretaria (doacao/alimento), Coordenador e Financeiro (pagamento) todos entram,
-// mas os BOTOES de acao (confirmar/cancelar/estornar pagamento vs. marcar alimento entregue) sao
+// A pagina e compartilhada: Secretaria (doacao/alimento + confirmar pagamento),
+// Coordenador e Financeiro (pagamento) todos entram, mas os BOTOES de acao
+// (confirmar/cancelar/estornar pagamento vs. marcar alimento entregue) sao
 // controlados na view via res.locals.pode(...). Cada ação POST tem sua propria permissao especifica.
 
 router.get('/inscricoes', requirePermissao('doacao:confirmar', 'financeiro:aprovar', 'financeiro:leitura'), async (req, res) => {
@@ -816,8 +828,9 @@ router.get('/inscricoes', requirePermissao('doacao:confirmar', 'financeiro:aprov
   res.render('admin/inscricoes', { inscricoes, turmas, turmaId, formatBRL, statusBadge, flash: req.query.ok || null });
 });
 
-// Aprovacao de pagamento do curso: EXCLUSIVO de quem tem 'financeiro:aprovar' (Financeiro e Dev).
-// Secretaria e Coordenador NAO tem essa permissao (Coordenador so tem financeiro:leitura).
+// Aprovacao de pagamento do curso: quem tem 'financeiro:aprovar' (Financeiro e Dev)
+// OU 'pagamento:confirmar' (Secretaria). Cancelar e estornar continuam exclusivos
+// do Financeiro/Dev — Secretaria só confirma, não desfaz.
 router.post('/inscricoes/:id/confirmar', requirePermissao('financeiro:aprovar', 'pagamento:confirmar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
@@ -1199,8 +1212,10 @@ router.post('/alunos/:id/editar', requirePermissao('aluno:gerenciar'), async (re
   const depois = {
     nome, email, celular: celular || null, rg: rgFinal || null,
     cpfCnpj: cpfCnpjNormalizado,
-    passaporte: passaporteNormalizado || null,
-    paisOrigem: paisOrigemFinal || null,
+    // FIX: as variaveis certas sao passaporteDigitado/paisOrigemDigitado (calculadas acima).
+    // As antigas passaporteNormalizado/paisOrigemFinal nunca existiram e quebravam esta rota.
+    passaporte: passaporteDigitado || null,
+    paisOrigem: paisOrigemDigitado || null,
     escolaridade: escolaridade || null, escolaridadeSituacao: escolaridadeSituacao || null, genero: genero || null,
     cep: cep || null, logradouro: logradouro || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, uf: uf || null,
   };
@@ -1258,6 +1273,84 @@ router.post('/alunos/:id/matriculas/:matriculaId/confirmar-taxa', requirePermiss
   });
   await auditar(req, 'CONFIRMOU_TAXA_INSCRICAO', 'Matricula', m.id, null);
   res.redirect(`/alunos/${req.params.id}/matriculas?ok=` + encodeURIComponent('Taxa de inscricao confirmada. Aluno adicionado a turma como pendente.'));
+});
+
+// ---------- Painel do Dev (gestão de usuários admin) ----------
+// Acesso restrito ao papel DEV, checado direto (não via requirePermissao,
+// pra deixar explícito que isso não depende do sistema normal de permissões).
+
+router.get('/dev/usuarios', requireDev, async (req, res) => {
+  const usuarios = await prisma.usuario.findMany({
+    where: { papel: { in: PAPEIS_ADMIN } },
+    orderBy: [{ papel: 'asc' }, { nome: 'asc' }],
+  });
+  // Anexa a lista de permissões de cada um, só pra exibição na view
+  const linhas = usuarios.map((u) => ({ ...u, permissoes: listarPermissoes(u.papel) }));
+  res.render('admin/dev-usuarios', {
+    linhas,
+    papeis: PAPEIS_ADMIN,
+    meuId: req.session.usuarioId,
+    erro: req.query.erro || null,
+    ok: req.query.ok || null,
+  });
+});
+
+router.post('/dev/usuarios/:id/papel', requireDev, async (req, res) => {
+  // Bloqueio de autoedição: Dev não pode trocar o próprio papel por aqui.
+  if (req.params.id === req.session.usuarioId) {
+    return res.redirect('/dev/usuarios?erro=' + encodeURIComponent('Você não pode alterar o próprio papel.'));
+  }
+
+  const novoPapel = String(req.body.papel || '');
+  if (!PAPEIS_ADMIN.includes(novoPapel)) {
+    return res.redirect('/dev/usuarios?erro=' + encodeURIComponent('Papel inválido.'));
+  }
+
+  const usuario = await prisma.usuario.findUnique({ where: { id: req.params.id } });
+  if (!usuario || !PAPEIS_ADMIN.includes(usuario.papel)) {
+    return res.redirect('/dev/usuarios?erro=' + encodeURIComponent('Usuário não encontrado.'));
+  }
+
+  const papelAntigo = usuario.papel;
+  await prisma.usuario.update({ where: { id: usuario.id }, data: { papel: novoPapel } });
+  await auditar(req, 'ALTEROU_PAPEL_ADMIN', 'Usuario', usuario.id, { de: papelAntigo, para: novoPapel });
+
+  res.redirect('/dev/usuarios?ok=' + encodeURIComponent(`Papel de ${usuario.nome} alterado para ${novoPapel}.`));
+});
+
+router.get('/dev/usuarios/novo', requireDev, (req, res) => {
+  res.render('admin/dev-usuario-form', { papeis: PAPEIS_ADMIN, erro: null, valores: {} });
+});
+
+router.post('/dev/usuarios/novo', requireDev, async (req, res) => {
+  const nome = String(req.body.nome || '').trim();
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const papel = String(req.body.papel || '');
+
+  const reErro = (erro) => res.status(400).render('admin/dev-usuario-form', {
+    papeis: PAPEIS_ADMIN, erro, valores: { nome, email, papel },
+  });
+
+  if (nome.split(/\s+/).filter(Boolean).length < 2) return reErro('Informe o nome completo.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reErro('Informe um e-mail válido.');
+  if (!PAPEIS_ADMIN.includes(papel)) return reErro('Selecione um papel válido.');
+
+  try {
+    // Mesmo padrão do fluxo de "esqueci minha senha": sem senha temporária.
+    // O admin novo recebe um e-mail pra definir a própria senha.
+    const usuario = await prisma.usuario.create({
+      data: { nome, email, papel, senhaHash: null, emailVerificado: false },
+    });
+    const token = await criarTokenReset(usuario.id);
+    const link = `${ADMIN_URL}/redefinir-senha?token=${token}`;
+    await enviarEmailResetSenha(usuario.email, usuario.nome, link);
+
+    await auditar(req, 'CRIOU_ADMIN', 'Usuario', usuario.id, { nome, email, papel });
+    res.redirect('/dev/usuarios?ok=' + encodeURIComponent(`${nome} criado como ${papel}. Enviamos um e-mail pra ele definir a senha.`));
+  } catch (err) {
+    if (err.code === 'P2002') return reErro('Já existe uma conta com este e-mail.');
+    throw err;
+  }
 });
 
 module.exports = router;

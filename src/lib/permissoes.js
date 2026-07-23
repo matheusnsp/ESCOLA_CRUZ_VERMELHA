@@ -44,10 +44,11 @@ PERMISSOES.COORDENADOR = [
 
 const PAPEIS_ADMIN = ['SECRETARIA', 'COORDENADOR', 'FINANCEIRO', 'CONSULTA', 'DEV'];
 
-// DEV é o único bypass total agora (acesso de manutenção/emergência).
-function temPermissao(papel, perm) {
-  if (papel === 'DEV') return true;
-  return (PERMISSOES[papel] || []).includes(perm);
+// Retorna a lista de permissões "efetivas" de um papel, só pra EXIBIÇÃO
+// (não usar isso pra checar acesso — quem faz isso é temPermissao()).
+function listarPermissoes(papel) {
+  if (papel === 'DEV') return ['(acesso total — bypass, ignora a lista de permissões)'];
+  return PERMISSOES[papel] || [];
 }
 
-module.exports = { temPermissao, PAPEIS_ADMIN };
+module.exports = { temPermissao, PAPEIS_ADMIN, listarPermissoes };

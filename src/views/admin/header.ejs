@@ -13,6 +13,11 @@
     <% if (pode('financeiro:leitura') || pode('financeiro:aprovar')) { %>
       <a href="/financeiro">Financeiro</a>
     <% } %>  </nav>
+    <% if (admPapel === 'DEV') { %>
+      <a href="/dev/usuarios" class="<%= secaoAtiva === 'dev-usuarios' ? 'on' : '' %>">
+        <i class="fa-solid fa-user-shield"></i> Usuários Admin
+      </a>
+    <% } %>
   <form method="POST" action="/logout" class="adm-sair">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <span><%= usuario ? usuario.nome : '' %></span>
