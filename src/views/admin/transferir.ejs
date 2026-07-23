@@ -2,6 +2,7 @@
 <%- include('header', { ativo: 'inscricoes' }) %>
 <div class="adm-h1-row"><h1 class="adm-h1">Transferir aluno</h1><a href="/inscricoes" class="adm-link">← Voltar</a></div>
 <% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+
 <div class="adm-box" style="padding:24px;margin-bottom:18px;">
 <div class="transf-resumo">
 <div><span class="adm-mut">Aluno</span><strong><%= m.aluno.nome %></strong><small><%= m.aluno.email %></small></div>
@@ -9,26 +10,72 @@
 <div><span class="adm-mut">Plano / Valor atual</span><strong><%= m.plano === 'A_VISTA' ? 'À vista' : 'Parcelado' %></strong><small><%= formatBRL(m.valorCurso) %> + matrícula</small></div>
 <div><span class="adm-mut">Status</span><%- statusBadge(m.statusPagamento) %></div>
 </div>
+
+<% if (m.diferencaTransferencia) { %>
+  <% if (Number(m.diferencaTransferencia) > 0) { %>
+    <div style="margin-top:14px;background:#fee2e2;color:#991b1b;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;">
+      <i class="fa-solid fa-triangle-exclamation"></i> Já existe uma diferença pendente de pagamento de uma transferência anterior: <%= formatBRL(m.diferencaTransferencia) %>.
+    </div>
+  <% } else { %>
+    <div style="margin-top:14px;background:#f3e8ff;color:#6b21a8;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;">
+      <i class="fa-solid fa-triangle-exclamation"></i> Já existe um valor a reembolsar de uma transferência anterior: <%= formatBRL(Math.abs(Number(m.diferencaTransferencia))) %>.
+    </div>
+  <% } %>
+<% } %>
 </div>
+
 <form method="POST" action="/inscricoes/<%= m.id %>/transferir" class="adm-box" style="padding:24px;" onsubmit="return confirm('Confirmar a transferência deste aluno?')">
 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 <label style="display:flex;flex-direction:column;gap:7px;font-size:13px;font-weight:700;color:#37415a;max-width:560px;">
     Turma de destino
-<select name="turmaDestino" required style="border:1px solid #e7ebf1;border-radius:10px;padding:12px 13px;font:inherit;font-size:14px;">
+<select name="turmaDestino" id="turmaDestino" required style="border:1px solid #e7ebf1;border-radius:10px;padding:12px 13px;font:inherit;font-size:14px;">
 <option value="">— selecione —</option>
 <% turmas.forEach(function(t){ %>
-<option value="<%= t.id %>">
+<option value="<%= t.id %>"
+  data-preco-avista="<%= t.curso.precoAvista %>"
+  data-preco-cheio="<%= t.curso.precoCheio %>">
 <%= t.curso.nome %> — <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %> (<%= t.status %>)<%= t.cursoId === m.turma.cursoId ? ' · mesmo curso' : ' · outro curso' %>
 </option>
 <% }) %>
 </select>
 </label>
+
+<div id="diffAviso" style="font-size:13px;font-weight:600;margin-top:10px;min-height:18px;"></div>
+
 <p class="adm-mut" style="font-size:13px;line-height:1.6;max-width:560px;margin:14px 0 18px;">
-<i class="fa-solid fa-circle-info"></i> Mesmo curso: sem alteração de valores. Curso diferente: o valor é recalculado pelo preço do novo curso, e a diferença a cobrar/estornar aparece em seguida. A vaga no destino não é bloqueada, mesmo se estiver cheia.
+<i class="fa-solid fa-circle-info"></i> Mesmo curso: sem alteração de valores. Curso diferente: o valor é recalculado pelo preço do novo curso no mesmo plano do aluno. Se ficar mais caro, a diferença fica pendente de pagamento; se ficar mais barato, o valor pago a mais fica registrado para reembolso. A vaga no destino não é bloqueada, mesmo se estiver cheia.
 </p>
 <button type="submit" class="adm-btn" style="background:#c0392b;color:#fff;border:none;padding:12px 22px;border-radius:10px;font:inherit;font-size:14px;font-weight:700;cursor:pointer;">
     <i class="fa-solid fa-right-left"></i> Confirmar transferência
   </button>
   </form>
-  
+
+<script>
+(function () {
+  const valorAtual = <%- JSON.stringify(Number(m.valorCurso)) %>;
+  const plano = <%- JSON.stringify(m.plano) %>;
+  const select = document.getElementById('turmaDestino');
+  const aviso = document.getElementById('diffAviso');
+  const fmt = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  select.addEventListener('change', function () {
+    const opt = select.options[select.selectedIndex];
+    if (!opt.value) { aviso.textContent = ''; return; }
+    const preco = plano === 'A_VISTA' ? Number(opt.dataset.precoAvista) : Number(opt.dataset.precoCheio);
+    const diff = Math.round((preco - valorAtual) * 100) / 100;
+
+    if (diff > 0) {
+      aviso.style.color = '#c0392b';
+      aviso.innerHTML = 'Curso mais caro: ficará <strong>' + fmt(diff) + '</strong> pendente de pagamento após a transferência.';
+    } else if (diff < 0) {
+      aviso.style.color = '#166534';
+      aviso.innerHTML = 'Curso mais barato: <strong>' + fmt(Math.abs(diff)) + '</strong> ficará registrado a reembolsar.';
+    } else {
+      aviso.style.color = '#6b7280';
+      aviso.textContent = 'Mesmo valor, sem diferença a cobrar ou estornar.';
+    }
+  });
+})();
+</script>
+
   <%- include('foot') %>

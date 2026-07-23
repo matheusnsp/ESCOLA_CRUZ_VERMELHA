@@ -836,7 +836,12 @@ router.post('/inscricoes/:id/confirmar', requirePermissao('financeiro:aprovar', 
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
   await prisma.matricula.update({
     where: { id: m.id },
-    data: { statusPagamento: 'PAGO', confirmadaPor: req.session.usuarioId, confirmadaEm: new Date() },
+    data: {
+      statusPagamento: 'PAGO',
+      confirmadaPor: req.session.usuarioId,
+      confirmadaEm: new Date(),
+      diferencaTransferencia: null, // limpa o aviso de pendencia/reembolso ao confirmar
+    },
   });
   await auditar(req, 'CONFIRMOU_PAGAMENTO', 'Matricula', m.id, null);
   res.redirect(back(req, 'Pagamento confirmado.'));
@@ -968,13 +973,17 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     estornos,
   });
 });
+
 router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
 
   const motivo = String(req.body.motivo || '').trim() || 'Não informado';
 
-  await prisma.matricula.update({ where: { id: m.id }, data: { statusPagamento: 'ESTORNADO' } });
+  await prisma.matricula.update({
+    where: { id: m.id },
+    data: { statusPagamento: 'ESTORNADO', diferencaTransferencia: null },
+  });
   await auditar(req, 'ESTORNOU_PAGAMENTO', 'Matricula', m.id, { motivo });
   res.redirect(back(req, 'Pagamento estornado.'));
 });
@@ -1075,11 +1084,26 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
   const destino = await prisma.turma.findUnique({ where: { id: destinoId }, include: { curso: true } });
   if (!destino) return reRenderErro('Turma de destino nao encontrada.');
 
-  const dados = { turmaId: destino.id };
-  const msg = `Aluno transferido para "${destino.curso.nome}".`;
+  const valorAntigo = Number(m.valorCurso);
+  const valorNovo = m.plano === 'A_VISTA' ? Number(destino.curso.precoAvista) : Number(destino.curso.precoCheio);
+  const diferenca = Math.round((valorNovo - valorAntigo) * 100) / 100;
+
+  const dados = {
+    turmaId: destino.id,
+    valorCurso: valorNovo,
+    diferencaTransferencia: diferenca !== 0 ? diferenca : null,
+  };
+  let msg = `Aluno transferido para "${destino.curso.nome}".`;
+
+  if (diferenca > 0) {
+    dados.statusPagamento = 'PENDENTE';
+    msg += ` ${formatBRL(diferenca)} ficou pendente de pagamento.`;
+  } else if (diferenca < 0) {
+    msg += ` ${formatBRL(Math.abs(diferenca))} a reembolsar.`;
+  }
 
   await prisma.matricula.update({ where: { id: m.id }, data: dados });
-  await auditar(req, 'TRANSFERIU_ALUNO', 'Matricula', m.id, { de: m.turmaId, para: destino.id });
+  await auditar(req, 'TRANSFERIU_ALUNO', 'Matricula', m.id, { de: m.turmaId, para: destino.id, valorAntigo, valorNovo, diferenca });
   res.redirect('/inscricoes?ok=' + encodeURIComponent(msg));
 });
 
