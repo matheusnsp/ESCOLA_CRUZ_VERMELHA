@@ -13,7 +13,7 @@
   <% if (!linhas.length) { %>
     <p class="adm-vazio">Nenhum usuário admin cadastrado.</p>
   <% } else { %>
-    <table class="adm-table">
+    <table class="adm-table" style="vertical-align:middle;">
       <thead>
         <tr>
           <th>Nome</th>
@@ -25,20 +25,27 @@
       </thead>
       <tbody>
         <% linhas.forEach(function(u) { %>
-          <tr>
-            <td><strong><%= u.nome %></strong></td>
-            <td><small class="adm-mut"><%= u.email %></small></td>
-            <td style="white-space:nowrap;"><span class="badge ok"><%= u.papel %></span></td>
-            <td>
+          <tr style="vertical-align:middle;">
+            <td style="vertical-align:middle;"><strong><%= u.nome %></strong></td>
+            <td style="vertical-align:middle;"><small class="adm-mut"><%= u.email %></small></td>
+            <td style="vertical-align:middle;white-space:nowrap;"><span class="badge ok"><%= u.papel %></span></td>
+            <td style="vertical-align:middle;">
               <div style="display:flex;flex-wrap:wrap;gap:4px;">
                 <% u.permissoes.forEach(function(p) { %>
                   <code style="font-size:11px;background:#f0f2f5;border-radius:6px;padding:2px 6px;white-space:nowrap;"><%= p %></code>
                 <% }) %>
               </div>
             </td>
-            <td class="adm-acoes" style="white-space:nowrap;">
+            <td style="vertical-align:middle;white-space:nowrap;" class="adm-acoes">
               <% if (u.id === meuId) { %>
-                <i class="fa-solid fa-circle-user" title="Você" style="color:#adb5bd;font-size:18px;"></i>
+                <form style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;">
+                  <select name="papel" style="font-size:13px;min-width:130px;" disabled>
+                    <% papeis.forEach(function(p) { %>
+                      <option value="<%= p %>" <%= p === u.papel ? 'selected' : '' %>><%= p %></option>
+                    <% }) %>
+                  </select>
+                  <button type="button" class="adm-mini" disabled title="Você não pode alterar o próprio papel"><i class="fa-solid fa-check"></i></button>
+                </form>
               <% } else { %>
                 <form method="POST" action="/dev/usuarios/<%= u.id %>/papel" style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
