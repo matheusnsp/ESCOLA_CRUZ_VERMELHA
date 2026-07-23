@@ -7,7 +7,7 @@
 <div class="transf-resumo">
 <div><span class="adm-mut">Aluno</span><strong><%= m.aluno.nome %></strong><small><%= m.aluno.email %></small></div>
 <div><span class="adm-mut">Turma atual</span><strong><%= m.turma.curso.nome %></strong><small><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %><% if (m.turma.aulas && m.turma.aulas.length) { %> · <%= m.turma.aulas[0].horario %><% } %></small></div>
-<div><span class="adm-mut">Plano / Valor atual</span><strong><%= m.plano === 'A_VISTA' ? 'À vista' : 'Parcelado' %></strong><small><%= formatBRL(m.valorCurso) %> + matrícula</small></div>
+<div><span class="adm-mut">Plano / Valor atual</span><strong><%= m.plano === 'A_VISTA' ? 'À vista' : 'Parcelado' %></strong><small><%= formatBRL(m.valorCurso) %> (curso + matrícula)</small></div>
 <div><span class="adm-mut">Status</span><%- statusBadge(m.statusPagamento) %></div>
 </div>
 
@@ -33,7 +33,8 @@
 <% turmas.forEach(function(t){ %>
 <option value="<%= t.id %>"
   data-preco-avista="<%= t.curso.precoAvista %>"
-  data-preco-cheio="<%= t.curso.precoCheio %>">
+  data-preco-cheio="<%= t.curso.precoCheio %>"
+  data-taxa="<%= t.curso.taxaMatricula != null ? t.curso.taxaMatricula : 100 %>">
 <%= t.curso.nome %> — <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %> (<%= t.status %>)<%= t.cursoId === m.turma.cursoId ? ' · mesmo curso' : ' · outro curso' %>
 </option>
 <% }) %>
@@ -43,7 +44,7 @@
 <div id="diffAviso" style="font-size:13px;font-weight:600;margin-top:10px;min-height:18px;"></div>
 
 <p class="adm-mut" style="font-size:13px;line-height:1.6;max-width:560px;margin:14px 0 18px;">
-<i class="fa-solid fa-circle-info"></i> Mesmo curso: sem alteração de valores. Curso diferente: o valor é recalculado pelo preço do novo curso no mesmo plano do aluno. Se ficar mais caro, a diferença fica pendente de pagamento; se ficar mais barato, o valor pago a mais fica registrado para reembolso. A vaga no destino não é bloqueada, mesmo se estiver cheia.
+<i class="fa-solid fa-circle-info"></i> Mesmo curso: sem alteração de valores. Curso diferente: o valor é recalculado pelo preço do novo curso (+ taxa de matrícula) no mesmo plano do aluno. Se ficar mais caro, a diferença fica pendente de pagamento; se ficar mais barato, o valor pago a mais fica registrado para reembolso. A vaga no destino não é bloqueada, mesmo se estiver cheia.
 </p>
 <button type="submit" class="adm-btn" style="background:#c0392b;color:#fff;border:none;padding:12px 22px;border-radius:10px;font:inherit;font-size:14px;font-weight:700;cursor:pointer;">
     <i class="fa-solid fa-right-left"></i> Confirmar transferência
@@ -52,7 +53,7 @@
 
 <script>
 (function () {
-  const valorAtual = <%- JSON.stringify(Number(m.valorCurso)) %>;
+  const valorAtual = <%- JSON.stringify(Number(m.valorCurso)) %>; // já inclui a taxa de matrícula (curso + taxa)
   const plano = <%- JSON.stringify(m.plano) %>;
   const select = document.getElementById('turmaDestino');
   const aviso = document.getElementById('diffAviso');
@@ -61,7 +62,9 @@
   select.addEventListener('change', function () {
     const opt = select.options[select.selectedIndex];
     if (!opt.value) { aviso.textContent = ''; return; }
-    const preco = plano === 'A_VISTA' ? Number(opt.dataset.precoAvista) : Number(opt.dataset.precoCheio);
+    const precoCurso = plano === 'A_VISTA' ? Number(opt.dataset.precoAvista) : Number(opt.dataset.precoCheio);
+    const taxa = Number(opt.dataset.taxa);
+    const preco = precoCurso + taxa; // soma a taxa pra ficar na mesma base do valorAtual (curso + taxa)
     const diff = Math.round((preco - valorAtual) * 100) / 100;
 
     if (diff > 0) {
