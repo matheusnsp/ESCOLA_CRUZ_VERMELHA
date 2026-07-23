@@ -1164,26 +1164,60 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
     where: { id: req.params.id },
     include: { turma: { include: { curso: true } } },
   });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
+
+  if (!m) {
+    return res.status(404).render('admin/erro', {
+      mensagem: 'Inscricao nao encontrada.',
+    });
+  }
 
   const destinoId = String(req.body.turmaDestino || '');
+
   const reRenderErro = async (erro) => {
     const turmas = await prisma.turma.findMany({
       where: { id: { not: m.turmaId } },
       orderBy: { criadoEm: 'desc' },
-      include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
+      include: {
+        curso: true,
+        aulas: {
+          orderBy: { data: 'asc' },
+          take: 1,
+        },
+      },
     });
-    const mCompleto = await prisma.matricula.findUnique({ where: { id: m.id }, include: { aluno: true, turma: { include: { curso: true } } } });
-    return res.status(400).render('admin/transferir', { m: mCompleto, turmas, formatBRL, erro });
+
+    const mCompleto = await prisma.matricula.findUnique({
+      where: { id: m.id },
+      include: {
+        aluno: true,
+        turma: { include: { curso: true } },
+      },
+    });
+
+    return res.status(400).render('admin/transferir', {
+      m: mCompleto,
+      turmas,
+      formatBRL,
+      erro,
+    });
   };
 
-  if (!destinoId || destinoId === m.turmaId) return reRenderErro('Selecione uma turma de destino diferente da atual.');
+  if (!destinoId || destinoId === m.turmaId) {
+    return reRenderErro('Selecione uma turma de destino diferente da atual.');
+  }
 
-  const destino = await prisma.turma.findUnique({ where: { id: destinoId }, include: { curso: true } });
-  if (!destino) return reRenderErro('Turma de destino nao encontrada.');
+  const destino = await prisma.turma.findUnique({
+    where: { id: destinoId },
+    include: { curso: true },
+  });
 
+  if (!destino) {
+    return reRenderErro('Turma de destino nao encontrada.');
+  }
+
+  // A transferência sempre considera o preço normal do curso.
   const valorAntigo = Number(m.valorCurso);
-  const valorNovo = m.plano === 'A_VISTA' ? Number(destino.curso.precoAvista) : Number(destino.curso.precoCheio);
+  const valorNovo = Number(destino.curso.precoCheio);
   const diferenca = Math.round((valorNovo - valorAntigo) * 100) / 100;
 
   const dados = {
@@ -1191,17 +1225,29 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
     valorCurso: valorNovo,
     diferencaTransferencia: diferenca !== 0 ? diferenca : null,
   };
+
   let msg = `Aluno transferido para "${destino.curso.nome}".`;
 
   if (diferenca > 0) {
     dados.statusPagamento = 'PENDENTE';
-    msg += ` ${formatBRL(diferenca)} ficou pendente de pagamento.`;
+    msg += ` Diferença de ${formatBRL(diferenca)} registrada como pendente de pagamento.`;
   } else if (diferenca < 0) {
-    msg += ` ${formatBRL(Math.abs(diferenca))} a reembolsar.`;
+    msg += ` Reembolso de ${formatBRL(Math.abs(diferenca))} registrado.`;
   }
 
-  await prisma.matricula.update({ where: { id: m.id }, data: dados });
-  await auditar(req, 'TRANSFERIU_ALUNO', 'Matricula', m.id, { de: m.turmaId, para: destino.id, valorAntigo, valorNovo, diferenca });
+  await prisma.matricula.update({
+    where: { id: m.id },
+    data: dados,
+  });
+
+  await auditar(req, 'TRANSFERIU_ALUNO', 'Matricula', m.id, {
+    de: m.turmaId,
+    para: destino.id,
+    valorAntigo,
+    valorNovo,
+    diferenca,
+  });
+
   res.redirect('/inscricoes?ok=' + encodeURIComponent(msg));
 });
 
