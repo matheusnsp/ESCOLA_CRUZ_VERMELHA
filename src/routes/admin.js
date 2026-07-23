@@ -13,7 +13,7 @@ const { criarCodigo2fa, verificarCodigo2fa, consumirToken, criarTokenDesbloqueio
 const { enviarCodigo2fa, enviarAlertaLoginSecretaria, enviarLinkDesbloqueio, enviarEmailResetSenha } = require('../lib/email');
 const { ESCOLARIDADES: ESCOLARIDADES_ALUNO, SITUACOES_ESCOLARIDADE, GENEROS, UFS } = require('../lib/validation');
 const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
-const { formatBRL } = require('../lib/matricula');
+const { formatBRL, calcularValores } = require('../lib/matricula');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 const { temPermissao, PAPEIS_ADMIN, listarPermissoes } = require('../lib/permissoes');
 
@@ -1216,10 +1216,13 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
   }
 
   // A transferência recalcula pelo preço do novo curso, no MESMO PLANO do aluno.
+  // valorAntigo (m.valorCurso) já inclui a taxa de matrícula, pois é assim que o
+  // checkout do aluno grava esse campo (routes/publico.js: valorCurso = total).
+  // Por isso o valorNovo precisa ser calculado na MESMA BASE — curso + taxa —
+  // usando calcularValores, e não só o preço puro do curso (precoAvista/precoCheio).
   const valorAntigo = Number(m.valorCurso);
-  const valorNovo = m.plano === 'A_VISTA'
-    ? Number(destino.curso.precoAvista)
-    : Number(destino.curso.precoCheio);
+  const valoresDestino = await calcularValores(destino.curso, m.plano, m.alunoId);
+  const valorNovo = Number(valoresDestino.total);
   const diferenca = Math.round((valorNovo - valorAntigo) * 100) / 100;
 
   const dados = {
