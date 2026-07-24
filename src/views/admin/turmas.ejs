@@ -12,6 +12,8 @@
 <% if (erro)  { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
 
 <%
+  const LIMITE_GRUPO = 5;
+
   const GRUPOS = [
     { chave: 'aberta',     label: 'Abertas',     icone: 'fa-door-open'    },
     { chave: 'confirmada', label: 'Confirmadas', icone: 'fa-circle-check' },
@@ -26,7 +28,41 @@
     if (porStatus[s] !== undefined) porStatus[s].push(t);
     else { if (!porStatus[s]) porStatus[s] = []; porStatus[s].push(t); }
   });
+
+  const totalInscritos = turmas.reduce((soma, t) => soma + (t._count?.matriculas || 0), 0);
+  const totalVagas     = turmas.reduce((soma, t) => soma + (t.vagas || 0), 0);
 %>
+
+<!-- ===== Resumo ===== -->
+<div class="adm-cards">
+  <div class="adm-stat">
+    <span><%= turmas.length %></span>
+    <small><i class="fa-solid fa-layer-group"></i> Turmas no total</small>
+  </div>
+  <div class="adm-stat ok">
+    <span><%= porStatus.aberta.length %></span>
+    <small><i class="fa-solid fa-door-open"></i> Abertas</small>
+  </div>
+  <div class="adm-stat">
+    <span><%= porStatus.confirmada.length %></span>
+    <small><i class="fa-solid fa-circle-check"></i> Confirmadas</small>
+  </div>
+  <div class="adm-stat warn">
+    <span><%= porStatus.cancelada.length + porStatus.encerrada.length %></span>
+    <small><i class="fa-solid fa-box-archive"></i> Canceladas + Encerradas</small>
+  </div>
+</div>
+
+<div class="adm-cards" style="grid-template-columns:repeat(2,1fr); margin-bottom:26px;">
+  <div class="adm-stat">
+    <span><%= totalInscritos %>/<%= totalVagas %></span>
+    <small><i class="fa-solid fa-user-group"></i> Inscritos / vagas (todas as turmas)</small>
+  </div>
+  <div class="adm-stat">
+    <span><%= totalVagas ? Math.round((totalInscritos / totalVagas) * 100) : 0 %>%</span>
+    <small><i class="fa-solid fa-chart-simple"></i> Ocupação média</small>
+  </div>
+</div>
 
 <% if (!turmas.length) { %>
   <div class="adm-box">
@@ -39,7 +75,7 @@
   <% if (!lista.length) { return; } %>
   <% const recolhido = (g.chave === 'encerrada' || g.chave === 'cancelada'); %>
 
-  <details class="adm-box adm-turmas-grupo" <%= recolhido ? '' : 'open' %>>
+  <details class="adm-box adm-turmas-grupo" id="grupo-<%= g.chave %>" <%= recolhido ? '' : 'open' %> style="margin-bottom:20px;">
     <summary class="adm-grupo-summary">
       <span class="adm-grupo-left">
         <i class="fa-solid <%= g.icone %> st-ico-<%= g.chave %>"></i>
@@ -54,8 +90,8 @@
         <tr><th>Curso</th><th>Início</th><th>Dias / Horário</th><th>Inscritos</th><th>Status</th><th></th></tr>
       </thead>
       <tbody>
-        <% lista.forEach(function(t) { %>
-        <tr>
+        <% lista.forEach(function(t, i) { %>
+        <tr<% if (i >= LIMITE_GRUPO) { %> class="adm-extra"<% } %>>
           <td><strong><%= t.curso.nome %></strong></td>
           <td><%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %></td>
           <td>
@@ -85,7 +121,25 @@
         <% }) %>
       </tbody>
     </table>
+
+    <% if (lista.length > LIMITE_GRUPO) { %>
+      <button type="button" class="adm-vermais" data-grupo="grupo-<%= g.chave %>" data-extra="<%= lista.length - LIMITE_GRUPO %>">
+        Ver mais <%= lista.length - LIMITE_GRUPO %>
+      </button>
+    <% } %>
   </details>
 <% }) %>
+
+<script>
+  document.querySelectorAll('.adm-vermais').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var box = document.getElementById(btn.dataset.grupo);
+      var extra = btn.dataset.extra;
+      var abrindo = !box.classList.contains('aberto');
+      box.classList.toggle('aberto');
+      btn.textContent = abrindo ? 'Ver menos' : ('Ver mais ' + extra);
+    });
+  });
+</script>
 
 <%- include('foot') %>
