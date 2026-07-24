@@ -86,7 +86,11 @@ function parseInteiro(v, { min = 0 } = {}) {
 
 // Auxiliar para retornar a pagina anterior de forma segura com mensagem de sucesso
 function back(req, msg) {
-  const url = req.get('Referer') || '/inscricoes';
+  // Prioriza o campo oculto "turma" que os forms de /inscricoes já mandam
+  // (mantém o filtro mesmo se o navegador nao enviar o Referer, ex.: bloqueadores
+  // de privacidade/rastreamento). So cai pro Referer se o form nao mandou turma.
+  const turma = req.body && req.body.turma ? String(req.body.turma) : null;
+  const url = turma ? `/inscricoes?turma=${encodeURIComponent(turma)}` : (req.get('Referer') || '/inscricoes');
   const queryConector = url.includes('?') ? '&' : '?';
   return `${url}${queryConector}ok=${encodeURIComponent(msg)}`;
 }
