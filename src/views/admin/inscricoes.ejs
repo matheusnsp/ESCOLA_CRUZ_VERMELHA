@@ -83,22 +83,24 @@
                 <%- statusBadge(m.statusPagamento) %>
               <% } %>
             </td>            <td class="adm-acoes">
-              <% if (pode('turmas:gerenciar') || pode('secretaria:leitura')) { %>
-                <a href="/inscricoes/<%= m.id %>/nota" class="adm-mini" title="Lançar nota"><i class="fa-solid fa-pen-to-square"></i></a>
-              <% } %>
-              <% if (pode('aluno:mover_turma')) { %>
-                <a href="/inscricoes/<%= m.id %>/transferir" class="adm-mini" title="Transferir de turma"><i class="fa-solid fa-right-left"></i></a>
-              <% } %>
-              <% if (pode('financeiro:aprovar')) { %>
-                <% if (m.statusPagamento === 'PENDENTE') { %>
-                  <form method="POST" action="/inscricoes/<%= m.id %>/confirmar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %><button class="adm-mini ok" title="Confirmar pagamento"><i class="fa-solid fa-check"></i></button></form>
-                  <form method="POST" action="/inscricoes/<%= m.id %>/cancelar" onsubmit="return confirm('Cancelar esta inscrição?')"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %><button class="adm-mini danger" title="Cancelar inscrição"><i class="fa-solid fa-ban"></i></button></form>
-                <% } else if (m.statusPagamento === 'PAGO') { %>
-                  <form method="POST" action="/inscricoes/<%= m.id %>/estornar" onsubmit="return confirm('Estornar este pagamento?')"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %><button class="adm-mini danger" title="Estornar"><i class="fa-solid fa-rotate-left"></i></button></form>
-                <% } else { %>
-                  <form method="POST" action="/inscricoes/<%= m.id %>/confirmar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %><button class="adm-mini" title="Reativar como pago"><i class="fa-solid fa-arrow-rotate-right"></i></button></form>
+              <div class="adm-acoes-wrap">
+                <% if (pode('turmas:gerenciar') || pode('secretaria:leitura')) { %>
+                  <a href="/inscricoes/<%= m.id %>/nota" class="adm-mini" title="Lançar nota"><i class="fa-solid fa-pen-to-square"></i></a>
                 <% } %>
-              <% } %>
+                <% if (pode('aluno:mover_turma')) { %>
+                  <a href="/inscricoes/<%= m.id %>/transferir" class="adm-mini" title="Transferir de turma"><i class="fa-solid fa-right-left"></i></a>
+                <% } %>
+                <% if (pode('financeiro:aprovar')) { %>
+                  <% if (m.statusPagamento === 'PENDENTE') { %>
+                    <form method="POST" action="/inscricoes/<%= m.id %>/confirmar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %><button class="adm-mini ok" title="Confirmar pagamento"><i class="fa-solid fa-check"></i></button></form>
+                    <form method="POST" action="/inscricoes/<%= m.id %>/cancelar" onsubmit="return confirm('Cancelar esta inscrição?')"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %><button class="adm-mini danger" title="Cancelar inscrição"><i class="fa-solid fa-ban"></i></button></form>
+                  <% } else if (m.statusPagamento === 'PAGO') { %>
+                    <form method="POST" action="/inscricoes/<%= m.id %>/estornar" onsubmit="return confirm('Estornar este pagamento?')"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %><button class="adm-mini danger" title="Estornar"><i class="fa-solid fa-rotate-left"></i></button></form>
+                  <% } else { %>
+                    <form method="POST" action="/inscricoes/<%= m.id %>/confirmar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %><button class="adm-mini" title="Reativar como pago"><i class="fa-solid fa-arrow-rotate-right"></i></button></form>
+                  <% } %>
+                <% } %>
+              </div>
             </td>
           </tr>
         <% }) %>

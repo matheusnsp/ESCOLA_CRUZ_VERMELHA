@@ -92,7 +92,8 @@ body.adm {
 .adm-table tbody tr:hover { background:#fafbfd; }
 .adm-table a { color:var(--vermelho); text-decoration:none; font-weight:600; }
 
-/* Centraliza verticalmente só a coluna de ações, mesmo com linhas mais altas */
+.adm-acoes-wrap { display:flex; gap:7px; align-items:center; height:100%; }
+.adm-acoes-wrap form { margin:0; }
 .adm-table-fixa td.adm-acoes { vertical-align: middle; }
 
 /* ===== Selos ===== */
@@ -108,8 +109,7 @@ body.adm {
 .badge.st-encerrada { background:#eef1f5; color:#64748b; }
 
 /* ===== Ações em linha ===== */
-.adm-acoes { display:flex; gap:7px; align-items:center; }
-.adm-acoes form { margin:0; }
+
 .adm-mini {
   background:#fff; border:1px solid var(--linha); color:#475569; width:36px; height:36px;
   border-radius:9px; display:inline-grid; place-items:center; cursor:pointer; text-decoration:none; font-size:13px; transition:.12s;
