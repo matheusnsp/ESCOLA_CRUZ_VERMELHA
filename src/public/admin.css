@@ -92,7 +92,15 @@ body.adm {
 .adm-table tbody tr:hover { background:#fafbfd; }
 .adm-table a { color:var(--vermelho); text-decoration:none; font-weight:600; }
 
-.adm-acoes-wrap { display:flex; gap:7px; align-items:center; height:100%; }
+.adm-acoes-wrap {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  align-items:center;
+  justify-content:center;
+  height:100%;
+  max-width:84px;
+}
 .adm-acoes-wrap form { margin:0; }
 .adm-table-fixa td.adm-acoes { vertical-align: middle; }
 
