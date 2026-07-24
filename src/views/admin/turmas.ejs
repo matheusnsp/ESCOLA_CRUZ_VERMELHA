@@ -15,10 +15,10 @@
   const LIMITE_GRUPO = 5;
 
   const GRUPOS = [
-    { chave: 'aberta',     label: 'Abertas',     icone: 'fa-door-open'    },
-    { chave: 'confirmada', label: 'Confirmadas', icone: 'fa-circle-check' },
-    { chave: 'cancelada',  label: 'Canceladas',  icone: 'fa-ban'          },
-    { chave: 'encerrada',  label: 'Encerradas',  icone: 'fa-box-archive'  },
+    { chave: 'aberta',     label: 'Abertas',     icone: 'fa-lock-open',   badge: 'ok'   },
+    { chave: 'confirmada', label: 'Confirmadas', icone: 'fa-circle-check', badge: 'ok'  },
+    { chave: 'cancelada',  label: 'Canceladas',  icone: 'fa-ban',          badge: 'canc' },
+    { chave: 'encerrada',  label: 'Encerradas',  icone: 'fa-box-archive', badge: 'mut'  },
   ];
 
   const porStatus = {};
@@ -41,7 +41,7 @@
   </div>
   <div class="adm-stat ok">
     <span><%= porStatus.aberta.length %></span>
-    <small><i class="fa-solid fa-door-open"></i> Abertas</small>
+    <small><i class="fa-solid fa-lock-open"></i> Abertas</small>
   </div>
   <div class="adm-stat">
     <span><%= porStatus.confirmada.length %></span>
@@ -73,17 +73,12 @@
 <% GRUPOS.forEach(function(g) { %>
   <% const lista = porStatus[g.chave] || []; %>
   <% if (!lista.length) { return; } %>
-  <% const recolhido = (g.chave === 'encerrada' || g.chave === 'cancelada'); %>
 
-  <details class="adm-box adm-turmas-grupo" id="grupo-<%= g.chave %>" <%= recolhido ? '' : 'open' %> style="margin-bottom:20px;">
-    <summary class="adm-grupo-summary">
-      <span class="adm-grupo-left">
-        <i class="fa-solid <%= g.icone %> st-ico-<%= g.chave %>"></i>
-        <strong><%= g.label %></strong>
-        <span class="adm-grupo-count"><%= lista.length %></span>
-      </span>
-      <i class="fa-solid fa-chevron-down adm-grupo-caret"></i>
-    </summary>
+  <div class="adm-box" id="grupo-<%= g.chave %>" style="margin-bottom:26px;">
+    <div class="adm-box-head">
+      <h2><i class="fa-solid <%= g.icone %>"></i> <%= g.label %></h2>
+      <span class="badge <%= g.badge %>"><%= lista.length %> turma(s)</span>
+    </div>
 
     <table class="adm-table">
       <thead>
@@ -127,7 +122,7 @@
         Ver mais <%= lista.length - LIMITE_GRUPO %>
       </button>
     <% } %>
-  </details>
+  </div>
 <% }) %>
 
 <script>

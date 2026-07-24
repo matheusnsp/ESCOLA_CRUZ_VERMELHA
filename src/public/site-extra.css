@@ -668,7 +668,6 @@ body > section {
   box-shadow: 0 6px 16px rgba(204,0,0,0.28);
 }
 .cd-cta:hover { background: #a30000; transform: translateY(-1px); }
-/* .cd-cta:hover { background: #a30000; } */
 .cd-cta:focus-visible { outline: 3px solid rgba(204,0,0,.35); outline-offset: 2px; }
 
 /* Responsivo */
@@ -788,74 +787,11 @@ body > section {
 .cd-outros .cd-h2 { border-bottom: none; padding-bottom: 0; margin: 26px 0 20px; color: #16191d; font-size: 22px; letter-spacing: -0.01em; text-transform: none; }
 .cd-outros-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
 @media (max-width: 900px) { .cd-outros-grid { grid-template-columns: 1fr; } }
-/* ===== Grupos de turmas por status ===== */
 
-.adm-turmas-grupo {
-  margin-bottom: 12px;
-}
+/* ===== Grupos de turmas por status (mesmo padrão do Financeiro) ===== */
 
-/* Remove o marcador nativo do <details> */
-.adm-grupo-summary { list-style: none; }
-.adm-grupo-summary::-webkit-details-marker { display: none; }
-
-.adm-grupo-summary {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  margin: -1px -1px 0;
-  border-radius: 12px 12px 0 0;
-  background: #f7f8fa;
-  border-bottom: 1px solid #e8edf3;
-  user-select: none;
-  transition: background 0.15s;
-}
-.adm-turmas-grupo:not([open]) .adm-grupo-summary {
-  border-radius: 12px;
-  border-bottom: none;
-}
-.adm-grupo-summary:hover { background: #f0f4f8; }
-
-.adm-grupo-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  font-weight: 700;
-  color: #1f2733;
-}
-
+/* Cor do ícone no título de cada grupo */
 .st-ico-aberta     { color: #16a34a; }
 .st-ico-confirmada { color: #1a365d; }
 .st-ico-cancelada  { color: #991b1b; }
 .st-ico-encerrada  { color: #718096; }
-
-.adm-grupo-count {
-  background: #e2e8f0;
-  color: #4a5568;
-  font-size: 11px;
-  font-weight: 800;
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.adm-grupo-caret {
-  color: #a0aec0;
-  font-size: 12px;
-  transition: transform 0.2s ease;
-}
-details[open] .adm-grupo-caret {
-  transform: rotate(180deg);
-}
-
-.adm-turmas-grupo:not([open]) {
-  opacity: 0.72;
-}
-.adm-turmas-grupo:not([open]):hover {
-  opacity: 1;
-}
-
-.adm-turmas-grupo .adm-table {
-  margin-top: 0;
-}
