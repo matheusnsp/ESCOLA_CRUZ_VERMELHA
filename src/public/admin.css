@@ -88,6 +88,7 @@ body.adm {
 }
 .adm-table td { padding:16px 18px; border-bottom:1px solid var(--linha2); font-size:14px; vertical-align:middle; }
 .adm-table tr:last-child td { border-bottom:none; }
+.adm-table th:last-child { text-align:left; }
 .adm-table tbody tr { transition:background .1s; }
 .adm-table tbody tr:hover { background:#fafbfd; }
 .adm-table a { color:var(--vermelho); text-decoration:none; font-weight:600; }
