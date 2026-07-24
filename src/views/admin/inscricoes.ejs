@@ -25,7 +25,16 @@
   <% if (!inscricoes.length) { %>
     <p class="adm-vazio">Nenhuma inscrição<%= turmaId ? ' nesta turma' : '' %>.</p>
   <% } else { %>
-    <table class="adm-table">
+    <table class="adm-table adm-table-fixa">
+      <colgroup>
+        <col style="width:18%">
+        <col style="width:28%">
+        <col style="width:12%">
+        <col style="width:12%">
+        <col style="width:8%">
+        <col style="width:10%">
+        <col style="width:12%">
+      </colgroup>
       <thead><tr><th>Aluno</th><th>Curso / Turma</th><th>Plano</th><th>Valor</th><th>Alimento</th><th>Status</th><th>Ações</th></tr></thead>
       <tbody>
         <% inscricoes.forEach(function(m){ %>

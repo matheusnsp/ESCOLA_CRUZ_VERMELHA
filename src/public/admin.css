@@ -92,6 +92,10 @@ body.adm {
 .adm-table tbody tr:hover { background:#fafbfd; }
 .adm-table a { color:var(--vermelho); text-decoration:none; font-weight:600; }
 
+/* ===== Tabela com largura de colunas fixa (evita quebra desalinhada) ===== */
+.adm-table-fixa { table-layout: fixed; }
+.adm-table-fixa td, .adm-table-fixa th { vertical-align: top; }
+
 /* ===== Selos ===== */
 .badge { display:inline-block; font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px; letter-spacing:.3px; }
 .badge.ok { background:#dcfce7; color:#15803d; }
