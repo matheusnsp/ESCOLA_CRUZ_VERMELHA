@@ -93,15 +93,14 @@ body.adm {
 .adm-table a { color:var(--vermelho); text-decoration:none; font-weight:600; }
 
 .adm-acoes-wrap {
-  display:flex;
-  flex-wrap:wrap;
+  display:grid;
+  grid-template-columns:repeat(2, 36px);
   gap:6px;
   align-items:center;
   justify-content:center;
   height:100%;
-  max-width:84px;
 }
-.adm-acoes-wrap form { margin:0; }
+.adm-acoes-wrap form { margin:0; display:flex; }
 .adm-table-fixa td.adm-acoes { vertical-align: middle; }
 
 /* ===== Selos ===== */
