@@ -663,7 +663,10 @@ router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), as
 });
 
 router.get('/turmas/nova', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  const cursos = await prisma.curso.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' } });
+  const cursos = await prisma.curso.findMany({
+    where: req.session.papel === 'DEV' ? {} : { ativo: true },
+    orderBy: { nome: 'asc' },
+  });
   res.render('admin/turma-form', { turma: null, aulas: [], cursos, statusTurma: STATUS_TURMA, erro: null });
 });
 
@@ -707,15 +710,26 @@ function lerTurmaDoForm(body) {
 
 router.post('/turmas', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const { dados, aulas, erro } = lerTurmaDoForm(req.body);
-  if (erro) {
-    const cursos = await prisma.curso.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' } });
-    return res.status(400).render('admin/turma-form', { turma: req.body, aulas: [], cursos, statusTurma: STATUS_TURMA, erro });
+
+  const reRenderErro = async (msg) => {
+    const cursos = await prisma.curso.findMany({
+      where: req.session.papel === 'DEV' ? {} : { ativo: true },
+      orderBy: { nome: 'asc' },
+    });
+    return res.status(400).render('admin/turma-form', { turma: req.body, aulas: [], cursos, statusTurma: STATUS_TURMA, erro: msg });
+  };
+
+  if (erro) return reRenderErro(erro);
+
+  // Só o Dev pode criar turma vinculada a um curso inativo.
+  if (req.session.papel !== 'DEV') {
+    const curso = await prisma.curso.findUnique({ where: { id: dados.cursoId } });
+    if (!curso) return reRenderErro('Curso não encontrado.');
+    if (!curso.ativo) return reRenderErro('Este curso está inativo. Apenas o Dev pode criar turmas para cursos inativos.');
   }
+
   const turma = await prisma.turma.create({
-    data: {
-      ...dados,
-      aulas: { create: aulas },
-    },
+    data: { ...dados, aulas: { create: aulas } },
   });
   await auditar(req, 'CRIOU_TURMA', 'Turma', turma.id, { cursoId: dados.cursoId });
   res.redirect('/turmas?ok=Turma criada.');

@@ -133,6 +133,12 @@ model Matricula {
 model Pagamento {
   id              String          @id @default(uuid())
   matriculaId     String
+
+  // NOVO: distingue se este Pagamento é a taxa de inscrição ou o valor do
+  // curso. O webhook usa este campo para saber se deve atualizar
+  // Matricula.taxaConfirmada ou Matricula.statusPagamento quando confirma.
+  tipo            TipoPagamento   @default(CURSO)
+
   gateway         String?
   gatewayRef      String?
   gatewayHash     String?
@@ -245,6 +251,12 @@ enum StatusPagamento {
   CANCELADO
   ESTORNADO
   PARCELADO
+}
+
+// NOVO: o que este Pagamento representa dentro da Matricula.
+enum TipoPagamento {
+  TAXA
+  CURSO
 }
 
 enum SituacaoAcademica {

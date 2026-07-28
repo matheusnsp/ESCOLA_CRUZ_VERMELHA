@@ -11,11 +11,19 @@ const {
 
 const router = express.Router();
 
+// Cursos inativos ficam visíveis e matriculáveis apenas para o papel DEV.
+// Serve para testar um curso "em construção" sem publicá-lo pros alunos.
+function filtroVisibilidadeCurso(usuario) {
+  if (usuario?.papel === 'DEV') return {};
+  return { ativo: true };
+}
+
 router.get('/', async (req, res) => {
+  const filtro = filtroVisibilidadeCurso(res.locals.usuario);
   const [cursos, cfgMap, total] = await Promise.all([
-    prisma.curso.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' }, take: 3 }),
+    prisma.curso.findMany({ where: filtro, orderBy: { nome: 'asc' }, take: 3 }),
     lerConfigMatricula(),
-    prisma.curso.count({ where: { ativo: true } }),
+    prisma.curso.count({ where: filtro }),
   ]);
   res.render('home', { cursos, cfgMap, temMais: total > cursos.length, formatBRL, totalExibicao });
 });
@@ -24,9 +32,10 @@ router.get('/sobre', (req, res) => res.render('sobre'));
 router.get('/duvidas', (req, res) => res.render('duvidas'));
 
 router.get('/cursos', async (req, res) => {
+  const filtro = filtroVisibilidadeCurso(res.locals.usuario);
   const [cursos, cfgMap] = await Promise.all([
     prisma.curso.findMany({
-      where: { ativo: true },
+      where: filtro,
       orderBy: { nome: 'asc' },
       include: {
         turmas: { where: { status: 'ABERTA' }, orderBy: { inicioPrevisto: 'asc' }, take: 1 },
@@ -45,18 +54,21 @@ router.get('/cursos/:cursoId', async (req, res) => {
         turmas: {
           where: { status: 'ABERTA' },
           orderBy: { inicioPrevisto: 'asc' },
-          include: { aulas: { orderBy: { data: 'asc' }, take: 1 } },   // ← adicionar
+          include: { aulas: { orderBy: { data: 'asc' }, take: 1 } },
         },
         faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] },
       },
     }),
     lerConfigMatricula(),
-]);
-  if (!curso || !curso.ativo)
+  ]);
+
+  // Curso inativo só é visível para o papel DEV (permite testar antes de publicar).
+  const podeVer = curso && (curso.ativo || res.locals.usuario?.papel === 'DEV');
+  if (!podeVer)
     return res.status(404).render('erro', { mensagem: 'Curso não encontrado.' });
 
   const outros = await prisma.curso.findMany({
-    where: { ativo: true, id: { not: curso.id } },
+    where: { ...filtroVisibilidadeCurso(res.locals.usuario), id: { not: curso.id } },
     orderBy: { nome: 'asc' },
     take: 3,
     include: {
@@ -77,8 +89,12 @@ router.get('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const turma = await prisma.turma.findUnique({
     where: { id: req.params.turmaId },
     include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
-});
-  if (!turma || turma.status !== 'ABERTA')
+  });
+
+  // Curso inativo só permite inscrição para o papel DEV.
+  const podeInscrever = turma && turma.status === 'ABERTA'
+    && (turma.curso.ativo || res.locals.usuario?.papel === 'DEV');
+  if (!podeInscrever)
     return res.status(404).render('erro', { mensagem: 'Turma não encontrada ou não está aberta.' });
 
   const jaInscrito = await prisma.matricula.findUnique({
@@ -96,8 +112,12 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const turma = await prisma.turma.findUnique({
     where: { id: req.params.turmaId },
     include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
-});
-  if (!turma || turma.status !== 'ABERTA')
+  });
+
+  // Curso inativo só permite inscrição para o papel DEV.
+  const podeInscrever = turma && turma.status === 'ABERTA'
+    && (turma.curso.ativo || res.locals.usuario?.papel === 'DEV');
+  if (!podeInscrever)
     return res.status(404).render('erro', { mensagem: 'Turma não encontrada ou não está aberta.' });
 
   const jaInscrito = await prisma.matricula.findUnique({

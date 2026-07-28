@@ -36,5 +36,8 @@
   },
   "devDependencies": {
     "prisma": "^5"
+  },
+  "overrides": {
+    "brace-expansion": "^5.0.8"
   }
 }
