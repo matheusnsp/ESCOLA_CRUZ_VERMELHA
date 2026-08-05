@@ -27,8 +27,11 @@ async function obterTaxaMatricula(curso, alunoId) {
   const base = curso.taxaMatricula != null ? curso.taxaMatricula : padrao;
 
   if (modo === 'POR_ALUNO') {
+    // 💡 CORRIGIDO (A7): antes bastava existir QUALQUER matrícula com taxa > 0
+    // (mesmo abandonada/cancelada e nunca paga) pra isentar a próxima — perda
+    // silenciosa de receita. Agora só isenta se a taxa foi de fato CONFIRMADA.
     const jaPagou = await prisma.matricula.findFirst({
-      where: { alunoId, valorTaxaMatricula: { gt: 0 } },
+      where: { alunoId, taxaConfirmada: true },
     });
     return jaPagou ? ZERO : base;
   }

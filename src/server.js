@@ -19,7 +19,6 @@ const authRoutes = require('./routes/auth');
 const painelRoutes = require('./routes/painel');
 const cursosRoutes = require('./routes/cursos');
 const adminRoutes = require('./routes/admin');
-const prisma = require('./db'); // usado diretamente pelo webhook da Únicopag, ver abaixo
 
 
 
@@ -37,7 +36,7 @@ app.locals.statusBadge = function (s) {
     PENDENTE: ['pend', 'PENDENTE'],
     CANCELADO: ['canc', 'CANCELADO'],
     ESTORNADO: ['est', 'ESTORNADO'],
-  };
+  }; 
   const [cls, txt] = map[s] || ['mut', s];
   return `<span class="badge ${cls}">${txt}</span>`;
 };
@@ -72,164 +71,13 @@ app.use(
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// O webhook da Únicopag PRECISA ficar registrado aqui, antes do app.use(csrfProtection)
-// mais abaixo. A Únicopag faz um POST simples de servidor pra servidor, sem cookie de sessão
-// nem token CSRF — se essa rota estivesse depois do CSRF (como estava dentro de cursosRoutes),
-// o middleware barra a requisição com 403 antes mesmo do handler rodar, e nada aparece no log.
-app.post('/webhook/unicopag', async (req, res) => {
-  try {
-    const payload = req.body;
-    console.log('[Webhook UnicopAg] Notificação recebida:', JSON.stringify(payload));
-
-    // Formato real confirmado em log de produção (payload achatado, sem "data"/"result"):
-    // { event, id, hash, payment_method, payment_status, amount_total, customer: {...},
-    //   items: [{ hash, title, price, quantity, operation_type }], ... }
-    // IMPORTANTE: esse payload NÃO tem metadata/order_id nem customer.document (confirmado em
-    // 2 capturas reais de log). O único jeito de saber a que matrícula ele se refere é pelo
-    // hash (== gatewayRef que salvamos) ou, na janela de corrida em que o gatewayRef ainda não
-    // foi gravado, pelo e-mail do cliente (customer.email, esse sim presente no payload).
-    const hash = payload.hash || payload.id || '';
-    const status = payload.payment_status || payload.status || '';
-    // 💡 CORRIGIDO: em parcelamento a Únicopag manda "amount" (valor base, o mesmo que
-    // enviamos e que fica salvo em Pagamento.valor) e "amount_total" (base + juros do
-    // parcelamento — ex.: amount:1000, amount_total:1060 pra 2x). O matching de contingência
-    // abaixo usava amount_total, e como o banco guarda o valor SEM juros, a comparação nunca
-    // casava em compras parceladas ("Pagamento não identificado" mesmo com email certo).
-    // amount_total é mantido só pra log/exibição do valor real cobrado do cliente.
-    const amountBase = Number(payload.amount ?? payload.amount_total ?? 0) / 100;
-    const amountTotal = Number(payload.amount_total ?? payload.amount ?? 0) / 100;
-    // Confirmado em log real: customer.document NÃO vem no payload do webhook (só vinha na
-    // requisição de criação). O campo confiável disponível aqui é customer.email.
-    const emailCliente = String(payload.customer?.email || '').trim().toLowerCase();
-
-    if (!hash) return res.status(200).send('Sem hash para processar');
-
-    // 1. Caminho normal: casa pelo hash da transação já salvo no Pagamento.
-    let pagamento = await prisma.pagamento.findFirst({ where: { gatewayRef: String(hash) } });
-
-    // 2. Corrida de dados: o webhook chegou antes de terminarmos de gravar o gatewayRef
-    //    (a linha PENDENTE já existe, criada antes de chamar o gateway — ver POST
-    //    /inscrever/:turmaId em cursos.js — só falta o gatewayRef). Casa pelo e-mail do
-    //    cliente + valor + status PENDENTE mais recente.
-    if (!pagamento && emailCliente) {
-      const aluno = await prisma.usuario.findUnique({ where: { email: emailCliente } });
-      if (aluno) {
-        pagamento = await prisma.pagamento.findFirst({
-          where: {
-            status: 'PENDENTE',
-            valor: amountBase,
-            matricula: { alunoId: aluno.id },
-          },
-          orderBy: { criadoEm: 'desc' },
-        });
-        if (pagamento) {
-          console.log(`[Webhook UnicopAg] Casado por e-mail (corrida de dados) — Pagamento ${pagamento.id}`);
-
-          // 💡 CORRIGIDO (PIX): grava o gatewayRef JÁ NESSE MOMENTO, mesmo que esse webhook
-          // ainda não seja de sucesso (ex.: "waiting_payment"). Isso é essencial pro PIX:
-          // o gateway (vps1.unicopag.com.br) às vezes demora tanto pra responder a criação da
-          // transação que o nginx deles devolve 504 pro nosso lado — mesmo a transação já
-          // tendo sido criada de verdade (é por isso que esse webhook está chegando aqui).
-          // Quando isso acontece, cursos.js marca a linha como CANCELADO por não ter como
-          // saber que deu certo do lado deles. Sem o gatewayRef gravado aqui, o webhook de
-          // pagamento CONFIRMADO que chega depois não encontra mais nenhuma linha PENDENTE
-          // pra casar por e-mail (ela virou CANCELADO) e cai em "Pagamento não identificado"
-          // pra sempre, mesmo com o cliente já tendo pago. Gravando o hash aqui, o próximo
-          // webhook casa direto por gatewayRef (esse find abaixo não filtra por status) e o
-          // pagamento é confirmado normalmente, não importa o que aconteceu com a chamada
-          // HTTP original de criação.
-          if (!pagamento.gatewayRef) {
-            await prisma.pagamento.updateMany({
-              where: { id: pagamento.id, gatewayRef: null },
-              data: { gatewayRef: String(hash) },
-            });
-            pagamento.gatewayRef = String(hash);
-          }
-        }
-      }
-    }
-
-    if (!pagamento) {
-      console.error(`[Webhook UnicopAg] Pagamento não identificado. hash=${hash} email=${emailCliente} valor=${amountTotal} payload=${JSON.stringify(payload)}`);
-      return res.status(200).send('Pagamento não identificado');
-    }
-
-    const statusLower = String(status).toLowerCase();
-    const ehSucesso = ['paid', 'pago', 'success', 'captured', 'approved'].includes(statusLower);
-    // 💡 CORRIGIDO: antes o webhook só entendia status de sucesso. Um "refunded"/"chargeback"
-    // caía direto no "nada a atualizar" e a matrícula nunca saía de PAGO.
-    const ehReembolso = ['refunded', 'reembolsado', 'refund', 'chargeback', 'charged_back', 'estornado'].includes(statusLower);
-    const ehCancelamento = ['canceled', 'cancelled', 'cancelado', 'voided', 'void'].includes(statusLower);
-
-    // Idempotência: só ignora se o status recebido é O MESMO que já está salvo. Antes,
-    // "if (pagamento.status === 'PAGO') return" bloqueava QUALQUER webhook seguinte (inclusive
-    // um reembolso) assim que o pagamento tinha sido confirmado uma vez — por isso o estorno
-    // nunca era gravado.
-    if (
-      (pagamento.status === 'PAGO' && ehSucesso) ||
-      (pagamento.status === 'ESTORNADO' && ehReembolso) ||
-      (pagamento.status === 'CANCELADO' && ehCancelamento)
-    ) {
-      return res.status(200).send('Já processado');
-    }
-
-    if (ehReembolso) {
-      await prisma.pagamento.updateMany({
-        where: { id: pagamento.id },
-        data: { status: 'ESTORNADO', gatewayRef: String(hash), atualizadoEm: new Date() },
-      });
-      await prisma.matricula.update({
-        where: { id: pagamento.matriculaId },
-        data: { statusPagamento: 'ESTORNADO' },
-      });
-      console.log(`[Webhook UnicopAg] 💸 Matrícula ${pagamento.matriculaId} marcada como ESTORNADO (status gateway: "${status}")`);
-      return res.status(200).send('Reembolso processado com sucesso');
-    }
-
-    if (ehCancelamento) {
-      await prisma.pagamento.updateMany({
-        where: { id: pagamento.id },
-        data: { status: 'CANCELADO', gatewayRef: String(hash), atualizadoEm: new Date() },
-      });
-      await prisma.matricula.update({
-        where: { id: pagamento.matriculaId },
-        data: { statusPagamento: 'CANCELADO' },
-      });
-      console.log(`[Webhook UnicopAg] 🚫 Matrícula ${pagamento.matriculaId} marcada como CANCELADO (status gateway: "${status}")`);
-      return res.status(200).send('Cancelamento processado com sucesso');
-    }
-
-    if (!ehSucesso) {
-      console.log(`[Webhook UnicopAg] Status "${status}" ainda não é de sucesso para o Pagamento ${pagamento.id}; nada a atualizar por ora.`);
-      return res.status(200).send('Status recebido, aguardando confirmação de pagamento.');
-    }
-
-    await prisma.pagamento.updateMany({
-      where: { id: pagamento.id },
-      data: { status: 'PAGO', gatewayRef: String(hash), atualizadoEm: new Date() },
-    });
-
-    const dadosMatricula = await prisma.matricula.findUnique({ where: { id: pagamento.matriculaId } });
-    const novoStatusMatricula = dadosMatricula?.plano === 'PARCELADO' ? 'PARCELADO' : 'PAGO';
-
-    await prisma.matricula.update({
-      where: { id: pagamento.matriculaId },
-      data: {
-        statusPagamento: novoStatusMatricula,
-        confirmadaEm: new Date(),
-        confirmadaPor: 'unicopag',
-      },
-    });
-
-    console.log(`[Webhook UnicopAg] ✅ Matrícula ${pagamento.matriculaId} atualizada para ${novoStatusMatricula}`);
-
-    return res.status(200).send('Webhook processado com segurança');
-
-  } catch (error) {
-    console.error('[Webhook UnicopAg] 💥 Erro interno no processamento do webhook:', error);
-    return res.status(500).send('Erro interno');
-  }
-});
+// O webhook da Únicopag PRECISA ficar montado aqui, antes do app.use(csrfProtection)
+// mais abaixo. A Únicopag faz um POST simples de servidor pra servidor, sem cookie de
+// sessão nem token CSRF — se a rota ficasse depois do CSRF, o middleware barraria a
+// requisição com 403 antes mesmo do handler rodar, e nada apareceria no log.
+// Toda a lógica do webhook (matching por hash/e-mail, TAXA x CURSO, idempotência)
+// vive em ./routes/webhook.js.
+app.use(require('./routes/webhook'));
 
 // Arquivos estaticos (CSS, JS, imagens). index:false para a home ser a rota '/'.
 app.use(express.static(path.join(__dirname, 'public'), { index: false, maxAge: '7d' }));
@@ -257,7 +105,7 @@ app.use(
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 1000 * 60 * 60 * 24 * 365, // 💡 CORRIGIDO: Alterado para 1 Ano inteiro para evitar deslogamentos espontâneos.
+      maxAge: 1000 * 60 * 60 * 24 * 90, // 💡 CORRIGIDO (B4): 90 dias em vez de 1 ano — janela menor para conta com dados pessoais/pagamentos.
     },
   })
 );
@@ -294,8 +142,25 @@ app.use((req, res, next) => {
   return res.locals.isAdmin ? painelAdmin(req, res, next) : siteAluno(req, res, next);
 });
 
+// ────────────────────────────────────────────────────────────────────────
+// 💡 C4 — Middleware de ERRO (tem que ser o ÚLTIMO app.use, com 4 argumentos).
+// Qualquer erro encaminhado por next(err) — inclusive os capturados pelo
+// asyncHandler nas rotas — cai aqui, vira uma página amigável e é logado,
+// em vez de derrubar o processo. A assinatura com 4 parâmetros é o que faz
+// o Express reconhecer isto como handler de erro (não remova o `next`).
+// ────────────────────────────────────────────────────────────────────────
+app.use((err, req, res, next) => {
+  console.error('[ERRO NÃO TRATADO]', req.method, req.originalUrl, '—', err && err.stack ? err.stack : err);
+  if (res.headersSent) return next(err); // resposta já começou: delega ao Express fechar
+  let ehAdmin = false;
+  try { ehAdmin = isAdminReq(req); } catch (e) { ehAdmin = false; }
+  const view = ehAdmin ? 'admin/erro' : 'erro';
+  res.status(500).render(view, {
+    mensagem: 'Ocorreu um erro inesperado. Tente novamente em instantes.',
+  });
+});
+
 const port = process.env.PORT || 3000;
-app.use((req, res, next) => { next(); });
 
 app.listen(port, () => {
   console.log(`Site do aluno:      http://localhost:${port}`);
@@ -307,5 +172,20 @@ app.listen(port, () => {
 if (!isProd && ADMIN_PORT && ADMIN_PORT !== Number(port)) {
   app.listen(ADMIN_PORT, () => {
     console.log(`Painel secretaria:  http://localhost:${ADMIN_PORT}`);
-  }); 
+  });
 }
+
+// ────────────────────────────────────────────────────────────────────────
+// 💡 C4 — Rede de segurança final do processo.
+// Mesmo com asyncHandler + middleware de erro, um erro pode escapar de fora
+// do ciclo de request (ex.: callback de lib, timer). Sem estes handlers, o
+// Node pode encerrar o processo silenciosamente. Aqui logamos com destaque
+// para aparecer no log do Render/produção. Não derrubamos o processo de
+// propósito; numa próxima iteração vale shutdown controlado + supervisor.
+// ────────────────────────────────────────────────────────────────────────
+process.on('unhandledRejection', (motivo) => {
+  console.error('[unhandledRejection]', motivo && motivo.stack ? motivo.stack : motivo);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err && err.stack ? err.stack : err);
+});

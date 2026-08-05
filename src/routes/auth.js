@@ -27,6 +27,18 @@ const { validarCpfCnpj } = require('../lib/documento');
 
 const router = express.Router();
 
+// 💡 C4 — Blindagem contra erros async: envolve automaticamente todo handler
+// async registrado neste router com asyncHandler, pra qualquer exceção (ex.:
+// timeout do banco) cair no middleware de erro do server em vez de derrubar o
+// processo. Middlewares síncronos (rate limiters, requireLogin) passam intactos.
+const asyncHandler = require('../lib/asyncHandler');
+['get', 'post', 'put', 'delete', 'patch'].forEach((metodo) => {
+  const original = router[metodo].bind(router);
+  router[metodo] = (caminho, ...handlers) =>
+    original(caminho, ...handlers.map((h) =>
+      typeof h === 'function' && h.constructor.name === 'AsyncFunction' ? asyncHandler(h) : h));
+});
+
 const POLITICA_VERSAO = '2026-06-16';
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
 
@@ -121,11 +133,24 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
         uf: uf || null,
         senhaHash,
         papel: 'ALUNO', // cadastro publico NUNCA cria SECRETARIA
-        emailVerificado: true, // verificação de e-mail desativada: entra direto
+        // 💡 CORRIGIDO (M4): verificação de e-mail RELIGADA. Antes entrava com
+        // emailVerificado:true fixo, então e-mail errado = aluno sem recibo e
+        // sem reset de senha. Toda a máquina de confirmação já existia; só
+        // estava desativada. O aluno ainda entra logado (não bloqueia o acesso),
+        // mas recebe o e-mail de confirmação e o status fica pendente até clicar.
+        emailVerificado: false,
         consentimentoLgpdEm: new Date(),
         consentimentoVersao: POLITICA_VERSAO,
       },
     });
+
+    // 💡 M4 — dispara o e-mail de confirmação (best-effort: falha de e-mail não
+    // impede o cadastro, o aluno pode reenviar depois em /reenviar-confirmacao).
+    try {
+      await enviarConfirmacao(usuario);
+    } catch (e) {
+      console.error('[Cadastro] Falha ao enviar e-mail de confirmação:', e.message);
+    }
 
     // Autentica o aluno na hora (sem confirmar e-mail).
     req.session.regenerate((err) => {
@@ -231,12 +256,28 @@ router.post('/login', loginLimiter, async (req, res) => {
 
   const { email, senha } = resultado.data;
 
+  // 💡 CORRIGIDO (M5): lockout POR CONTA no login do aluno. Antes só havia rate
+  // limit por IP (loginLimiter), então força bruta distribuída (vários IPs)
+  // contra UMA conta não encontrava trava. Reaproveita os campos que já existem
+  // no schema (loginFalhas/bloqueadoAte) — os mesmos que o painel admin usa.
+  const MAX_FALHAS_ALUNO = 8;         // tentativas antes de bloquear
+  const BLOQUEIO_MIN_ALUNO = 15;      // minutos de bloqueio ao estourar
+
   try {
     const usuario = await prisma.usuario.findUnique({ where: { email } });
 
     if (!usuario) {
       await hashSenha(senha); // equaliza o tempo (anti-enumeracao por timing)
       return reRender(email);
+    }
+
+    // Conta temporariamente bloqueada por tentativas seguidas.
+    if (usuario.bloqueadoAte && usuario.bloqueadoAte > new Date()) {
+      const minutos = Math.ceil((usuario.bloqueadoAte.getTime() - Date.now()) / 60000);
+      return res.status(429).render('login', {
+        erro: `Muitas tentativas. Tente novamente em ${minutos} min.`,
+        email,
+      });
     }
 
     // Conta sem senha definida.
@@ -250,7 +291,25 @@ router.post('/login', loginLimiter, async (req, res) => {
 
     const senhaOk = await verificarSenha(usuario.senhaHash, senha);
     if (!senhaOk) {
+      // Incrementa o contador; ao atingir o teto, bloqueia por uma janela.
+      const falhas = (usuario.loginFalhas || 0) + 1;
+      if (falhas >= MAX_FALHAS_ALUNO) {
+        await prisma.usuario.update({
+          where: { id: usuario.id },
+          data: { loginFalhas: 0, bloqueadoAte: new Date(Date.now() + BLOQUEIO_MIN_ALUNO * 60000) },
+        });
+        return res.status(429).render('login', {
+          erro: `Muitas tentativas. Acesso bloqueado por ${BLOQUEIO_MIN_ALUNO} min.`,
+          email,
+        });
+      }
+      await prisma.usuario.update({ where: { id: usuario.id }, data: { loginFalhas: falhas } });
       return reRender(email);
+    }
+
+    // Login OK: zera contadores se houver resquício de tentativas anteriores.
+    if (usuario.loginFalhas || usuario.bloqueadoAte) {
+      await prisma.usuario.update({ where: { id: usuario.id }, data: { loginFalhas: 0, bloqueadoAte: null } });
     }
 
     // Conta da secretaria não entra pela área do aluno (o painel fica em outro endereço).

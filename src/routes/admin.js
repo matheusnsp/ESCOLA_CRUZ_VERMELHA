@@ -14,10 +14,24 @@ const { enviarCodigo2fa, enviarAlertaLoginSecretaria, enviarLinkDesbloqueio, env
 const { ESCOLARIDADES: ESCOLARIDADES_ALUNO, SITUACOES_ESCOLARIDADE, GENEROS, UFS } = require('../lib/validation');
 const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
 const { formatBRL, calcularValores } = require('../lib/matricula');
+const { estornarTransacao } = require('../lib/unicopag'); // 💡 A3 — refund real no gateway
+const { coletarDadosRelatorio, gerarExcel, gerarPdf } = require('../lib/relatorio'); // relatórios Excel/PDF
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 const { temPermissao, PAPEIS_ADMIN, listarPermissoes } = require('../lib/permissoes');
 
 const router = express.Router();
+
+// 💡 C4 — Blindagem contra erros async: envolve automaticamente todo handler
+// async registrado neste router com asyncHandler, pra qualquer exceção (ex.:
+// timeout do banco) cair no middleware de erro do server em vez de derrubar o
+// processo. Middlewares síncronos (rate limiters, requireLogin) passam intactos.
+const asyncHandler = require('../lib/asyncHandler');
+['get', 'post', 'put', 'delete', 'patch'].forEach((metodo) => {
+  const original = router[metodo].bind(router);
+  router[metodo] = (caminho, ...handlers) =>
+    original(caminho, ...handlers.map((h) =>
+      typeof h === 'function' && h.constructor.name === 'AsyncFunction' ? asyncHandler(h) : h));
+});
 
 // ---------- Helpers ----------
 
@@ -82,6 +96,42 @@ function parseDecimal(v, { opcional = false } = {}) {
 function parseInteiro(v, { min = 0 } = {}) {
   const n = parseInt(v, 10);
   return Number.isInteger(n) && n >= min ? n : NaN;
+}
+
+// 💡 A2 — Sincroniza o ledger de Pagamento quando a secretaria age manualmente.
+// Atualiza os Pagamentos existentes do tipo indicado para o novo status; se não
+// houver nenhum (ex.: matrícula antiga ou fluxo presencial sem linha de gateway),
+// cria um registrando que a origem foi manual. Assim /financeiro e a conciliação
+// leem sempre a mesma verdade, venha do webhook ou do painel.
+async function sincronizarPagamentoManual(req, matricula, tipo, novoStatus) {
+  try {
+    const existentes = await prisma.pagamento.findMany({
+      where: { matriculaId: matricula.id, tipo },
+    });
+    if (existentes.length > 0) {
+      await prisma.pagamento.updateMany({
+        where: { matriculaId: matricula.id, tipo },
+        data: { status: novoStatus, gatewayStatus: `manual:${novoStatus.toLowerCase()}` },
+      });
+      return;
+    }
+    const valor = tipo === 'TAXA'
+      ? Number(matricula.valorTaxaMatricula) || 0
+      : Number(matricula.valorCurso) || 0;
+    await prisma.pagamento.create({
+      data: {
+        matriculaId: matricula.id,
+        tipo,
+        metodo: matricula.forma || 'DINHEIRO',
+        valor,
+        status: novoStatus,
+        gateway: 'manual',
+        gatewayStatus: `manual:${novoStatus.toLowerCase()} por ${req.session.usuarioId || 'admin'}`,
+      },
+    });
+  } catch (e) {
+    console.error('[A2] Falha ao sincronizar Pagamento manual:', e.message);
+  }
 }
 
 // Auxiliar para retornar a pagina anterior de forma segura com mensagem de sucesso
@@ -861,6 +911,9 @@ router.post('/inscricoes/:id/confirmar', requirePermissao('financeiro:aprovar', 
       diferencaTransferencia: null, // limpa o aviso de pendencia/reembolso ao confirmar
     },
   });
+  // 💡 CORRIGIDO (A2): reflete no ledger de Pagamento (tipo CURSO). Sem isto, a
+  // linha ficava PENDENTE pra sempre e a conciliação com o gateway divergia.
+  await sincronizarPagamentoManual(req, m, 'CURSO', 'PAGO');
   await auditar(req, 'CONFIRMOU_PAGAMENTO', 'Matricula', m.id, null);
   res.redirect(back(req, 'Pagamento confirmado.'));
 });
@@ -869,6 +922,12 @@ router.post('/inscricoes/:id/cancelar', requirePermissao('financeiro:aprovar'), 
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
   await prisma.matricula.update({ where: { id: m.id }, data: { statusPagamento: 'CANCELADO' } });
+  // 💡 CORRIGIDO (A2): reflete no ledger (não cria linha nova no cancelamento —
+  // só marca as PENDENTE existentes como CANCELADO).
+  await prisma.pagamento.updateMany({
+    where: { matriculaId: m.id, status: 'PENDENTE' },
+    data: { status: 'CANCELADO' },
+  });
   await auditar(req, 'CANCELOU_INSCRICAO', 'Matricula', m.id, null);
   res.redirect(back(req, 'Inscricao cancelada.'));
 });
@@ -918,16 +977,16 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
       include: { aluno: true, turma: { include: { curso: true } } },
     }),
 
-    // Quem pagou o curso
+    // Quem pagou o curso (à vista = PAGO; parcelado no cartão = PARCELADO)
     prisma.matricula.findMany({
-      where: { statusPagamento: 'PAGO' },
+      where: { statusPagamento: { in: ['PAGO', 'PARCELADO'] } },
       orderBy: { confirmadaEm: 'desc' },
       include: { aluno: true, turma: { include: { curso: true } } },
     }),
 
-    // Pendente de taxa
+    // Pendente de taxa (exclui estornadas/canceladas — não estão "aguardando")
     prisma.matricula.findMany({
-      where: { taxaConfirmada: false },
+      where: { taxaConfirmada: false, statusPagamento: { notIn: ['ESTORNADO', 'CANCELADO'] } },
       orderBy: { criadoEm: 'desc' },
       include: { aluno: true, turma: { include: { curso: true } } },
     }),
@@ -1006,13 +1065,11 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     0
   );
 
-  const totalRecebido = matriculaGeradaLista.reduce(
-    (s, m) =>
-      s +
-      (Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO) +
-      Number(m.valorCurso),
-    0
-  );
+  // 💡 CORRIGIDO (A4 + parcelado): valorCurso JÁ inclui a taxa embutida — no à
+  // vista desde o checkout, e no parcelado desde que o curso é pago (cursos.js
+  // grava valorFinal + taxa). Então somamos só valorCurso; adicionar a taxa de
+  // novo contaria em dobro (era o bug do R$30 no dashboard). Sem fallback fixo.
+  const totalRecebido = matriculaGeradaLista.reduce((s, m) => s + Number(m.valorCurso), 0);
 
   const totalPendente = pendentesLista.reduce((s, p) => s + p.valor, 0);
 
@@ -1045,6 +1102,29 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     estornos,
     reembolsosPendentesLista,
   });
+});
+
+// ---------- Relatórios (Excel + PDF) — só Dev e Financeiro (financeiro:aprovar) ----------
+// Gera um arquivo único com 3 seções: Matrículas, Financeiro e Auditoria (resumida).
+// Os números replicam exatamente as fórmulas da tela /financeiro acima.
+
+router.get('/relatorios/completo.xlsx', requirePermissao('financeiro:aprovar'), async (req, res) => {
+  const dados = await coletarDadosRelatorio(prisma);
+  const buffer = await gerarExcel(dados);
+  await auditar(req, 'BAIXOU_RELATORIO', 'Relatorio', null, { formato: 'xlsx' });
+  const nome = `relatorio-cvbrj-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${nome}"`);
+  res.send(Buffer.from(buffer));
+});
+
+router.get('/relatorios/completo.pdf', requirePermissao('financeiro:aprovar'), async (req, res) => {
+  const dados = await coletarDadosRelatorio(prisma);
+  await auditar(req, 'BAIXOU_RELATORIO', 'Relatorio', null, { formato: 'pdf' });
+  const nome = `relatorio-cvbrj-${new Date().toISOString().slice(0, 10)}.pdf`;
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${nome}"`);
+  gerarPdf(dados, res); // escreve direto na resposta (stream)
 });
 
 // Confirma que o reembolso de uma transferência de turma foi pago ao aluno.
@@ -1095,13 +1175,92 @@ router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:aprovar'), 
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
 
   const motivo = String(req.body.motivo || '').trim() || 'Não informado';
+  // Marque o checkbox/campo "apenasContabil" no form para casos pagos FORA do
+  // gateway (dinheiro, etc.), em que não há o que estornar na Únicopag.
+  const apenasContabil = req.body.apenasContabil === 'on' || req.body.apenasContabil === 'true';
+
+  // Estorna a transação de um Pagamento pago (CURSO ou TAXA) via gateway.
+  // Retorna { ok, semRef } — semRef=true quando não há transação no gateway
+  // (pagamento fora da Únicopag): nesse caso o chamador decide o fallback.
+  async function estornarPagamento(tipo) {
+    const pago = await prisma.pagamento.findFirst({
+      where: { matriculaId: m.id, tipo, status: 'PAGO' },
+      orderBy: { criadoEm: 'desc' },
+    });
+    const ref = pago?.gatewayRef || pago?.gatewayHash || null;
+    if (!ref) return { ok: false, semRef: true };
+
+    let resultado;
+    try {
+      resultado = await estornarTransacao(ref);
+    } catch (e) {
+      console.error(`[A3] Erro ao chamar refund (${tipo}):`, e.message);
+      return { ok: false, semRef: false };
+    }
+    if (!resultado.success) return { ok: false, semRef: false };
+
+    await prisma.pagamento.updateMany({
+      where: { id: pago.id },
+      data: { status: 'ESTORNADO', gatewayStatus: 'refunded', gatewayResponse: resultado.body },
+    });
+    return { ok: true, semRef: false };
+  }
+
+  let taxaRevertida = false;
+  let avisoTaxa = null;
+
+  if (!apenasContabil) {
+    // 1) CURSO — é o valor principal; se não der pra estornar, aborta tudo
+    //    e não altera nada (nada de matrícula ESTORNADO sem o dinheiro voltar).
+    const curso = await estornarPagamento('CURSO');
+    if (!curso.ok) {
+      if (curso.semRef) {
+        return res.status(400).render('admin/erro', {
+          mensagem: 'Não encontrei a transação do curso no gateway para estornar. Se o pagamento foi feito fora da Únicopag (dinheiro/presencial), use a opção "estorno apenas contábil".',
+        });
+      }
+      return res.status(502).render('admin/erro', {
+        mensagem: 'O gateway não confirmou o estorno do curso. Nada foi alterado. Verifique no painel da Únicopag e tente novamente.',
+      });
+    }
+
+    // 2) TAXA — transação SEPARADA no gateway. Estorna também, junto do curso.
+    //    Se falhar, NÃO derruba o estorno do curso (que já voltou): a matrícula
+    //    vira ESTORNADO mesmo assim, mas avisamos que a taxa ficou pendente de
+    //    tratamento manual, em vez de fingir que voltou.
+    const taxa = await estornarPagamento('TAXA');
+    if (taxa.ok) {
+      taxaRevertida = true;
+    } else if (taxa.semRef) {
+      // Não há transação de taxa no gateway (taxa isenta, ou paga fora dele):
+      // nada a estornar — só reverte o flag contábil.
+      taxaRevertida = true;
+    } else {
+      avisoTaxa = ' ATENÇÃO: o curso foi estornado, mas o gateway NÃO confirmou o estorno da taxa de inscrição — trate a taxa manualmente no painel da Únicopag.';
+      console.warn(`[A3] Taxa não estornada para matrícula ${m.id} — requer ação manual.`);
+    }
+  } else {
+    // Estorno só contábil: reflete no ledger sem chamar o gateway (curso + taxa).
+    await sincronizarPagamentoManual(req, m, 'CURSO', 'ESTORNADO');
+    await sincronizarPagamentoManual(req, m, 'TAXA', 'ESTORNADO');
+    taxaRevertida = true;
+  }
 
   await prisma.matricula.update({
     where: { id: m.id },
-    data: { statusPagamento: 'ESTORNADO', diferencaTransferencia: null },
+    data: {
+      statusPagamento: 'ESTORNADO',
+      diferencaTransferencia: null,
+      // Só reverte a confirmação da taxa se ela foi de fato estornada (ou não
+      // havia o que estornar). Se o refund da taxa falhou, mantém taxaConfirmada
+      // pra não sumir com o registro de que ela foi paga.
+      ...(taxaRevertida ? { taxaConfirmada: false, taxaConfirmadaPor: null, taxaConfirmadaEm: null } : {}),
+    },
   });
-  await auditar(req, 'ESTORNOU_PAGAMENTO', 'Matricula', m.id, { motivo });
-  res.redirect(back(req, 'Pagamento estornado.'));
+  await auditar(req, 'ESTORNOU_PAGAMENTO', 'Matricula', m.id, { motivo, apenasContabil, taxaRevertida });
+
+  const base = apenasContabil ? 'Estorno contábil (curso + taxa) registrado.' : 'Curso e taxa estornados no gateway.';
+  res.redirect(back(req, base + (avisoTaxa || '')));
 });
 
 // Confirmacao de doacao (entrega de alimento): permissao da Secretaria, nao do Financeiro.
@@ -1403,10 +1562,11 @@ router.post('/alunos/:id/editar', requirePermissao('aluno:gerenciar'), async (re
   const depois = {
     nome, email, celular: celular || null, rg: rgFinal || null,
     cpfCnpj: cpfCnpjNormalizado,
-    // FIX: as variaveis certas sao passaporteDigitado/paisOrigemDigitado (calculadas acima).
-    // As antigas passaporteNormalizado/paisOrigemFinal nunca existiram e quebravam esta rota.
-    passaporte: passaporteDigitado || null,
-    paisOrigem: paisOrigemDigitado || null,
+    // 💡 CORRIGIDO (A8): fallback pro valor atual quando o campo vem vazio, igual
+    // já era feito com cpfCnpj/rg. Antes, editar um aluno estrangeiro sem redigitar
+    // o passaporte zerava o documento no cadastro (passaporteDigitado || null → null).
+    passaporte: passaporteDigitado || aluno.passaporte || null,
+    paisOrigem: paisOrigemDigitado || aluno.paisOrigem || null,
     escolaridade: escolaridade || null, escolaridadeSituacao: escolaridadeSituacao || null, genero: genero || null,
     cep: cep || null, logradouro: logradouro || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, uf: uf || null,
   };
@@ -1462,6 +1622,8 @@ router.post('/alunos/:id/matriculas/:matriculaId/confirmar-taxa', requirePermiss
       ...(m.statusPagamento === 'PAGO' || m.statusPagamento === 'PARCELADO' ? {} : { statusPagamento: 'PENDENTE' }),
     },
   });
+  // 💡 CORRIGIDO (A2): reflete a confirmação da TAXA no ledger de Pagamento.
+  await sincronizarPagamentoManual(req, m, 'TAXA', 'PAGO');
   await auditar(req, 'CONFIRMOU_TAXA_INSCRICAO', 'Matricula', m.id, null);
   res.redirect(`/alunos/${req.params.id}/matriculas?ok=` + encodeURIComponent('Taxa de inscricao confirmada. Aluno adicionado a turma como pendente.'));
 });

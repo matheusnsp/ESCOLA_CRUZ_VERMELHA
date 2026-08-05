@@ -20,7 +20,7 @@
           <tr>
             <td><%= m.aluno.nome %></td>
             <td><%= m.turma.curso.nome %></td>
-            <td><%= formatBRL(Number(m.valorCurso) + Number(m.valorTaxaMatricula)) %></td>
+            <td><%= formatBRL(Number(m.valorCurso)) %></td>
             <td><%- statusBadge(m.statusPagamento) %></td>
             <td><%= new Date(m.criadoEm).toLocaleDateString('pt-BR') %></td>
           </tr>

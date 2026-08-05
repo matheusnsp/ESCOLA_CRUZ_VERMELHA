@@ -11,11 +11,20 @@
         Abra o aplicativo do seu banco e aponte a câmera para o QR Code abaixo, ou copie o código PIX Copia e Cola.
 </p>
 <div style="margin: 24px auto; display: inline-block; background: #fff; padding: 12px; border: 1px solid #e0e0e0; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-<img 
-src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=<%= encodeURIComponent(pixQrCode || pixUrl) %>"
+<% if (pixBase64) { %>
+<%# QR vindo do próprio gateway — não expõe o payload PIX a serviço externo %>
+<img
+src="<%= /^(https?:|data:)/i.test(pixBase64) ? pixBase64 : ('data:image/png;base64,' + pixBase64) %>"
 alt="QR Code Pix"
 style="max-width: 230px; width: 100%; display: block;"
 />
+<% } else { %>
+<img 
+src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=<%= encodeURIComponent(pixQrCode || pixUrl) %>"
+alt="QR Code Pix" 
+style="max-width: 230px; width: 100%; display: block;"
+/>
+<% } %>
 </div>
 <p class="painel-sub" style="margin: 24px 0 8px; font-weight: 600; color: #333; font-size: 14px;">
         Código PIX Copia e Cola:
@@ -33,6 +42,7 @@ style="padding: 12px 32px; background: #32BCAD; color: white; border: none; bord
 </button>
 <p class="painel-sub" style="font-size: 12px; color: #888; margin-top: 8px;">
         Após o pagamento, a confirmação pode levar alguns minutos.
+        Assim que o banco confirmar, esta página avança sozinha.
 </p>
 <% } else { %>
 <div style="margin-bottom: 20px;">
@@ -51,4 +61,36 @@ style="padding: 12px 32px; background: #32BCAD; color: white; border: none; bord
 </div>
 </main>
 <script src="/js/pix.js"></script>
+
+<% if (matricula) { %>
+<script>
+// ── Polling de confirmação ─────────────────────────────────────────────
+// Consulta /inscricao/status a cada 4s. Quando o webhook confirmar:
+//   etapa 'taxa'  → redireciona pra etapa 3 (/pagar-curso)
+//   etapa 'curso' → redireciona pra "Minha conta"
+(function () {
+  var MATRICULA_ID = '<%= matricula.id %>';
+  var ETAPA = '<%= etapa %>';
+
+  var timer = setInterval(async function () {
+    try {
+      var r = await fetch('/inscricao/status/' + MATRICULA_ID);
+      if (!r.ok) return;
+      var m = await r.json();
+
+      if (ETAPA === 'taxa' && m.taxaConfirmada) {
+        clearInterval(timer);
+        location.href = '/inscrever/' + m.turmaId + '/pagar-curso';
+      } else if (ETAPA !== 'taxa' && m.statusPagamento === 'PAGO') {
+        clearInterval(timer);
+        location.href = '/minha-conta?sec=inscricoes&pago=1';
+      }
+    } catch (e) {
+      // Falha de rede momentânea: silencia e tenta no próximo tick.
+    }
+  }, 4000);
+})();
+</script>
+<% } %>
+
 <%- include('partials/site-footer') %>

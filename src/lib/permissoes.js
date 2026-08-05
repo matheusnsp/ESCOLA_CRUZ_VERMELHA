@@ -18,8 +18,11 @@ const PERMISSOES = {
     'aluno:mover_turma',   // transferir aluno entre turmas
     'aluno:gerenciar',     // editar dados cadastrais do aluno
     'taxa:aprovar',        // confirmar pagamento da TAXA de inscrição
-    'financeiro:aprovar',  // confirmar/cancelar/estornar pagamento do curso
-    'pagamento:confirmar', // NOVO: confirmar pagamento do CURSO (só confirmar —
+    // 💡 CORRIGIDO (A1): 'financeiro:aprovar' REMOVIDO daqui. Ele dava à Secretaria
+    // acesso a cancelar e estornar — que, por desenho, são exclusivos de
+    // Financeiro/Dev. A Secretaria continua podendo CONFIRMAR o pagamento do
+    // curso via 'pagamento:confirmar' abaixo (só confirmar, não desfazer).
+    'pagamento:confirmar', // confirmar pagamento do CURSO (só confirmar —
                             // cancelar e estornar continuam exclusivos do Financeiro/Dev)
   ],
 
@@ -47,13 +50,16 @@ const PERMISSOES = {
   ],
 };
 
-// Coordenador = tudo da Secretaria + pode criar turma + financeiro leitura
+// Coordenador = tudo da Secretaria + pode criar turma/curso + financeiro completo
 PERMISSOES.COORDENADOR = [
   ...PERMISSOES.SECRETARIA,
-  'turmas:criar',       // única coisa que a Secretaria não tem e o Coordenador ganha
-  'financeiro:leitura', // vê o painel /financeiro, mas sem aprovar/cancelar/estornar
-  'financeiro:aprovar',  // confirmar/cancelar/estornar pagamento do curso
-
+  'turmas:criar',       // criar turma nova
+  // 💡 CORRIGIDO (A1): 'cursos:criar' ADICIONADO. A rota /cursos/novo exige essa
+  // permissão e ela não era concedida a ninguém — só o DEV (bypass) criava curso,
+  // contrariando o desenho ("Coordenador tem acesso total do site").
+  'cursos:criar',       // criar curso novo
+  'financeiro:leitura', // vê o painel /financeiro
+  'financeiro:aprovar', // confirmar/cancelar/estornar pagamento do curso (nível Coordenador)
 ];
 
 // Papéis que conseguem logar no painel admin (independente do que cada um pode FAZER lá dentro)

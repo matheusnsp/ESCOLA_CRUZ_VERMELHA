@@ -236,6 +236,7 @@ enum StatusTurma {
 enum PlanoPagamento {
   A_VISTA
   PARCELADO
+  PRESENCIAL
 }
 
 enum FormaPagamento {

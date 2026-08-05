@@ -8,6 +8,18 @@ const { perfilSchema, ESCOLARIDADES, SITUACOES_ESCOLARIDADE, GENEROS, UFS } = re
 
 const router = express.Router();
 
+// 💡 C4 — Blindagem contra erros async: envolve automaticamente todo handler
+// async registrado neste router com asyncHandler, pra qualquer exceção (ex.:
+// timeout do banco) cair no middleware de erro do server em vez de derrubar o
+// processo. Middlewares síncronos (rate limiters, requireLogin) passam intactos.
+const asyncHandler = require('../lib/asyncHandler');
+['get', 'post', 'put', 'delete', 'patch'].forEach((metodo) => {
+  const original = router[metodo].bind(router);
+  router[metodo] = (caminho, ...handlers) =>
+    original(caminho, ...handlers.map((h) =>
+      typeof h === 'function' && h.constructor.name === 'AsyncFunction' ? asyncHandler(h) : h));
+});
+
 // Área do aluno — painel único com seções (inscricoes | dados | excluir).
 router.get('/minha-conta', requireLogin, async (req, res) => {
   const secValidas = ['inscricoes', 'dados', 'excluir'];

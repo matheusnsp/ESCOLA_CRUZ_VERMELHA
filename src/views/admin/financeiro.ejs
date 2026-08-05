@@ -10,8 +10,18 @@ function dataBR(d) {
 const LIMITE_GRUPO = 3;
 %>
 
-<div class="adm-h1-row">
+<div class="adm-h1-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
   <h1 class="adm-h1">Financeiro</h1>
+  <% if (pode('financeiro:aprovar')) { %>
+  <div style="display:flex;gap:8px">
+    <a href="/relatorios/completo.xlsx" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid #16a34a;color:#16a34a;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700">
+      <i class="fa-solid fa-file-excel"></i> Baixar Excel
+    </a>
+    <a href="/relatorios/completo.pdf" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid #cc0000;color:#cc0000;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700">
+      <i class="fa-solid fa-file-pdf"></i> Baixar PDF
+    </a>
+  </div>
+  <% } %>
 </div>
 
 <!-- ===== Inscrições / Valores ===== -->
@@ -125,7 +135,7 @@ const LIMITE_GRUPO = 3;
   <% } else { %>
     <table class="adm-table">
       <thead>
-        <tr><th>Aluno</th><th>Curso</th><th>Matrícula</th><th>Data pag.</th><th>Valor</th></tr>
+        <tr><th>Aluno</th><th>Curso</th><th>Matrícula</th><th>Data pag.</th><th>Valor</th><th>Ação</th></tr>
       </thead>
       <tbody>
         <% matriculaGeradaLista.forEach((m, i) => { %>
@@ -135,6 +145,28 @@ const LIMITE_GRUPO = 3;
           <td><span class="badge mut"><%= codigoMatricula(m) %></span></td>
           <td><%= dataBR(m.confirmadaEm) %></td>
           <td><%= formatBRL(Number(m.valorCurso)) %></td>
+          <td>
+            <% if (pode('financeiro:aprovar')) { %>
+            <details>
+              <summary style="cursor:pointer;color:#991b1b;font-size:12px;font-weight:700;list-style:none">
+                <i class="fa-solid fa-rotate-left"></i> Estornar
+              </summary>
+              <form method="POST" action="/inscricoes/<%= m.id %>/estornar"
+                    onsubmit="return confirm('Confirmar estorno? Devolve o valor ao aluno e não pode ser desfeito.')"
+                    style="margin-top:8px;display:flex;flex-direction:column;gap:6px;min-width:200px">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <input type="text" name="motivo" required maxlength="200" placeholder="Motivo do estorno"
+                       style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#4a5568">
+                  <input type="checkbox" name="apenasContabil"> Pago fora da Únicopag (só contábil)
+                </label>
+                <button type="submit" style="padding:6px 10px;background:#991b1b;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">
+                  Confirmar estorno
+                </button>
+              </form>
+            </details>
+            <% } %>
+          </td>
         </tr>
         <% }) %>
       </tbody>
