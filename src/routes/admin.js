@@ -1632,13 +1632,11 @@ router.get('/banimentos', requireDev, async (req, res) => {
     include: { _count: { select: { matriculas: true } } },
   });
 
-  // Busca o motivo de cada ban no log de auditoria
   const logs = await prisma.logAuditoria.findMany({
     where: { acao: 'BANIU_ALUNO', alvoId: { in: banidos.map((u) => u.id) } },
     orderBy: { criadoEm: 'desc' },
   });
 
-  // Pega só o log mais recente por aluno
   const motivoMap = {};
   for (const log of logs) {
     if (motivoMap[log.alvoId]) continue;
@@ -1697,6 +1695,16 @@ router.post('/alunos/:id/banir', requireDev, async (req, res) => {
       loginFalhas: 0,
       bloqueadoAte: null,
       loginStrikes: 0,
+    },
+  });
+
+  // Derruba todas as sessões ativas do aluno no banco
+  await prisma.session.deleteMany({
+    where: {
+      sess: {
+        path: ['usuarioId'],
+        equals: aluno.id,
+      },
     },
   });
 

@@ -114,6 +114,31 @@ app.use(
 app.use(csrfProtection);
 app.use(exposeUser);
 
+// Protecao CSRF (depois da sessao) e usuario disponivel nas views.
+app.use(csrfProtection);
+app.use(exposeUser);
+
+// Bloqueia alunos banidos em qualquer request — derruba a sessão na hora.
+const prisma = require('./db');
+app.use(async (req, res, next) => {
+  if (!req.session?.usuarioId) return next();
+  try {
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: req.session.usuarioId },
+      select: { bloqueioTotal: true },
+    });
+    if (!usuario || usuario.bloqueioTotal) {
+      return req.session.destroy(() => {
+        const ehAdmin = isAdminReq(req);
+        return res.redirect(ehAdmin ? '/login' : '/login?banido=1');
+      });
+    }
+  } catch (e) {
+    console.error('[BanCheck] Erro ao verificar ban:', e.message);
+  }
+  return next();
+});
+
 // ---- Roteamento por contexto: site do ALUNO x painel da SECRETARIA ----
 const ADMIN_HOST = (process.env.ADMIN_HOST || 'secretaria').toLowerCase();
 const ADMIN_PORT = process.env.ADMIN_PORT ? Number(process.env.ADMIN_PORT) : null;
