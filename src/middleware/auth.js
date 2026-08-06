@@ -1,6 +1,8 @@
 // Middlewares de autenticação e controle de acesso.
 // O controle de "quem vê o quê" é validado SEMPRE no servidor, a cada rota.
 
+const asyncHandler = require('./asyncHandler');
+
 // Disponibiliza o usuário logado (se houver) para todas as views.
 function exposeUser(req, res, next) {
   if (req.session && req.session.usuarioId) {
@@ -15,9 +17,8 @@ function exposeUser(req, res, next) {
   next();
 }
 
-// Exige que haja um usuário logado.
 // Exige que haja um usuário logado. Bloqueia alunos banidos (bloqueioTotal).
-async function requireLogin(req, res, next) {
+const requireLogin = asyncHandler(async function requireLogin(req, res, next) {
   if (!req.session || !req.session.usuarioId) return res.redirect('/login');
 
   const prisma = require('../db');
@@ -31,7 +32,7 @@ async function requireLogin(req, res, next) {
   }
 
   return next();
-}
+});
 
 // Exige que o usuário logado tenha um dos papéis informados.
 function requireRole(...papeis) {
