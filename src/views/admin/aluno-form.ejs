@@ -117,5 +117,33 @@
 
   <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> Salvar alterações</button>
 </form>
+
+<% if (!aluno.bloqueioTotal) { %>
+  <div class="adm-box" style="padding:24px;margin-top:18px;border:1px solid #fecaca;background:#fff5f5;">
+    <h3 style="color:#991b1b;font-size:15px;font-weight:700;margin:0 0 6px;"><i class="fa-solid fa-ban"></i> Zona de perigo</h3>
+    <p class="adm-mut" style="margin:0 0 14px;font-size:13px;">Banir este aluno cancela todas as matrículas ativas e bloqueia qualquer acesso ao site. A ação fica registrada na auditoria.</p>
+    <form method="POST" action="/alunos/<%= aluno.id %>/banir"
+      onsubmit="return confirm('Tem certeza? Esta ação cancela todas as matrículas ativas do aluno.')">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <textarea name="motivo" required maxlength="300" placeholder="Motivo do banimento (obrigatório)"
+        style="width:100%;padding:8px 12px;border:1px solid #fca5a5;border-radius:8px;font-size:13px;margin-bottom:10px;resize:vertical;min-height:70px;box-sizing:border-box;background:#fff;"></textarea>
+      <button type="submit" class="adm-btn" style="background:#dc2626;border-color:#dc2626;">
+        <i class="fa-solid fa-ban"></i> Banir aluno
+      </button>
+    </form>
+  </div>
+  <% } else { %>
+  <div class="adm-box" style="padding:24px;margin-top:18px;border:1px solid #bbf7d0;background:#f0fdf4;">
+    <h3 style="color:#166534;font-size:15px;font-weight:700;margin:0 0 6px;"><i class="fa-solid fa-lock"></i> Aluno banido</h3>
+    <p class="adm-mut" style="margin:0 0 14px;font-size:13px;">Este aluno está banido e não consegue acessar o site. Todas as matrículas ativas foram canceladas no momento do banimento.</p>
+    <form method="POST" action="/alunos/<%= aluno.id %>/desbanir"
+      onsubmit="return confirm('Desbanir este aluno?')">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="adm-btn" style="background:#16a34a;border-color:#16a34a;">
+        <i class="fa-solid fa-lock-open"></i> Desbanir aluno
+      </button>
+    </form>
+  </div>
+  <% } %>
 <%- include('foot') %>
 <script src="/js/mascaras.js"></script>

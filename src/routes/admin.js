@@ -1613,4 +1613,111 @@ router.post('/dev/usuarios/novo', requireDev, async (req, res) => {
   }
 });
 
+// ---------- Banimento de Alunos ----------
+
+router.get('/banimentos', requireDev, async (req, res) => {
+  const busca = String(req.query.q || '').trim();
+
+  const where = { papel: 'ALUNO', bloqueioTotal: true };
+  if (busca) {
+    where.OR = [
+      { nome: { contains: busca, mode: 'insensitive' } },
+      { email: { contains: busca, mode: 'insensitive' } },
+    ];
+  }
+
+  const banidos = await prisma.usuario.findMany({
+    where,
+    orderBy: { atualizadoEm: 'desc' },
+    include: { _count: { select: { matriculas: true } } },
+  });
+
+  // Busca o motivo de cada ban no log de auditoria
+  const logs = await prisma.logAuditoria.findMany({
+    where: { acao: 'BANIU_ALUNO', alvoId: { in: banidos.map((u) => u.id) } },
+    orderBy: { criadoEm: 'desc' },
+  });
+
+  // Pega só o log mais recente por aluno
+  const motivoMap = {};
+  for (const log of logs) {
+    if (motivoMap[log.alvoId]) continue;
+    try {
+      const d = log.detalhe ? JSON.parse(log.detalhe) : {};
+      motivoMap[log.alvoId] = { motivo: d.motivo || 'Não informado', em: log.criadoEm };
+    } catch {
+      motivoMap[log.alvoId] = { motivo: 'Não informado', em: log.criadoEm };
+    }
+  }
+
+  res.render('admin/banimentos', {
+    banidos,
+    motivoMap,
+    busca,
+    flash: req.query.ok || null,
+    ativo: 'banimentos',
+  });
+});
+
+router.post('/alunos/:id/banir', requireDev, async (req, res) => {
+  const aluno = await prisma.usuario.findUnique({ where: { id: req.params.id } });
+  if (!aluno || aluno.papel !== 'ALUNO')
+    return res.status(404).render('admin/erro', { mensagem: 'Aluno não encontrado.' });
+  if (aluno.bloqueioTotal)
+    return res.redirect('/banimentos?ok=' + encodeURIComponent('Aluno já está banido.'));
+
+  const motivo = String(req.body.motivo || '').trim() || 'Não informado';
+
+  // Cancela matrículas ativas
+  await prisma.matricula.updateMany({
+    where: {
+      alunoId: aluno.id,
+      statusPagamento: { notIn: ['CANCELADO', 'ESTORNADO'] },
+    },
+    data: { statusPagamento: 'CANCELADO' },
+  });
+
+  // Cancela pagamentos pendentes
+  const matriculas = await prisma.matricula.findMany({
+    where: { alunoId: aluno.id },
+    select: { id: true },
+  });
+  const ids = matriculas.map((m) => m.id);
+  if (ids.length) {
+    await prisma.pagamento.updateMany({
+      where: { matriculaId: { in: ids }, status: 'PENDENTE' },
+      data: { status: 'CANCELADO' },
+    });
+  }
+
+  await prisma.usuario.update({
+    where: { id: aluno.id },
+    data: {
+      bloqueioTotal: true,
+      loginFalhas: 0,
+      bloqueadoAte: null,
+      loginStrikes: 0,
+    },
+  });
+
+  await auditar(req, 'BANIU_ALUNO', 'Usuario', aluno.id, { motivo });
+  res.redirect('/banimentos?ok=' + encodeURIComponent(`${aluno.nome.split(' ')[0]} foi banido.`));
+});
+
+router.post('/alunos/:id/desbanir', requireDev, async (req, res) => {
+  const aluno = await prisma.usuario.findUnique({ where: { id: req.params.id } });
+  if (!aluno || aluno.papel !== 'ALUNO')
+    return res.status(404).render('admin/erro', { mensagem: 'Aluno não encontrado.' });
+  if (!aluno.bloqueioTotal)
+    return res.redirect('/banimentos?ok=' + encodeURIComponent('Aluno não está banido.'));
+
+  await prisma.usuario.update({
+    where: { id: aluno.id },
+    data: { bloqueioTotal: false, loginFalhas: 0, loginStrikes: 0, bloqueadoAte: null },
+  });
+
+  await auditar(req, 'DESBANIU_ALUNO', 'Usuario', aluno.id, {});
+  res.redirect('/banimentos?ok=' + encodeURIComponent(`${aluno.nome.split(' ')[0]} foi desbanido.`));
+});
+
 module.exports = router;

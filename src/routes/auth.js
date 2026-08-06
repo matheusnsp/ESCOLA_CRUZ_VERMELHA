@@ -238,8 +238,9 @@ router.get('/login', (req, res) => {
     return res.redirect('/minha-conta');
   }
   const sucesso = req.query.redefinida ? 'Senha redefinida com sucesso. Faca login.' : undefined;
+  const info = req.query.banido ? 'Sua conta foi suspensa. Em caso de dúvidas, entre em contato com a secretaria.' : null;
   const erro = null;
-  res.render('login', { erro, email: '', sucesso });
+  res.render('login', { erro, email: '', sucesso, info });
 });
 
 router.post('/login', loginLimiter, async (req, res) => {

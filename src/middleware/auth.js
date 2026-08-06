@@ -16,9 +16,21 @@ function exposeUser(req, res, next) {
 }
 
 // Exige que haja um usuário logado.
-function requireLogin(req, res, next) {
-  if (req.session && req.session.usuarioId) return next();
-  return res.redirect('/login');
+// Exige que haja um usuário logado. Bloqueia alunos banidos (bloqueioTotal).
+async function requireLogin(req, res, next) {
+  if (!req.session || !req.session.usuarioId) return res.redirect('/login');
+
+  const prisma = require('../db');
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: req.session.usuarioId },
+    select: { bloqueioTotal: true },
+  });
+
+  if (!usuario || usuario.bloqueioTotal) {
+    return req.session.destroy(() => res.redirect('/login?banido=1'));
+  }
+
+  return next();
 }
 
 // Exige que o usuário logado tenha um dos papéis informados.

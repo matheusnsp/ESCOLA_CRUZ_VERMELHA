@@ -1,0 +1,76 @@
+<%- include('partials/header', { titulo: 'Banimentos' }) %>
+
+<div style="max-width:900px;margin:0 auto;padding:24px 16px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+    <h1 style="font-size:22px;font-weight:700;margin:0;">Alunos Banidos</h1>
+    <a href="/alunos" style="font-size:13px;color:#6b7280;">← Voltar para Alunos</a>
+  </div>
+
+  <% if (flash) { %>
+    <div style="background:#dcfce7;color:#166534;padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:14px;">
+      <%= flash %>
+    </div>
+  <% } %>
+
+  <!-- Busca -->
+  <form method="GET" style="margin-bottom:20px;display:flex;gap:8px;">
+    <input name="q" value="<%= busca %>" placeholder="Buscar por nome ou e-mail..."
+      style="flex:1;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;" />
+    <button type="submit"
+      style="padding:8px 16px;background:#111827;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;">
+      Buscar
+    </button>
+  </form>
+
+  <% if (banidos.length === 0) { %>
+    <p style="color:#6b7280;font-size:14px;">Nenhum aluno banido encontrado.</p>
+  <% } else { %>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <thead>
+        <tr style="background:#f9fafb;text-align:left;">
+          <th style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">Aluno</th>
+          <th style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">Motivo</th>
+          <th style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">Banido em</th>
+          <th style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">Matrículas</th>
+          <th style="padding:10px 12px;border-bottom:1px solid #e5e7eb;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const aluno of banidos) {
+           const info = motivoMap[aluno.id] || {};
+        %>
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:10px 12px;">
+            <div style="font-weight:600;"><%= aluno.nome %></div>
+            <div style="color:#6b7280;font-size:12px;"><%= aluno.email %></div>
+          </td>
+          <td style="padding:10px 12px;color:#374151;max-width:240px;">
+            <%= info.motivo || '—' %>
+          </td>
+          <td style="padding:10px 12px;color:#6b7280;white-space:nowrap;">
+            <% if (info.em) { %>
+              <%= new Date(info.em).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) %>
+            <% } else { %>—<% } %>
+          </td>
+          <td style="padding:10px 12px;color:#6b7280;">
+            <%= aluno._count.matriculas %>
+          </td>
+          <td style="padding:10px 12px;text-align:right;white-space:nowrap;">
+            <form method="POST" action="/alunos/<%= aluno.id %>/desbanir" style="display:inline"
+              onsubmit="return confirm('Desbanir <%= aluno.nome.split(' ')[0] %>?')">
+              <button type="submit"
+                style="background:#dcfce7;color:#166534;border:none;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">
+                Desbanir
+              </button>
+            </form>
+            <a href="/alunos/<%= aluno.id %>/editar"
+              style="margin-left:8px;font-size:12px;color:#6b7280;">Ver perfil</a>
+          </td>
+        </tr>
+        <% } %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>
