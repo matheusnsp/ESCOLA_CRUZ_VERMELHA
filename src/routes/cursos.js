@@ -12,6 +12,34 @@ const { criarTransacao, obterOpcaoParcelamento } = require('../lib/unicopag');
 
 const router = express.Router();
 
+// ─────────────────────────────────────────────────────────────────────────
+// 💡 NOVO — Fecha automaticamente turmas cuja data de início já passou,
+// marcando-as como CONFIRMADA. As rotas de listagem/inscrição abaixo só
+// aceitam status 'ABERTA', então isso já barra novas inscrições sozinho,
+// sem precisar de intervenção manual da secretaria. Pra reabrir turma de um
+// curso que já passou da data, é preciso criar uma turma nova.
+//
+// Roda de forma "preguiçosa" (lazy): a cada request às rotas públicas,
+// verifica e atualiza o que estiver vencido antes de consultar as listagens.
+// Não precisa de cron/scheduler — funciona porque o site é acessado
+// regularmente; a primeira visita depois que a data vira já corrige o status.
+// ─────────────────────────────────────────────────────────────────────────
+async function fecharTurmasVencidas() {
+  try {
+    await prisma.turma.updateMany({
+      where: { status: 'ABERTA', inicioPrevisto: { lte: new Date() } },
+      data: { status: 'CONFIRMADA' },
+    });
+  } catch (e) {
+    console.error('[Turmas] Falha ao fechar turmas vencidas:', e.message);
+  }
+}
+
+router.use(async (req, res, next) => {
+  await fecharTurmasVencidas();
+  next();
+});
+
 // Cursos inativos ficam visíveis e matriculáveis apenas para o papel DEV.
 // Serve para testar um curso "em construção" sem publicá-lo pros alunos.
 function filtroVisibilidadeCurso(usuario) {

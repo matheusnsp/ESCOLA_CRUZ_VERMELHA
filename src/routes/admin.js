@@ -519,6 +519,30 @@ router.use((req, res, next) => {
 
 router.use(requireAdmin);
 
+// ─────────────────────────────────────────────────────────────────────────
+// 💡 NOVO — Fecha automaticamente turmas cuja data de início já passou,
+// marcando-as como CONFIRMADA. Mesma lógica que existe em routes/publico.js —
+// duplicada aqui de propósito porque o painel admin roda em app/porta
+// separados do site público (secretaria.<dominio> vs. site do aluno). Sem
+// isso, se a secretaria só usa o painel e ninguém visita o site público, a
+// tela /turmas ficaria mostrando "ABERTA" desatualizado indefinidamente.
+// ─────────────────────────────────────────────────────────────────────────
+async function fecharTurmasVencidas() {
+  try {
+    await prisma.turma.updateMany({
+      where: { status: 'ABERTA', inicioPrevisto: { lte: new Date() } },
+      data: { status: 'CONFIRMADA' },
+    });
+  } catch (e) {
+    console.error('[Turmas] Falha ao fechar turmas vencidas:', e.message);
+  }
+}
+
+router.use(async (req, res, next) => {
+  await fecharTurmasVencidas();
+  next();
+});
+
 // ---------- Dashboard ----------
 
 router.get('/', async (req, res) => {
