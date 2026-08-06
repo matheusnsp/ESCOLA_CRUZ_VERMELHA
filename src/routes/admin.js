@@ -38,8 +38,6 @@ const asyncHandler = require('../lib/asyncHandler');
 // Tempo maximo de inatividade no painel antes de deslogar (15 min).
 const IDLE_MS = 15 * 60 * 1000;
 
-// Qualquer um dos papeis administrativos pode entrar no painel.
-// O que cada um pode FAZER dentro dele e controlado por requirePermissao() em cada rota.
 function requireAdmin(req, res, next) {
   if (req.session && req.session.usuarioId && PAPEIS_ADMIN.includes(req.session.papel)) {
     const agora = Date.now();
@@ -52,9 +50,6 @@ function requireAdmin(req, res, next) {
   return res.redirect('/login');
 }
 
-// Bloqueia a rota a menos que o papel logado tenha pelo menos UMA das permissoes passadas.
-// Aceita varias (OR) porque algumas telas sao compartilhadas: quem gerencia OU so le, ve a pagina;
-// so quem gerencia ve os botoes de acao (isso e tratado na view com res.locals.pode(...)).
 function requirePermissao(...perms) {
   return (req, res, next) => {
     if (perms.some((p) => temPermissao(req.session.papel, p))) return next();
@@ -62,14 +57,11 @@ function requirePermissao(...perms) {
   };
 }
 
-// Restringe ao papel DEV, checado direto (nao via requirePermissao), pra deixar
-// explicito que a area /dev nao depende do sistema normal de permissoes/bypass.
 function requireDev(req, res, next) {
   if (req.session && req.session.papel === 'DEV') return next();
   return res.status(403).render('admin/erro', { mensagem: 'Esta área é restrita ao Dev.' });
 }
 
-// Registra uma acao administrativa (trilha de auditoria).
 async function auditar(req, acao, alvoTipo, alvoId, detalhe) {
   try {
     await prisma.logAuditoria.create({
@@ -86,7 +78,6 @@ async function auditar(req, acao, alvoTipo, alvoId, detalhe) {
   }
 }
 
-// Converte texto de formulario em numero decimal valido (ou null se vazio/opcional).
 function parseDecimal(v, { opcional = false } = {}) {
   if (v == null || String(v).trim() === '') return opcional ? null : NaN;
   const n = Number(String(v).replace(',', '.'));
@@ -98,11 +89,6 @@ function parseInteiro(v, { min = 0 } = {}) {
   return Number.isInteger(n) && n >= min ? n : NaN;
 }
 
-// 💡 A2 — Sincroniza o ledger de Pagamento quando a secretaria age manualmente.
-// Atualiza os Pagamentos existentes do tipo indicado para o novo status; se não
-// houver nenhum (ex.: matrícula antiga ou fluxo presencial sem linha de gateway),
-// cria um registrando que a origem foi manual. Assim /financeiro e a conciliação
-// leem sempre a mesma verdade, venha do webhook ou do painel.
 async function sincronizarPagamentoManual(req, matricula, tipo, novoStatus) {
   try {
     const existentes = await prisma.pagamento.findMany({
@@ -134,7 +120,6 @@ async function sincronizarPagamentoManual(req, matricula, tipo, novoStatus) {
   }
 }
 
-// Auxiliar para retornar a pagina anterior de forma segura com mensagem de sucesso
 function back(req, msg) {
   const turma = req.body && req.body.turma ? String(req.body.turma) : null;
   const url = turma ? `/inscricoes?turma=${encodeURIComponent(turma)}` : (req.get('Referer') || '/inscricoes');
@@ -155,8 +140,6 @@ function statusBadge(s) {
 
 const ESCOLARIDADES = ['', 'Ensino Fundamental', 'Ensino Médio', 'Ensino Superior'];
 const STATUS_TURMA = ['ABERTA', 'CONFIRMADA', 'CANCELADA', 'ENCERRADA'];
-
-// ---------- "Lembrar dispositivo" do 2FA (até a proxima meia-noite em Brasilia) ----------
 
 const DEVICE_2FA_COOKIE = 'cvbrj_admin_2fa';
 
@@ -206,8 +189,6 @@ function marcarDispositivoConfirmado(res, usuarioId) {
     maxAge: msAteMeiaNoiteSP(),
   });
 }
-
-// ---------- Login administrativo (senha -> 2FA por e-mail) ----------
 
 const MAX_FALHAS = 5;                          
 const STRIKE_DURACOES_MIN = [15, 30, 60];      
@@ -440,8 +421,6 @@ router.get('/desbloquear', async (req, res) => {
   return res.render('admin/login', { erro: null, info: 'Acesso liberado. Faca login normalmente.' });
 });
 
-// ---------- Esqueci minha senha ----------
-
 const resetSenhaLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false });
 
 router.get('/esqueci-senha', (req, res) => {
@@ -508,7 +487,6 @@ router.post('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
 
-// Middleware Global de Contexto para as views administradas
 router.use((req, res, next) => {
   res.locals.admUsuarioNome = req.session?.nome || '';
   res.locals.admPapel = req.session?.papel || null;
@@ -521,15 +499,27 @@ router.use(requireAdmin);
 
 // ---------- Dashboard ----------
 
+// 💡 NOVO — Mesmo filtro de "matrícula fantasma" usado em conta.js (tela do
+// aluno): esconde matrículas PENDENTE + taxaConfirmada:false — ou seja,
+// gente que nunca chegou a pagar nada (criou a matrícula ao aceitar o
+// contrato, mas nem tentou pagar a taxa). Sem isso, o Dashboard mostrava
+// esses registros normalmente nas "Últimas inscrições" e no contador
+// "Pagamentos pendentes", como se fossem inscrições reais aguardando
+// pagamento — quando na verdade é lixo de tentativa abandonada.
+const FILTRO_MATRICULA_FANTASMA = {
+  NOT: { statusPagamento: 'PENDENTE', taxaConfirmada: false },
+};
+
 router.get('/', async (req, res) => {
   const [totalCursos, cursosAtivos, turmasAbertas, pendentes, pagas] = await Promise.all([
     prisma.curso.count(),
     prisma.curso.count({ where: { ativo: true } }),
     prisma.turma.count({ where: { status: 'ABERTA' } }),
-    prisma.matricula.count({ where: { statusPagamento: 'PENDENTE' } }),
+    prisma.matricula.count({ where: { statusPagamento: 'PENDENTE', ...FILTRO_MATRICULA_FANTASMA } }),
     prisma.matricula.count({ where: { statusPagamento: 'PAGO' } }),
   ]);
   const ultimas = await prisma.matricula.findMany({
+    where: FILTRO_MATRICULA_FANTASMA,
     orderBy: { criadoEm: 'desc' },
     take: 8,
     include: { aluno: true, turma: { include: { curso: true } } },
@@ -538,6 +528,7 @@ router.get('/', async (req, res) => {
     stats: { totalCursos, cursosAtivos, turmasAbertas, pendentes, pagas },
     ultimas,
     formatBRL,
+    statusBadge,
   });
 });
 
@@ -910,28 +901,24 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     estornos,
     logsEstorno,
   ] = await Promise.all([
-    // Quem pagou a taxa de inscrição (com ou sem matrícula/curso completo)
     prisma.matricula.findMany({
       where: { taxaConfirmada: true },
       orderBy: { taxaConfirmadaEm: 'desc' },
       include: { aluno: true, turma: { include: { curso: true } } },
     }),
 
-    // Quem pagou o curso (à vista = PAGO; parcelado no cartão = PARCELADO)
     prisma.matricula.findMany({
       where: { statusPagamento: { in: ['PAGO', 'PARCELADO'] } },
       orderBy: { confirmadaEm: 'desc' },
       include: { aluno: true, turma: { include: { curso: true } } },
     }),
 
-    // Pendente de taxa (exclui estornadas/canceladas — não estão "aguardando")
     prisma.matricula.findMany({
       where: { taxaConfirmada: false, statusPagamento: { notIn: ['ESTORNADO', 'CANCELADO'] } },
       orderBy: { criadoEm: 'desc' },
       include: { aluno: true, turma: { include: { curso: true } } },
     }),
 
-    // Pendente de curso
     prisma.matricula.findMany({
       where: {
         taxaConfirmada: true,
@@ -941,7 +928,6 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
       include: { aluno: true, turma: { include: { curso: true } } },
     }),
 
-    // Estornos
     prisma.matricula.findMany({
       where: { statusPagamento: 'ESTORNADO' },
       orderBy: { atualizadoEm: 'desc' },
@@ -957,8 +943,6 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
   const motivos = mapaMotivosEstorno(logsEstorno);
   const TAXA_MATRICULA_PADRAO = 100;
 
-  // Pendências — segue mostrando taxa E curso como itens pendentes na lista
-  // (isso não muda). O que muda é o somatório em R$ exibido no card, mais abaixo.
   const pendentesLista = [
     ...taxaPendenteLista.map((m) => ({
       m,
@@ -981,7 +965,6 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     })),
   ].sort((a, b) => b.desde - a.desde);
 
-  // Reembolsos pendentes de transferência
   const reembolsosPendentesLista = await prisma.matricula.findMany({
     where: {
       diferencaTransferencia: {
@@ -1006,32 +989,16 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     0
   );
 
-  // 💡 NOVO — total de taxas de inscrição pagas, puro do banco (SEM fallback
-  // fixo de R$100 — esse fallback continua existindo só na lista de PENDÊNCIAS
-  // acima, que é outra coisa). Inclui TODAS as taxas confirmadas, tenham ou
-  // não matrícula/curso completo — é dinheiro que já entrou de verdade.
   const totalTaxasPagas = taxaPagaLista.reduce(
     (s, m) => s + Number(m.valorTaxaMatricula || 0),
     0
   );
 
-  // 💡 NOVO — total do curso pago, SEM a taxa embutida. valorCurso já vem com
-  // a taxa somada (ver comentário do totalRecebido logo abaixo), por isso
-  // subtraímos valorTaxaMatricula pra isolar só o valor do curso em si.
   const totalCursosPagos = matriculaGeradaLista.reduce(
     (s, m) => s + (Number(m.valorCurso || 0) - Number(m.valorTaxaMatricula || 0)),
     0
   );
 
-  // 💡 CORRIGIDO (A4 + parcelado): valorCurso JÁ inclui a taxa embutida — no à
-  // vista desde o checkout, e no parcelado desde que o curso é pago (cursos.js
-  // grava valorFinal + taxa). Então somamos só valorCurso; adicionar a taxa de
-  // novo contaria em dobro (era o bug do R$30 no dashboard). Sem fallback fixo.
-  //
-  // 💡 NOVO — além disso, somamos também as taxas de quem JÁ pagou a taxa mas
-  // AINDA NÃO tem matrícula/curso completo (statusPagamento fora de PAGO/
-  // PARCELADO). Esse dinheiro já entrou de verdade — sem essa soma, o "Total
-  // recebido" ficava menor que a soma real de tudo que já entrou no caixa.
   const taxaSemMatriculaLista = taxaPagaLista.filter(
     (m) => !['PAGO', 'PARCELADO'].includes(m.statusPagamento)
   );
@@ -1044,10 +1011,6 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     matriculaGeradaLista.reduce((s, m) => s + Number(m.valorCurso), 0) +
     totalTaxaSemMatricula;
 
-  // 💡 NOVO — "Total pendente a receber" agora conta SÓ o valor do curso; a
-  // taxa de inscrição pendente não entra mais nesse somatório em R$ (o card de
-  // CONTAGEM "Pendentes", mais acima, continua contando os dois tipos de item
-  // normalmente — só o valor monetário exibido é que passa a ser só de curso).
   const totalPendente = cursoPendenteLista.reduce(
     (s, m) =>
       s +
