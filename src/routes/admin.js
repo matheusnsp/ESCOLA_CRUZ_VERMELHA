@@ -1699,14 +1699,9 @@ router.post('/alunos/:id/banir', requireDev, async (req, res) => {
   });
 
   // Derruba todas as sessões ativas do aluno no banco
-  await prisma.session.deleteMany({
-    where: {
-      sess: {
-        path: ['usuarioId'],
-        equals: aluno.id,
-      },
-    },
-  });
+  await prisma.$executeRaw`
+  DELETE FROM session WHERE sess->>'usuarioId' = ${aluno.id}
+`;
 
   await auditar(req, 'BANIU_ALUNO', 'Usuario', aluno.id, { motivo });
   res.redirect('/banimentos?ok=' + encodeURIComponent(`${aluno.nome.split(' ')[0]} foi banido.`));
