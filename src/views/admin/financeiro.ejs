@@ -8,19 +8,6 @@ function dataBR(d) {
   return new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 const LIMITE_GRUPO = 3;
-
-// Soma de todas as taxas de inscrição pagas
-const totalTaxasPagas = taxaPagaLista.reduce(
-  (soma, m) => soma + Number(m.valorTaxaMatricula || 0),
-  0
-);
-
-// Soma dos cursos pagos, SEM a taxa (valorCurso já vem com a taxa embutida,
-// então subtraímos pra isolar só o valor do curso em si).
-const totalCursosPagos = matriculaGeradaLista.reduce(
-  (soma, m) => soma + (Number(m.valorCurso || 0) - Number(m.valorTaxaMatricula || 0)),
-  0
-);
 %>
 
 <div class="adm-h1-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
@@ -43,14 +30,14 @@ const totalCursosPagos = matriculaGeradaLista.reduce(
     <span><%= stats.taxaPagaCount %></span>
     <small><i class="fa-solid fa-circle-check"></i> Taxa de inscrição paga</small>
     <small class="adm-mut" style="display:block;margin-top:2px;font-weight:600;">
-      <%= formatBRL(totalTaxasPagas) %>
+      <%= formatBRL(stats.totalTaxasPagas) %>
     </small>
   </div>
   <div class="adm-stat ok">
     <span><%= stats.matriculaGeradaCount %></span>
     <small><i class="fa-solid fa-id-badge"></i> Curso pago + matrícula gerada</small>
     <small class="adm-mut" style="display:block;margin-top:2px;font-weight:600;">
-      <%= formatBRL(totalCursosPagos) %> (sem taxa)
+      <%= formatBRL(stats.totalCursosPagos) %> (sem taxa)
     </small>
   </div>
   <div class="adm-stat warn">

@@ -136,9 +136,6 @@ async function sincronizarPagamentoManual(req, matricula, tipo, novoStatus) {
 
 // Auxiliar para retornar a pagina anterior de forma segura com mensagem de sucesso
 function back(req, msg) {
-  // Prioriza o campo oculto "turma" que os forms de /inscricoes já mandam
-  // (mantém o filtro mesmo se o navegador nao enviar o Referer, ex.: bloqueadores
-  // de privacidade/rastreamento). So cai pro Referer se o form nao mandou turma.
   const turma = req.body && req.body.turma ? String(req.body.turma) : null;
   const url = turma ? `/inscricoes?turma=${encodeURIComponent(turma)}` : (req.get('Referer') || '/inscricoes');
   const queryConector = url.includes('?') ? '&' : '?';
@@ -163,18 +160,15 @@ const STATUS_TURMA = ['ABERTA', 'CONFIRMADA', 'CANCELADA', 'ENCERRADA'];
 
 const DEVICE_2FA_COOKIE = 'cvbrj_admin_2fa';
 
-// Data de hoje no fuso de Brasília, formato YYYY-MM-DD (usada como "carimbo do dia").
 function hojeSPStr() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 }
 
-// Assina usuarioId + dia com o SESSION_SECRET, pra ninguém falsificar o cookie manualmente.
 function assinarDispositivo(usuarioId, dia) {
   const segredo = process.env.SESSION_SECRET || 'troque-este-segredo';
   return crypto.createHmac('sha256', segredo).update(`${usuarioId}:${dia}`).digest('hex');
 }
 
-// Le cookies manualmente (sem depender do cookie-parser estar instalado).
 function lerCookies(req) {
   const header = req.headers.cookie;
   const out = {};
@@ -187,7 +181,6 @@ function lerCookies(req) {
   return out;
 }
 
-// Este dispositivo/navegador já confirmou o 2FA hoje, para este usuario especifico?
 function dispositivoConfirmadoHoje(req, usuarioId) {
   const val = lerCookies(req)[DEVICE_2FA_COOKIE];
   if (!val) return false;
@@ -196,7 +189,6 @@ function dispositivoConfirmadoHoje(req, usuarioId) {
   return assinatura === assinarDispositivo(usuarioId, dia);
 }
 
-// Quanto tempo (ms) falta até a próxima meia-noite em Brasília — usado como validade do cookie.
 function msAteMeiaNoiteSP() {
   const agora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
   const meia = new Date(agora);
@@ -204,7 +196,6 @@ function msAteMeiaNoiteSP() {
   return meia.getTime() - agora.getTime();
 }
 
-// Marca este dispositivo como "2FA confirmado hoje" para o usuario.
 function marcarDispositivoConfirmado(res, usuarioId) {
   const dia = hojeSPStr();
   const valor = `${usuarioId}.${dia}.${assinarDispositivo(usuarioId, dia)}`;
@@ -268,8 +259,6 @@ async function logSeguranca(req, acao, usuarioId, detalhe) {
   }
 }
 
-// Login efetivo: cria a sessao do admin, envia alerta e registra auditoria.
-// Usado tanto pelo fluxo normal (apos 2FA) quanto pelo fluxo de dispositivo já confirmado.
 async function logarComoAdmin(req, res, usuario) {
   const ip = req.ip;
   return req.session.regenerate((err) => {
@@ -362,7 +351,6 @@ router.post('/login', loginAdminLimiter, async (req, res) => {
       await prisma.usuario.update({ where: { id: usuario.id }, data: { loginFalhas: 0, bloqueadoAte: null, loginStrikes: 0 } });
     }
 
-    // Dispositivo já confirmou o 2FA hoje: pula direto pro login, sem pedir codigo de novo.
     if (dispositivoConfirmadoHoje(req, usuario.id)) {
       return logarComoAdmin(req, res, usuario);
     }
@@ -452,10 +440,7 @@ router.get('/desbloquear', async (req, res) => {
   return res.render('admin/login', { erro: null, info: 'Acesso liberado. Faca login normalmente.' });
 });
 
-// ---------- Esqueci minha senha (fluxo para pessoas adicionadas sem senha definida) ----------
-// Usado tanto por quem esqueceu a senha quanto por conta nova criada pelo painel
-// Dev (/dev/usuarios/novo), que cria o usuário com senhaHash nulo, sem nenhuma
-// senha temporária para ninguém digitar ou saber.
+// ---------- Esqueci minha senha ----------
 
 const resetSenhaLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false });
 
@@ -467,8 +452,6 @@ router.post('/esqueci-senha', resetSenhaLimiter, async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   try {
     const usuario = await prisma.usuario.findUnique({ where: { email } });
-    // So envia se a conta existir E for de fato um papel administrativo — mas a mensagem
-    // de resposta e sempre a mesma, exista ou nao, pra nao confirmar quem tem cadastro.
     if (usuario && PAPEIS_ADMIN.includes(usuario.papel)) {
       const token = await criarTokenReset(usuario.id);
       const link = `${ADMIN_URL}/redefinir-senha?token=${token}`;
@@ -478,8 +461,6 @@ router.post('/esqueci-senha', resetSenhaLimiter, async (req, res) => {
   } catch (e) {
     console.error('Erro ao solicitar redefinicao de senha:', e);
   }
-  // sucesso:true mesmo se a conta nao existir — a propria view esconde o formulario
-  // e mostra so a mensagem generica, evitando confirmar quem tem cadastro ou nao.
   return res.render('admin/esqueci-senha', { erro: null, sucesso: true });
 });
 
@@ -487,8 +468,6 @@ router.get('/redefinir-senha', async (req, res) => {
   const token = String(req.query.token || '');
   const registro = await verificarTokenReset(token);
   if (!registro) {
-    // Sem token valido nao ha o que preencher no formulario de redefinir-senha;
-    // manda de volta pra tela de solicitar um novo link.
     return res.status(400).render('admin/esqueci-senha', { erro: 'Link invalido ou expirado. Solicite um novo abaixo.', sucesso: false });
   }
   res.render('admin/redefinir-senha', { erro: null, token });
@@ -503,7 +482,6 @@ router.post('/redefinir-senha', resetSenhaLimiter, async (req, res) => {
   if (!registro) {
     return res.status(400).render('admin/esqueci-senha', { erro: 'Link invalido ou expirado. Solicite um novo abaixo.', sucesso: false });
   }
-  // Mesmo minimo exigido no atributo minlength do campo em redefinir-senha.ejs.
   if (senha.length < 10) {
     return res.status(400).render('admin/redefinir-senha', { erro: 'A senha precisa ter pelo menos 10 caracteres.', token });
   }
@@ -516,7 +494,6 @@ router.post('/redefinir-senha', resetSenhaLimiter, async (req, res) => {
     where: { id: registro.usuarioId },
     data: {
       senhaHash,
-      // Redefinir a senha tambem limpa qualquer bloqueio de login anterior.
       loginFalhas: 0, loginStrikes: 0, bloqueadoAte: null, bloqueioTotal: false,
       emailVerificado: true,
     },
@@ -536,13 +513,10 @@ router.use((req, res, next) => {
   res.locals.admUsuarioNome = req.session?.nome || '';
   res.locals.admPapel = req.session?.papel || null;
   res.locals.path = req.path;
-  // Disponivel em toda view admin/*: <% if (pode('financeiro:aprovar')) { %> ... <% } %>
   res.locals.pode = (perm) => temPermissao(req.session?.papel, perm);
   next();
 });
 
-// Restricao global para as rotas abaixo: precisa estar logado como algum papel admin.
-// O QUE cada papel pode fazer dentro das rotas e refinado rota a rota com requirePermissao().
 router.use(requireAdmin);
 
 // ---------- Dashboard ----------
@@ -568,10 +542,6 @@ router.get('/', async (req, res) => {
 });
 
 // ---------- Cursos ----------
-// Criar curso novo: exclusivo de quem tem 'cursos:criar' (Coordenador, Dev).
-// Editar/excluir/ativar/FAQs de curso já existente: quem tem 'cursos:gerenciar'
-// (Secretaria, Coordenador, Dev — Secretaria NÃO cria curso novo, mas mexe em todo o resto).
-// Leitura: tambem quem tem 'painel:leitura' (Financeiro e Consulta, modo consulta).
 
 router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), async (req, res) => {
   const cursos = await prisma.curso.findMany({
@@ -696,9 +666,6 @@ router.post('/cursos/:id/ativar', requirePermissao('cursos:gerenciar'), async (r
 });
 
 // ---------- Turmas ----------
-// CRUD completo (criar/editar/excluir/notas) exige 'turmas:gerenciar' — Secretaria,
-// Coordenador e Dev todos têm essa permissão, sem restrição de criação entre eles.
-// Leitura tambem aceita 'painel:leitura' (Financeiro e Consulta).
 
 router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
   const turmas = await prisma.turma.findMany({
@@ -722,10 +689,7 @@ router.get('/turmas/nova', requirePermissao('turmas:gerenciar'), async (req, res
 
 function parseDateOnly(data) {
   if (!data) return null;
-
   const [ano, mes, dia] = data.split('-').map(Number);
-
-  // Meio-dia evita problemas de fuso horário
   return new Date(ano, mes - 1, dia, 12, 0, 0);
 }
 
@@ -753,7 +717,6 @@ function lerTurmaDoForm(body) {
   else if (!dados.inicioPrevisto) erro = 'Informe a data de início prevista.';
   else if (Number.isNaN(dados.vagas)) erro = 'Numero de vagas invalido.';
   else if (Number.isNaN(dados.minimoAlunos)) erro = 'Minimo de alunos invalido.';
-  // else if (!aulas.length) erro = 'Adicione pelo menos uma aula.';
 
   return { dados, aulas, erro };
 }
@@ -771,7 +734,6 @@ router.post('/turmas', requirePermissao('turmas:gerenciar'), async (req, res) =>
 
   if (erro) return reRenderErro(erro);
 
-  // Só o Dev pode criar turma vinculada a um curso inativo.
   if (req.session.papel !== 'DEV') {
     const curso = await prisma.curso.findUnique({ where: { id: dados.cursoId } });
     if (!curso) return reRenderErro('Curso não encontrado.');
@@ -802,7 +764,6 @@ router.post('/turmas/:id', requirePermissao('turmas:gerenciar'), async (req, res
     const cursos = await prisma.curso.findMany({ orderBy: { nome: 'asc' } });
     return res.status(400).render('admin/turma-form', { turma: { ...req.body, id: req.params.id }, aulas: [], cursos, statusTurma: STATUS_TURMA, erro });
   }
-  // Apaga as aulas antigas e recria (mais simples que diff)
   await prisma.aulaData.deleteMany({ where: { turmaId: req.params.id } });
   await prisma.turma.update({
     where: { id: req.params.id },
@@ -870,15 +831,10 @@ router.post('/turmas/:id/excluir', requirePermissao('turmas:gerenciar'), async (
 });
 
 // ---------- Inscricoes / Pagamentos ----------
-// A pagina e compartilhada: Secretaria (doacao/alimento + confirmar pagamento),
-// Coordenador e Financeiro (pagamento) todos entram, mas os BOTOES de acao
-// (confirmar/cancelar/estornar pagamento vs. marcar alimento entregue) sao
-// controlados na view via res.locals.pode(...). Cada ação POST tem sua propria permissao especifica.
 
 router.get('/inscricoes', requirePermissao('doacao:confirmar', 'financeiro:aprovar', 'financeiro:leitura'), async (req, res) => {
   const turmaId = req.query.turma || null;
-  
-  // FIX: Reintroduzido o status 'PENDENTE'. Sem ele, compras PIX novas sumiam do painel impossibilitando a alteracao de tag
+
   const where = {
     taxaConfirmada: true,
     statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] },
@@ -896,9 +852,6 @@ router.get('/inscricoes', requirePermissao('doacao:confirmar', 'financeiro:aprov
   res.render('admin/inscricoes', { inscricoes, turmas, turmaId, formatBRL, statusBadge, flash: req.query.ok || null });
 });
 
-// Aprovacao de pagamento do curso: quem tem 'financeiro:aprovar' (Financeiro e Dev)
-// OU 'pagamento:confirmar' (Secretaria). Cancelar e estornar continuam exclusivos
-// do Financeiro/Dev — Secretaria só confirma, não desfaz.
 router.post('/inscricoes/:id/confirmar', requirePermissao('financeiro:aprovar', 'pagamento:confirmar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
@@ -908,11 +861,9 @@ router.post('/inscricoes/:id/confirmar', requirePermissao('financeiro:aprovar', 
       statusPagamento: 'PAGO',
       confirmadaPor: req.session.usuarioId,
       confirmadaEm: new Date(),
-      diferencaTransferencia: null, // limpa o aviso de pendencia/reembolso ao confirmar
+      diferencaTransferencia: null,
     },
   });
-  // 💡 CORRIGIDO (A2): reflete no ledger de Pagamento (tipo CURSO). Sem isto, a
-  // linha ficava PENDENTE pra sempre e a conciliação com o gateway divergia.
   await sincronizarPagamentoManual(req, m, 'CURSO', 'PAGO');
   await auditar(req, 'CONFIRMOU_PAGAMENTO', 'Matricula', m.id, null);
   res.redirect(back(req, 'Pagamento confirmado.'));
@@ -922,8 +873,6 @@ router.post('/inscricoes/:id/cancelar', requirePermissao('financeiro:aprovar'), 
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
   await prisma.matricula.update({ where: { id: m.id }, data: { statusPagamento: 'CANCELADO' } });
-  // 💡 CORRIGIDO (A2): reflete no ledger (não cria linha nova no cancelamento —
-  // só marca as PENDENTE existentes como CANCELADO).
   await prisma.pagamento.updateMany({
     where: { matriculaId: m.id, status: 'PENDENTE' },
     data: { status: 'CANCELADO' },
@@ -933,18 +882,11 @@ router.post('/inscricoes/:id/cancelar', requirePermissao('financeiro:aprovar'), 
 });
 
 // ---------- Financeiro ----------
-// Pagina de leitura financeira: quem tem 'financeiro:aprovar' OU
-// 'financeiro:leitura' pode ver (mesmo padrao das Inscricoes).
-// Não tem nenhuma acao de escrita nesta pagina — as acoes (confirmar/
-// estornar) continuam acontecendo em /inscricoes, essa tela aqui é
-// só um raio-x consolidado.
 
-// Monta um mapa { matriculaId -> motivo } a partir dos logs de auditoria
-// de estorno, pegando sempre o log mais recente de cada matrícula.
 function mapaMotivosEstorno(logs) {
   const map = {};
   for (const log of logs) {
-    if (map[log.alvoId]) continue; // já achou o mais recente (logs vêm ordenados desc)
+    if (map[log.alvoId]) continue;
     try {
       const detalhe = log.detalhe ? JSON.parse(log.detalhe) : {};
       map[log.alvoId] = detalhe.motivo || 'Não informado';
@@ -955,8 +897,6 @@ function mapaMotivosEstorno(logs) {
   return map;
 }
 
-// Gera um "código de matrícula" curto e legível a partir do uuid,
-// só pra exibição — não existe campo dedicado no schema hoje.
 function codigoMatricula(m) {
   return `MAT-${m.id.slice(0, 8).toUpperCase()}`;
 }
@@ -970,7 +910,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     estornos,
     logsEstorno,
   ] = await Promise.all([
-    // Quem pagou a taxa de inscrição
+    // Quem pagou a taxa de inscrição (com ou sem matrícula/curso completo)
     prisma.matricula.findMany({
       where: { taxaConfirmada: true },
       orderBy: { taxaConfirmadaEm: 'desc' },
@@ -1017,7 +957,8 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
   const motivos = mapaMotivosEstorno(logsEstorno);
   const TAXA_MATRICULA_PADRAO = 100;
 
-  // Pendências
+  // Pendências — segue mostrando taxa E curso como itens pendentes na lista
+  // (isso não muda). O que muda é o somatório em R$ exibido no card, mais abaixo.
   const pendentesLista = [
     ...taxaPendenteLista.map((m) => ({
       m,
@@ -1065,13 +1006,56 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     0
   );
 
+  // 💡 NOVO — total de taxas de inscrição pagas, puro do banco (SEM fallback
+  // fixo de R$100 — esse fallback continua existindo só na lista de PENDÊNCIAS
+  // acima, que é outra coisa). Inclui TODAS as taxas confirmadas, tenham ou
+  // não matrícula/curso completo — é dinheiro que já entrou de verdade.
+  const totalTaxasPagas = taxaPagaLista.reduce(
+    (s, m) => s + Number(m.valorTaxaMatricula || 0),
+    0
+  );
+
+  // 💡 NOVO — total do curso pago, SEM a taxa embutida. valorCurso já vem com
+  // a taxa somada (ver comentário do totalRecebido logo abaixo), por isso
+  // subtraímos valorTaxaMatricula pra isolar só o valor do curso em si.
+  const totalCursosPagos = matriculaGeradaLista.reduce(
+    (s, m) => s + (Number(m.valorCurso || 0) - Number(m.valorTaxaMatricula || 0)),
+    0
+  );
+
   // 💡 CORRIGIDO (A4 + parcelado): valorCurso JÁ inclui a taxa embutida — no à
   // vista desde o checkout, e no parcelado desde que o curso é pago (cursos.js
   // grava valorFinal + taxa). Então somamos só valorCurso; adicionar a taxa de
   // novo contaria em dobro (era o bug do R$30 no dashboard). Sem fallback fixo.
-  const totalRecebido = matriculaGeradaLista.reduce((s, m) => s + Number(m.valorCurso), 0);
+  //
+  // 💡 NOVO — além disso, somamos também as taxas de quem JÁ pagou a taxa mas
+  // AINDA NÃO tem matrícula/curso completo (statusPagamento fora de PAGO/
+  // PARCELADO). Esse dinheiro já entrou de verdade — sem essa soma, o "Total
+  // recebido" ficava menor que a soma real de tudo que já entrou no caixa.
+  const taxaSemMatriculaLista = taxaPagaLista.filter(
+    (m) => !['PAGO', 'PARCELADO'].includes(m.statusPagamento)
+  );
+  const totalTaxaSemMatricula = taxaSemMatriculaLista.reduce(
+    (s, m) => s + Number(m.valorTaxaMatricula || 0),
+    0
+  );
 
-  const totalPendente = pendentesLista.reduce((s, p) => s + p.valor, 0);
+  const totalRecebido =
+    matriculaGeradaLista.reduce((s, m) => s + Number(m.valorCurso), 0) +
+    totalTaxaSemMatricula;
+
+  // 💡 NOVO — "Total pendente a receber" agora conta SÓ o valor do curso; a
+  // taxa de inscrição pendente não entra mais nesse somatório em R$ (o card de
+  // CONTAGEM "Pendentes", mais acima, continua contando os dois tipos de item
+  // normalmente — só o valor monetário exibido é que passa a ser só de curso).
+  const totalPendente = cursoPendenteLista.reduce(
+    (s, m) =>
+      s +
+      (m.diferencaTransferencia != null
+        ? Number(m.diferencaTransferencia)
+        : Number(m.valorCurso)),
+    0
+  );
 
   const totalEstornado = estornos.reduce(
     (s, m) => s + Number(m.valorCurso),
@@ -1089,6 +1073,8 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
       pendentesCount: pendentesLista.length,
       totalRecebido,
       totalPendente,
+      totalTaxasPagas,
+      totalCursosPagos,
       estornosCount: estornos.length,
       totalEstornado,
 
@@ -1104,9 +1090,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
   });
 });
 
-// ---------- Relatórios (Excel + PDF) — só Dev e Financeiro (financeiro:aprovar) ----------
-// Gera um arquivo único com 3 seções: Matrículas, Financeiro e Auditoria (resumida).
-// Os números replicam exatamente as fórmulas da tela /financeiro acima.
+// ---------- Relatórios (Excel + PDF) ----------
 
 router.get('/relatorios/completo.xlsx', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const dados = await coletarDadosRelatorio(prisma);
@@ -1124,11 +1108,9 @@ router.get('/relatorios/completo.pdf', requirePermissao('financeiro:aprovar'), a
   const nome = `relatorio-cvbrj-${new Date().toISOString().slice(0, 10)}.pdf`;
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${nome}"`);
-  gerarPdf(dados, res); // escreve direto na resposta (stream)
+  gerarPdf(dados, res);
 });
 
-// Confirma que o reembolso de uma transferência de turma foi pago ao aluno.
-// Só limpa a pendência negativa — não mexe em statusPagamento.
 router.post('/inscricoes/:id/reembolso-concluido', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({
     where: { id: req.params.id },
@@ -1169,19 +1151,13 @@ router.post('/inscricoes/:id/reembolso-concluido', requirePermissao('financeiro:
   res.redirect(back(req, 'Reembolso marcado como concluido.'));
 });
 
-
 router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
 
   const motivo = String(req.body.motivo || '').trim() || 'Não informado';
-  // Marque o checkbox/campo "apenasContabil" no form para casos pagos FORA do
-  // gateway (dinheiro, etc.), em que não há o que estornar na Únicopag.
   const apenasContabil = req.body.apenasContabil === 'on' || req.body.apenasContabil === 'true';
 
-  // Estorna a transação de um Pagamento pago (CURSO ou TAXA) via gateway.
-  // Retorna { ok, semRef } — semRef=true quando não há transação no gateway
-  // (pagamento fora da Únicopag): nesse caso o chamador decide o fallback.
   async function estornarPagamento(tipo) {
     const pago = await prisma.pagamento.findFirst({
       where: { matriculaId: m.id, tipo, status: 'PAGO' },
@@ -1210,8 +1186,6 @@ router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:aprovar'), 
   let avisoTaxa = null;
 
   if (!apenasContabil) {
-    // 1) CURSO — é o valor principal; se não der pra estornar, aborta tudo
-    //    e não altera nada (nada de matrícula ESTORNADO sem o dinheiro voltar).
     const curso = await estornarPagamento('CURSO');
     if (!curso.ok) {
       if (curso.semRef) {
@@ -1224,23 +1198,16 @@ router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:aprovar'), 
       });
     }
 
-    // 2) TAXA — transação SEPARADA no gateway. Estorna também, junto do curso.
-    //    Se falhar, NÃO derruba o estorno do curso (que já voltou): a matrícula
-    //    vira ESTORNADO mesmo assim, mas avisamos que a taxa ficou pendente de
-    //    tratamento manual, em vez de fingir que voltou.
     const taxa = await estornarPagamento('TAXA');
     if (taxa.ok) {
       taxaRevertida = true;
     } else if (taxa.semRef) {
-      // Não há transação de taxa no gateway (taxa isenta, ou paga fora dele):
-      // nada a estornar — só reverte o flag contábil.
       taxaRevertida = true;
     } else {
       avisoTaxa = ' ATENÇÃO: o curso foi estornado, mas o gateway NÃO confirmou o estorno da taxa de inscrição — trate a taxa manualmente no painel da Únicopag.';
       console.warn(`[A3] Taxa não estornada para matrícula ${m.id} — requer ação manual.`);
     }
   } else {
-    // Estorno só contábil: reflete no ledger sem chamar o gateway (curso + taxa).
     await sincronizarPagamentoManual(req, m, 'CURSO', 'ESTORNADO');
     await sincronizarPagamentoManual(req, m, 'TAXA', 'ESTORNADO');
     taxaRevertida = true;
@@ -1251,9 +1218,6 @@ router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:aprovar'), 
     data: {
       statusPagamento: 'ESTORNADO',
       diferencaTransferencia: null,
-      // Só reverte a confirmação da taxa se ela foi de fato estornada (ou não
-      // havia o que estornar). Se o refund da taxa falhou, mantém taxaConfirmada
-      // pra não sumir com o registro de que ela foi paga.
       ...(taxaRevertida ? { taxaConfirmada: false, taxaConfirmadaPor: null, taxaConfirmadaEm: null } : {}),
     },
   });
@@ -1263,7 +1227,6 @@ router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:aprovar'), 
   res.redirect(back(req, base + (avisoTaxa || '')));
 });
 
-// Confirmacao de doacao (entrega de alimento): permissao da Secretaria, nao do Financeiro.
 router.post('/inscricoes/:id/alimento', requirePermissao('doacao:confirmar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
@@ -1321,7 +1284,6 @@ router.post('/inscricoes/:id/situacao', requirePermissao('turmas:gerenciar'), as
   res.redirect(`/inscricoes/${m.id}/nota`);
 });
 
-// Mover aluno de turma: permissao especifica da Secretaria.
 router.get('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), async (req, res) => {
   const m = await prisma.matricula.findUnique({
     where: { id: req.params.id },
@@ -1392,11 +1354,6 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
     return reRenderErro('Turma de destino nao encontrada.');
   }
 
-  // A transferência recalcula pelo preço do novo curso, no MESMO PLANO do aluno.
-  // valorAntigo (m.valorCurso) já inclui a taxa de matrícula, pois é assim que o
-  // checkout do aluno grava esse campo (routes/publico.js: valorCurso = total).
-  // Por isso o valorNovo precisa ser calculado na MESMA BASE — curso + taxa —
-  // usando calcularValores, e não só o preço puro do curso (precoAvista/precoCheio).
   const valorAntigo = Number(m.valorCurso);
   const valoresDestino = await calcularValores(destino.curso, m.plano, m.alunoId);
   const valorNovo = Number(valoresDestino.total);
@@ -1433,12 +1390,12 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
   res.redirect('/inscricoes?ok=' + encodeURIComponent(msg));
 });
 
-// ---------- Alunos (listar, buscar, editar dados basicos) ----------
+// ---------- Alunos ----------
 
 router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), async (req, res) => {
   const busca = String(req.query.q || '').trim();
   const soDigitos = busca.replace(/\D/g, '');
-  const inscricao = String(req.query.inscricao || ''); // '', 'com' ou 'sem'
+  const inscricao = String(req.query.inscricao || '');
   const turmaId = req.query.turma || '';
 
   const where = { papel: 'ALUNO' };
@@ -1452,7 +1409,6 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), asy
     ];
   }
 
-  // Filtro por turma tem prioridade sobre o de "com/sem inscricao" (nao faz sentido combinar os dois).
   if (turmaId) {
     where.matriculas = { some: { turmaId } };
   } else if (inscricao === 'com') {
@@ -1562,9 +1518,6 @@ router.post('/alunos/:id/editar', requirePermissao('aluno:gerenciar'), async (re
   const depois = {
     nome, email, celular: celular || null, rg: rgFinal || null,
     cpfCnpj: cpfCnpjNormalizado,
-    // 💡 CORRIGIDO (A8): fallback pro valor atual quando o campo vem vazio, igual
-    // já era feito com cpfCnpj/rg. Antes, editar um aluno estrangeiro sem redigitar
-    // o passaporte zerava o documento no cadastro (passaporteDigitado || null → null).
     passaporte: passaporteDigitado || aluno.passaporte || null,
     paisOrigem: paisOrigemDigitado || aluno.paisOrigem || null,
     escolaridade: escolaridade || null, escolaridadeSituacao: escolaridadeSituacao || null, genero: genero || null,
@@ -1592,7 +1545,7 @@ router.post('/alunos/:id/editar', requirePermissao('aluno:gerenciar'), async (re
   res.redirect('/alunos?ok=' + encodeURIComponent(`Dados de ${nome.split(' ')[0]} atualizados.`));
 });
 
-// ---------- Matriculas do aluno (confirmacoes) ----------
+// ---------- Matriculas do aluno ----------
 
 router.get('/alunos/:id/matriculas', requirePermissao('aluno:gerenciar', 'painel:leitura'), async (req, res) => {
   const aluno = await prisma.usuario.findUnique({ where: { id: req.params.id } });
@@ -1607,7 +1560,6 @@ router.get('/alunos/:id/matriculas', requirePermissao('aluno:gerenciar', 'painel
   res.render('admin/aluno-matriculas', { aluno, matriculas, formatBRL, ok: req.query.ok || null });
 });
 
-// Aprovar taxa de inscricao: permissao especifica da Secretaria.
 router.post('/alunos/:id/matriculas/:matriculaId/confirmar-taxa', requirePermissao('taxa:aprovar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.matriculaId } });
   if (!m || m.alunoId !== req.params.id) return res.status(404).render('admin/erro', { mensagem: 'Matricula nao encontrada.' });
@@ -1618,26 +1570,21 @@ router.post('/alunos/:id/matriculas/:matriculaId/confirmar-taxa', requirePermiss
       taxaConfirmada: true,
       taxaConfirmadaPor: req.session.usuarioId,
       taxaConfirmadaEm: new Date(),
-      // so muda pra PENDENTE se ainda nao tiver um status de pagamento ativo
       ...(m.statusPagamento === 'PAGO' || m.statusPagamento === 'PARCELADO' ? {} : { statusPagamento: 'PENDENTE' }),
     },
   });
-  // 💡 CORRIGIDO (A2): reflete a confirmação da TAXA no ledger de Pagamento.
   await sincronizarPagamentoManual(req, m, 'TAXA', 'PAGO');
   await auditar(req, 'CONFIRMOU_TAXA_INSCRICAO', 'Matricula', m.id, null);
   res.redirect(`/alunos/${req.params.id}/matriculas?ok=` + encodeURIComponent('Taxa de inscricao confirmada. Aluno adicionado a turma como pendente.'));
 });
 
-// ---------- Painel do Dev (gestão de usuários admin) ----------
-// Acesso restrito ao papel DEV, checado direto (não via requirePermissao,
-// pra deixar explícito que isso não depende do sistema normal de permissões).
+// ---------- Painel do Dev ----------
 
 router.get('/dev/usuarios', requireDev, async (req, res) => {
   const usuarios = await prisma.usuario.findMany({
     where: { papel: { in: PAPEIS_ADMIN } },
     orderBy: [{ papel: 'asc' }, { nome: 'asc' }],
   });
-  // Anexa a lista de permissões de cada um, só pra exibição na view
   const linhas = usuarios.map((u) => ({ ...u, permissoes: listarPermissoes(u.papel) }));
   res.render('admin/dev-usuarios', {
     linhas,
@@ -1649,7 +1596,6 @@ router.get('/dev/usuarios', requireDev, async (req, res) => {
 });
 
 router.post('/dev/usuarios/:id/papel', requireDev, async (req, res) => {
-  // Bloqueio de autoedição: Dev não pode trocar o próprio papel por aqui.
   if (req.params.id === req.session.usuarioId) {
     return res.redirect('/dev/usuarios?erro=' + encodeURIComponent('Você não pode alterar o próprio papel.'));
   }
@@ -1689,8 +1635,6 @@ router.post('/dev/usuarios/novo', requireDev, async (req, res) => {
   if (!PAPEIS_ADMIN.includes(papel)) return reErro('Selecione um papel válido.');
 
   try {
-    // Mesmo padrão do fluxo de "esqueci minha senha": sem senha temporária.
-    // O admin novo recebe um e-mail pra definir a própria senha.
     const usuario = await prisma.usuario.create({
       data: { nome, email, papel, senhaHash: null, emailVerificado: false },
     });
