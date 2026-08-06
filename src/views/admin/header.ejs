@@ -15,7 +15,7 @@
       <% } %>
       <% if (admPapel === 'DEV') { %>
         <a href="/dev/usuarios" class="<%= secaoAtiva === 'dev-usuarios' ? 'on' : '' %>"><i class="fa-solid fa-user-shield"></i> Usuários Admin</a>
-        <a href="/banimentos">Banimentos</a>
+        <a href="/banimentos" class="<%= secaoAtiva === 'banimentos' ? 'on' : '' %>"><i class="fa-solid fa-ban"></i> Banimentos</a>
       <% } %>
     </nav>
     <form method="POST" action="/logout" class="adm-sair">

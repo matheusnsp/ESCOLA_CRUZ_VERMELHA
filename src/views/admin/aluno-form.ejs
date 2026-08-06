@@ -117,6 +117,7 @@
 
   <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> Salvar alterações</button>
 </form>
+<% if (admPapel === 'DEV') { %>
 
 <% if (!aluno.bloqueioTotal) { %>
   <div class="adm-box" style="padding:24px;margin-top:18px;border:1px solid #fecaca;background:#fff5f5;">
@@ -145,5 +146,6 @@
     </form>
   </div>
   <% } %>
+ <% } %> 
 <%- include('foot') %>
 <script src="/js/mascaras.js"></script>
