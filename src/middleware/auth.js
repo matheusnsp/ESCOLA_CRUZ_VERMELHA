@@ -1,7 +1,7 @@
 // Middlewares de autenticação e controle de acesso.
 // O controle de "quem vê o quê" é validado SEMPRE no servidor, a cada rota.
 
-const asyncHandler = require('./asyncHandler');
+const asyncHandler = require('../lib/asyncHandler');
 
 // Disponibiliza o usuário logado (se houver) para todas as views.
 function exposeUser(req, res, next) {
