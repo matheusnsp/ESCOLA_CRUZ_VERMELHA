@@ -8,6 +8,19 @@ function dataBR(d) {
   return new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 const LIMITE_GRUPO = 3;
+
+// Soma de todas as taxas de inscrição pagas
+const totalTaxasPagas = taxaPagaLista.reduce(
+  (soma, m) => soma + Number(m.valorTaxaMatricula || 0),
+  0
+);
+
+// Soma dos cursos pagos, SEM a taxa (valorCurso já vem com a taxa embutida,
+// então subtraímos pra isolar só o valor do curso em si).
+const totalCursosPagos = matriculaGeradaLista.reduce(
+  (soma, m) => soma + (Number(m.valorCurso || 0) - Number(m.valorTaxaMatricula || 0)),
+  0
+);
 %>
 
 <div class="adm-h1-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
@@ -29,10 +42,16 @@ const LIMITE_GRUPO = 3;
   <div class="adm-stat ok">
     <span><%= stats.taxaPagaCount %></span>
     <small><i class="fa-solid fa-circle-check"></i> Taxa de inscrição paga</small>
+    <small class="adm-mut" style="display:block;margin-top:2px;font-weight:600;">
+      <%= formatBRL(totalTaxasPagas) %>
+    </small>
   </div>
   <div class="adm-stat ok">
     <span><%= stats.matriculaGeradaCount %></span>
     <small><i class="fa-solid fa-id-badge"></i> Curso pago + matrícula gerada</small>
+    <small class="adm-mut" style="display:block;margin-top:2px;font-weight:600;">
+      <%= formatBRL(totalCursosPagos) %> (sem taxa)
+    </small>
   </div>
   <div class="adm-stat warn">
     <span><%= stats.pendentesCount %></span>
@@ -147,24 +166,31 @@ const LIMITE_GRUPO = 3;
           <td><%= formatBRL(Number(m.valorCurso)) %></td>
           <td>
             <% if (pode('financeiro:aprovar')) { %>
-            <details>
-              <summary style="cursor:pointer;color:#991b1b;font-size:12px;font-weight:700;list-style:none">
-                <i class="fa-solid fa-rotate-left"></i> Estornar
-              </summary>
-              <form method="POST" action="/inscricoes/<%= m.id %>/estornar"
-                    onsubmit="return confirm('Confirmar estorno? Devolve o valor ao aluno e não pode ser desfeito.')"
-                    style="margin-top:8px;display:flex;flex-direction:column;gap:6px;min-width:200px">
-                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <input type="text" name="motivo" required maxlength="200" placeholder="Motivo do estorno"
-                       style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">
-                <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#4a5568">
-                  <input type="checkbox" name="apenasContabil"> Pago fora da Únicopag (só contábil)
-                </label>
-                <button type="submit" style="padding:6px 10px;background:#991b1b;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">
-                  Confirmar estorno
-                </button>
-              </form>
-            </details>
+              <% if (m.forma === 'PIX') { %>
+                <span class="adm-mut" style="font-size:11px;" title="Reembolsos de PIX precisam ser feitos manualmente pelo painel da Únicopag">
+                  <i class="fa-solid fa-triangle-exclamation" style="color:#d97706;"></i>
+                  PIX — estornar manualmente
+                </span>
+              <% } else { %>
+                <details>
+                  <summary style="cursor:pointer;color:#991b1b;font-size:12px;font-weight:700;list-style:none">
+                    <i class="fa-solid fa-rotate-left"></i> Estornar
+                  </summary>
+                  <form method="POST" action="/inscricoes/<%= m.id %>/estornar"
+                        onsubmit="return confirm('Confirmar estorno? Devolve o valor ao aluno e não pode ser desfeito.')"
+                        style="margin-top:8px;display:flex;flex-direction:column;gap:6px;min-width:200px">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <input type="text" name="motivo" required maxlength="200" placeholder="Motivo do estorno"
+                           style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#4a5568">
+                      <input type="checkbox" name="apenasContabil"> Pago fora da Únicopag (só contábil)
+                    </label>
+                    <button type="submit" style="padding:6px 10px;background:#991b1b;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">
+                      Confirmar estorno
+                    </button>
+                  </form>
+                </details>
+              <% } %>
             <% } %>
           </td>
         </tr>
