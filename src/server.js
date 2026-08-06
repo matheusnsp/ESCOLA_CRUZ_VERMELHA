@@ -122,17 +122,26 @@ app.use(exposeUser);
 const prisma = require('./db');
 app.use(async (req, res, next) => {
   if (!req.session?.usuarioId) return next();
+
+  console.log('[BanCheck] Verificando usuário:', req.session.usuarioId, 'rota:', req.originalUrl);
+
   try {
     const usuario = await prisma.usuario.findUnique({
       where: { id: req.session.usuarioId },
       select: { bloqueioTotal: true },
     });
+
+    console.log('[BanCheck] Resultado banco:', usuario);
+
     if (!usuario || usuario.bloqueioTotal) {
+      console.log('[BanCheck] BANIDO — destruindo sessão e redirecionando');
       return req.session.destroy(() => {
         const ehAdmin = isAdminReq(req);
         return res.redirect(ehAdmin ? '/login' : '/login?banido=1');
       });
     }
+
+    console.log('[BanCheck] OK — deixando passar');
   } catch (e) {
     console.error('[BanCheck] Erro ao verificar ban:', e.message);
   }
