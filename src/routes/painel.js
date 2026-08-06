@@ -20,6 +20,25 @@ const asyncHandler = require('../lib/asyncHandler');
       typeof h === 'function' && h.constructor.name === 'AsyncFunction' ? asyncHandler(h) : h));
 });
 
+// 💡 NOVO — Esconde da aluna matrículas "fantasma": criadas no banco mas sem
+// nenhum pagamento efetivamente confirmado ainda (taxaConfirmada: false E
+// statusPagamento ainda no estado inicial PENDENTE). Isso acontece quando a
+// pessoa aceita o contrato e escolhe um plano, mas fecha a aba antes de
+// completar (ou até tentar) qualquer pagamento — a Matricula já existe no
+// banco (é necessária para o Pagamento se vincular a ela), mas não faz
+// sentido mostrar como "PENDENTE" pra aluna algo que ela nunca chegou a pagar.
+//
+// Assim que o webhook confirma a taxa (taxaConfirmada vira true), a matrícula
+// passa a aparecer normalmente como PENDENTE — que aí sim significa "só falta
+// pagar o curso", e não "não paguei nada ainda".
+//
+// Matrículas PAGO/PARCELADO/CANCELADO/ESTORNADO sempre aparecem (são
+// tentativas reais, com histórico que vale preservar) — só o caso
+// PENDENTE + taxaConfirmada:false é filtrado.
+const FILTRO_MATRICULA_FANTASMA = {
+  NOT: { statusPagamento: 'PENDENTE', taxaConfirmada: false },
+};
+
 // Área do aluno — painel único com seções (inscricoes | dados | excluir).
 router.get('/minha-conta', requireLogin, async (req, res) => {
   const secValidas = ['inscricoes', 'dados', 'excluir'];
@@ -33,12 +52,12 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
 
   const [matriculas, matriculasAtivas] = await Promise.all([
     prisma.matricula.findMany({
-      where: { alunoId: usuario.id },
+      where: { alunoId: usuario.id, ...FILTRO_MATRICULA_FANTASMA },
       orderBy: { criadoEm: 'desc' },
       include: { turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } },
     }),
     prisma.matricula.count({
-      where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' } },
+      where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' }, ...FILTRO_MATRICULA_FANTASMA },
     }),
   ]);
 
@@ -70,8 +89,8 @@ router.post('/conta/dados', requireLogin, async (req, res) => {
   const resultado = perfilSchema.safeParse(req.body);
   if (!resultado.success) {
     const [matriculas, matriculasAtivas] = await Promise.all([
-      prisma.matricula.findMany({ where: { alunoId: usuario.id }, orderBy: { criadoEm: 'desc' }, include: { turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } } }),
-      prisma.matricula.count({ where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' } } }),
+      prisma.matricula.findMany({ where: { alunoId: usuario.id, ...FILTRO_MATRICULA_FANTASMA }, orderBy: { criadoEm: 'desc' }, include: { turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } } }),
+      prisma.matricula.count({ where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' }, ...FILTRO_MATRICULA_FANTASMA } }),
     ]);
     return res.status(400).render('minha-conta', {
       usuario: { ...usuario, escolaridade: req.body.escolaridade || '', escolaridadeSituacao: req.body.escolaridadeSituacao || '', genero: req.body.genero || '',
@@ -110,12 +129,12 @@ router.post('/conta/excluir', requireLogin, async (req, res) => {
   const reRender = async (erro) => {
     const [matriculas, matriculasAtivas] = await Promise.all([
       prisma.matricula.findMany({
-        where: { alunoId: usuario.id },
+        where: { alunoId: usuario.id, ...FILTRO_MATRICULA_FANTASMA },
         orderBy: { criadoEm: 'desc' },
         include: { turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } },
       }),
       prisma.matricula.count({
-        where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' } },
+        where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' }, ...FILTRO_MATRICULA_FANTASMA },
       }),
     ]);
     return res.status(400).render('minha-conta', {
@@ -136,9 +155,10 @@ router.post('/conta/excluir', requireLogin, async (req, res) => {
     return reRender('Senha incorreta. A conta não foi excluída.');
   }
 
-  // Bloqueia se houver matrícula ativa (não cancelada).
+  // Bloqueia se houver matrícula ativa (não cancelada) — matrículas "fantasma"
+  // (nunca pagas) não contam pra esse bloqueio, ver FILTRO_MATRICULA_FANTASMA.
   const ativas = await prisma.matricula.count({
-    where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' } },
+    where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' }, ...FILTRO_MATRICULA_FANTASMA },
   });
   if (ativas > 0) {
     return reRender('Você tem matrículas ativas. Cancele-as com a secretaria antes de excluir a conta.');
@@ -146,6 +166,9 @@ router.post('/conta/excluir', requireLogin, async (req, res) => {
 
   try {
     // Remove dados ligados ao usuário e o usuário, numa transação.
+    // 💡 Nota: aqui removemos TODAS as matrículas do aluno, inclusive as
+    // "fantasma" que ficam escondidas na tela — não faz sentido deixar lixo
+    // órfão no banco só porque não aparecia na tela.
     const matriculas = await prisma.matricula.findMany({
       where: { alunoId: usuario.id },
       select: { id: true },

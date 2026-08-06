@@ -40,6 +40,17 @@ router.use(async (req, res, next) => {
   next();
 });
 
+// 💡 NOVO — Uma matrícula "fantasma" é aquela criada no banco (necessária pro
+// Pagamento da taxa se vincular) mas onde a pessoa nunca chegou a pagar nada:
+// statusPagamento ainda no estado inicial PENDENTE E taxaConfirmada false.
+// Ela fica escondida em "Minha conta" (ver conta.js), mas SEM esta função o
+// findUnique de "já inscrito" abaixo ainda a encontraria e bloquearia a
+// pessoa com um erro genérico mandando "ver em Minha conta" — onde não tem
+// nada pra ver. Em vez de bloquear, tratamos como "retomar de onde parou".
+function ehMatriculaFantasma(m) {
+  return !!m && m.statusPagamento === 'PENDENTE' && m.taxaConfirmada === false;
+}
+
 // Cursos inativos ficam visíveis e matriculáveis apenas para o papel DEV.
 // Serve para testar um curso "em construção" sem publicá-lo pros alunos.
 function filtroVisibilidadeCurso(usuario) {
