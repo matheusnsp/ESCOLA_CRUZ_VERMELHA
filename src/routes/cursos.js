@@ -41,14 +41,39 @@ router.use(async (req, res, next) => {
 });
 
 // 💡 NOVO — Uma matrícula "fantasma" é aquela criada no banco (necessária pro
-// Pagamento da taxa se vincular) mas onde a pessoa nunca chegou a pagar nada:
-// statusPagamento ainda no estado inicial PENDENTE E taxaConfirmada false.
-// Ela fica escondida em "Minha conta" (ver conta.js), mas SEM esta função o
-// findUnique de "já inscrito" abaixo ainda a encontraria e bloquearia a
-// pessoa com um erro genérico mandando "ver em Minha conta" — onde não tem
-// nada pra ver. Em vez de bloquear, tratamos como "retomar de onde parou".
+// Pagamento da taxa se vincular, no caso Parcelado/Presencial) mas onde a
+// pessoa nunca chegou a pagar nada: statusPagamento ainda no estado inicial
+// PENDENTE E taxaConfirmada false. Ela fica escondida em "Minha conta" (ver
+// conta.js). Sem tratamento especial, o findUnique de "já inscrito" abaixo
+// ainda a encontraria e bloquearia a pessoa com um erro genérico mandando
+// "ver em Minha conta" — onde não tem nada pra ver.
+//
+// IMPORTANTE: isso vale pros TRÊS planos (A_VISTA, PARCELADO, PRESENCIAL) —
+// no A_VISTA a matrícula também nasce PENDENTE+taxaConfirmada:false até o
+// webhook confirmar a transação única (curso+taxa juntos). Por isso a
+// correção não pode ser um redirect fixo pra /pagar-taxa (essa rota só
+// aceita PARCELADO/PRESENCIAL — um A_VISTA cairia num 404 "Inscrição não
+// encontrada"). A solução geral: em vez de bloquear OU redirecionar, deixamos
+// a pessoa refazer o fluxo normalmente do zero, e a criação da matrícula
+// REAPROVEITA (update) o registro fantasma existente em vez de tentar criar
+// um novo (o que violaria a constraint única alunoId+turmaId).
 function ehMatriculaFantasma(m) {
   return !!m && m.statusPagamento === 'PENDENTE' && m.taxaConfirmada === false;
+}
+
+// Cria a matrícula normalmente — OU, se já existir uma matrícula fantasma
+// dessa aluna nessa turma, atualiza (reaproveita) o registro existente em vez
+// de inserir um novo. Isso evita erro de constraint única e preserva
+// qualquer Pagamento (ex.: taxa PIX já gerado antes) que já esteja vinculado
+// ao id dessa matrícula.
+async function criarOuRetomarMatricula(alunoId, turmaId, dados) {
+  const existente = await prisma.matricula.findUnique({
+    where: { alunoId_turmaId: { alunoId, turmaId } },
+  });
+  if (existente && ehMatriculaFantasma(existente)) {
+    return prisma.matricula.update({ where: { id: existente.id }, data: dados });
+  }
+  return prisma.matricula.create({ data: { alunoId, turmaId, ...dados } });
 }
 
 // Cursos inativos ficam visíveis e matriculáveis apenas para o papel DEV.
@@ -188,7 +213,10 @@ router.get('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const jaInscrito = await prisma.matricula.findUnique({
     where: { alunoId_turmaId: { alunoId: req.session.usuarioId, turmaId: turma.id } },
   });
-  if (jaInscrito)
+  // 💡 NOVO — matrícula fantasma (nunca pagou nada): não bloqueia. A pessoa
+  // vê a tela normal de novo (contrato + escolha de plano) e, ao reenviar o
+  // formulário, criarOuRetomarMatricula reaproveita este mesmo registro.
+  if (jaInscrito && !ehMatriculaFantasma(jaInscrito))
     return res.render('erro', { mensagem: 'Você já está inscrito nesta turma. Veja em "Minha conta".' });
 
   const aluno = await prisma.usuario.findUnique({
@@ -232,7 +260,9 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const jaInscrito = await prisma.matricula.findUnique({
     where: { alunoId_turmaId: { alunoId: req.session.usuarioId, turmaId: turma.id } },
   });
-  if (jaInscrito) return res.redirect('/minha-conta?jaInscrito=1');
+  // 💡 NOVO — mesma lógica da rota GET acima: matrícula fantasma não bloqueia,
+  // deixa o fluxo seguir normalmente (a criação abaixo reaproveita o registro).
+  if (jaInscrito && !ehMatriculaFantasma(jaInscrito)) return res.redirect('/minha-conta?jaInscrito=1');
 
   const aluno = await prisma.usuario.findUnique({
     where: { id: req.session.usuarioId },
@@ -270,16 +300,12 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
     const total = Number(valoresCalculados.total); // já inclui taxa de matrícula
 
     try {
-      const matricula = await prisma.matricula.create({
-        data: {
-          alunoId: req.session.usuarioId,
-          turmaId: turma.id,
-          plano: 'A_VISTA',
-          forma,
-          valorCurso: total,
-          valorTaxaMatricula: valoresCalculados.valorTaxaMatricula,
-          statusPagamento: 'PENDENTE',
-        },
+      const matricula = await criarOuRetomarMatricula(req.session.usuarioId, turma.id, {
+        plano: 'A_VISTA',
+        forma,
+        valorCurso: total,
+        valorTaxaMatricula: valoresCalculados.valorTaxaMatricula,
+        statusPagamento: 'PENDENTE',
       });
 
       await prisma.pagamento.create({
@@ -327,16 +353,12 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
     let matricula;
     try {
-      matricula = await prisma.matricula.create({
-        data: {
-          alunoId: req.session.usuarioId,
-          turmaId: turma.id,
-          plano: 'A_VISTA',
-          forma,
-          valorCurso: total,
-          valorTaxaMatricula: valoresCalculados.valorTaxaMatricula,
-          statusPagamento: 'PENDENTE',
-        },
+      matricula = await criarOuRetomarMatricula(req.session.usuarioId, turma.id, {
+        plano: 'A_VISTA',
+        forma,
+        valorCurso: total,
+        valorTaxaMatricula: valoresCalculados.valorTaxaMatricula,
+        statusPagamento: 'PENDENTE',
       });
     } catch (err) {
       console.error('[Inscrição] Erro ao criar matrícula:', err.message);
@@ -416,16 +438,12 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
     let matricula;
     try {
-      matricula = await prisma.matricula.create({
-        data: {
-          alunoId: req.session.usuarioId,
-          turmaId: turma.id,
-          plano: 'PRESENCIAL',
-          forma: 'DINHEIRO', // forma real do curso é escolhida na secretaria; aqui é só placeholder
-          valorCurso: total,
-          valorTaxaMatricula: valoresCalculados.valorTaxaMatricula,
-          statusPagamento: 'PENDENTE',
-        },
+      matricula = await criarOuRetomarMatricula(req.session.usuarioId, turma.id, {
+        plano: 'PRESENCIAL',
+        forma: 'DINHEIRO', // forma real do curso é escolhida na secretaria; aqui é só placeholder
+        valorCurso: total,
+        valorTaxaMatricula: valoresCalculados.valorTaxaMatricula,
+        statusPagamento: 'PENDENTE',
       });
     } catch (err) {
       console.error('[Inscrição] Erro ao criar matrícula (presencial):', err.message);
@@ -448,16 +466,12 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
   let matricula;
   try {
-    matricula = await prisma.matricula.create({
-      data: {
-        alunoId: req.session.usuarioId,
-        turmaId: turma.id,
-        plano: 'PARCELADO',
-        forma: 'CREDITO',
-        valorCurso: total,
-        valorTaxaMatricula: valoresCalculados.valorTaxaMatricula,
-        statusPagamento: 'PENDENTE',
-      },
+    matricula = await criarOuRetomarMatricula(req.session.usuarioId, turma.id, {
+      plano: 'PARCELADO',
+      forma: 'CREDITO',
+      valorCurso: total,
+      valorTaxaMatricula: valoresCalculados.valorTaxaMatricula,
+      statusPagamento: 'PENDENTE',
     });
   } catch (err) {
     console.error('[Inscrição] Erro ao criar matrícula (parcelado):', err.message);
