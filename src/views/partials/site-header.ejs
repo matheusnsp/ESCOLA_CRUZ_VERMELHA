@@ -13,12 +13,16 @@
     </button>
 
     <div class="header-collapse">
-    <nav class="nav-links">
-      <a href="/">Início</a>
-      <a href="/cursos">Cursos</a>
-      <!-- <a href="/sobre">Sobre Nós</a> -->
-      <!-- <a href="/duvidas">Dúvidas</a> -->
-    </nav>
+      <nav class="nav-links">
+        <a href="/"><i class="fa-solid fa-house"></i> Início</a>
+        <a href="/cursos"><i class="fa-solid fa-graduation-cap"></i> Cursos</a>
+        <a href="https://cruzvermelhariodejaneiro.org/" target="_blank" rel="noopener" class="nav-externo">
+          <svg class="nav-cruz" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z"/>
+          </svg>
+          Cruz Vermelha RJ
+        </a>
+      </nav>
 
     <div class="header-actions">
       <% if (typeof usuario !== 'undefined' && usuario) { %>

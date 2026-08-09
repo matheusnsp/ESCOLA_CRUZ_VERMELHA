@@ -92,6 +92,28 @@ const SELECT_ALUNO_CHECKOUT = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────
+// 💡 NOVO (v3) — CARTÃO SAIU DO FORMULÁRIO DE INSCRIÇÃO
+//
+// Antes, o crédito era cobrado dentro dos próprios POSTs de inscrição: os
+// campos do cartão vinham no mesmo body do plano/forma. Agora o crédito segue
+// o mesmo desenho do PIX — o POST só decide o plano, cria/retoma a matrícula e
+// manda o aluno para /inscricao/retorno, que exibe a tela dedicada do cartão
+// (view inscrever-retorno.ejs) com timer e trilha de etapas.
+//
+// A cobrança de fato acontece em POST /inscricao/cartao/:matriculaId, que
+// responde JSON. Todo o cálculo de valor continua aqui no servidor — o front
+// só manda os dados do cartão.
+//
+// A querystring `t` é a referência da transação: é o que faz o cronômetro da
+// tela zerar quando uma transação nova começa e continuar de onde parou num
+// simples reload. Não precisa de campo no Prisma.
+// ─────────────────────────────────────────────────────────────────────────
+function urlRetorno(matriculaId, { pix = false, etapa = 'curso' } = {}) {
+  return `/inscricao/retorno?matriculaId=${matriculaId}`
+       + `&pix=${pix ? '1' : '0'}&etapa=${etapa}&t=${Date.now()}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Monta o objeto parceladoComJuros PARA A ETAPA 1 (tela de escolha de plano).
 // Regra de negócio: o juro do parcelamento incide SÓ sobre o curso; a taxa de
 // inscrição é à vista, sem juros, e entra no total por fora.
@@ -120,7 +142,14 @@ async function montarParceladoComJuros(parcelado, numParcelas) {
 router.get('/', async (req, res) => {
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
   const [cursos, cfgMap, total] = await Promise.all([
-    prisma.curso.findMany({ where: filtro, orderBy: { nome: 'asc' }, take: 3 }),
+    prisma.curso.findMany({
+      where: filtro,
+      orderBy: { nome: 'asc' },
+      take: 9, // o carrossel precisa de mais que as 3 colunas visíveis pra ter o que rodar
+      include: {
+        turmas: { where: { status: 'ABERTA' }, orderBy: { inicioPrevisto: 'asc' }, take: 1 },
+      },
+    }),
     lerConfigMatricula(),
     prisma.curso.count({ where: filtro }),
   ]);
@@ -192,12 +221,14 @@ router.get('/cursos/:cursoId', async (req, res) => {
 // combinado. Únicopag só aceita document (CPF/CNPJ) no customer.
 //
 // CPF/CNPJ + A_VISTA     → uma única transação (taxa + curso somados).
+//   • PIX     → transação criada aqui mesmo, redireciona pro QR Code.
+//   • CRÉDITO → só cria a matrícula e manda pra tela do cartão.
 // CPF/CNPJ + PARCELADO   → matrícula criada sem Pagamento ainda; o aluno paga
 //   a taxa em /pagar-taxa e, só depois de confirmada, o curso parcelado
-//   (cartão, via gateway) em /pagar-curso.
+//   (cartão) em /pagar-curso.
 // CPF/CNPJ + PRESENCIAL  → matrícula criada sem Pagamento ainda; o aluno paga
-//   a taxa em /pagar-taxa (PIX ou Cartão, via gateway) e o curso é pago
-//   depois presencialmente na secretaria (sem gateway) em /pagar-curso.
+//   a taxa em /pagar-taxa (PIX ou Cartão) e o curso é pago depois
+//   presencialmente na secretaria (sem gateway) em /pagar-curso.
 
 router.get('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const turma = await prisma.turma.findUnique({
@@ -213,9 +244,9 @@ router.get('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const jaInscrito = await prisma.matricula.findUnique({
     where: { alunoId_turmaId: { alunoId: req.session.usuarioId, turmaId: turma.id } },
   });
-  // 💡 NOVO — matrícula fantasma (nunca pagou nada): não bloqueia. A pessoa
-  // vê a tela normal de novo (contrato + escolha de plano) e, ao reenviar o
-  // formulário, criarOuRetomarMatricula reaproveita este mesmo registro.
+  // 💡 matrícula fantasma (nunca pagou nada): não bloqueia. A pessoa vê a tela
+  // normal de novo (contrato + escolha de plano) e, ao reenviar o formulário,
+  // criarOuRetomarMatricula reaproveita este mesmo registro.
   if (jaInscrito && !ehMatriculaFantasma(jaInscrito))
     return res.render('erro', { mensagem: 'Você já está inscrito nesta turma. Veja em "Minha conta".' });
 
@@ -242,7 +273,9 @@ router.get('/inscrever/:turmaId', requireLogin, async (req, res) => {
     aVista, parcelado, parceladoComJuros,
     ehPassaporte,
     etapaAtual: 'escolha',
-    erro: null,
+    erro: req.query.erro === 'expirado'
+      ? 'O tempo para concluir o pagamento acabou. A cobrança foi cancelada — você pode começar de novo.'
+      : null,
   });
 });
 
@@ -260,8 +293,6 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const jaInscrito = await prisma.matricula.findUnique({
     where: { alunoId_turmaId: { alunoId: req.session.usuarioId, turmaId: turma.id } },
   });
-  // 💡 NOVO — mesma lógica da rota GET acima: matrícula fantasma não bloqueia,
-  // deixa o fluxo seguir normalmente (a criação abaixo reaproveita o registro).
   if (jaInscrito && !ehMatriculaFantasma(jaInscrito)) return res.redirect('/minha-conta?jaInscrito=1');
 
   const aluno = await prisma.usuario.findUnique({
@@ -335,18 +366,10 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
 
   // ----- A_VISTA: uma única transação (taxa + curso somados) -----
   if (plano === 'A_VISTA') {
-    const resultado = pagamentoCursoSchema.safeParse({ ...req.body, plano: 'A_VISTA' });
-    if (!resultado.success)
-      return reRenderErro(resultado.error.issues.map((i) => i.message)[0]);
-
-    const { forma, numero, titular, validade, cvv } = resultado.data;
-
-    let mesExpiracao, anoExpiracao;
-    if (forma === 'CREDITO' && validade) {
-      const [mes, anoCurto] = validade.split('/');
-      mesExpiracao = mes;
-      anoExpiracao = '20' + anoCurto;
-    }
+    // 💡 v3 — o body não traz mais dados de cartão, então validamos só a forma.
+    const forma = String(req.body.forma || '');
+    if (!['PIX', 'CREDITO'].includes(forma))
+      return reRenderErro('Selecione a forma de pagamento.');
 
     const valoresCalculados = await calcularValores(turma.curso, 'A_VISTA', req.session.usuarioId);
     const total = Number(valoresCalculados.total); // curso + taxa
@@ -365,12 +388,19 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       return reRenderErro('Não foi possível concluir a inscrição.');
     }
 
+    // 💡 v3 — CRÉDITO: nenhuma transação é criada aqui. O aluno preenche o
+    // cartão na tela de retorno e ela chama POST /inscricao/cartao/:id.
+    if (forma === 'CREDITO') {
+      return res.redirect(urlRetorno(matricula.id, { pix: false, etapa: 'curso' }));
+    }
+
+    // ----- PIX: transação criada agora, QR Code na tela de retorno -----
     const pagamentoPendente = await prisma.pagamento.create({
       data: {
         matriculaId: matricula.id,
         tipo: 'CURSO',
         gateway: 'unicopag',
-        metodo: forma,
+        metodo: 'PIX',
         valor: total,
         status: 'PENDENTE',
       },
@@ -381,9 +411,9 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
         matriculaId: matricula.id,
         nomeCurso: turma.curso.nome,
         valorTotal: total,
-        forma,
+        forma: 'PIX',
         aluno: { ...aluno, cidade: aluno.cidade || 'Rio de Janeiro' },
-        dadosCartao: forma === 'CREDITO' ? { numero, titular, mesExpiracao, anoExpiracao, cvv, parcelas: 1 } : null,
+        dadosCartao: null,
         tipoPagamento: 'CURSO',
       });
 
@@ -402,28 +432,26 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
         },
       });
 
-      return res.redirect(`/inscricao/retorno?matriculaId=${matricula.id}&pix=${forma === 'PIX' ? '1' : '0'}`);
+      return res.redirect(urlRetorno(matricula.id, { pix: true, etapa: 'curso' }));
     } catch (err) {
       console.error('[UnicopAg] Erro no Gateway (curso à vista):', err.message);
 
-      // PIX: o gateway pode demorar e o nosso lado estourar timeout mesmo com a
+      // O gateway pode demorar e o nosso lado estourar timeout mesmo com a
       // transação já criada do lado deles. O webhook confirma por fora — damos
       // uma janela curta de espera antes de desistir e cancelar.
-      if (forma === 'PIX') {
-        let pagamentoAtual = null;
-        for (let tentativa = 0; tentativa < 15; tentativa++) {
-          pagamentoAtual = await prisma.pagamento.findUnique({ where: { id: pagamentoPendente.id } });
-          if (pagamentoAtual?.gatewayRef) break;
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-        }
-        if (pagamentoAtual?.gatewayRef) {
-          return res.redirect(`/inscricao/retorno?matriculaId=${matricula.id}&pix=1`);
-        }
+      let pagamentoAtual = null;
+      for (let tentativa = 0; tentativa < 15; tentativa++) {
+        pagamentoAtual = await prisma.pagamento.findUnique({ where: { id: pagamentoPendente.id } });
+        if (pagamentoAtual?.gatewayRef) break;
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+      if (pagamentoAtual?.gatewayRef) {
+        return res.redirect(urlRetorno(matricula.id, { pix: true, etapa: 'curso' }));
       }
 
       await prisma.pagamento.updateMany({
         where: { id: pagamentoPendente.id, status: 'PENDENTE' },
-        data: { status: 'CANCELADO' }, 
+        data: { status: 'CANCELADO' },
       });
       return reRenderErro('Houve um problema ao processar o pagamento. Tente novamente.');
     }
@@ -436,9 +464,8 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
     const valoresCalculados = await calcularValores(turma.curso, 'A_VISTA', req.session.usuarioId);
     const total = Number(valoresCalculados.total);
 
-    let matricula;
     try {
-      matricula = await criarOuRetomarMatricula(req.session.usuarioId, turma.id, {
+      await criarOuRetomarMatricula(req.session.usuarioId, turma.id, {
         plano: 'PRESENCIAL',
         forma: 'DINHEIRO', // forma real do curso é escolhida na secretaria; aqui é só placeholder
         valorCurso: total,
@@ -464,9 +491,8 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const valoresCalculados = await calcularValores(turma.curso, 'PARCELADO', req.session.usuarioId);
   const total = Number(valoresCalculados.total);
 
-  let matricula;
   try {
-    matricula = await criarOuRetomarMatricula(req.session.usuarioId, turma.id, {
+    await criarOuRetomarMatricula(req.session.usuarioId, turma.id, {
       plano: 'PARCELADO',
       forma: 'CREDITO',
       valorCurso: total,
@@ -514,7 +540,10 @@ router.get('/inscrever/:turmaId/pagar-taxa', requireLogin, async (req, res) => {
 
   res.render('inscrever', {
     turma: matricula.turma, curso: matricula.turma.curso, formatBRL,
-    valorTaxa, etapaAtual: 'pagar-taxa', erro: null,
+    valorTaxa, etapaAtual: 'pagar-taxa',
+    erro: req.query.erro === 'expirado'
+      ? 'O tempo para concluir o pagamento acabou. A cobrança foi cancelada — escolha a forma de novo.'
+      : null,
   });
 });
 
@@ -545,25 +574,22 @@ router.post('/inscrever/:turmaId/pagar-taxa', requireLogin, async (req, res) => 
     valorTaxa, etapaAtual: 'pagar-taxa', erro: msg,
   });
 
-  const resultado = pagamentoTaxaSchema.safeParse(req.body);
-  if (!resultado.success)
-    return reRenderErro(resultado.error.issues.map((i) => i.message)[0]);
+  const forma = String(req.body.forma || '');
+  if (!['PIX', 'CREDITO'].includes(forma))
+    return reRenderErro('Selecione a forma de pagamento.');
 
-  const { forma, numero, titular, validade, cvv } = resultado.data;
-
-  let mesExpiracao, anoExpiracao;
-  if (forma === 'CREDITO' && validade) {
-    const [mes, anoCurto] = validade.split('/');
-    mesExpiracao = mes;
-    anoExpiracao = '20' + anoCurto;
+  // 💡 v3 — CRÉDITO: cartão é preenchido na tela de retorno.
+  if (forma === 'CREDITO') {
+    return res.redirect(urlRetorno(matricula.id, { pix: false, etapa: 'taxa' }));
   }
 
+  // ----- PIX -----
   const pagamentoPendente = await prisma.pagamento.create({
     data: {
       matriculaId: matricula.id,
       tipo: 'TAXA',
       gateway: 'unicopag',
-      metodo: forma,
+      metodo: 'PIX',
       valor: valorTaxa,
       status: 'PENDENTE',
     },
@@ -574,9 +600,9 @@ router.post('/inscrever/:turmaId/pagar-taxa', requireLogin, async (req, res) => 
       matriculaId: matricula.id,
       nomeCurso: `Taxa de inscrição — ${matricula.turma.curso.nome}`,
       valorTotal: valorTaxa,
-      forma,
+      forma: 'PIX',
       aluno: { ...aluno, cidade: aluno.cidade || 'Rio de Janeiro' },
-      dadosCartao: forma === 'CREDITO' ? { numero, titular, mesExpiracao, anoExpiracao, cvv, parcelas: 1 } : null,
+      dadosCartao: null,
       tipoPagamento: 'TAXA',
     });
 
@@ -595,20 +621,18 @@ router.post('/inscrever/:turmaId/pagar-taxa', requireLogin, async (req, res) => 
       },
     });
 
-    return res.redirect(`/inscricao/retorno?matriculaId=${matricula.id}&pix=${forma === 'PIX' ? '1' : '0'}&etapa=taxa`);
+    return res.redirect(urlRetorno(matricula.id, { pix: true, etapa: 'taxa' }));
   } catch (err) {
     console.error('[UnicopAg] Erro no Gateway (taxa):', err.message);
 
-    if (forma === 'PIX') {
-      let pagamentoAtual = null;
-      for (let tentativa = 0; tentativa < 15; tentativa++) {
-        pagamentoAtual = await prisma.pagamento.findUnique({ where: { id: pagamentoPendente.id } });
-        if (pagamentoAtual?.gatewayRef) break;
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      }
-      if (pagamentoAtual?.gatewayRef) {
-        return res.redirect(`/inscricao/retorno?matriculaId=${matricula.id}&pix=1&etapa=taxa`);
-      }
+    let pagamentoAtual = null;
+    for (let tentativa = 0; tentativa < 15; tentativa++) {
+      pagamentoAtual = await prisma.pagamento.findUnique({ where: { id: pagamentoPendente.id } });
+      if (pagamentoAtual?.gatewayRef) break;
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+    if (pagamentoAtual?.gatewayRef) {
+      return res.redirect(urlRetorno(matricula.id, { pix: true, etapa: 'taxa' }));
     }
 
     await prisma.pagamento.updateMany({
@@ -638,6 +662,10 @@ router.get('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) => 
   if (['PAGO', 'PARCELADO', 'CANCELADO', 'ESTORNADO'].includes(matricula.statusPagamento))
     return res.render('erro', { mensagem: 'O pagamento deste curso já foi processado. Veja em "Minha conta".' });
 
+  const erroQuery = req.query.erro === 'expirado'
+    ? 'O tempo para concluir o pagamento acabou. A cobrança foi cancelada — você pode tentar de novo.'
+    : null;
+
   // ---------------- PRESENCIAL: só mostra a tela de confirmação ----------------
   if (matricula.plano === 'PRESENCIAL') {
     const valores = await calcularValores(matricula.turma.curso, 'A_VISTA', req.session.usuarioId);
@@ -645,11 +673,11 @@ router.get('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) => 
       turma: matricula.turma, curso: matricula.turma.curso, formatBRL,
       valorCurso: Number(valores.valorCurso), numParcelas: 1, parceladoComJuros: null,
       plano: matricula.plano,
-      etapaAtual: 'pagar-curso', erro: null,
+      etapaAtual: 'pagar-curso', erro: erroQuery,
     });
   }
 
-  // ---------------- PARCELADO: formulário de cartão parcelado ----------------
+  // ---------------- PARCELADO: resumo + botão que leva à tela do cartão ------
   // Aqui o parcelamento incide só sobre o curso (a taxa já foi paga na etapa 2),
   // então parceladoComJuros.total é só o curso COM juros — sem taxa por fora.
   const valores = await calcularValores(matricula.turma.curso, 'PARCELADO', req.session.usuarioId);
@@ -666,7 +694,7 @@ router.get('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) => 
     turma: matricula.turma, curso: matricula.turma.curso, formatBRL,
     valorCurso: Number(valores.valorCurso), numParcelas, parceladoComJuros,
     plano: matricula.plano,
-    etapaAtual: 'pagar-curso', erro: null,
+    etapaAtual: 'pagar-curso', erro: erroQuery,
   });
 });
 
@@ -708,85 +736,195 @@ router.post('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) =>
     return res.redirect('/minha-conta?inscrito=1');
   }
 
-  // ---------------- PARCELADO: cartão parcelado via gateway ----------------
+  // ---------------- PARCELADO: cartão preenchido na tela de retorno ----------
+  // 💡 v3 — este POST não fala mais com o gateway. Ele só encaminha para a
+  // tela do cartão, que chama POST /inscricao/cartao/:matriculaId.
+  return res.redirect(urlRetorno(matricula.id, { pix: false, etapa: 'curso' }));
+});
+
+// ========================================================================
+// Tela de retorno — QR Code (PIX) ou formulário de cartão
+// ========================================================================
+
+router.get('/inscricao/retorno', requireLogin, async (req, res) => {
+  const { matriculaId, pix, etapa, t } = req.query;
+
+  // findFirst com alunoId: o aluno só enxerga o retorno (e o QR Code) da
+  // própria matrícula, mesmo que outro ID seja chutado na query string.
+  const matricula = matriculaId
+    ? await prisma.matricula.findFirst({
+        where: { id: matriculaId, alunoId: req.session.usuarioId },
+        include: {
+          turma: { include: { curso: true } },
+          pagamentos: { orderBy: { criadoEm: 'desc' }, take: 1 },
+        },
+      })
+    : null;
+
+  const isPix = pix === '1';
+  const etapaAtual = etapa === 'taxa' ? 'taxa' : 'curso';
+
+  // ---------------- PIX: view de sempre ----------------
+  if (isPix || !matricula) {
+    const pagamento = matricula?.pagamentos?.[0] || null;
+    return res.render('inscricao-retorno', {
+      matricula,
+      formatBRL,
+      isPix,
+      etapa: etapaAtual,
+      transacaoRef: String(t || matricula?.id || ''),
+      pixQrCode: pagamento?.pixQrCode || null,
+      pixUrl: pagamento?.pixUrl || null,
+      pixBase64: pagamento?.pixBase64 || null,
+    });
+  }
+
+  // ---------------- CARTÃO: tela dedicada ----------------
+  // Se já está tudo pago, não faz sentido reabrir a cobrança.
+  if (etapaAtual === 'taxa' && matricula.taxaConfirmada)
+    return res.redirect(`/inscrever/${matricula.turmaId}/pagar-curso`);
+  if (etapaAtual === 'curso' && ['PAGO', 'PARCELADO'].includes(matricula.statusPagamento))
+    return res.redirect('/minha-conta?inscrito=1');
+
+  const { valorCobranca, numParcelas, valorParcela } =
+    await calcularCobrancaCartao(matricula, etapaAtual, req.session.usuarioId);
+
+    res.render('inscricao-retorno', {
+      matricula,
+      turma: matricula.turma,
+      curso: matricula.turma.curso,
+      formatBRL,
+      isPix: false,
+      etapa: etapaAtual,
+      valorCobranca,
+      numParcelas,
+      valorParcela,
+      transacaoRef: String(t || matricula.id),
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Quanto cobrar no cartão, por etapa. É a fonte da verdade — o front nunca
+// manda valor, só os dados do cartão.
+//   taxa                    → taxa de inscrição, 1x
+//   curso + plano PARCELADO → curso em N parcelas (juros do gateway)
+//   curso + plano A_VISTA   → curso + taxa, 1x
+// ─────────────────────────────────────────────────────────────────────────
+async function calcularCobrancaCartao(matricula, etapa, alunoId) {
+  const curso = matricula.turma.curso;
+
+  if (etapa === 'taxa') {
+    const valores = await calcularValores(
+      curso, matricula.plano === 'PRESENCIAL' ? 'A_VISTA' : 'PARCELADO', alunoId
+    );
+    const taxa = Number(valores.valorTaxaMatricula);
+    return { valorCobranca: taxa, valorBase: taxa, numParcelas: 1, valorParcela: null, tipo: 'TAXA' };
+  }
+
+  if (matricula.plano === 'PARCELADO') {
+    const valores = await calcularValores(curso, 'PARCELADO', alunoId);
+    const numParcelas = Number(curso.parcelas) || 1;
+    const amountCentavos = Math.round(parseFloat(valores.valorCurso) * 100);
+    const opcao = await obterOpcaoParcelamento(amountCentavos, numParcelas);
+    // valorBase = SEM juros. Vai pro gateway (que aplica o juro a partir de
+    // amount + installments) e é o que gravamos em Pagamento.valor, porque o
+    // postback ecoa o amount BASE — o matching do webhook casa por esse valor.
+    const valorBase = Number(valores.valorCurso);
+    return {
+      valorCobranca: opcao ? opcao.total_amount / 100 : valorBase, // com juros, só pra exibir
+      valorBase,
+      numParcelas,
+      valorParcela: opcao ? opcao.installment_amount / 100 : valorBase,
+      taxa: Number(valores.valorTaxaMatricula),
+      tipo: 'CURSO',
+    };
+  }
+
+  // A_VISTA no cartão: curso + taxa numa cobrança só.
+  const valores = await calcularValores(curso, 'A_VISTA', alunoId);
+  const total = Number(valores.total);
+  return { valorCobranca: total, valorBase: total, numParcelas: 1, valorParcela: null, tipo: 'CURSO' };
+}
+
+// ========================================================================
+// 💡 NOVO (v3) — Cobrança no cartão. Chamada por fetch pela tela de retorno.
+// Responde JSON: { ok, status, mensagem }
+//   status: 'PROCESSANDO' (webhook confirma) | ausente em caso de erro
+// ========================================================================
+
+router.post('/inscricao/cartao/:matriculaId', requireLogin, async (req, res) => {
+  const matricula = await prisma.matricula.findFirst({
+    where: { id: req.params.matriculaId, alunoId: req.session.usuarioId },
+    include: { turma: { include: { curso: true } } },
+  });
+  if (!matricula)
+    return res.status(404).json({ ok: false, mensagem: 'Inscrição não encontrada.' });
+
+  const etapa = req.body.etapa === 'taxa' ? 'taxa' : 'curso';
+
+  // Já confirmado no meio do caminho (webhook rápido, duplo clique): não cobra de novo.
+  if (etapa === 'taxa' && matricula.taxaConfirmada)
+    return res.json({ ok: true, status: 'PAGO' });
+  if (etapa === 'curso' && ['PAGO', 'PARCELADO'].includes(matricula.statusPagamento))
+    return res.json({ ok: true, status: 'PAGO' });
+  if (etapa === 'curso' && !matricula.taxaConfirmada && matricula.plano === 'PARCELADO')
+    return res.status(400).json({ ok: false, mensagem: 'A taxa de inscrição ainda não foi confirmada.' });
+
+  const cobranca = await calcularCobrancaCartao(matricula, etapa, req.session.usuarioId);
+
+  // Validação dos dados do cartão — mesmos schemas de sempre, só que agora o
+  // plano/forma/parcelas vêm do servidor, não do body.
+  const schema = etapa === 'taxa' ? pagamentoTaxaSchema : pagamentoCursoSchema;
+  const resultado = schema.safeParse({
+    ...req.body,
+    forma: 'CREDITO',
+    plano: matricula.plano,
+    parcelas: cobranca.numParcelas,
+  });
+  if (!resultado.success)
+    return res.status(400).json({ ok: false, mensagem: resultado.error.issues.map((i) => i.message)[0] });
+
+  const { numero, titular, validade, cvv } = resultado.data;
+  const [mes, anoCurto] = String(validade).split('/');
+  const mesExpiracao = mes;
+  const anoExpiracao = '20' + anoCurto;
+
   const aluno = await prisma.usuario.findUnique({
     where: { id: req.session.usuarioId },
     select: SELECT_ALUNO_CHECKOUT,
   });
 
-  const valores = await calcularValores(matricula.turma.curso, 'PARCELADO', req.session.usuarioId);
-  const numParcelasCurso = Number(matricula.turma.curso.parcelas) || 1;
-
-  const reRenderErro = async (msg) => {
-    const amountCentavos = Math.round(parseFloat(valores.valorCurso) * 100);
-    const opcao = await obterOpcaoParcelamento(amountCentavos, numParcelasCurso);
-    const parceladoComJuros = opcao ? {
-      valorParcela: opcao.installment_amount / 100,
-      total: opcao.total_amount / 100,
-      taxaJuros: opcao.installment_rate,
-    } : null;
-    return res.status(400).render('inscrever', {
-      turma: matricula.turma, curso: matricula.turma.curso, formatBRL,
-      valorCurso: Number(valores.valorCurso), numParcelas: numParcelasCurso, parceladoComJuros,
-      plano: matricula.plano,
-      etapaAtual: 'pagar-curso', erro: msg,
-    });
-  };
-
-  // O curso parcelado é sempre Cartão de crédito — forçamos aqui independente
-  // do que vier no body, e reaproveitamos a validação de cartão do schema.
-  const resultado = pagamentoCursoSchema.safeParse({ ...req.body, plano: 'PARCELADO', forma: 'CREDITO' });
-  if (!resultado.success)
-    return reRenderErro(resultado.error.issues.map((i) => i.message)[0]);
-
-  const { numero, titular, validade, cvv, parcelas } = resultado.data;
-  const [mes, anoCurto] = validade.split('/');
-  const mesExpiracao = mes;
-  const anoExpiracao = '20' + anoCurto;
-
-  const amountCentavos = Math.round(parseFloat(valores.valorCurso) * 100);
-  const opcao = await obterOpcaoParcelamento(amountCentavos, parcelas);
-  // valorFinal = valor do curso COM juros de parcelamento (o que o aluno paga).
-  // Se a consulta de juros falhar, cai de volta pro valor sem juros.
-  const valorFinal = opcao ? opcao.total_amount / 100 : Number(valores.valorCurso);
-  // valorBase = valor SEM juros. Vai pro gateway (que aplica o juro a partir de
-  // amount + installments — mandar valorFinal causaria juro dobrado) E é o que
-  // gravamos em Pagamento.valor, porque o postback ecoa o amount BASE (10, não
-  // 10,37). O matching do webhook por e-mail casa por Pagamento.valor === amount
-  // do postback; se gravássemos valorFinal aqui, nunca casaria e a matrícula
-  // ficaria PENDENTE pra sempre mesmo com o curso pago.
-  const valorBase = Number(valores.valorCurso);
-  const taxa = Number(valores.valorTaxaMatricula);
-
   const pagamentoPendente = await prisma.pagamento.create({
     data: {
       matriculaId: matricula.id,
-      tipo: 'CURSO',
+      tipo: cobranca.tipo,
       gateway: 'unicopag',
       metodo: 'CREDITO',
-      valor: valorBase, // valor BASE — casa com o amount do postback (matching por valor)
+      valor: cobranca.valorBase, // valor BASE — casa com o amount do postback
       status: 'PENDENTE',
     },
   });
 
-  // Atualiza o total exibido na matrícula pro valor COM juros (curso c/ juros +
-  // taxa à vista). Assim o card em "Minha conta" mostra R$20,37 em vez do R$20
-  // base. Pagamento.valor segue base (pro matching); a matrícula guarda o total
-  // que o aluno realmente paga, pra exibição.
-  await prisma.matricula.update({
-    where: { id: matricula.id },
-    data: { valorCurso: valorFinal + taxa },
-  });
+  // No parcelado, a matrícula guarda o total COM juros só pra exibição em
+  // "Minha conta" (curso c/ juros + taxa à vista). Pagamento.valor segue base.
+  if (etapa === 'curso' && matricula.plano === 'PARCELADO') {
+    await prisma.matricula.update({
+      where: { id: matricula.id },
+      data: { valorCurso: cobranca.valorCobranca + Number(cobranca.taxa || 0) },
+    });
+  }
 
   try {
     const resultadoGateway = await criarTransacao({
       matriculaId: matricula.id,
-      nomeCurso: matricula.turma.curso.nome,
-      valorTotal: valorBase, // 💡 valor BASE — o gateway aplica o juro do parcelamento
+      nomeCurso: etapa === 'taxa'
+        ? `Taxa de inscrição — ${matricula.turma.curso.nome}`
+        : matricula.turma.curso.nome,
+      valorTotal: cobranca.valorBase, // o gateway aplica o juro do parcelamento
       forma: 'CREDITO',
       aluno: { ...aluno, cidade: aluno.cidade || 'Rio de Janeiro' },
-      dadosCartao: { numero, titular, mesExpiracao, anoExpiracao, cvv, parcelas },
-      tipoPagamento: 'CURSO',
+      dadosCartao: { numero, titular, mesExpiracao, anoExpiracao, cvv, parcelas: cobranca.numParcelas },
+      tipoPagamento: cobranca.tipo,
     });
 
     const gatewayRef = String(resultadoGateway.gatewayRef || resultadoGateway.id || resultadoGateway.hash || matricula.id);
@@ -801,50 +939,54 @@ router.post('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) =>
       },
     });
 
-    return res.redirect(`/inscricao/retorno?matriculaId=${matricula.id}&pix=0&etapa=curso`);
+    // Quem confirma de verdade é o webhook. A tela fica em polling no
+    // /inscricao/status até virar PAGO.
+    return res.json({ ok: true, status: 'PROCESSANDO' });
   } catch (err) {
-    console.error('[UnicopAg] Erro no Gateway (curso parcelado):', err.message);
+    // Nunca logar req.body aqui — tem número de cartão dentro.
+    console.error(`[UnicopAg] Erro no Gateway (cartão ${etapa}):`, err.message);
     await prisma.pagamento.updateMany({
       where: { id: pagamentoPendente.id, status: 'PENDENTE' },
       data: { status: 'CANCELADO' },
     });
-    return reRenderErro('Houve um problema ao processar o pagamento do curso. Tente novamente.');
+    return res.status(502).json({
+      ok: false,
+      mensagem: 'Não conseguimos processar essa cobrança. Confira os dados ou tente outro cartão.',
+    });
   }
 });
 
 // ========================================================================
-// Tela de retorno — mostra QR/status do pagamento mais recente
+// 💡 NOVO (v3) — Cancelar a transação em aberto (tempo esgotado na tela)
 // ========================================================================
-
-router.get('/inscricao/retorno', requireLogin, async (req, res) => {
-  const { matriculaId, pix, etapa } = req.query;
-
-  // findFirst com alunoId: o aluno só enxerga o retorno (e o QR Code) da
-  // própria matrícula, mesmo que outro ID seja chutado na query string.
-  const matricula = matriculaId
-    ? await prisma.matricula.findFirst({
-        where: { id: matriculaId, alunoId: req.session.usuarioId },
-        include: {
-          turma: { include: { curso: true } },
-          pagamentos: { orderBy: { criadoEm: 'desc' }, take: 1 },
-        },
-      })
-    : null;
-
-  const pagamento = matricula?.pagamentos?.[0] || null;
-
-  res.render('inscricao-retorno', {
-    matricula,
-    formatBRL,
-    isPix: pix === '1',
-    etapa: etapa || 'curso',
-    pixQrCode: pagamento?.pixQrCode || null,
-    pixUrl: pagamento?.pixUrl || null,
-    pixBase64: pagamento?.pixBase64 || null,
+// Cancela só os Pagamentos PENDENTES. A Matrícula continua PENDENTE de
+// propósito: assim ela segue sendo "fantasma" e a pessoa pode refazer o fluxo
+// do zero. Marcar a matrícula como CANCELADA a tiraria dessa condição e
+// travaria novas inscrições nessa turma para sempre.
+router.post('/inscricao/cancelar-transacao/:matriculaId', requireLogin, async (req, res) => {
+  const matricula = await prisma.matricula.findFirst({
+    where: { id: req.params.matriculaId, alunoId: req.session.usuarioId },
+    select: { id: true, statusPagamento: true, taxaConfirmada: true },
   });
+  if (!matricula) return res.status(404).json({ ok: false });
+
+  // Confirmou no último segundo? Não cancela nada.
+  if (['PAGO', 'PARCELADO'].includes(matricula.statusPagamento))
+    return res.json({ ok: true, jaPago: true });
+
+  try {
+    await prisma.pagamento.updateMany({
+      where: { matriculaId: matricula.id, status: 'PENDENTE' },
+      data: { status: 'CANCELADO' },
+    });
+  } catch (err) {
+    console.error('[Inscrição] Erro ao cancelar transação:', err.message);
+  }
+
+  res.json({ ok: true });
 });
 
-// NOVO: status da matrícula — consultado via polling pela tela de retorno.
+// Status da matrícula — consultado via polling pelas telas de retorno.
 // Quando o webhook confirma a TAXA, o front redireciona o aluno pra etapa 3
 // sozinho; quando confirma o CURSO (ou, no caso PRESENCIAL, quando o aluno
 // finaliza a etapa 3 direto), manda pra "Minha conta".
@@ -857,4 +999,4 @@ router.get('/inscricao/status/:matriculaId', requireLogin, async (req, res) => {
   res.json({ ok: true, ...m });
 });
 
-module.exports = router;
+module.exports = router;  

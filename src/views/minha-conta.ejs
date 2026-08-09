@@ -1,239 +1,318 @@
 <%- include('partials/site-head', { titulo: 'Minha conta' }) %>
 <%- include('partials/site-header') %>
 
-<main class="interna-wrap">
-  <% if (inscrito) { %>
-    <div class="banner-ok"><i class="fa-solid fa-circle-check"></i> Inscrição registrada! Ela ficará pendente até a confirmação do pagamento.</div>
-  <% } %>
+<main class="cx">
+  <div class="ct-wrap">
 
-  <div class="conta-layout">
-    <aside class="conta-side">
-      <div class="conta-perfil">
-        <div class="conta-avatar"><%= usuario.nome.charAt(0).toUpperCase() %></div>
-        <strong><%= usuario.nome.split(' ')[0] %></strong>
-        <span><%= usuario.email %></span>
+    <% if (inscrito) { %>
+      <div class="ct-ok">
+        <i class="fa-solid fa-circle-check"></i>
+        Inscrição registrada. Ela fica pendente até a confirmação do pagamento.
       </div>
-      <nav class="conta-nav">
-        <a class="conta-side-item <%= sec === 'inscricoes' ? 'ativo' : '' %>" href="/minha-conta?sec=inscricoes">
-          <i class="fa-solid fa-graduation-cap"></i> Inscrições
-        </a>
-        <a class="conta-side-item <%= sec === 'dados' ? 'ativo' : '' %>" href="/minha-conta?sec=dados">
-          <i class="fa-solid fa-id-card"></i> Meus dados
-        </a>
-        <a class="conta-side-item conta-side-perigo <%= sec === 'excluir' ? 'ativo' : '' %>" href="/minha-conta?sec=excluir">
-          <i class="fa-solid fa-trash"></i> Excluir conta
-        </a>
-      </nav>
-    </aside>
+    <% } %>
 
-    <section class="conta-main">
+    <header class="ct-topo">
+      <p class="ct-olho">Área do aluno</p>
+      <h1>Minha conta</h1>
+    </header>
 
-      <% if (sec === 'inscricoes') { %>
-        <div class="conta-head">
-          <h2>Minhas inscrições</h2>
-          <a href="/cursos" class="conta-head-acao"><i class="fa-solid fa-plus"></i> Nova inscrição</a>
-        </div>
-        <% if (!matriculas.length) { %>
-          <div class="interna-vazio">
-            <i class="fa-regular fa-folder-open" style="font-size:34px;color:#cbd5e0;display:block;margin-bottom:12px;"></i>
-            Você ainda não tem inscrições.<br><a href="/cursos">Ver cursos disponíveis</a>.
+    <div class="ct-layout">
+
+      <!-- ══ Lateral ══════════════════════════════════════════════════════ -->
+      <aside class="ct-side">
+        <div class="ct-perfil">
+          <div class="ct-avatar"><%= usuario.nome.charAt(0).toUpperCase() %></div>
+          <div class="ct-perfil-txt">
+            <strong><%= usuario.nome.split(' ')[0] %></strong>
+            <span title="<%= usuario.email %>"><%= usuario.email %></span>
           </div>
-        <% } else { %>
-          <div class="courses-grid">
-            <% matriculas.forEach(function (m) { %>
-              <% /* 💡 Suporte unificado para os status PAGO e PARCELADO */ %>
-              <% var cls = (m.statusPagamento === 'PAGO' || m.statusPagamento === 'PARCELADO') ? 'pago' : (m.statusPagamento === 'PENDENTE' ? 'pendente' : 'cancelado'); %>
-              <article class="course-card">
-                <% if (m.turma.curso.imagemUrl) { %>
-                  <img src="<%= m.turma.curso.imagemUrl %>" alt="<%= m.turma.curso.nome %>" class="course-img">
-                <% } else { %>
-                  <div class="course-img course-img-fallback"><i class="fa-solid fa-plus"></i></div>
-                <% } %>
-                <span class="mat-badge mat-badge-<%= cls %>"><%= m.statusPagamento %></span>
-                <div class="course-body">
-                  <h3><%= m.turma.curso.nome %></h3>
-                  <small class="mat-sub">
-                    <% if (m.turma.aulas && m.turma.aulas.length) { %><%= m.turma.aulas[0].horario %> · <% } %>início <%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
-                  </small>
-                  <small class="mat-sub" style="margin-top:4px;display:block;">
-                    Inscrito em <%= new Date(m.criadoEm).toLocaleDateString('pt-BR') %>
-                  </small>
-                  <%
-                    // Estorno/cancelamento devolvem o valor → nem "confirmada" nem "aguardando";
-                    // mostram um terceiro estado ("Valor devolvido"), coerente com a badge de status.
-                    var estornadoOuCancelado = m.statusPagamento === 'ESTORNADO' || m.statusPagamento === 'CANCELADO';
-                    var taxaOk = (m.taxaConfirmada || m.statusPagamento === 'PAGO' || m.statusPagamento === 'PARCELADO')
-                                 && !estornadoOuCancelado;
-                  %>
-                  <div style="margin-top:8px;margin-bottom:8px;">
+        </div>
+
+        <nav class="ct-nav">
+          <a href="/minha-conta?sec=inscricoes" class="<%= sec === 'inscricoes' ? 'ativo' : '' %>">
+            <i class="fa-solid fa-graduation-cap"></i> Inscrições
+          </a>
+          <a href="/minha-conta?sec=dados" class="<%= sec === 'dados' ? 'ativo' : '' %>">
+            <i class="fa-solid fa-id-card"></i> Meus dados
+          </a>
+          <a href="/minha-conta?sec=excluir" class="perigo <%= sec === 'excluir' ? 'ativo' : '' %>">
+            <i class="fa-solid fa-trash"></i> Excluir conta
+          </a>
+        </nav>
+      </aside>
+
+      <!-- ══ Conteúdo ═════════════════════════════════════════════════════ -->
+      <section class="ct-main">
+
+        <!-- ── Inscrições ────────────────────────────────────────────────── -->
+        <% if (sec === 'inscricoes') { %>
+
+          <div class="ct-head">
+            <h2>Minhas inscrições</h2>
+            <a href="/cursos" class="ct-head-acao">
+              <i class="fa-solid fa-plus"></i> Nova inscrição
+            </a>
+          </div>
+
+          <% if (!matriculas.length) { %>
+
+            <div class="ct-vazio">
+              <i class="fa-regular fa-folder-open"></i>
+              <p>Você ainda não tem inscrições. Escolha um curso e garanta sua
+              vaga na próxima turma.</p>
+              <a href="/cursos">Ver cursos disponíveis <i class="fa-solid fa-arrow-right"></i></a>
+            </div>
+
+          <% } else { %>
+
+            <div class="ct-lista">
+              <% matriculas.forEach(function (m) { %>
+              <%
+                // PAGO e PARCELADO são os dois estados de "quitado" — PARCELADO
+                // significa cartão aprovado em N vezes, não pagamento pendente.
+                var pago = m.statusPagamento === 'PAGO' || m.statusPagamento === 'PARCELADO';
+                var cls  = pago ? 'pago' : (m.statusPagamento === 'PENDENTE' ? 'pendente' : 'cancelado');
+
+                // Estorno/cancelamento devolvem o valor: nem confirmada, nem
+                // aguardando — é um terceiro estado.
+                var devolvido = m.statusPagamento === 'ESTORNADO' || m.statusPagamento === 'CANCELADO';
+                var taxaOk = (m.taxaConfirmada || pago) && !devolvido;
+
+                var labelPlano = m.plano === 'A_VISTA'   ? 'À vista'
+                               : m.plano === 'PRESENCIAL' ? 'Presencial'
+                               : 'Parcelado';
+              %>
+              <article class="ct-insc">
+
+                <a class="card-link-overlay" href="/cursos/<%= m.turma.curso.id %>"
+                   aria-label="Ver <%= m.turma.curso.nome %>"></a>
+
+                <div class="ct-insc-capa">
+                  <% if (m.turma.curso.imagemUrl) { %>
+                    <img src="<%= m.turma.curso.imagemUrl %>" alt="<%= m.turma.curso.nome %>" loading="lazy">
+                  <% } else { %>
+                    <div class="ct-insc-semfoto"><i class="fa-solid fa-kit-medical"></i></div>
+                  <% } %>
+                </div>
+
+                <div class="ct-insc-corpo">
+
+                  <div class="ct-insc-topo">
+                    <h3><%= m.turma.curso.nome %></h3>
+                    <span class="ct-selo ct-selo-<%= cls %>"><%= m.statusPagamento %></span>
+                  </div>
+
+                  <p class="ct-insc-sub">
+                    <% if (m.turma.aulas && m.turma.aulas.length) { %><%= m.turma.aulas[0].horario %> · <% } %>
+                    início em <b><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %></b>
+                    · inscrito em <%= new Date(m.criadoEm).toLocaleDateString('pt-BR') %>
+                  </p>
+
+                  <div class="ct-pills">
                     <% if (taxaOk) { %>
-                      <span style="display:inline-flex;align-items:center;gap:5px;background:#dcfce7;color:#166534;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid #86efac;">
-                        <i class="fa-solid fa-check-circle"></i> Taxa de inscrição confirmada
+                      <span class="ct-pill ct-pill-ok">
+                        <i class="fa-solid fa-circle-check"></i> Taxa de inscrição confirmada
                       </span>
-                    <% } else if (estornadoOuCancelado) { %>
-                      <span style="display:inline-flex;align-items:center;gap:5px;background:#f1f5f9;color:#475569;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid #cbd5e0;">
+                    <% } else if (devolvido) { %>
+                      <span class="ct-pill ct-pill-devolvido">
                         <i class="fa-solid fa-rotate-left"></i> Valor devolvido
                       </span>
                     <% } else { %>
-                      <span style="display:inline-flex;align-items:center;gap:5px;background:#fefce8;color:#854d0e;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid #fde047;">
-                        <i class="fa-solid fa-clock"></i> Taxa aguardando confirmação
+                      <span class="ct-pill ct-pill-espera">
+                        <i class="fa-regular fa-clock"></i> Taxa aguardando confirmação
                       </span>
                     <% } %>
                   </div>
-                  <div class="course-meta">
-                    <%
-                      var labelPlano = m.plano === 'A_VISTA' ? 'À vista'
-                                      : m.plano === 'PRESENCIAL' ? 'Presencial'
-                                      : 'Parcelado';
-                    %>
-                    <span class="duration">
+
+                  <div class="ct-insc-pe">
+                    <span class="ct-insc-plano">
                       <%= labelPlano %><% if (m.plano !== 'PRESENCIAL') { %> · <%= m.forma %><% } %>
                     </span>
-                    <span class="price"><%= formatBRL(m.valorCurso) %></span>
+                    <span class="ct-insc-valor num"><%= formatBRL(m.valorCurso) %></span>
                   </div>
+
                   <% if ((m.nota !== null && m.nota !== undefined) || m.situacao) { %>
-                    <div class="mat-nota" style="margin-top:10px;padding-top:10px;border-top:1px solid #eef1f6;display:flex;align-items:center;gap:10px;font-size:13px;">
-                      <% if (m.nota !== null && m.nota !== undefined) { %>
-                        <span><strong>Nota:</strong> <%= m.nota %></span>
-                      <% } %>
-                      <% if (m.situacao) { %>
-                        <span class="mat-badge mat-badge-<%= m.situacao === 'APROVADO' ? 'pago' : 'cancelado' %>" style="position:static;"><%= m.situacao === 'APROVADO' ? 'Aprovado' : 'Reprovado' %></span>
-                      <% } %>
-                    </div>
+                  <div class="ct-nota">
+                    <% if (m.nota !== null && m.nota !== undefined) { %>
+                      <span>Nota: <strong><%= m.nota %></strong></span>
+                    <% } %>
+                    <% if (m.situacao) { %>
+                      <span class="ct-selo ct-selo-<%= m.situacao === 'APROVADO' ? 'pago' : 'cancelado' %>">
+                        <%= m.situacao === 'APROVADO' ? 'Aprovado' : 'Reprovado' %>
+                      </span>
+                    <% } %>
+                  </div>
                   <% } %>
+
                 </div>
               </article>
-            <% }) %>
+              <% }) %>
+            </div>
+
+          <% } %>
+
+        <!-- ── Meus dados ────────────────────────────────────────────────── -->
+        <% } else if (sec === 'dados') { %>
+
+          <div class="ct-head"><h2>Meus dados</h2></div>
+
+          <div class="ct-card">
+
+            <% if (typeof salvo !== 'undefined' && salvo) { %>
+              <div class="ct-ok">
+                <i class="fa-solid fa-circle-check"></i> Dados atualizados.
+              </div>
+            <% } %>
+            <% if (typeof erroDados !== 'undefined' && erroDados) { %>
+              <div class="ct-erro">
+                <i class="fa-solid fa-circle-exclamation"></i> <%= erroDados %>
+              </div>
+            <% } %>
+
+            <form method="POST" action="/conta/dados" novalidate class="ct-form">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+              <label class="ct-campo">
+                <span>Escolaridade</span>
+                <select name="escolaridade" required>
+                  <option value="" disabled <%= usuario.escolaridade ? '' : 'selected' %>>Selecione...</option>
+                  <% escolaridades.forEach(function (e) { %>
+                    <option value="<%= e %>" <%= (usuario.escolaridade === e) ? 'selected' : '' %>><%= e %></option>
+                  <% }) %>
+                </select>
+              </label>
+
+              <label class="ct-campo">
+                <span>Situação</span>
+                <select name="escolaridadeSituacao" required>
+                  <option value="" disabled <%= usuario.escolaridadeSituacao ? '' : 'selected' %>>Cursando ou completo?</option>
+                  <% situacoes.forEach(function (s) { %>
+                    <option value="<%= s %>" <%= (usuario.escolaridadeSituacao === s) ? 'selected' : '' %>><%= s %></option>
+                  <% }) %>
+                </select>
+              </label>
+
+              <label class="ct-campo">
+                <span>Gênero <em>(opcional)</em></span>
+                <select name="genero">
+                  <option value="">— selecione —</option>
+                  <% generos.forEach(function (g) { %>
+                    <option value="<%= g %>" <%= (usuario.genero === g) ? 'selected' : '' %>><%= g %></option>
+                  <% }) %>
+                </select>
+              </label>
+
+              <fieldset class="ct-grupo">
+                <legend>Endereço</legend>
+                <p class="ct-grupo-nota">Usado para emissão de cobrança em caso de inadimplência.</p>
+
+                <label class="ct-campo">
+                  <span>CEP</span>
+                  <input type="text" name="cep" value="<%= usuario.cep || '' %>" required
+                         inputmode="numeric" placeholder="00000-000" maxlength="9">
+                </label>
+
+                <label class="ct-campo">
+                  <span>Rua / Logradouro</span>
+                  <input type="text" name="logradouro" value="<%= usuario.logradouro || '' %>" required>
+                </label>
+
+                <div class="ct-linha-2">
+                  <label class="ct-campo">
+                    <span>Número</span>
+                    <input type="text" name="numero" value="<%= usuario.numero || '' %>" required>
+                  </label>
+                  <label class="ct-campo">
+                    <span>Complemento <em>(opcional)</em></span>
+                    <input type="text" name="complemento" value="<%= usuario.complemento || '' %>">
+                  </label>
+                </div>
+
+                <div class="ct-linha-3">
+                  <label class="ct-campo">
+                    <span>Bairro</span>
+                    <input type="text" name="bairro" value="<%= usuario.bairro || '' %>" required>
+                  </label>
+                  <label class="ct-campo">
+                    <span>Cidade</span>
+                    <input type="text" name="cidade" value="<%= usuario.cidade || '' %>" required>
+                  </label>
+                  <label class="ct-campo">
+                    <span>UF</span>
+                    <select name="uf" required>
+                      <option value="" disabled <%= usuario.uf ? '' : 'selected' %>>--</option>
+                      <% ufs.forEach(function (u) { %>
+                        <option value="<%= u %>" <%= (usuario.uf === u) ? 'selected' : '' %>><%= u %></option>
+                      <% }) %>
+                    </select>
+                  </label>
+                </div>
+              </fieldset>
+
+              <button type="submit" class="ct-btn">Salvar alterações</button>
+            </form>
+
+            <div class="ct-dados">
+              <div><span>Nome completo</span><strong><%= usuario.nome %></strong></div>
+              <div><span>E-mail</span><strong><%= usuario.email %></strong></div>
+              <div>
+                <span><%= usuario.tipoDocumento === 'PASSAPORTE' ? 'Passaporte' : 'CPF/CNPJ' %></span>
+                <strong><%= docMascarado %></strong>
+              </div>
+              <% if (usuario.tipoDocumento === 'PASSAPORTE' && usuario.paisOrigem) { %>
+                <div><span>País de origem</span><strong><%= usuario.paisOrigem %></strong></div>
+              <% } %>
+              <div><span>E-mail confirmado</span><strong><%= usuario.emailVerificado ? 'Sim' : 'Não' %></strong></div>
+              <div><span>Cadastro em</span><strong class="num"><%= new Date(usuario.criadoEm).toLocaleDateString('pt-BR') %></strong></div>
+            </div>
+
+            <p class="ct-aviso">
+              <i class="fa-solid fa-lock"></i>
+              Nome, e-mail e documento não podem ser alterados por aqui — o nome
+              vai no certificado, e o e-mail e o documento identificam você.
+              Para corrigir algum deles, fale com a secretaria.
+            </p>
+
           </div>
+
+        <!-- ── Excluir conta ─────────────────────────────────────────────── -->
+        <% } else if (sec === 'excluir') { %>
+
+          <div class="ct-head"><h2>Excluir conta</h2></div>
+
+          <div class="ct-card">
+            <p class="ct-grupo-nota" style="margin-bottom:18px;">
+              Esta ação é permanente e remove seus dados. Não é possível excluir
+              com matrículas ativas.
+            </p>
+
+            <% if (erro) { %>
+              <div class="ct-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div>
+            <% } %>
+
+            <% if (matriculasAtivas > 0) { %>
+              <div class="ct-bloqueio">
+                <i class="fa-solid fa-lock"></i>
+                Você tem <%= matriculasAtivas %> matrícula(s) ativa(s). Resolva
+                com a secretaria antes de excluir.
+              </div>
+            <% } else { %>
+              <form method="POST" action="/conta/excluir" novalidate class="ct-form" style="max-width:400px;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <label class="ct-campo">
+                  <span>Confirme sua senha para excluir</span>
+                  <input type="password" name="senha" required autocomplete="current-password">
+                </label>
+                <button type="submit" class="ct-btn ct-btn-perigo">Excluir minha conta</button>
+              </form>
+            <% } %>
+          </div>
+
         <% } %>
 
-      <% } else if (sec === 'dados') { %>
-        <div class="conta-card">
-          <div class="conta-head"><h2>Meus dados</h2></div>
+      </section>
+    </div>
 
-          <% if (typeof salvo !== 'undefined' && salvo) { %>
-            <div class="aviso-ok" style="background:#f0fdf4;border:1px solid #86efac;color:#16a34a;padding:12px 14px;border-radius:10px;margin-bottom:16px;"><i class="fa-solid fa-circle-check"></i> Dados atualizados com sucesso.</div>
-          <% } %>
-          <% if (typeof erroDados !== 'undefined' && erroDados) { %>
-            <div class="aviso-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erroDados %></div>
-          <% } %>
-
-          <form method="POST" action="/conta/dados" novalidate style="max-width:480px;">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <label class="campo" style="display:block;margin-bottom:16px;">
-              <span>Escolaridade</span>
-              <select name="escolaridade" required>
-                <option value="" disabled <%= usuario.escolaridade ? '' : 'selected' %>>Selecione...</option>
-                <% escolaridades.forEach(function (e) { %>
-                  <option value="<%= e %>" <%= (usuario.escolaridade === e) ? 'selected' : '' %>><%= e %></option>
-                <% }) %>
-              </select>
-            </label>
-            <label class="campo" style="display:block;margin-bottom:16px;">
-              <span>Situação</span>
-              <select name="escolaridadeSituacao" required>
-                <option value="" disabled <%= usuario.escolaridadeSituacao ? '' : 'selected' %>>Cursando ou completo?</option>
-                <% situacoes.forEach(function (s) { %>
-                  <option value="<%= s %>" <%= (usuario.escolaridadeSituacao === s) ? 'selected' : '' %>><%= s %></option>
-                <% }) %>
-              </select>
-            </label>
-            <label class="campo" style="display:block;margin-bottom:16px;">
-              <span>Gênero <span style="font-weight:400;color:#718096;font-size:.85em;">(opcional)</span></span>
-              <select name="genero">
-                <option value="">— selecione —</option>
-                <% generos.forEach(function (g) { %>
-                  <option value="<%= g %>" <%= (usuario.genero === g) ? 'selected' : '' %>><%= g %></option>
-                <% }) %>
-              </select>
-            </label>
-
-            <fieldset style="border:1px solid #e7ebf2;border-radius:12px;padding:16px;margin:0 0 18px;">
-              <legend style="font-size:13px;font-weight:700;padding:0 6px;">Endereço</legend>
-              <p style="font-size:12px;color:#718096;margin:0 0 14px;">Usado para emissão de cobrança em caso de inadimplência.</p>
-              <label class="campo" style="display:block;margin-bottom:12px;">
-                <span>CEP</span>
-                <input type="text" name="cep" value="<%= usuario.cep || '' %>" required inputmode="numeric" placeholder="00000-000" maxlength="9">
-              </label>
-              <label class="campo" style="display:block;margin-bottom:12px;">
-                <span>Rua / Logradouro</span>
-                <input type="text" name="logradouro" value="<%= usuario.logradouro || '' %>" required>
-              </label>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-                <label class="campo" style="display:block;">
-                  <span>Número</span>
-                  <input type="text" name="numero" value="<%= usuario.numero || '' %>" required>
-                </label>
-                <label class="campo" style="display:block;">
-                  <span>Complemento <span style="font-weight:400;color:#718096;font-size:.85em;">(opcional)</span></span>
-                  <input type="text" name="complemento" value="<%= usuario.complemento || '' %>">
-                </label>
-              </div>
-              <div style="display:grid;grid-template-columns:2fr 2fr 1fr;gap:12px;">
-                <label class="campo" style="display:block;">
-                  <span>Bairro</span>
-                  <input type="text" name="bairro" value="<%= usuario.bairro || '' %>" required>
-                </label>
-                <label class="campo" style="display:block;">
-                  <span>Cidade</span>
-                  <input type="text" name="cidade" value="<%= usuario.cidade || '' %>" required>
-                </label>
-                <label class="campo" style="display:block;">
-                  <span>UF</span>
-                  <select name="uf" required>
-                    <option value="" disabled <%= usuario.uf ? '' : 'selected' %>>--</option>
-                    <% ufs.forEach(function (u) { %>
-                      <option value="<%= u %>" <%= (usuario.uf === u) ? 'selected' : '' %>><%= u %></option>
-                    <% }) %>
-                  </select>
-                </label>
-              </div>
-            </fieldset>
-
-            <button type="submit" class="btn-acao">Salvar alterações</button>
-          </form>
-
-          <div class="dados-lista" style="margin-top:24px;border-top:1px solid #e7ebf2;padding-top:18px;">
-            <div><span>Nome completo</span><strong><%= usuario.nome %></strong></div>
-            <div><span>E-mail</span><strong><%= usuario.email %></strong></div>
-            <div>
-  <span><%= usuario.tipoDocumento === 'PASSAPORTE' ? 'Passaporte' : 'CPF/CNPJ' %></span>
-  <strong><%= docMascarado %></strong>
-</div>
-<% if (usuario.tipoDocumento === 'PASSAPORTE' && usuario.paisOrigem) { %>
-  <div><span>País de origem</span><strong><%= usuario.paisOrigem %></strong></div>
-<% } %>
-            <div><span>E-mail confirmado</span><strong><%= usuario.emailVerificado ? 'Sim' : 'Não' %></strong></div>
-            <div><span>Cadastro em</span><strong><%= new Date(usuario.criadoEm).toLocaleDateString('pt-BR') %></strong></div>
-          </div>
-          <p class="painel-sub" style="font-size:12px;color:#718096;margin-top:10px;"><i class="fa-solid fa-lock"></i> Nome, e-mail e CPF não podem ser alterados por aqui — o nome é usado no certificado e o e-mail e documento na identificação. Se precisar corrigir algum deles, fale com a secretaria.</p>
-        </div>
-
-      <% } else if (sec === 'excluir') { %>
-        <div class="conta-card">
-          <div class="conta-head"><h2 style="color:#991b1b;">Excluir conta</h2></div>
-          <p class="painel-sub" style="margin-bottom:18px;">Esta ação é permanente e remove seus dados. Não é possível excluir com matrículas ativas.</p>
-
-          <% if (erro) { %>
-            <div class="aviso-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div>
-          <% } %>
-
-          <% if (matriculasAtivas > 0) { %>
-            <div class="aviso-bloqueio"><i class="fa-solid fa-lock"></i> Você tem <%= matriculasAtivas %> matrícula(s) ativa(s). Resolva com a secretaria antes de excluir.</div>
-          <% } else { %>
-            <form method="POST" action="/conta/excluir" novalidate style="max-width:400px;">
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-              <label class="campo">
-                <span>Confirme sua senha para excluir</span>
-                <input type="password" name="senha" required autocomplete="current-password">
-              </label>
-              <button type="submit" class="btn-acao btn-perigo">Excluir minha conta</button>
-            </form>
-          <% } %>
-        </div>
-      <% } %>
-
-    </section>
   </div>
 </main>
 

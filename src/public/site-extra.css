@@ -1,6 +1,9 @@
-/* Ajustes que complementam o style.css (sem alterá-lo) */
+/* ============================================================
+   site-extra.css
+   Ajustes que complementam o style.css (sem alterá-lo)
+   ============================================================ */
 
-/* Saudação do usuário logado no header */
+/* ── Saudação do usuário logado no header ─────────────────── */
 .user-greeting {
   font-size: 12px;
   line-height: 1.25;
@@ -13,15 +16,10 @@
 /* Botão "Sair" segue o visual do botão de cadastro */
 .btn-sair { cursor: pointer; border: none; font: inherit; }
 
-/* Total no card de curso */
-.course-total {
-  font-size: 12px;
-  color: #718096;
-  margin: 2px 0 12px;
-}
+/* ── Cards de curso (lista) ───────────────────────────────── */
+.course-total { font-size: 12px; color: #718096; margin: 2px 0 12px; }
 .course-total strong { color: #0f1318; }
 
-/* Imagem placeholder quando o curso não tem foto */
 .course-img-fallback {
   display: grid;
   place-items: center;
@@ -30,7 +28,7 @@
   font-size: 42px;
 }
 
-/* Botão "Ver todos os cursos" */
+/* ── Botão "Ver todos os cursos" ──────────────────────────── */
 .ver-mais-wrap { text-align: center; margin-top: 32px; }
 .btn-ver-mais {
   display: inline-block;
@@ -45,11 +43,18 @@
 }
 .btn-ver-mais:hover { background: #102443; }
 
-/* Voltar */
-.cat-back { display:inline-block; font-size: 13px; color: #718096; text-decoration: none; font-weight: 600; margin: 24px 24px 0; }
+/* ── Voltar ───────────────────────────────────────────────── */
+.cat-back {
+  display: inline-block;
+  font-size: 13px;
+  color: #718096;
+  text-decoration: none;
+  font-weight: 600;
+  margin: 24px 24px 0;
+}
 .cat-back:hover { color: #cc0000; }
 
-/* Página de detalhe do curso */
+/* ── Página de detalhe (layout legado, mantido por segurança) */
 .detalhe-wrap { max-width: 920px; margin: 0 auto; padding: 0 24px 64px; }
 .detalhe-top { display: flex; gap: 24px; flex-wrap: wrap; margin: 20px 0 36px; }
 .detalhe-img { width: 320px; max-width: 100%; height: 220px; object-fit: cover; border-radius: 14px; }
@@ -58,7 +63,6 @@
 .detalhe-info p { color: #4a5568; line-height: 1.6; margin-bottom: 16px; }
 .detalhe-meta { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: #4a5568; }
 .detalhe-meta i { color: #cc0000; width: 18px; }
-
 .detalhe-turmas-titulo { font-size: 20px; font-weight: 800; margin-bottom: 16px; }
 .detalhe-turmas { display: flex; flex-direction: column; gap: 12px; }
 .detalhe-turma {
@@ -69,16 +73,19 @@
 .detalhe-turma small { color: #718096; font-size: 12px; }
 .detalhe-turma .btn-buy { width: auto; padding: 10px 20px; margin: 0; }
 
-/* ===== Telas internas (área do aluno) ===== */
-.interna-wrap { max-width: 1100px; margin: 0 auto; padding: 36px 24px 64px; }
+/* ── Telas internas (área do aluno) ───────────────────────── */
+/* max-width 1040px: valor da segunda declaração que existia lá embaixo,
+   no bloco do painel da conta — as duas foram fundidas aqui. */
+.interna-wrap { max-width: 1040px; margin: 0 auto; padding: 36px 24px 64px; }
 .interna-head { margin-bottom: 28px; }
 .interna-head h1 { font-size: 30px; font-weight: 900; letter-spacing: -0.5px; }
 .interna-head p { color: #718096; margin-top: 4px; }
 .sec-titulo { font-size: 20px; font-weight: 800; margin: 8px 0 18px; }
 
+/* padding 48px 24px: idem, valor da segunda declaração que vencia */
 .interna-vazio {
   background: #fff; border: 1px dashed #cbd5e0; border-radius: 14px;
-  padding: 40px; text-align: center; color: #718096;
+  padding: 48px 24px; text-align: center; color: #718096;
 }
 .interna-vazio a { color: #cc0000; font-weight: 700; }
 
@@ -88,19 +95,19 @@
   display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600;
 }
 
-/* card de inscrição (mesma base do card de curso) */
+/* card de inscrição */
 .course-card { position: relative; }
 .mat-badge {
   position: absolute; top: 12px; right: 12px;
   font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 999px;
   text-transform: uppercase; letter-spacing: 0.5px; backdrop-filter: blur(2px);
 }
-.mat-badge-pendente { background: #fef9c3; color: #854d0e; }
-.mat-badge-pago { background: #dcfce7; color: #166534; }
+.mat-badge-pendente  { background: #fef9c3; color: #854d0e; }
+.mat-badge-pago      { background: #dcfce7; color: #166534; }
 .mat-badge-cancelado { background: #fee2e2; color: #991b1b; }
 .mat-sub { font-size: 12px; color: #718096; display: block; margin: -4px 0 10px; }
 
-/* cartão central para Meus Dados / Inscrição */
+/* ── Cartão central (Meus Dados / Inscrição) ──────────────── */
 .painel-card {
   max-width: 560px; margin: 32px auto 0; background: #fff;
   border: 1px solid #e2e8f0; border-radius: 16px; padding: 32px 30px;
@@ -113,7 +120,7 @@
   display: flex; justify-content: space-between; gap: 16px;
   padding: 12px 0; border-bottom: 1px solid #edf2f7; font-size: 14px;
 }
-.dados-lista > div span { color: #718096; }
+.dados-lista > div span  { color: #718096; }
 .dados-lista > div strong { color: #0f1318; text-align: right; }
 
 .bloco-perigo { margin-top: 26px; padding-top: 22px; border-top: 1px solid #e2e8f0; }
@@ -130,7 +137,10 @@
   -webkit-appearance: none; -moz-appearance: none; appearance: none;
   background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%236b7280' stroke-width='1.6' d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E") no-repeat right 16px center;
 }
-.campo input:focus, .campo select:focus { outline: none; border-color: #1a365d; box-shadow: 0 0 0 3px rgba(26,54,93,0.12); }
+.campo input:focus, .campo select:focus {
+  outline: none; border-color: #1a365d;
+  box-shadow: 0 0 0 3px rgba(26,54,93,0.12);
+}
 .campo small { display: block; font-size: 12px; color: #718096; margin-top: 5px; }
 
 .btn-acao {
@@ -146,6 +156,7 @@
   border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; font-size: 13px;
   display: flex; align-items: center; gap: 8px;
 }
+
 .resumo-box {
   background: #f7f8fa; border: 1px solid #e2e8f0; border-radius: 10px;
   padding: 14px 16px; margin-bottom: 20px;
@@ -154,23 +165,15 @@
 .resumo-box > div span { color: #4a5568; }
 .resumo-box small { display: block; font-size: 12px; color: #718096; margin-top: 4px; }
 
-/* ===== Sticky footer: rodapé sempre no fim quando há pouco conteúdo ===== */
-/* (removido height:100% em html,body — quebrava o position:sticky do header) */
-body {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-/* O conteúdo principal cresce e empurra o footer pra baixo */
+/* ── Sticky footer ────────────────────────────────────────── */
+body { min-height: 100vh; display: flex; flex-direction: column; }
 body > main,
 body > .courses-section,
 body > .detalhe-wrap,
-body > section {
-  flex: 1 0 auto;
-}
+body > section { flex: 1 0 auto; }
 .site-footer { flex-shrink: 0; margin-top: auto; }
 
-/* ===== Menu do usuário no header (dropdown nativo, sutil) ===== */
+/* ── Menu do usuário (dropdown) ───────────────────────────── */
 .user-menu { position: relative; }
 .user-menu summary {
   list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
@@ -208,13 +211,11 @@ body > section {
 }
 .btn-sair-sutil:hover { border-color: #cc0000; color: #cc0000; }
 
-/* ===== Painel da conta — visual repaginado ===== */
-.interna-wrap { max-width: 1040px; }
+/* ── Painel da conta ──────────────────────────────────────── */
 .conta-layout {
   display: grid; grid-template-columns: 290px 1fr; gap: 28px; align-items: start;
   margin-top: 8px;
 }
-
 .conta-side {
   background: #fff; border: 1px solid #e8edf3; border-radius: 18px;
   padding: 8px; position: sticky; top: 24px;
@@ -232,7 +233,6 @@ body > section {
 }
 .conta-perfil strong { font-size: 16px; color: #0f1318; }
 .conta-perfil span { font-size: 12.5px; color: #718096; margin-top: 3px; word-break: break-all; }
-
 .conta-nav { display: flex; flex-direction: column; gap: 4px; padding: 8px; }
 .conta-side-item {
   display: flex; align-items: center; gap: 12px;
@@ -245,8 +245,6 @@ body > section {
 .conta-side-item.ativo { background: #fef2f2; color: #cc0000; }
 .conta-side-item.ativo i { color: #cc0000; }
 .conta-side-perigo { color: #b04545; }
-
-/* Conteúdo */
 .conta-main { min-width: 0; }
 .conta-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; gap: 12px; }
 .conta-head h2 { font-size: 21px; font-weight: 800; letter-spacing: -0.3px; }
@@ -256,26 +254,22 @@ body > section {
   display: inline-flex; align-items: center; gap: 7px;
 }
 .conta-head-acao:hover { background: #fef2f2; }
-
 .conta-card {
   background: #fff; border: 1px solid #e8edf3; border-radius: 18px;
   padding: 30px 32px; box-shadow: 0 10px 30px rgba(15,19,24,0.06);
 }
-
 .aviso-bloqueio {
   background: #f7f8fa; border: 1px solid #e2e8f0; color: #4a5568;
   border-radius: 10px; padding: 14px 16px; font-size: 14px;
   display: flex; align-items: center; gap: 9px;
 }
 
-.interna-vazio { padding: 48px 24px; }
-
 @media (max-width: 760px) {
   .conta-layout { grid-template-columns: 1fr; }
   .conta-side { position: static; }
 }
 
-/* ===== Botões Login/Cadastro (deslogado) — versão sutil ===== */
+/* ── Botões Login/Cadastro (deslogado) ────────────────────── */
 .btn-login-sutil {
   display: inline-flex; align-items: center; gap: 8px;
   font-size: 14px; font-weight: 600; color: #1a365d; text-decoration: none;
@@ -283,7 +277,6 @@ body > section {
 }
 .btn-login-sutil i { font-size: 12px; color: #718096; }
 .btn-login-sutil:hover { background: #f0f4f8; }
-
 .btn-cadastro-sutil {
   display: inline-flex; align-items: center; gap: 8px;
   font-size: 14px; font-weight: 700; color: #fff; text-decoration: none;
@@ -292,39 +285,35 @@ body > section {
 .btn-cadastro-sutil i { font-size: 12px; }
 .btn-cadastro-sutil:hover { background: #a30000; }
 
-/* ===== Páginas institucionais (Sobre / Segurança) ===== */
+/* ── Páginas institucionais (Sobre / Segurança) ───────────── */
 .pagina-hero {
   background: linear-gradient(135deg, #1a365d, #0f2138);
   color: #fff; padding: 60px 24px; text-align: center;
 }
 .pagina-hero h1 { font-size: 34px; font-weight: 900; letter-spacing: -0.5px; }
 .pagina-hero p { color: #cbd5e0; max-width: 640px; margin: 12px auto 0; font-size: 16px; }
-
 .pagina-wrap { max-width: 1140px; margin: 0 auto; padding: 44px 24px; }
 .pagina-wrap h2 { font-size: 22px; font-weight: 800; margin: 30px 0 12px; }
 .pagina-wrap h2:first-child { margin-top: 0; }
 .pagina-wrap > p { color: #4a5568; line-height: 1.75; margin-bottom: 12px; }
-
-.principios-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr);
-  gap: 18px; margin-top: 16px;
-}
+.principios-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 16px; }
 @media (max-width: 820px) { .principios-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 520px) { .principios-grid { grid-template-columns: 1fr; } }
 .principio {
   background: #fff; border: 1px solid #e8edf3; border-radius: 14px; padding: 20px;
   box-shadow: 0 6px 20px rgba(15,19,24,0.04);
+  transition: transform 0.12s, box-shadow 0.12s;
 }
+.principio:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(15,19,24,0.10); }
 .principio i { color: #cc0000; font-size: 22px; margin-bottom: 10px; display: block; }
 .principio strong { display: block; font-size: 15px; margin-bottom: 5px; color: #0f1318; }
 .principio span { font-size: 13px; color: #718096; line-height: 1.55; }
-
 .aviso-placeholder {
   background: #fffbeb; border: 1px solid #fde68a; color: #854d0e;
   border-radius: 10px; padding: 13px 16px; font-size: 13px; margin-top: 24px; line-height: 1.6;
 }
 
-/* ===== Páginas institucionais RICAS (Sobre / Segurança) ===== */
+/* ── Páginas institucionais ricas (inst-*) ────────────────── */
 .page-hero {
   position: relative; color: #fff; text-align: center;
   padding: 96px 24px; background-size: cover; background-position: center;
@@ -342,23 +331,21 @@ body > section {
   font-weight: 800; padding: 14px 30px; border-radius: 10px; text-decoration: none;
 }
 .page-hero .hero-cta:hover { background: #ffe5e5; }
+.page-hero.sem-foto { background: linear-gradient(135deg, #d11a1a, #7a0000); }
+.page-hero.sem-foto::before { display: none; }
 
 .page-split {
   display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center;
   max-width: 1140px; margin: 0 auto; padding: 70px 24px;
 }
-.page-split img {
-  width: 100%; border-radius: 18px; box-shadow: 0 18px 44px rgba(0,0,0,0.14);
-  aspect-ratio: 4 / 3; object-fit: cover;
-}
+.page-split img { width: 100%; border-radius: 18px; box-shadow: 0 18px 44px rgba(0,0,0,0.14); aspect-ratio: 4/3; object-fit: cover; }
 .page-split.rev .split-img { order: 2; }
 .page-split .eyebrow { color: #cc0000; letter-spacing: 2px; font-size: 12.5px; font-weight: 800; text-transform: uppercase; }
 .page-split h2 { font-size: 30px; font-weight: 900; margin: 8px 0 14px; letter-spacing: -0.5px; }
 .page-split p { color: #4a5568; line-height: 1.75; margin-bottom: 12px; }
 
 .band-vermelha {
-  background: linear-gradient(135deg, #cc0000, #8f0000); color: #fff; text-align: center;
-  padding: 60px 24px;
+  background: linear-gradient(135deg, #cc0000, #8f0000); color: #fff; text-align: center; padding: 60px 24px;
 }
 .band-vermelha h2 { font-size: 30px; font-weight: 900; max-width: 780px; margin: 0 auto 10px; letter-spacing: -0.5px; }
 .band-vermelha p { color: #ffd9d9; max-width: 640px; margin: 0 auto; font-size: 16px; line-height: 1.6; }
@@ -368,10 +355,6 @@ body > section {
 .secao-titulo .eyebrow { color: #cc0000; letter-spacing: 2px; font-size: 12.5px; font-weight: 800; text-transform: uppercase; }
 .secao-titulo h2 { font-size: 30px; font-weight: 900; letter-spacing: -0.5px; margin-top: 4px; }
 .secao-sub { text-align: center; color: #718096; max-width: 620px; margin: 8px auto 30px; line-height: 1.6; }
-
-.principio { transition: transform 0.12s, box-shadow 0.12s; }
-.principio:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(15,19,24,0.10); }
-
 .cta-final { text-align: center; padding: 16px 24px 72px; }
 .cta-final .btn-ver-mais { font-size: 15px; }
 
@@ -381,7 +364,6 @@ body > section {
   .page-hero h1 { font-size: 34px; }
 }
 
-/* Marca d'água dos 3 símbolos estilizados no banner do Sobre */
 .hero-simbolos {
   position: absolute; inset: 0; z-index: 1; pointer-events: none;
   background: url('/img/emblemas.webp') center 38% no-repeat;
@@ -389,35 +371,76 @@ body > section {
   opacity: 0.13;
 }
 
-/* Banner sem foto: fundo vermelho da marca */
-.page-hero.sem-foto { background: linear-gradient(135deg, #d11a1a, #7a0000); }
-.page-hero.sem-foto::before { display: none; }
-
-/* Bloco gráfico da marca (no lugar de foto) */
 .split-grafico {
-  border-radius: 18px; aspect-ratio: 4 / 3; display: grid; place-items: center;
+  border-radius: 18px; aspect-ratio: 4/3; display: grid; place-items: center;
   background: linear-gradient(135deg, #cc0000, #8f0000);
   box-shadow: 0 18px 44px rgba(204,0,0,0.22);
 }
 .split-grafico img { width: 62%; opacity: 0.95; }
 .split-grafico i { font-size: 76px; color: #fff; opacity: 0.95; }
 
-/* Placeholder de foto (ex.: foto da filial) */
 .split-placeholder {
-  border-radius: 18px; aspect-ratio: 4 / 3; display: grid; place-items: center; text-align: center;
+  border-radius: 18px; aspect-ratio: 4/3; display: grid; place-items: center; text-align: center;
   border: 2px dashed #cbd5e0; background: #f7f8fa; color: #94a3b8; padding: 24px;
 }
 .split-placeholder i { font-size: 42px; margin-bottom: 12px; display: block; }
 .split-placeholder strong { font-size: 14px; color: #64748b; display: block; }
 .split-placeholder span { font-size: 12.5px; }
 
-/* ===== Página /cursos — grade própria e limpa ===== */
+/* inst-* */
+.inst-page { max-width: 1080px; margin: 0 auto; padding: 0 24px 80px; }
+.inst-hero { padding: 56px 0 40px; border-bottom: 1px solid #e8e6e1; margin-bottom: 56px; }
+.inst-eyebrow {
+  font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase;
+  color: #cc0000; margin: 0 0 14px; position: relative; padding-left: 26px;
+}
+.inst-eyebrow::before { content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 18px; height: 2px; background: #cc0000; }
+.inst-h1 { font-size: clamp(32px, 4.6vw, 52px); font-weight: 900; line-height: 1.06; letter-spacing: -0.02em; color: #16191d; margin: 0 0 18px; max-width: 16ch; }
+.inst-lead { font-size: 18px; line-height: 1.6; color: #525a64; margin: 0; max-width: 60ch; }
+.inst-cta {
+  display: inline-flex; align-items: center; gap: 9px; margin-top: 26px;
+  background: #cc0000; color: #fff; text-decoration: none; font-weight: 700; font-size: 15px;
+  padding: 13px 24px; border-radius: 11px; transition: background .15s;
+}
+.inst-cta:hover { background: #a30000; }
+.inst-cta:focus-visible { outline: 3px solid rgba(204,0,0,.35); outline-offset: 2px; }
+.inst-section { margin-bottom: 64px; }
+.inst-sec-head { margin-bottom: 28px; }
+.inst-sec-head .inst-eyebrow { margin-bottom: 10px; }
+.inst-h2 { font-size: clamp(24px, 3vw, 32px); font-weight: 850; letter-spacing: -0.01em; color: #16191d; margin: 0; line-height: 1.15; }
+.inst-sub { font-size: 16px; line-height: 1.6; color: #5b636e; margin: 10px 0 0; max-width: 64ch; }
+.inst-split { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; margin-bottom: 64px; }
+.inst-split.rev .inst-split-media { order: 2; }
+.inst-split-media img { width: 100%; border-radius: 18px; aspect-ratio: 4/3; object-fit: cover; display: block; box-shadow: 0 18px 44px rgba(15,19,24,.12); }
+.inst-split h2 { font-size: clamp(24px, 3vw, 32px); font-weight: 850; color: #16191d; margin: 8px 0 14px; line-height: 1.15; letter-spacing: -0.01em; }
+.inst-split p { font-size: 16.5px; line-height: 1.75; color: #3a4250; margin: 0 0 14px; }
+.inst-split p:last-child { margin-bottom: 0; }
+.inst-graphic { aspect-ratio: 4/3; border-radius: 18px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #fff5f5 0%, #f7f4f1 100%); border: 1px solid #f0e2e2; }
+.inst-graphic i { font-size: 88px; color: #cc0000; opacity: .85; }
+.inst-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+.inst-card { background: #fff; border: 1px solid #e6e3dd; border-radius: 14px; padding: 22px 20px; display: flex; flex-direction: column; gap: 8px; }
+.inst-card-ic { width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center; background: #fff5f5; color: #cc0000; font-size: 18px; margin-bottom: 4px; }
+.inst-card strong { font-size: 15.5px; color: #16191d; font-weight: 800; }
+.inst-card span { font-size: 14px; line-height: 1.6; color: #5b636e; }
+.inst-row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.inst-emblemas { text-align: center; margin-bottom: 64px; }
+.inst-emblemas img { max-width: 440px; width: 100%; height: auto; margin: 0 auto 16px; display: block; }
+.inst-emblemas p { font-size: 14.5px; color: #828a94; max-width: 56ch; margin: 0 auto; line-height: 1.6; }
+.inst-note { max-width: 1080px; margin: 0 auto 28px; padding: 14px 18px; background: #faf7f5; border: 1px solid #f0e2e2; border-radius: 12px; font-size: 13.5px; color: #6b5b5b; line-height: 1.6; }
+.inst-note strong { color: #9b3b3b; }
+.inst-final { text-align: center; padding: 8px 0 0; }
+
+@media (max-width: 860px) {
+  .inst-split { grid-template-columns: 1fr; gap: 28px; }
+  .inst-split.rev .inst-split-media { order: 0; }
+  .inst-row3 { grid-template-columns: 1fr; }
+}
+
+/* ── Grade de cursos (legado — antiga /cursos) ────────────── */
 .cursos-hero { padding-top: 64px; padding-bottom: 64px; }
 .cursos-hero h1 { font-size: 40px; }
-
 .cursos-wrap { max-width: 1160px; margin: 0 auto; padding: 48px 0; }
 .cursos-vazio { text-align: center; color: #718096; padding: 50px 20px; }
-
 .cursos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
 @media (max-width: 980px) { .cursos-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 620px) { .cursos-grid { grid-template-columns: 1fr; } }
@@ -425,14 +448,11 @@ body > section {
 .curso-card {
   background: #fff; border: 1px solid #e8edf3; border-radius: 16px; overflow: hidden;
   display: flex; flex-direction: column; box-shadow: 0 8px 24px rgba(15,19,24,0.05);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s; position: relative; cursor: pointer;
 }
 .curso-card:hover { transform: translateY(-5px); box-shadow: 0 18px 38px rgba(15,19,24,0.12); }
-
 .curso-card-img { position: relative; height: 235px; background: #f1f5f9; }
-
 .curso-card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
-
 .curso-card-fallback {
   width: 100%; height: 100%; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 7px;
@@ -446,42 +466,46 @@ body > section {
   background: rgba(15,19,24,0.78); color: #fff; font-size: 11px; font-weight: 700;
   padding: 5px 11px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px;
 }
-
 .curso-card-body { padding: 20px; display: flex; flex-direction: column; flex: 1; }
 .curso-card-body h3 { font-size: 16px; font-weight: 800; color: #0f1318; line-height: 1.35; margin-bottom: 8px; }
 .curso-desc { font-size: 13px; color: #718096; line-height: 1.55; margin-bottom: 15px; }
-
 .curso-infos { list-style: none; padding: 0; margin: 0 0 16px; display: flex; flex-direction: column; gap: 8px; }
 .curso-infos li { font-size: 12.5px; color: #4a5568; font-weight: 600; display: flex; align-items: center; gap: 9px; }
 .curso-infos li i { width: 15px; text-align: center; color: #cc0000; }
-
 .curso-preco { border-top: 1px solid #eef2f7; padding-top: 14px; margin-top: auto; margin-bottom: 16px; }
 .curso-preco-label { display: block; font-size: 10.5px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 .curso-preco-valor { display: block; font-size: 24px; font-weight: 900; color: #0f1318; line-height: 1.2; }
 .curso-preco-total { display: block; font-size: 12px; color: #718096; margin-top: 3px; }
-
 .curso-btn {
   display: block; text-align: center; background: #cc0000; color: #fff;
   font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 0.4px;
   padding: 13px; border-radius: 9px; text-decoration: none; transition: background 0.15s;
+  position: relative; z-index: 2;
 }
 .curso-btn:hover { background: #a30000; }
 
-/* ===== Logo oficial no cabeçalho + nome da escola ===== */
+.card-link-overlay {
+  position: absolute; inset: 0; z-index: 1;
+  border-radius: inherit; text-indent: -9999px; overflow: hidden;
+}
+.course-card .btn-buy { position: relative; z-index: 2; }
+
+/* ── Logo no header ───────────────────────────────────────── */
 .logo-img { height: 62px; width: auto; display: block; }
-.logo-area { gap: 16px; } .logo-area .brand-text { padding-left: 16px; border-left: 1px solid #e2e8f0; }
+.logo-area { gap: 16px; }
+.logo-area .brand-text { padding-left: 16px; border-left: 1px solid #e2e8f0; }
 .logo-area .brand-title { font-size: 18px; letter-spacing: 0.3px; }
 .logo-area .brand-subtitle { font-size: 11px; letter-spacing: 1px; }
 @media (max-width: 680px) {
   .logo-img { height: 48px; }
-  .logo-area .brand-text { display: none; } /* em telas pequenas, só a logo */
+  .logo-area .brand-text { display: none; }
 }
 
-/* Faixa dos emblemas (imagem oficial, fundo branco) na página Sobre */
+/* ── Emblemas (página Sobre) ──────────────────────────────── */
 .emblemas-faixa { text-align: center; padding-top: 8px; padding-bottom: 8px; }
 .emblemas-faixa img { max-width: 360px; width: 100%; height: auto; display: block; margin: 0 auto 4px; }
 
-/* ===== Faixa de destaques (substitui a faixa vermelha) ===== */
+/* ── Faixa de destaques ───────────────────────────────────── */
 .destaques { background: #fbfcfe; border-top: 1px solid #eef2f7; border-bottom: 1px solid #eef2f7; padding: 44px 24px; }
 .destaques-inner { max-width: 1140px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; }
 .destaque { text-align: center; }
@@ -491,39 +515,10 @@ body > section {
 @media (max-width: 820px) { .destaques-inner { grid-template-columns: 1fr 1fr; gap: 24px; } }
 @media (max-width: 460px) { .destaques-inner { grid-template-columns: 1fr; } }
 
-/* Logo no footer */
+/* ── Logo no footer ───────────────────────────────────────── */
 .footer-logo-img { height: 64px; width: auto; display: block; }
 
-/* Texto completo e FAQ na página do curso */
-.curso-conteudo { margin-top: 36px; }
-.curso-conteudo p { color: #3a4252; line-height: 1.7; margin: 0 0 14px; }
-
-.curso-faq { margin-top: 36px; }
-.faq-item {
-  border: 1px solid #e7ebf2; border-radius: 12px; margin-bottom: 12px;
-  background: #fff; overflow: hidden;
-}
-.faq-item summary {
-  cursor: pointer; list-style: none; padding: 16px 18px;
-  font-weight: 600; color: #1f2733; display: flex; align-items: center;
-  justify-content: space-between; gap: 12px;
-}
-.faq-item summary::-webkit-details-marker { display: none; }
-.faq-ico { transition: transform .2s; color: #cc0000; font-size: 14px; flex: none; }
-.faq-item[open] .faq-ico { transform: rotate(180deg); }
-.faq-resp { padding: 0 18px 18px; color: #4a5263; line-height: 1.7; }
-
-/* Card de curso clicável por inteiro (link sobreposto) */
-.curso-card, .course-card { position: relative; cursor: pointer; }
-.card-link-overlay {
-  position: absolute; inset: 0; z-index: 1;
-  border-radius: inherit; text-indent: -9999px; overflow: hidden;
-  border-top: 5px solid red;
-}
-/* O botão visível e a tag de escolaridade ficam acima do overlay */
-.curso-card .curso-btn, .course-card .btn-buy { position: relative; z-index: 2; }
-
-/* Countdown na página do curso */
+/* ── Countdown (legado, mantido para outras páginas) ──────── */
 .curso-countdown {
   margin: 18px 0 4px; padding: 16px 20px;
   background: #fff5f5; border: 1px solid #ffd6d6; border-radius: 14px;
@@ -539,259 +534,1621 @@ body > section {
 }
 .curso-countdown .cd-nums b { font-size: 26px; font-weight: 900; color: #1f2733; line-height: 1.1; }
 
-/* ============================================================
-   Página de curso — redesign sóbrio/institucional (cd-*)
-   ============================================================ */
-.cd-page { max-width: 1080px; margin: 0 auto; padding: 0 24px 72px; }
-.cd-back {
-  display: inline-flex; align-items: center; gap: 8px;
-  margin: 26px 0 22px; color: #6b7280; font-size: 14px; font-weight: 600;
-  text-decoration: none;
-}
-.cd-back:hover { color: #cc0000; }
+/* ── Grupos de turmas por status ──────────────────────────── */
+.st-ico-aberta     { color: #16a34a; }
+.st-ico-confirmada { color: #1a365d; }
+.st-ico-cancelada  { color: #991b1b; }
+.st-ico-encerrada  { color: #718096; }
 
-/* Hero */
-.cd-hero { border-bottom: 1px solid #e8e6e1; padding-bottom: 26px; margin-bottom: 34px; }
-
-.cd-eyebrow {
-  font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase;
-  color: #cc0000; margin: 0 0 12px; position: relative; padding-left: 26px;
-}
-.cd-eyebrow::before {
-  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
-  width: 18px; height: 2px; background: #cc0000;
-}
-.cd-title {
-  font-size: clamp(30px, 4vw, 46px); font-weight: 900; line-height: 1.08;
-  letter-spacing: -0.02em; color: #16191d; margin: 0 0 16px; max-width: 18ch;
-}
-.cd-lead { font-size: 18px; line-height: 1.6; color: #525a64; margin: 0; max-width: 60ch; }
-
-/* Grid principal */
-.cd-grid { display: grid; grid-template-columns: 1fr 360px; gap: 48px; align-items: start; }
-.cd-main { min-width: 0; }
-.cd-block + .cd-block { margin-top: 44px; }
-.cd-h2 {
-  font-size: 13px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase;
-  color: #9aa1ab; margin: 0 0 18px; padding-bottom: 12px; border-bottom: 1px solid #eceae5;
-}
-.cd-prose p { font-size: 16.5px; line-height: 1.8; color: #3a4250; margin: 0 0 16px; }
-.cd-prose p:last-child { margin-bottom: 0; }
-
-/* FAQ */
-.cd-faq { display: flex; flex-direction: column; }
-.cd-faq-item { border-bottom: 1px solid #eceae5; }
-.cd-faq-item summary {
-  cursor: pointer; list-style: none; padding: 18px 4px;
-  display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  font-size: 16px; font-weight: 650; color: #1f2733;
-}
-.cd-faq-item summary::-webkit-details-marker { display: none; }
-.cd-faq-ico {
-  flex: none; color: #cc0000; font-size: 13px; transition: transform .25s ease;
-}
-.cd-faq-item[open] .cd-faq-ico { transform: rotate(45deg); }
-.cd-faq-resp { padding: 0 4px 20px; font-size: 15.5px; line-height: 1.75; color: #5b636e; max-width: 64ch; }
-
-/* Ficha (sidebar sticky) */
-.cd-aside { position: static; }
-.cd-ficha {
-  background: #fff; border: 1px solid #e6e3dd; border-radius: 16px; overflow: hidden;
-  box-shadow: 0 1px 2px rgba(20,20,20,.03), 0 12px 32px rgba(20,20,20,.05);
-}
-.cd-ficha-media { aspect-ratio: 16 / 10; background: #f4f2ee; }
-.cd-ficha-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.cd-ficha-noimg {
-  width: 100%; height: 100%; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 8px; color: #b3ada3;
-}
-.cd-ficha-noimg i { font-size: 26px; }
-.cd-ficha-noimg span { font-size: 12px; font-weight: 600; letter-spacing: .3px; }
-.cd-ficha-body { padding: 22px 22px 24px; }
-
-/* Dados (definition list) */
-.cd-facts { margin: 0 0 20px; padding: 0 0 18px; border-bottom: 1px solid #eceae5; }
-.cd-facts > div { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 7px 0; }
-.cd-facts dt { font-size: 13.5px; color: #828a94; }
-.cd-facts dd { margin: 0; font-size: 14px; font-weight: 700; color: #1f2733; text-align: right; }
-
-/* Investimento */
-.cd-invest { display: flex; flex-direction: column; gap: 3px; margin-bottom: 20px; }
-.cd-invest-label {
-  font-size: 11.5px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #9aa1ab;
-}
-.cd-invest-value { font-size: 30px; font-weight: 900; color: #16191d; letter-spacing: -0.01em; line-height: 1.1; }
-.cd-invest-value small { font-size: 14px; font-weight: 600; color: #828a94; letter-spacing: 0; }
-.cd-invest-sub { font-size: 14px; color: #5b636e; }
-.cd-invest-total { font-size: 12.5px; color: #828a94; margin-top: 6px; }
-.cd-invest-total strong { color: #4a525d; }
-
-/* Countdown sóbrio */
-.curso-countdown {
-  background: #faf7f5; border: 1px solid #f0e2e2; border-radius: 12px;
-  padding: 14px 16px; margin-bottom: 20px;
-}
-.cd-count-label {
-  display: block; font-size: 11px; font-weight: 800; letter-spacing: .8px;
-  text-transform: uppercase; color: #cc0000; margin-bottom: 10px;
-}
-.curso-countdown .cd-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; }
-.curso-countdown .cd-nums span { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.curso-countdown .cd-nums b {
-  font-size: 24px; font-weight: 900; color: #16191d; line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-.curso-countdown .cd-nums i {
-  font-style: normal; font-size: 10.5px; font-weight: 600; color: #97928c;
-  letter-spacing: .3px; text-transform: uppercase;
-}
-
-/* Turmas dentro da ficha */
-.cd-turmas-h {
-  font-size: 11.5px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
-  color: #9aa1ab; margin: 0 0 12px;
-}
-.cd-empty { font-size: 14px; color: #828a94; line-height: 1.6; margin: 0; }
-.cd-turma {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 13px 0; border-top: 1px solid #eceae5;
-}
-.cd-turma:first-of-type { border-top: none; }
-.cd-turma-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.cd-turma-info strong { font-size: 14px; color: #1f2733; }
-.cd-turma-info span { font-size: 13px; color: #5b636e; }
-.cd-turma-date { font-size: 12px !important; color: #97928c !important; }
-.cd-cta {
-  flex: none; background: #cc0000; color: #fff; text-decoration: none;
-  font-size: 15px; font-weight: 800; padding: 13px 22px; border-radius: 10px;
-  transition: background .15s, transform .15s;
-  box-shadow: 0 6px 16px rgba(204,0,0,0.28);
-}
-.cd-cta:hover { background: #a30000; transform: translateY(-1px); }
-.cd-cta:focus-visible { outline: 3px solid rgba(204,0,0,.35); outline-offset: 2px; }
-
-/* Responsivo */
-@media (max-width: 900px) and (min-width: 681px) {
-  .cd-grid { grid-template-columns: 1fr 300px; gap: 28px; }
-}
-
-@media (max-width: 680px) {
-  .cd-grid { grid-template-columns: 1fr; gap: 32px; }
-  .cd-aside { position: static; order: -1; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .cd-faq-ico { transition: none; }
-}
-
-/* ============================================================
-   Páginas institucionais (Sobre / Segurança) — redesign sóbrio
-   Linguagem visual alinhada à página de curso (inst-*)
-   ============================================================ */
-.inst-page { max-width: 1080px; margin: 0 auto; padding: 0 24px 80px; }
-
-/* Hero */
-.inst-hero { padding: 56px 0 40px; border-bottom: 1px solid #e8e6e1; margin-bottom: 56px; }
-.inst-eyebrow {
-  font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase;
-  color: #cc0000; margin: 0 0 14px; position: relative; padding-left: 26px;
-}
-.inst-eyebrow::before {
-  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
-  width: 18px; height: 2px; background: #cc0000;
-}
-.inst-h1 {
-  font-size: clamp(32px, 4.6vw, 52px); font-weight: 900; line-height: 1.06;
-  letter-spacing: -0.02em; color: #16191d; margin: 0 0 18px; max-width: 16ch;
-}
-.inst-lead { font-size: 18px; line-height: 1.6; color: #525a64; margin: 0; max-width: 60ch; }
-.inst-cta {
-  display: inline-flex; align-items: center; gap: 9px; margin-top: 26px;
-  background: #cc0000; color: #fff; text-decoration: none; font-weight: 700; font-size: 15px;
-  padding: 13px 24px; border-radius: 11px; transition: background .15s;
-}
-.inst-cta:hover { background: #a30000; }
-.inst-cta:focus-visible { outline: 3px solid rgba(204,0,0,.35); outline-offset: 2px; }
-
-/* Seções */
-.inst-section { margin-bottom: 64px; }
-.inst-sec-head { margin-bottom: 28px; }
-.inst-sec-head .inst-eyebrow { margin-bottom: 10px; }
-.inst-h2 {
-  font-size: clamp(24px, 3vw, 32px); font-weight: 850; letter-spacing: -0.01em;
-  color: #16191d; margin: 0; line-height: 1.15;
-}
-.inst-sub { font-size: 16px; line-height: 1.6; color: #5b636e; margin: 10px 0 0; max-width: 64ch; }
-
-/* Split (texto + mídia) */
-.inst-split {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center;
-  margin-bottom: 64px;
-}
-.inst-split.rev .inst-split-media { order: 2; }
-.inst-split-media img {
-  width: 100%; border-radius: 18px; aspect-ratio: 4/3; object-fit: cover; display: block;
-  box-shadow: 0 18px 44px rgba(15,19,24,.12);
-}
-.inst-split h2 { font-size: clamp(24px, 3vw, 32px); font-weight: 850; color: #16191d; margin: 8px 0 14px; line-height: 1.15; letter-spacing: -0.01em; }
-.inst-split p { font-size: 16.5px; line-height: 1.75; color: #3a4250; margin: 0 0 14px; }
-.inst-split p:last-child { margin-bottom: 0; }
-
-/* Painel gráfico (quando não há foto) */
-.inst-graphic {
-  aspect-ratio: 4/3; border-radius: 18px; display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #fff5f5 0%, #f7f4f1 100%); border: 1px solid #f0e2e2;
-}
-.inst-graphic i { font-size: 88px; color: #cc0000; opacity: .85; }
-
-/* Grade de cards (destaques / princípios / camadas) */
-.inst-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
-.inst-card {
-  background: #fff; border: 1px solid #e6e3dd; border-radius: 14px; padding: 22px 20px;
-  display: flex; flex-direction: column; gap: 8px;
-}
-.inst-card-ic {
-  width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
-  background: #fff5f5; color: #cc0000; font-size: 18px; margin-bottom: 4px;
-}
-.inst-card strong { font-size: 15.5px; color: #16191d; font-weight: 800; }
-.inst-card span { font-size: 14px; line-height: 1.6; color: #5b636e; }
-
-/* Linha de 3 (direitos LGPD) */
-.inst-row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-
-/* Emblemas */
-.inst-emblemas { text-align: center; margin-bottom: 64px; }
-.inst-emblemas img { max-width: 440px; width: 100%; height: auto; margin: 0 auto 16px; display: block; }
-.inst-emblemas p { font-size: 14.5px; color: #828a94; max-width: 56ch; margin: 0 auto; line-height: 1.6; }
-
-/* Nota sóbria (placeholder/jurídico) */
-.inst-note {
-  max-width: 1080px; margin: 0 auto 28px; padding: 14px 18px;
-  background: #faf7f5; border: 1px solid #f0e2e2; border-radius: 12px;
-  font-size: 13.5px; color: #6b5b5b; line-height: 1.6;
-}
-.inst-note strong { color: #9b3b3b; }
-
-/* CTA final */
-.inst-final { text-align: center; padding: 8px 0 0; }
-
-/* Responsivo */
-@media (max-width: 860px) {
-  .inst-split { grid-template-columns: 1fr; gap: 28px; }
-  .inst-split.rev .inst-split-media { order: 0; }
-  .inst-row3 { grid-template-columns: 1fr; }
-}
-
-/* Outros cursos no fim da página de detalhe */
+/* ── Outros cursos no fim da página de detalhe (cd-outros) ── */
 .cd-outros { margin-top: 56px; padding-top: 8px; border-top: 1px solid #e8e6e1; }
 .cd-outros .cd-h2 { border-bottom: none; padding-bottom: 0; margin: 26px 0 20px; color: #16191d; font-size: 22px; letter-spacing: -0.01em; text-transform: none; }
 .cd-outros-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
 @media (max-width: 900px) { .cd-outros-grid { grid-template-columns: 1fr; } }
 
-/* ===== Grupos de turmas por status (mesmo padrão do Financeiro) ===== */
 
-/* Cor do ícone no título de cada grupo */
-.st-ico-aberta     { color: #16a34a; }
-.st-ico-confirmada { color: #1a365d; }
-.st-ico-cancelada  { color: #991b1b; }
-.st-ico-encerrada  { color: #718096; }
+/* ============================================================
+   PÁGINA DE CURSO — v3 (cx-*)
+   Layout de aplicativo com hero full-width e barra de ação fixa.
+   ============================================================ */
+
+.cx {
+  --tinta:    #16191d;
+  --tinta-60: #525a64;
+  --tinta-40: #8a929c;
+  --branco:   #ffffff;
+  --neve:     #f6f5f3;
+  --borda:    #e8e6e1;
+  --borda-2:  #d8d5ce;
+  --cruz:     #cc0000;
+  --cruz-bg:  #fff5f5;
+  --cruz-esc: #990000;
+  --r:        14px;
+  --r-s:      10px;
+
+  font-family: 'Manrope', 'Inter', system-ui, -apple-system, sans-serif;
+  color: var(--tinta);
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: -.011em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Hero full-width ──────────────────────────────────────── */
+.cx-hero {
+  position: relative;
+  width: 100%;
+  min-height: 300px;   /* precisa ser MENOR que o max, senão o hero trava
+                          em 420px e o height:38vw nunca chega a valer */
+  max-height: 420px;
+  height: 38vw;
+  background: #111;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.cx-hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  display: block;
+  filter: brightness(.52);
+}
+
+.cx-hero-sem-foto {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #b81c1c 0%, #6b0000 100%);
+}
+
+.cx-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(8, 8, 8, .95) 0%,
+    rgba(8, 8, 8, .55) 45%,
+    rgba(8, 8, 8, .10) 100%
+  );
+  pointer-events: none;
+}
+
+.cx-voltar-hero {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,.13);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,.22);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 999px;
+  text-decoration: none;
+  transition: background .18s;
+}
+.cx-voltar-hero:hover { background: rgba(255,255,255,.24); }
+
+.cx-hero-conteudo {
+  position: relative;
+  z-index: 2;
+  max-width: 780px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 clamp(20px, 4vw, 32px) clamp(28px, 4vw, 44px);
+  text-align: center; /* alinha com o padrão dos outros heróis do site (.page-hero, .pagina-hero, .band-vermelha) */
+}
+
+.cx-olho {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: #f87171;
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* antes só tinha align-items; sem isso o eyebrow ficava colado à esquerda mesmo com o pai centralizado */
+  gap: 10px;
+}
+.cx-olho::before {
+  content: '';
+  display: inline-block;
+  width: 18px;
+  height: 2px;
+  background: #f87171;
+  flex-shrink: 0;
+}
+
+.cx-hero-titulo {
+  font-family: 'Bricolage Grotesque', 'Archivo', 'Manrope', sans-serif;
+  font-size: clamp(28px, 5vw, 50px);
+  font-weight: 900;
+  line-height: 1.06;
+  letter-spacing: -.03em;
+  color: #fff;
+  margin: 0 auto 12px; /* max-width sem margin:auto não centraliza a CAIXA, só o texto dentro dela */
+  max-width: 20ch;
+}
+
+.cx-hero-lead {
+  font-size: clamp(13.5px, 1.8vw, 16px);
+  color: rgba(255,255,255,.68);
+  max-width: 50ch;
+  line-height: 1.55;
+  margin: 0 auto; /* mesmo motivo do título acima */
+}
+
+/* ── Quadro central ───────────────────────────────────────── */
+.cx-quadro {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 28px clamp(16px, 4vw, 32px) 110px;
+}
+
+/* ── Ficha rápida ─────────────────────────────────────────── */
+.cx-ficha {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--borda);
+  border-radius: var(--r);
+  overflow: hidden;
+  background: var(--borda);
+  gap: 1px;
+  margin-bottom: 20px;
+}
+
+.cx-ficha-item {
+  background: var(--branco);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* antes ficava à esquerda; no mobile o último item vira grid-column:span 2 e o texto sobrava torto colado à borda */
+  text-align: center;
+  gap: 4px;
+}
+
+.cx-ficha-item i {
+  font-size: 15px;
+  color: var(--cruz);
+  margin-bottom: 2px;
+}
+
+.cx-ficha-item em {
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--tinta-40);
+  display: block;
+}
+
+.cx-ficha-item strong {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tinta);
+  display: block;
+}
+
+/* ── Countdown ────────────────────────────────────────────── */
+.cx-conta {
+  background: var(--cruz-bg);
+  border: 1px solid #f4dede;
+  border-radius: var(--r);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  text-align: center; /* antes o rótulo ficava à esquerda e os números centralizados por baixo, dois alinhamentos diferentes no mesmo card */
+}
+
+.cx-conta-rot {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  color: var(--cruz);
+  margin-bottom: 14px;
+}
+
+.cx-conta .cx-conta-nums {
+  /* Reforça o grid centralizado: a regra legada ".curso-countdown .cd-nums"
+     tem 2 classes no seletor (mesma especificidade que esta), então sem
+     este seletor com o mesmo peso ela vencia e virava um flex sem
+     justify-content — jogando os números pra esquerda mesmo com o
+     rótulo centralizado acima. */
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.cx-conta-nums {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  text-align: center;
+  gap: 0;
+  max-width: 360px; /* impede o grid de esticar 100% do card largo e "flutuar" solto embaixo do rótulo */
+  margin: 0 auto;
+}
+
+.cx-conta-nums span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 0 8px;
+  border-right: 1px solid #f4dede;
+}
+.cx-conta-nums span:last-child { border-right: none; }
+
+.cx-conta-nums b {
+  font-family: 'Bricolage Grotesque', 'Archivo', 'Manrope', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--tinta);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.04em;
+}
+
+.cx-conta-nums i {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  color: #a07070;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+/* ── Seções ───────────────────────────────────────────────── */
+.cx-secao {
+  padding-top: 24px;
+  border-top: 1px solid var(--borda);
+  margin-bottom: 24px;
+}
+
+.cx-secao-t {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--tinta-40);
+  margin: 0 0 14px;
+}
+
+.cx-prosa p {
+  font-size: 15.5px;
+  line-height: 1.78;
+  color: var(--tinta-60);
+  margin: 0 0 13px;
+}
+.cx-prosa p:last-child { margin-bottom: 0; }
+
+/* ── Turmas ───────────────────────────────────────────────── */
+.cx-turmas {
+  border: 1px solid var(--borda);
+  border-radius: var(--r);
+  overflow: hidden;
+  background: var(--branco);
+}
+
+.cx-turma {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--borda);
+  transition: background .15s;
+}
+.cx-turma:last-child { border-bottom: none; }
+.cx-turma:hover { background: var(--neve); }
+
+.cx-turma-data {
+  flex: none;
+  width: 50px;
+  background: var(--cruz-bg);
+  border: 1px solid #f4dede;
+  border-radius: 10px;
+  text-align: center;
+  padding: 8px 0;
+  line-height: 1.1;
+}
+.cx-turma-data em {
+  display: block;
+  font-style: normal;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--cruz);
+  letter-spacing: -.04em;
+}
+.cx-turma-data span {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: #c06060;
+}
+
+.cx-turma-txt { flex: 1; min-width: 0; }
+.cx-turma-txt strong { display: block; font-size: 14.5px; font-weight: 700; color: var(--tinta); }
+.cx-turma-txt em {
+  display: block;
+  font-style: normal;
+  font-size: 12.5px;
+  color: var(--tinta-40);
+  margin-top: 3px;
+}
+.cx-turma-txt em i { font-size: 11px; margin-right: 4px; }
+
+.cx-turma-cta {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--cruz);
+  color: #fff;
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 11px 18px;
+  border-radius: var(--r-s);
+  transition: background .15s, transform .15s;
+  white-space: nowrap;
+}
+.cx-turma-cta i { font-size: 11px; }
+.cx-turma-cta:hover { background: var(--cruz-esc); }
+.cx-turma-cta:active { transform: scale(.97); }
+
+.cx-vazio {
+  text-align: center;
+  padding: 36px 24px;
+  border: 1px dashed var(--borda-2);
+  border-radius: var(--r);
+  background: var(--neve);
+}
+.cx-vazio i { font-size: 28px; color: var(--tinta-40); display: block; margin-bottom: 12px; }
+.cx-vazio p { font-size: 14.5px; color: var(--tinta-60); margin: 0 auto 14px; max-width: 44ch; line-height: 1.6; }
+.cx-vazio a { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 700; color: var(--cruz); text-decoration: none; }
+.cx-vazio a:hover { text-decoration: underline; }
+
+/* ── FAQ (sanfona) ────────────────────────────────────────── */
+.cx-sanfona {
+  border: 1px solid var(--borda);
+  border-radius: var(--r);
+  overflow: hidden;
+  background: var(--branco);
+}
+
+.cx-grupo { border-bottom: 1px solid var(--borda); }
+.cx-grupo:last-child { border-bottom: none; }
+
+.cx-grupo > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 14.5px;
+  font-weight: 650;
+  color: var(--tinta);
+  background: var(--branco);
+  transition: background .15s;
+}
+.cx-grupo > summary::-webkit-details-marker { display: none; }
+.cx-grupo > summary:hover { background: var(--neve); }
+.cx-grupo-t { flex: 1; }
+
+.cx-seta {
+  flex: none;
+  font-size: 11px;
+  color: var(--tinta-40);
+  transition: transform .22s ease;
+}
+.cx-grupo[open] .cx-seta { transform: rotate(180deg); color: var(--cruz); }
+
+.cx-grupo-corpo {
+  padding: 0 18px 18px;
+  font-size: 14.5px;
+  line-height: 1.72;
+  color: var(--tinta-60);
+  max-width: 62ch;
+  background: var(--branco);
+}
+
+/* ── Investimento ─────────────────────────────────────────── */
+.cx-preco {
+  border: 1px solid var(--borda);
+  border-radius: var(--r);
+  overflow: hidden;
+  background: var(--branco);
+}
+
+.cx-linha {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  padding: 14px 18px;
+  font-size: 14.5px;
+  color: var(--tinta-60);
+  border-bottom: 1px solid var(--borda);
+}
+.cx-linha:last-child { border-bottom: none; }
+
+.cx-linha-total {
+  background: var(--neve);
+  padding: 16px 18px;
+}
+.cx-linha-total span { font-weight: 700; color: var(--tinta); font-size: 15px; }
+.cx-linha-total strong {
+  font-family: 'Bricolage Grotesque', 'Archivo', 'Manrope', sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -.04em;
+  color: var(--cruz);
+}
+
+.cx-nota {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 12.5px;
+  color: var(--tinta-40);
+  line-height: 1.55;
+  margin: 10px 2px 0;
+}
+.cx-nota i { margin-top: 2px; font-size: 12px; }
+
+/* ── Barra de ação fixa ───────────────────────────────────── */
+.cx-acao {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: space-between; /* no desktop o botão tem largura mínima fixa (200px) e sobrava um vão morto à direita; isso empurra o CTA pra ponta da barra */
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(255,255,255,.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--borda);
+  box-shadow: 0 -4px 20px rgba(20,20,20,.07);
+}
+
+.cx-acao-valor { flex: none; line-height: 1.2; }
+.cx-acao-valor em {
+  display: block;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--tinta-40);
+}
+.cx-acao-valor strong {
+  font-family: 'Bricolage Grotesque', 'Archivo', 'Manrope', sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -.04em;
+  color: var(--tinta);
+}
+
+.cx-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background: var(--cruz);
+  color: #fff;
+  text-decoration: none;
+  border: none;
+  border-radius: var(--r-s);
+  padding: 15px 20px;
+  font-family: 'Bricolage Grotesque', 'Archivo', 'Manrope', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  cursor: pointer;
+  transition: background .15s, transform .15s;
+}
+.cx-btn i { font-size: 12px; }
+.cx-btn:hover { background: var(--cruz-esc); }
+.cx-btn:active { transform: scale(.98); }
+
+/* ── Responsivo ───────────────────────────────────────────── */
+@media (min-width: 640px) {
+  .cx-ficha-item { padding: 18px 20px; }
+
+  .cx-acao {
+    left: 50%;
+    right: auto;
+    bottom: 20px;
+    transform: translateX(-50%);
+    width: min(748px, calc(100% - 40px));
+    border: 1px solid var(--borda);
+    border-radius: 16px;
+    padding: 12px 16px 12px 22px;
+    box-shadow: 0 2px 6px rgba(20,20,20,.04), 0 20px 48px -24px rgba(20,20,20,.45);
+  }
+  .cx-btn { flex: none; min-width: 200px; }
+}
+
+@media (max-width: 479px) {
+  /* Mantém as 3 colunas (3x0) — o grid já herda repeat(3, 1fr) da regra
+     base .cx-ficha, só precisamos dar mais respiro pro texto caber sem
+     estourar a coluna em telas estreitas (~400px). */
+  .cx-ficha-item { padding: 14px 8px; }
+  .cx-ficha-item em {
+    font-size: 9.5px;
+    letter-spacing: .04em;
+    line-height: 1.25;
+    min-height: 24px; /* "ESCOLARIDADE MÍNIMA" quebra em 2 linhas e os outros rótulos ficam em 1 só; reservando o espaço de 2 linhas aqui, "80 horas", "Ensino Médio" e "20/08/2026" caem todos no mesmo nível */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cx-ficha-item strong { font-size: 13px; }
+  .cx-hero { min-height: 260px; height: 56vw; }
+  .cx-turma { flex-wrap: wrap; }
+  .cx-turma-cta { width: 100%; justify-content: center; margin-top: 4px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cx *, .cx *::before, .cx *::after { transition-duration: .01ms !important; }
+}
+
+
+/* ============================================================
+   LISTA DE CURSOS — v3 (cxg-*)
+   Usa os tokens de .cx acima, por isso o <main> da listagem
+   também carrega a classe .cx.
+   ============================================================ */
+
+/* ── Cabeçalho (claro e centralizado) ─────────────────────── */
+.cxg-topo {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: clamp(44px, 6vw, 64px) clamp(16px, 4vw, 32px) clamp(30px, 4vw, 40px);
+}
+
+.cxg-topo-conteudo {
+  max-width: 760px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* traço vermelho + rótulo. Centralizado com flex (e não com o
+   padding-left das .inst-*, que jogaria o texto pra direita do eixo). */
+.cxg-olho {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--cruz);
+}
+.cxg-olho::before {
+  content: '';
+  display: inline-block;
+  width: 18px;
+  height: 2px;
+  background: var(--cruz);
+  flex-shrink: 0;
+}
+
+.cxg-topo-titulo {
+  font-family: 'Bricolage Grotesque', 'Archivo', 'Manrope', sans-serif;
+  font-size: clamp(32px, 4.6vw, 52px);
+  font-weight: 900;
+  line-height: 1.06;
+  letter-spacing: -.03em;
+  color: var(--tinta);
+  margin: 0 auto 16px;   /* auto nas laterais: centraliza a CAIXA, não só o texto */
+  max-width: 18ch;
+}
+
+.cxg-topo-lead {
+  font-size: clamp(15px, 1.8vw, 18px);
+  line-height: 1.6;
+  color: var(--tinta-60);
+  max-width: 58ch;
+  margin: 0 auto;
+}
+
+/* ── Quadro / barra ───────────────────────────────────────── */
+.cxg-quadro {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 4vw, 32px) 80px;
+}
+
+.cxg-barra {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--borda);
+  margin-bottom: 24px;
+}
+.cxg-barra-t { margin: 0; }
+.cxg-barra-n { font-size: 12.5px; color: var(--tinta-40); font-variant-numeric: tabular-nums; }
+
+/* ── Grade ────────────────────────────────────────────────── */
+.cxg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(316px, 1fr));
+  gap: 22px;
+}
+@media (max-width: 700px) {
+  .cxg-grid { grid-template-columns: 1fr; gap: 18px; }
+}
+
+/* ── Cartão ───────────────────────────────────────────────── */
+/* O cartão é um subgrid de 6 linhas (capa, título, descrição, chips,
+   preço, botão) das linhas da própria .cxg-grid. Assim cada linha é
+   dimensionada pelo cartão MAIS ALTO da fileira e todos os cartões
+   alinham capa/chips/preço/botão entre si — sem cortar texto e sem
+   depender do número de linhas do título ou da descrição. */
+.cxg-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 6;
+  row-gap: 0;
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  border-radius: var(--r);
+  overflow: hidden;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.cxg-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--borda-2);
+  box-shadow: 0 2px 6px rgba(20,20,20,.04), 0 22px 44px -22px rgba(20,20,20,.42);
+}
+.cxg-card:focus-within {
+  border-color: var(--cruz);
+  box-shadow: 0 0 0 3px rgba(204,0,0,.14);
+}
+
+/* ── Capa ─────────────────────────────────────────────────── */
+.cxg-card-capa {
+  position: relative;
+  height: 190px;
+  background: var(--neve);
+  overflow: hidden;
+}
+.cxg-card-capa img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform .35s ease;
+}
+.cxg-card:hover .cxg-card-capa img { transform: scale(1.045); }
+
+.cxg-card-semfoto {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #b81c1c 0%, #6b0000 100%);
+}
+.cxg-card-semfoto i { font-size: 44px; color: rgba(255,255,255,.55); }
+
+.cxg-selo {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: 999px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.cxg-selo i { font-size: 9.5px; }
+.cxg-selo-on  { background: rgba(255,255,255,.94); color: #15803d; }
+.cxg-selo-off { background: rgba(22,25,29,.72);   color: #e6e3dd; }
+
+.cxg-tag {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(16,16,16,.62);
+  border: 1px solid rgba(255,255,255,.16);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+.cxg-tag i { font-size: 10.5px; opacity: .85; }
+
+/* ── Corpo do cartão ──────────────────────────────────────── */
+/* o corpo repassa as 5 linhas restantes do cartão para os filhos */
+.cxg-card-corpo {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 5;
+  row-gap: 0;
+  padding: 20px 20px 18px;
+}
+
+.cxg-card-titulo {
+  font-family: 'Bricolage Grotesque', 'Archivo', 'Manrope', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.22;
+  letter-spacing: -.02em;
+  color: var(--tinta);
+  margin: 0 0 8px;
+}
+
+.cxg-card-desc {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--tinta-60);
+  margin: 0 0 16px;
+}
+
+.cxg-card-infos {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;   /* a linha do grid é alta; sem isso o chip estica junto */
+  align-content: flex-start;
+  gap: 8px;
+}
+.cxg-card-infos li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--tinta-60);
+  background: var(--neve);
+  border: 1px solid var(--borda);
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+.cxg-card-infos li i { font-size: 11px; color: var(--cruz); }
+
+/* ── Preço ────────────────────────────────────────────────── */
+.cxg-card-preco {
+  padding-top: 15px;
+  border-top: 1px solid var(--borda);
+  margin-bottom: 15px;
+}
+.cxg-card-preco em {
+  display: block;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--tinta-40);
+  margin-bottom: 2px;
+}
+.cxg-card-preco strong {
+  font-family: 'Bricolage Grotesque', 'Archivo', 'Manrope', sans-serif;
+  font-size: 25px;
+  font-weight: 900;
+  letter-spacing: -.04em;
+  color: var(--tinta);
+  line-height: 1.1;
+  display: block;
+}
+.cxg-card-preco span {
+  display: block;
+  font-size: 12px;
+  color: var(--tinta-40);
+  margin-top: 4px;
+}
+.cxg-card-preco span b { color: var(--tinta-60); font-weight: 700; }
+
+/* ── Botão ────────────────────────────────────────────────── */
+.cxg-card-btn {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background: var(--cruz);
+  color: #fff;
+  text-decoration: none;
+  border-radius: var(--r-s);
+  padding: 13px 18px;
+  font-family: 'Bricolage Grotesque', 'Archivo', 'Manrope', sans-serif;
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  transition: background .15s, transform .15s;
+}
+.cxg-card-btn i { font-size: 11px; transition: transform .18s ease; }
+.cxg-card-btn:hover { background: var(--cruz-esc); }
+.cxg-card-btn:active { transform: scale(.98); }
+.cxg-card:hover .cxg-card-btn i { transform: translateX(3px); }
+
+/* ── Fallback: navegadores sem subgrid ────────────────────── */
+/* Volta ao flex e trava a altura do título (2 linhas) e da descrição
+   (3 linhas) para manter o alinhamento — aqui o texto excedente é
+   cortado com reticências, que é o preço a pagar sem subgrid. */
+@supports not (grid-template-rows: subgrid) {
+  .cxg-card { display: flex; flex-direction: column; }
+  .cxg-card-corpo { display: flex; flex-direction: column; flex: 1; }
+
+  .cxg-card-titulo {
+    height: 2.44em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .cxg-card-desc {
+    height: 4.8em;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .cxg-card-preco { margin-top: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cxg-card, .cxg-card-capa img, .cxg-card-btn i { transition: none !important; }
+  .cxg-card:hover { transform: none; }
+  .cxg-card:hover .cxg-card-capa img { transform: none; }
+}
+
+
+/* ============================================================
+   HOME — v3 (cxh-*)
+   Acrescente ao FIM do site-extra.css.
+
+   O hero e a faixa de diferenciais continuam com o desenho antigo
+   (.hero-section / .features-section do style.css). Este bloco
+   cuida só da parte de baixo da home — vitrine de cursos e FAQ —
+   que reaproveita .cxg-card e .cx-sanfona.
+   ============================================================ */
+
+/* ── Seções ───────────────────────────────────────────────── */
+.cxh-secao {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: clamp(40px, 6vw, 64px) clamp(16px, 4vw, 32px);
+}
+.cxh-secao-borda { border-top: 1px solid var(--borda); }
+
+.cxh-cabeca {
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto clamp(28px, 4vw, 38px);
+}
+.cxh-h2 {
+  font-family: 'Bricolage Grotesque', 'Archivo', 'Manrope', sans-serif;
+  font-size: clamp(28px, 3.6vw, 40px);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -.03em;
+  color: var(--tinta);
+  margin: 0 auto 12px;
+}
+.cxh-sub {
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--tinta-60);
+  margin: 0 auto;
+  max-width: 54ch;
+}
+
+/* ── Carrossel de cursos ──────────────────────────────────── */
+.cxh-carrossel { position: relative; }
+
+/* A trilha é um GRID de colunas (não um flex) de propósito: as 6 linhas
+   declaradas aqui são as que o subgrid do .cxg-card consome, então os
+   cards do carrossel continuam alinhando capa/chips/preço/botão entre si,
+   exatamente como na grade de /cursos. */
+.cxh-trilha {
+  --cols: 3;
+  --gap: 22px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(6, auto);
+  grid-auto-columns: calc((100% - (var(--gap) * (var(--cols) - 1))) / var(--cols));
+  gap: 0 var(--gap);           /* row-gap 0: as linhas são internas ao card */
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  padding-bottom: 14px;        /* espaço pra sombra do card não ser cortada */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.cxh-trilha::-webkit-scrollbar { display: none; }
+.cxh-trilha > .cxg-card { scroll-snap-align: start; }
+
+@media (max-width: 980px) { .cxh-trilha { --cols: 2; } }
+@media (max-width: 700px) { .cxh-trilha { --cols: 1; --gap: 16px; } }
+
+/* setas */
+.cxh-seta {
+  position: absolute;
+  top: calc(95px - 21px);      /* meio da capa do card (190px de altura) */
+  z-index: 5;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--borda);
+  background: rgba(255,255,255,.94);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--tinta);
+  font-size: 14px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 18px rgba(20,20,20,.14);
+  transition: background .15s, color .15s, border-color .15s;
+}
+.cxh-seta:hover { background: #fff; color: var(--cruz); border-color: var(--cruz); }
+.cxh-seta-antes  { left: -12px; }
+.cxh-seta-depois { right: -12px; }
+
+@media (max-width: 1220px) {
+  .cxh-seta-antes  { left: 6px; }
+  .cxh-seta-depois { right: 6px; }
+}
+
+/* bolinhas */
+.cxh-bolinhas {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 18px;
+}
+.cxh-bolinha {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--borda-2);
+  cursor: pointer;
+  transition: background .2s, transform .2s, width .2s;
+}
+.cxh-bolinha.ativa {
+  background: var(--cruz);
+  width: 22px;
+  border-radius: 999px;
+}
+
+/* com 1 curso só não há o que rolar */
+.cxh-carrossel-parado .cxh-seta,
+.cxh-carrossel-parado .cxh-bolinhas { display: none; }
+
+/* ── "Ver todos os cursos" ────────────────────────────────── */
+.cxh-mais { text-align: center; margin-top: 32px; }
+
+.cxh-btn-linha {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--branco);
+  border: 1px solid var(--borda-2);
+  color: var(--tinta);
+  text-decoration: none;
+  border-radius: var(--r-s);
+  padding: 14px 24px;
+  font-size: 14.5px;
+  font-weight: 700;
+  transition: border-color .15s, color .15s;
+}
+.cxh-btn-linha i { font-size: 12px; color: var(--cruz); }
+.cxh-btn-linha:hover { border-color: var(--cruz); color: var(--cruz); }
+
+/* ── FAQ ──────────────────────────────────────────────────── */
+.cxh-faq { max-width: 780px; margin: 0 auto; }
+
+/* ── Hero no mobile: centralizado ─────────────────────────── */
+/* No desktop o texto fica à esquerda (é o desenho do .hero-section no
+   style.css). Em tela estreita isso deixa tudo grudado na borda, com o
+   botão sozinho num canto — então aqui centralizamos. Este arquivo é
+   carregado depois do style.css, por isso vence a regra de lá que faz
+   .hero-buttons { align-items: flex-start }. */
+@media (max-width: 600px) {
+  .hero-section {
+    text-align: center;
+    padding: 72px 20px 88px;
+  }
+
+  /* o degradê diagonal foi pensado pra largura; na vertical ele deixa
+     o texto sem contraste no topo */
+  .hero-section::before {
+    background: linear-gradient(
+      to top,
+      rgba(10,14,20,.95) 0%,
+      rgba(10,14,20,.72) 55%,
+      rgba(10,14,20,.45) 100%
+    );
+  }
+
+  .hero-text-content { max-width: 100%; margin: 0 auto; }
+  .hero-text-content h1 { font-size: 32px; }
+  .hero-text-content p  { margin-left: auto; margin-right: auto; max-width: 34ch; }
+
+  .hero-buttons {
+    align-items: center;
+    justify-content: center;
+  }
+  .btn-hero-primary { text-align: center; }
+}
+
+
+/* ============================================================
+   MINHA CONTA — v3 (ct-*)
+   Acrescente ao FIM do site-extra.css.
+   Usa os tokens de .cx, por isso o <main> carrega a classe .cx.
+   Substitui o visual antigo (.conta-*, .painel-card, .campo) nesta
+   página; as classes antigas seguem no arquivo porque outras telas
+   (inscrever, login, cadastro) ainda dependem delas.
+   ============================================================ */
+
+   .ct-wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: clamp(28px, 4vw, 44px) clamp(16px, 4vw, 32px) 80px;
+  }
+  
+  /* ── Cabeçalho ────────────────────────────────────────────── */
+  .ct-topo { margin-bottom: 26px; }
+  .ct-topo h1 {
+    font-family: 'Bricolage Grotesque', 'Archivo', 'Manrope', sans-serif;
+    font-size: clamp(26px, 3.4vw, 36px);
+    font-weight: 900;
+    letter-spacing: -.03em;
+    color: var(--tinta);
+    margin: 0;
+  }
+  
+  /* eyebrow com traço, alinhado à esquerda (aqui não é hero centralizado) */
+  .ct-olho {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 12px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--cruz);
+  }
+  .ct-olho::before {
+    content: '';
+    width: 18px;
+    height: 2px;
+    background: var(--cruz);
+    flex-shrink: 0;
+  }
+  
+  /* ── Aviso de sucesso ─────────────────────────────────────── */
+  .ct-ok {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+    border-radius: var(--r);
+    padding: 14px 18px;
+    margin-bottom: 22px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .ct-erro {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    border-radius: var(--r);
+    padding: 14px 18px;
+    margin-bottom: 22px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  
+  /* ── Layout ───────────────────────────────────────────────── */
+  .ct-layout {
+    display: grid;
+    grid-template-columns: 268px minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .ct-layout { grid-template-columns: 1fr; }
+  }
+  
+  /* ── Lateral ──────────────────────────────────────────────── */
+  .ct-side {
+    background: var(--branco);
+    border: 1px solid var(--borda);
+    border-radius: var(--r);
+    padding: 8px;
+    position: sticky;
+    top: 20px;
+  }
+  @media (max-width: 860px) {
+    .ct-side { position: static; }
+  }
+  
+  .ct-perfil {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 12px 16px;
+    border-bottom: 1px solid var(--borda);
+    margin-bottom: 8px;
+    min-width: 0;
+  }
+  .ct-avatar {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--cruz);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-family: 'Bricolage Grotesque', 'Archivo', 'Manrope', sans-serif;
+    font-size: 19px;
+    font-weight: 800;
+  }
+  .ct-perfil-txt { min-width: 0; }
+  .ct-perfil-txt strong {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--tinta);
+  }
+  .ct-perfil-txt span {
+    display: block;
+    font-size: 12px;
+    color: var(--tinta-40);
+    overflow: hidden;
+    text-overflow: ellipsis;   /* e-mail longo não pode esticar a coluna */
+    white-space: nowrap;
+  }
+  
+  .ct-nav { display: flex; flex-direction: column; gap: 2px; padding: 4px; }
+  .ct-nav a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--r-s);
+    text-decoration: none;
+    color: var(--tinta-60);
+    font-size: 14.5px;
+    font-weight: 600;
+    transition: background .12s, color .12s;
+  }
+  .ct-nav a i { width: 17px; text-align: center; font-size: 14px; }
+  .ct-nav a:hover { background: var(--neve); color: var(--tinta); }
+  .ct-nav a.ativo { background: var(--cruz-bg); color: var(--cruz); }
+  .ct-nav a.perigo { color: #b04545; }
+  .ct-nav a.perigo.ativo { background: #fef2f2; color: #991b1b; }
+  
+  /* ── Coluna principal ─────────────────────────────────────── */
+  .ct-main { min-width: 0; }
+  
+  .ct-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .ct-head h2 {
+    font-family: 'Bricolage Grotesque', 'Archivo', 'Manrope', sans-serif;
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    color: var(--tinta);
+    margin: 0;
+  }
+  .ct-head-acao {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--cruz);
+    text-decoration: none;
+    border: 1px solid #f4dede;
+    padding: 9px 15px;
+    border-radius: var(--r-s);
+    transition: background .15s;
+  }
+  .ct-head-acao i { font-size: 11px; }
+  .ct-head-acao:hover { background: var(--cruz-bg); }
+  
+  .ct-card {
+    background: var(--branco);
+    border: 1px solid var(--borda);
+    border-radius: var(--r);
+    padding: clamp(20px, 3vw, 30px);
+  }
+  
+  /* ── Lista de inscrições ──────────────────────────────────── */
+  .ct-lista { display: flex; flex-direction: column; gap: 14px; }
+  
+  .ct-insc {
+    position: relative;        /* âncora do .card-link-overlay que cobre a linha */
+    display: grid;
+    grid-template-columns: 128px minmax(0, 1fr);
+    gap: 18px;
+    background: var(--branco);
+    border: 1px solid var(--borda);
+    border-radius: var(--r);
+    padding: 16px;
+    transition: border-color .15s, box-shadow .15s, transform .15s;
+  }
+  .ct-insc:hover {
+    border-color: var(--borda-2);
+    box-shadow: 0 2px 6px rgba(20,20,20,.04), 0 16px 32px -20px rgba(20,20,20,.4);
+    transform: translateY(-2px);
+  }
+  /* foco por teclado: o overlay é o link, mas quem "acende" é a linha toda */
+  .ct-insc:focus-within {
+    border-color: var(--cruz);
+    box-shadow: 0 0 0 3px rgba(204,0,0,.12);
+  }
+  .ct-insc:hover .ct-insc-capa img { transform: scale(1.05); }
+  
+  /* seta que aparece no hover, sinalizando que a linha leva a algum lugar */
+  .ct-insc-corpo::after {
+    content: '\f061';                     /* fa-arrow-right */
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    font-size: 11px;
+    color: var(--cruz);
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity .15s, transform .15s;
+  }
+  .ct-insc:hover .ct-insc-corpo::after { opacity: 1; transform: translateX(0); }
+  
+  @media (max-width: 620px) {
+    .ct-insc { grid-template-columns: 1fr; gap: 14px; }
+  }
+  
+  .ct-insc-capa {
+    height: 100%;
+    min-height: 96px;
+    border-radius: var(--r-s);
+    overflow: hidden;
+    background: var(--neve);
+  }
+  .ct-insc-capa img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    transition: transform .35s ease;
+  }
+  .ct-insc-semfoto {
+    width: 100%;
+    height: 100%;
+    min-height: 96px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg, #b81c1c 0%, #6b0000 100%);
+    color: rgba(255,255,255,.6);
+    font-size: 26px;
+  }
+  
+  .ct-insc-corpo { min-width: 0; }
+  
+  .ct-insc-topo {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 4px;
+  }
+  .ct-insc-topo h3 {
+    font-family: 'Bricolage Grotesque', 'Archivo', 'Manrope', sans-serif;
+    font-size: 16.5px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    color: var(--tinta);
+    margin: 0;
+  }
+  
+  .ct-insc-sub { font-size: 12.5px; color: var(--tinta-40); margin: 0 0 12px; }
+  .ct-insc-sub b { color: var(--tinta-60); font-weight: 600; }
+  
+  /* selos de status */
+  .ct-selo {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    padding: 5px 11px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .ct-selo-pago      { background: #dcfce7; color: #166534; }
+  .ct-selo-pendente  { background: #fef9c3; color: #854d0e; }
+  .ct-selo-cancelado { background: #fee2e2; color: #991b1b; }
+  
+  .ct-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .ct-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--borda);
+    background: var(--neve);
+    color: var(--tinta-60);
+  }
+  .ct-pill i { font-size: 11px; }
+  .ct-pill-ok       { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+  .ct-pill-espera   { background: #fefce8; border-color: #fde68a; color: #854d0e; }
+  .ct-pill-devolvido{ background: var(--neve); border-color: var(--borda-2); color: var(--tinta-60); }
+  
+  .ct-insc-pe {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding-top: 12px;
+    border-top: 1px solid var(--borda);
+  }
+  .ct-insc-plano { font-size: 12.5px; color: var(--tinta-40); }
+  .ct-insc-valor {
+    font-family: 'Bricolage Grotesque', 'Archivo', 'Manrope', sans-serif;
+    font-size: 19px;
+    font-weight: 900;
+    letter-spacing: -.04em;
+    color: var(--tinta);
+  }
+  
+  .ct-nota {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--borda);
+    font-size: 13px;
+    color: var(--tinta-60);
+  }
+  
+  /* ── Vazio ────────────────────────────────────────────────── */
+  .ct-vazio {
+    text-align: center;
+    padding: 44px 24px;
+    border: 1px dashed var(--borda-2);
+    border-radius: var(--r);
+    background: var(--neve);
+  }
+  .ct-vazio i { font-size: 30px; color: var(--tinta-40); display: block; margin-bottom: 12px; }
+  .ct-vazio p { font-size: 14.5px; color: var(--tinta-60); margin: 0 auto 14px; max-width: 40ch; }
+  .ct-vazio a {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 13.5px; font-weight: 700; color: var(--cruz); text-decoration: none;
+  }
+  .ct-vazio a:hover { text-decoration: underline; }
+  
+  /* ── Formulário ───────────────────────────────────────────── */
+  .ct-form { max-width: 520px; }
+  
+  .ct-campo { display: block; margin-bottom: 14px; }
+  .ct-campo > span {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--tinta-60);
+    margin-bottom: 6px;
+  }
+  .ct-campo > span em {
+    font-style: normal;
+    font-weight: 500;
+    color: var(--tinta-40);
+  }
+  .ct-campo input,
+  .ct-campo select {
+    width: 100%;
+    font-family: inherit;
+    font-size: 15px;
+    color: var(--tinta);
+    padding: 11px 14px;
+    border: 1px solid var(--borda-2);
+    border-radius: var(--r-s);
+    background: var(--branco);
+  }
+  .ct-campo select {
+    padding-right: 38px;
+    -webkit-appearance: none; -moz-appearance: none; appearance: none;
+    background: var(--branco) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%238a929c' stroke-width='1.6' d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E") no-repeat right 14px center;
+  }
+  .ct-campo input:focus,
+  .ct-campo select:focus {
+    outline: none;
+    border-color: var(--cruz);
+    box-shadow: 0 0 0 3px rgba(204,0,0,.12);
+  }
+  
+  .ct-grupo {
+    border: 1px solid var(--borda);
+    border-radius: var(--r);
+    padding: 18px;
+    margin: 0 0 18px;
+  }
+  .ct-grupo legend {
+    font-size: 12.5px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--tinta-40);
+    padding: 0 6px;
+  }
+  .ct-grupo-nota { font-size: 12.5px; color: var(--tinta-40); margin: 0 0 14px; }
+  
+  .ct-linha-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ct-linha-3 { display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 12px; }
+  @media (max-width: 560px) {
+    .ct-linha-2, .ct-linha-3 { grid-template-columns: 1fr; }
+  }
+  
+  .ct-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+    font-family: 'Bricolage Grotesque', 'Archivo', 'Manrope', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--cruz);
+    border: none;
+    border-radius: var(--r-s);
+    padding: 14px 20px;
+    cursor: pointer;
+    transition: background .15s, transform .15s;
+  }
+  .ct-btn:hover { background: var(--cruz-esc); }
+  .ct-btn:active { transform: scale(.99); }
+  .ct-btn-perigo { background: #991b1b; }
+  .ct-btn-perigo:hover { background: #7f1616; }
+  
+  /* ── Dados só de leitura ──────────────────────────────────── */
+  .ct-dados {
+    margin-top: 26px;
+    padding-top: 20px;
+    border-top: 1px solid var(--borda);
+  }
+  .ct-dados > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--borda);
+    font-size: 14px;
+  }
+  .ct-dados > div:last-child { border-bottom: none; }
+  .ct-dados span  { color: var(--tinta-40); }
+  .ct-dados strong { color: var(--tinta); text-align: right; font-weight: 700; }
+  
+  .ct-aviso {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--tinta-40);
+    margin-top: 14px;
+  }
+  .ct-aviso i { margin-top: 3px; font-size: 11px; }
+  
+  /* ── Bloqueio (excluir conta) ─────────────────────────────── */
+  .ct-bloqueio {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--neve);
+    border: 1px solid var(--borda);
+    border-radius: var(--r);
+    padding: 16px 18px;
+    font-size: 14px;
+    color: var(--tinta-60);
+  }
+  .ct-bloqueio i { color: var(--tinta-40); }
+
+
+
+  /* ── Ícones no menu ───────────────────────────────────────── */
+.nav-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+/* o ícone de liderança fica cinza e só acende junto com o texto */
+.nav-links a > i:first-child {
+  font-size: 13px;
+  color: #a0aab6;
+  transition: color 0.2s;
+}
+.nav-links a:hover > i:first-child { color: var(--red); }
+
+/* ── Link externo (site da instituição) ───────────────────── */
+/* seta menor e mais apagada: é metadado do link, não parte do rótulo */
+/* ── Cruz da instituição no menu ──────────────────────────── */
+/* SVG em vez de Font Awesome: fa-plus é fina demais e fa-cross é a
+   cruz latina. Esta é grega — braços iguais, como no emblema. */
+   .nav-links .nav-cruz {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    fill: #b8c0cb;
+    transition: fill 0.2s;
+  }
+  .nav-links .nav-externo:hover .nav-cruz { fill: var(--red); }
+
+@media (max-width: 1024px) {
+  .nav-links a { gap: 12px; }
+  .nav-links .nav-externo-ic { margin-left: auto; } /* item vira linha cheia; joga a seta pra direita */
+}

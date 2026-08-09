@@ -9,7 +9,8 @@
     <link rel="stylesheet" href="/site-extra.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+    <!-- Manrope e Bricolage Grotesque: fontes do bloco .cx, usado da vitrine de cursos pra baixo. -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Manrope:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800;12..96,900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Meta Pixel Code -->
@@ -35,9 +36,11 @@
     <!-- HEADER / NAVBAR -->
     <%- include('partials/site-header') %>
 
+    <% var agora = new Date(); %>
+
     <main>
 
-        <!-- HERO -->
+        <!-- ══ HERO (desenho original) ═════════════════════════════════════ -->
         <section class="hero-section">
             <div class="hero-container">
                 <div class="hero-text-content">
@@ -45,13 +48,12 @@
                     <p>Aprenda com quem mais entende de emergência.<br>Cursos oficiais da Cruz Vermelha Brasileira.</p>
                     <div class="hero-buttons">
                         <a href="/cursos" class="btn-hero-primary">VER CURSOS DISPONÍVEIS</a>
-                        <!-- <a href="/sobre" class="btn-hero-secondary">Saiba mais <i class="fa-solid fa-arrow-right" style="font-size:11px;"></i></a> -->
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- NOSSOS DIFERENCIAIS -->
+        <!-- ══ NOSSOS DIFERENCIAIS (cartão flutuante original) ═════════════ -->
         <section class="features-section">
             <div class="features-container">
                 <h2>Por que escolher a Cruz Vermelha</h2>
@@ -81,204 +83,246 @@
             </div>
         </section>
 
-        <!-- VITRINE DE CURSOS (do banco) -->
-        <section id="cursos" class="courses-section">
-            <!-- <h2>Formação oficial</h2> -->
-            <div class="faq-header">
-                <span class="section-label">Formação Oficial</span>
-                <h2 class="faq-title">CURSOS DISPONÍVEIS</h2>
+        <!-- ══ Daqui pra baixo, o padrão .cx (igual /cursos) ═══════════════ -->
+        <div class="cx">
+
+          <!-- ── Vitrine de cursos ──────────────────────────────────────── -->
+          <section class="cxh-secao" id="cursos">
+            <div class="cxh-cabeca">
+              <p class="cxg-olho">Formação oficial</p>
+              <h2 class="cxh-h2">Cursos disponíveis</h2>
+              <p class="cxh-sub">
+                Turmas abertas para inscrição. Clique no curso para ver as datas,
+                a carga horária e os valores.
+              </p>
             </div>
 
             <% if (!cursos.length) { %>
-                <p style="text-align:center;color:#718096;">Nenhum curso disponível no momento.</p>
-            <% } %>
 
-            <div class="courses-grid">
-                <% cursos.forEach(function (curso) { %>
-                    <%- include('partials/curso-card', { curso: curso, formatBRL: formatBRL, totalExibicao: totalExibicao, cfgMap: cfgMap }) %>
-                <% }) %>
-            </div>
+              <div class="cx-vazio">
+                <i class="fa-regular fa-folder-open"></i>
+                <p>Nenhum curso disponível no momento. Novas capacitações são
+                publicadas com frequência — volte em breve para conferir.</p>
+              </div>
 
-            <% if (temMais) { %>
-                <div class="ver-mais-wrap">
-                    <a href="/cursos" class="btn-ver-mais">Ver todos os cursos <i class="fa-solid fa-arrow-right" style="font-size:12px;"></i></a>
-                </div>
-            <% } %>
-        </section>
+            <% } else { %>
 
-            <div class="impact-container">
-                <div class="impact-stats">
-                    <h2 class="impact-title">CAPACITAÇÃO QUE FAZ<br>DIFERENÇA EM TODO O BRASIL</h2>
-                    <div class="stat-item">
-                        <i class="fa-solid fa-certificate icon-red"></i>
-                        <div class="stat-text">
-                            <strong>+50.000</strong>
-                            <span>Alunos certificados</span>
-                        </div>
-                    </div>
-                    <div class="stat-item">
-                        <i class="fa-solid fa-heart-pulse icon-red"></i>
-                        <div class="stat-text">
-                            <strong>+10.000</strong>
-                            <span>Vidas salvas diretamente</span>
-                        </div>
-                    </div>
-                    <div class="stat-item">
-                        <i class="fa-solid fa-shield-halved icon-red"></i>
-                        <div class="stat-text">
-                            <strong>100% Segura</strong>
-                            <span>Plataforma certificada LGPD</span>
-                        </div>
-                    </div>
-                </div>
+              <div class="cxh-carrossel">
 
-                <div class="testi-area">
-                    <span class="testi-label">Depoimentos</span>
-                    <h2 class="testi-title">O QUE DIZEM<br>NOSSOS ALUNOS</h2>
-                    <div class="testi-carousel" id="testiCarousel">
-                        <article class="testi-card">
-                            <p>"O curso de primeiros socorros mudou completamente a forma como eu trabalho nas emergências."</p>
-                            <div class="testi-card-footer">
-                                <div class="testi-avatar">MS</div>
-                                <div class="testi-info"><strong>Maria Silva</strong><span class="testi-role">Enfermeira</span></div>
-                            </div>
-                        </article>
-                        <article class="testi-card">
-                            <p>"Treinamento essencial e muito prático. Saí com confiança para atuar em campo. Recomendo demais."</p>
-                            <div class="testi-card-footer">
-                                <div class="testi-avatar">JA</div>
-                                <div class="testi-info"><strong>João Almeida</strong><span class="testi-role">Bombeiro civil</span></div>
-                            </div>
-                        </article>
-                        <article class="testi-card">
-                            <p>"Confiável, didático e seguro. Aprendi muito além do esperado — o suporte da equipe é incrível."</p>
-                            <div class="testi-card-footer">
-                                <div class="testi-avatar">AP</div>
-                                <div class="testi-info"><strong>Ana Pereira</strong><span class="testi-role">Professora</span></div>
-                            </div>
-                        </article>
-                        <article class="testi-card">
-                            <p>"Conteúdo direto ao ponto com aplicação imediata no dia a dia. Exatamente o que eu precisava."</p>
-                            <div class="testi-card-footer">
-                                <div class="testi-avatar">RC</div>
-                                <div class="testi-info"><strong>Rafael Costa</strong><span class="testi-role">Cuidador</span></div>
-                            </div>
-                        </article>
+                <button type="button" class="cxh-seta cxh-seta-antes" data-antes
+                        aria-label="Curso anterior">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <button type="button" class="cxh-seta cxh-seta-depois" data-depois
+                        aria-label="Próximo curso">
+                  <i class="fa-solid fa-chevron-right"></i>
+                </button>
+
+                <div class="cxh-trilha">
+                <% cursos.forEach(function (curso) {
+                     var total  = totalExibicao(curso, cfgMap);
+                     var turmas = curso.turmas || [];
+                     var prox   = turmas.find(function (t) { return new Date(t.inicioPrevisto) > agora; });
+                     var turma  = prox || turmas[0];
+                %>
+                <article class="cxg-card">
+
+                  <a class="card-link-overlay" href="/cursos/<%= curso.id %>"
+                     aria-label="Ver <%= curso.nome %>"></a>
+
+                  <div class="cxg-card-capa">
+                    <% if (curso.imagemUrl) { %>
+                      <img src="<%= curso.imagemUrl %>" alt="<%= curso.nome %>" loading="lazy">
+                    <% } else { %>
+                      <div class="cxg-card-semfoto"><i class="fa-solid fa-kit-medical"></i></div>
+                    <% } %>
+
+                    <span class="cxg-selo <%= prox ? 'cxg-selo-on' : 'cxg-selo-off' %>">
+                      <i class="fa-solid <%= prox ? 'fa-circle-check' : 'fa-clock' %>"></i>
+                      <%= prox ? 'Inscrições abertas' : 'Turmas em breve' %>
+                    </span>
+
+                    <% if (curso.escolaridadeMinima) { %>
+                    <span class="cxg-tag">
+                      <i class="fa-solid fa-user-graduate"></i> <%= curso.escolaridadeMinima %>
+                    </span>
+                    <% } %>
+                  </div>
+
+                  <div class="cxg-card-corpo">
+                    <h3 class="cxg-card-titulo"><%= curso.nome %></h3>
+                    <p class="cxg-card-desc">
+                      <%= curso.descricao || 'Curso de capacitação da Cruz Vermelha.' %>
+                    </p>
+
+                    <ul class="cxg-card-infos">
+                      <li>
+                        <i class="fa-regular fa-clock"></i>
+                        <span><%= curso.cargaHoraria %> horas</span>
+                      </li>
+                      <% if (turma) { %>
+                      <li>
+                        <i class="fa-solid fa-flag-checkered"></i>
+                        <span class="num">
+                          Início <%= new Date(turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
+                        </span>
+                      </li>
+                      <% } else { %>
+                      <li>
+                        <i class="fa-regular fa-calendar-xmark"></i>
+                        <span>Data a definir</span>
+                      </li>
+                      <% } %>
+                    </ul>
+
+                    <div class="cxg-card-preco">
+                      <em>A partir de (à vista)</em>
+                      <strong class="num"><%= formatBRL(curso.precoAvista) %></strong>
+                      <span>Total com matrícula: <b class="num"><%= formatBRL(total) %></b></span>
                     </div>
-                    <div class="testi-dots" id="testiDots"></div>
-                </div>
-            </div>
-        </section> --
-        
-        <!-- PERGUNTAS FREQUENTES -->
-        <section class="faq-section">
-            <div class="container">
-                <div class="faq-header">
-                    <i class="fa-regular fa-message faq-hero-icon"></i>
-                    <span class="section-label">Tire suas dúvidas</span>
-                    <h2 class="faq-title">PERGUNTAS FREQUENTES</h2>
-                    <p class="faq-subtitle">Não encontrou o que procura? Fale com a gente pelo WhatsApp.</p>
-                    <a href="https://wa.me/5521999922864" target="_blank" rel="noopener" class="btn-faq-wpp">
-                        <i class="fa-brands fa-whatsapp"></i> Entre em Contato por WhatsApp
+
+                    <a class="cxg-card-btn" href="/cursos/<%= curso.id %>">
+                      Ver curso e turmas <i class="fa-solid fa-arrow-right"></i>
                     </a>
-                </div>
-                <div class="faq-list">
-                    <div class="faq-item">
-                        <button class="faq-q" aria-expanded="false">
-                            <span class="faq-q-inner"><i class="fa-regular fa-rectangle-list faq-q-icon"></i> Como faço minha matrícula?</span>
-                            <i class="fa-solid fa-chevron-down"></i>
-                        </button>
-                        <div class="faq-a">
-                            <p>Entre em contato com nossa equipe de atendimento. Teremos prazer em orientar sobre documentação, datas de início e formas de pagamento.</p>
-                        </div>
-                    </div>
-                
-                    <div class="faq-item">
-                        <button class="faq-q" aria-expanded="false">
-                            <span class="faq-q-inner"><i class="fa-regular fa-file-lines faq-q-icon"></i> Os cursos possuem certificado?</span>
-                            <i class="fa-solid fa-chevron-down"></i>
-                        </button>
-                        <div class="faq-a">
-                            <p>Sim. Todos os cursos oferecem certificado aos alunos que concluírem os requisitos previstos.</p>
-                        </div>
-                    </div>
-                
-                    <div class="faq-item">
-                        <button class="faq-q" aria-expanded="false">
-                            <span class="faq-q-inner"><i class="fa-solid fa-award faq-q-icon"></i> A Cruz Vermelha tem tradição na formação de profissionais?</span>
-                            <i class="fa-solid fa-chevron-down"></i>
-                        </button>
-                        <div class="faq-a">
-                            <p>Sim. A Cruz Vermelha Brasileira é uma instituição reconhecida por sua atuação humanitária e por oferecer capacitações voltadas para a qualidade, responsabilidade e excelência.</p>
-                        </div>
-                    </div>
-                
-                    <div class="faq-item">
-                        <button class="faq-q" aria-expanded="false">
-                            <span class="faq-q-inner"><i class="fa-regular fa-credit-card faq-q-icon"></i> Posso parcelar o curso?</span>
-                            <i class="fa-solid fa-chevron-down"></i>
-                        </button>
-                        <div class="faq-a">
-                            <p>Consulte nossa equipe comercial para conhecer as formas de pagamento e condições disponíveis.</p>
-                        </div>
-                    </div>
-                
-                    <div class="faq-item">
-                        <button class="faq-q" aria-expanded="false">
-                            <span class="faq-q-inner"><i class="fa-regular fa-comments faq-q-icon"></i> Ainda estou em dúvida. Posso falar com um consultor?</span>
-                            <i class="fa-solid fa-chevron-down"></i>
-                        </button>
-                        <div class="faq-a">
-                            <p>Claro! Nossa equipe está pronta para esclarecer todas as suas dúvidas e ajudá-lo a escolher o curso ideal para seus objetivos profissionais.</p>
-                        </div>
-                    </div>
-                </div>
+                  </div>
+
+                </article>
+                <% }) %>
+                </div><!-- /cxh-trilha -->
+
+                <div class="cxh-bolinhas"></div>
+              </div><!-- /cxh-carrossel -->
+
+              <% if (temMais) { %>
+              <div class="cxh-mais">
+                <a href="/cursos" class="cxh-btn-linha">
+                  Ver todos os cursos <i class="fa-solid fa-arrow-right"></i>
+                </a>
+              </div>
+              <% } %>
+
+            <% } %>
+          </section>
+
+          <!-- ── Dúvidas frequentes ─────────────────────────────────────── -->
+          <section class="cxh-secao cxh-secao-borda">
+            <div class="cxh-cabeca">
+              <p class="cxg-olho">Tire suas dúvidas</p>
+              <h2 class="cxh-h2">Perguntas frequentes</h2>
+              <p class="cxh-sub">
+                Não encontrou o que procura? Fale com a nossa equipe pelo WhatsApp.
+              </p>
             </div>
-        </section>
+
+            <div class="cxh-faq">
+              <div class="cx-sanfona">
+                <details class="cx-grupo">
+                  <summary>
+                    <span class="cx-grupo-t">Como faço minha matrícula?</span>
+                    <i class="fa-solid fa-chevron-down cx-seta"></i>
+                  </summary>
+                  <div class="cx-grupo-corpo">
+                    Escolha o curso, clique em "Inscrever-se" e siga o passo a passo.
+                    Se preferir, fale com nossa equipe de atendimento — orientamos
+                    sobre documentação, datas de início e formas de pagamento.
+                  </div>
+                </details>
+
+                <details class="cx-grupo">
+                  <summary>
+                    <span class="cx-grupo-t">Os cursos possuem certificado?</span>
+                    <i class="fa-solid fa-chevron-down cx-seta"></i>
+                  </summary>
+                  <div class="cx-grupo-corpo">
+                    Sim. Todos os cursos oferecem certificado aos alunos que
+                    concluírem os requisitos previstos.
+                  </div>
+                </details>
+
+                <details class="cx-grupo">
+                  <summary>
+                    <span class="cx-grupo-t">A Cruz Vermelha tem tradição na formação de profissionais?</span>
+                    <i class="fa-solid fa-chevron-down cx-seta"></i>
+                  </summary>
+                  <div class="cx-grupo-corpo">
+                    Sim. A Cruz Vermelha Brasileira é reconhecida por sua atuação
+                    humanitária e por oferecer capacitações voltadas para qualidade,
+                    responsabilidade e excelência.
+                  </div>
+                </details>
+
+                <details class="cx-grupo">
+                  <summary>
+                    <span class="cx-grupo-t">Posso parcelar o curso?</span>
+                    <i class="fa-solid fa-chevron-down cx-seta"></i>
+                  </summary>
+                  <div class="cx-grupo-corpo">
+                    Sim. As opções de pagamento (PIX ou cartão, à vista ou parcelado)
+                    aparecem com o valor exato de cada parcela na hora da inscrição.
+                    No parcelamento incide juros, então o total parcelado é maior
+                    que o valor à vista.
+                  </div>
+                </details>
+
+                <details class="cx-grupo">
+                  <summary>
+                    <span class="cx-grupo-t">Ainda estou em dúvida. Posso falar com um consultor?</span>
+                    <i class="fa-solid fa-chevron-down cx-seta"></i>
+                  </summary>
+                  <div class="cx-grupo-corpo">
+                    Claro. Nossa equipe está pronta para esclarecer suas dúvidas e
+                    ajudar a escolher o curso ideal para seus objetivos.
+                  </div>
+                </details>
+              </div>
+            </div>
+          </section>
+
+        </div><!-- /.cx -->
 
     </main>
 
     <!-- RODAPÉ -->
-<footer class="site-footer">
-    <div class="footer-grid">
-      <div class="footer-brand">
-        <div class="footer-logo">
-          <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro" class="footer-logo-img">
+    <footer class="site-footer">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="footer-logo">
+            <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro" class="footer-logo-img">
+          </div>
+          <p style="font-size:13px;line-height:1.7;margin-top:14px;">Escola de Educação e Saúde CVB-RJ, capacitando pessoas para salvar vidas.</p>
         </div>
-        <p style="font-size:13px;line-height:1.7;margin-top:14px;">Escola de Educação e Saúde CVB-RJ, capacitando pessoas para salvar vidas.</p>
-      </div>
-      <div class="footer-col">
-        <h4>Sobre</h4>
-        <p>Cruz Vermelha Brasileira<br>Filial Rio de Janeiro<br>Escola de Educação e Saúde CVB-RJ</p>
-      </div>
-      <div class="footer-col">
-        <h4>Contato</h4>
-        <p><i class="fa-solid fa-location-dot"></i> Praça Cruz Vermelha, 10</p>
-        <p><i class="fa-solid fa-phone"></i> (21) 99992-2864</p>
-        <p><i class="fa-regular fa-envelope"></i> contato@cruzvermelhariodejaneiro.org</p>
-      </div>
-      <div class="footer-col">
-        <h4>Siga-nos</h4>
-        <div class="footer-social">
-          <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
-          <a href="#" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
-          <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
-          <a href="#" aria-label="TikTok"><i class="fa-brands fa-tiktok"></i></a>
+        <div class="footer-col">
+          <h4>Sobre</h4>
+          <p>Cruz Vermelha Brasileira<br>Filial Rio de Janeiro<br>Escola de Educação e Saúde CVB-RJ</p>
+        </div>
+        <div class="footer-col">
+          <h4>Contato</h4>
+          <p><i class="fa-solid fa-location-dot"></i> Praça Cruz Vermelha, 10</p>
+          <p><i class="fa-solid fa-phone"></i> (21) 99992-2864</p>
+          <p><i class="fa-regular fa-envelope"></i> contato@cruzvermelhariodejaneiro.org</p>
+        </div>
+        <div class="footer-col">
+          <h4>Siga-nos</h4>
+          <div class="footer-social">
+            <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+            <a href="#" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
+            <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+            <a href="#" aria-label="TikTok"><i class="fa-brands fa-tiktok"></i></a>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="footer-bottom">
-      <div class="container footer-inner">
-        <span>&copy; 2026 Desenvolvido por Matheus Neves</span>
-        <span class="sep">|</span>
-        <span> Cruz Vermelha Brasileira do Rio de Janeiro</span>
-        <span class="sep">|</span>
-        <span>Escola de Educação e Saúde CVB-RJ</span>
-        <span class="sep">|</span>
-        <a href="/arquivo/privacidade.pdf" target="_blank">Política de Privacidade</a>
+      <div class="footer-bottom">
+        <div class="container footer-inner">
+          <span>&copy; 2026 Desenvolvido por Matheus Neves</span>
+          <span class="sep">|</span>
+          <span> Cruz Vermelha Brasileira do Rio de Janeiro</span>
+          <span class="sep">|</span>
+          <span>Escola de Educação e Saúde CVB-RJ</span>
+          <span class="sep">|</span>
+          <a href="/arquivo/privacidade.pdf" target="_blank">Política de Privacidade</a>
+        </div>
       </div>
-    </div>
-  </footer>
+    </footer>
 
     <!-- BOTÃO FLUTUANTE WHATSAPP -->
     <a class="wpp-float" href="https://wa.me/5521999922864?text=Ol%C3%A1!%20Tenho%20uma%20d%C3%BAvida%20sobre%20os%20cursos%20da%20Escola%20de%20Capacita%C3%A7%C3%A3o." target="_blank" rel="noopener" aria-label="Falar no WhatsApp">
@@ -287,6 +331,135 @@
     </a>
 
     <script src="/js/main.js"></script>
+    <!-- ══ Carrossel da vitrine de cursos ═════════════════════════════ -->
+    <script>
+    /* ============================================================
+       carrossel.js — vitrine de cursos da home
+       Rola automaticamente entre os cursos, com setas e bolinhas.
+       ============================================================ */
+    (function () {
+      'use strict';
+
+      var INTERVALO = 5000; // ms entre um curso e outro
+      var semAnimacao = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      document.querySelectorAll('.cxh-carrossel').forEach(function (car) {
+        var trilha = car.querySelector('.cxh-trilha');
+        var bolinhas = car.querySelector('.cxh-bolinhas');
+        var antes = car.querySelector('[data-antes]');
+        var depois = car.querySelector('[data-depois]');
+        if (!trilha) return;
+
+        var cards = Array.prototype.filter.call(trilha.children, function (el) {
+          return el.classList.contains('cxg-card');
+        });
+        if (cards.length < 2) {
+          car.classList.add('cxh-carrossel-parado'); // some com setas/bolinhas
+          return;
+        }
+
+        var atual = 0;
+        var timer = null;
+
+        /* Quantos cards cabem na largura visível. Muda com o breakpoint,
+           então é recalculado sempre que precisamos — não dá pra fixar em 3. */
+        function visiveis() {
+          return Math.max(1, Math.round(trilha.clientWidth / cards[0].offsetWidth));
+        }
+        function ultimoIndice() {
+          return Math.max(0, cards.length - visiveis());
+        }
+
+        function irPara(i, suave) {
+          atual = Math.max(0, Math.min(i, ultimoIndice()));
+          trilha.scrollTo({
+            left: cards[atual].offsetLeft - trilha.offsetLeft,
+            behavior: suave === false ? 'auto' : 'smooth'
+          });
+          pintarBolinhas();
+        }
+
+        function proximo() {
+          irPara(atual >= ultimoIndice() ? 0 : atual + 1);
+        }
+
+        /* ── Bolinhas ─────────────────────────────────────────── */
+        function montarBolinhas() {
+          if (!bolinhas) return;
+          bolinhas.innerHTML = '';
+          for (var i = 0; i <= ultimoIndice(); i++) {
+            (function (i) {
+              var b = document.createElement('button');
+              b.type = 'button';
+              b.className = 'cxh-bolinha';
+              b.setAttribute('aria-label', 'Ir para o curso ' + (i + 1));
+              b.addEventListener('click', function () { irPara(i); reiniciar(); });
+              bolinhas.appendChild(b);
+            })(i);
+          }
+          pintarBolinhas();
+        }
+
+        function pintarBolinhas() {
+          if (!bolinhas) return;
+          Array.prototype.forEach.call(bolinhas.children, function (b, i) {
+            b.classList.toggle('ativa', i === atual);
+            b.setAttribute('aria-current', i === atual ? 'true' : 'false');
+          });
+        }
+
+        /* ── Rotação automática ───────────────────────────────── */
+        function comecar() {
+          if (semAnimacao || timer) return;
+          timer = setInterval(proximo, INTERVALO);
+        }
+        function parar() {
+          clearInterval(timer);
+          timer = null;
+        }
+        function reiniciar() { parar(); comecar(); }
+
+        /* Pausa quando o usuário está interagindo — nada pior que o
+           carrossel virar a página no meio de uma leitura ou de um clique. */
+        car.addEventListener('mouseenter', parar);
+        car.addEventListener('mouseleave', comecar);
+        car.addEventListener('focusin', parar);
+        car.addEventListener('focusout', comecar);
+        trilha.addEventListener('touchstart', parar, { passive: true });
+        document.addEventListener('visibilitychange', function () {
+          document.hidden ? parar() : comecar();
+        });
+
+        /* Arrastar/rolar na mão também atualiza a bolinha ativa */
+        var rolando;
+        trilha.addEventListener('scroll', function () {
+          clearTimeout(rolando);
+          rolando = setTimeout(function () {
+            var pos = trilha.scrollLeft + trilha.offsetLeft;
+            var maisPerto = 0, menorDist = Infinity;
+            cards.forEach(function (c, i) {
+              var d = Math.abs(c.offsetLeft - pos);
+              if (d < menorDist) { menorDist = d; maisPerto = i; }
+            });
+            atual = maisPerto;
+            pintarBolinhas();
+          }, 90);
+        }, { passive: true });
+
+        if (antes)  antes.addEventListener('click',  function () { irPara(atual - 1); reiniciar(); });
+        if (depois) depois.addEventListener('click', function () { irPara(atual + 1); reiniciar(); });
+
+        var redim;
+        window.addEventListener('resize', function () {
+          clearTimeout(redim);
+          redim = setTimeout(function () { montarBolinhas(); irPara(atual, false); }, 150);
+        });
+
+        montarBolinhas();
+        comecar();
+      });
+    })();
+    </script>
 
 </body>
 </html>

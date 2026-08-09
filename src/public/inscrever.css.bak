@@ -1,0 +1,1226 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   INSCRIÇÃO — v2
+   Salvar como: public/inscrever.css
+
+   Direção: interface de aplicativo, não de site.
+   • Mobile primeiro: conteúdo full-bleed, separado por filetes em vez de
+     cards empilhados. Sem margem lateral desperdiçada.
+   • O contrato virou sanfona: 5 grupos fechados ocupam ~260px em vez dos
+     ~330px de uma caixa rolável que ainda escondia o resto da tela.
+   • Barra de ação fixa no rodapé (sticky): o botão e o total ficam sempre
+     visíveis e na altura do polegar.
+   • Tudo escopado em .chk para não vazar no resto do site.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+   .chk {
+    --tinta:    #0b0c0e;
+    --tinta-60: #565d66;
+    --tinta-40: #8a929c;
+    --branco:   #ffffff;
+    --neve:     #f4f5f7;
+    --borda:    #e6e8ec;
+    --borda-2:  #d3d7dd;
+    --cruz:     #cc0000;
+    --cruz-bg:  #fff3f3;
+    --cruz-esc: #990000;
+    --ok:       #0d7a58;
+    --ok-bg:    #eefaf5;
+    --r:        14px;
+    --r-s:      10px;
+  
+    font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    color: var(--tinta);
+    font-size: 15px;
+    line-height: 1.5;
+    letter-spacing: -.011em;
+    padding: 0 0 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .chk h1, .chk h2, .chk h3 {
+    font-family: 'Bricolage Grotesque', 'Manrope', sans-serif;
+    letter-spacing: -.035em; margin: 0;
+  }
+  .chk .num { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
+  
+  /* ── Animação de entrada ─────────────────────────────────────────────── */
+  @keyframes chkSobe { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform:none; } }
+  .chk .anima { animation: chkSobe .45s cubic-bezier(.22,.9,.3,1) both; animation-delay: calc(var(--d,0) * 60ms); }
+  
+  /* ═══ TOPO FIXO ═══════════════════════════════════════════════════════════
+     Barra estreita com voltar, nome do curso e as marcas de passo. Fica colada
+     no topo para o aluno nunca perder a referência de onde está. */
+  .chk-topo {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(255,255,255,.88); backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--borda);
+    padding: 10px 16px 11px;
+  }
+  .chk-topo-linha { display: flex; align-items: center; gap: 12px; }
+  .chk-voltar {
+    flex: none; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--borda); border-radius: 50%; background: var(--branco);
+    color: var(--tinta-60); text-decoration: none; font-size: 13px; transition: .2s ease;
+  }
+  .chk-voltar:hover, .chk-voltar:focus-visible { color: var(--cruz); border-color: var(--cruz); }
+  .chk-topo-txt { min-width: 0; flex: 1; }
+  .chk-topo-txt strong {
+    display: block; font-size: 14px; font-weight: 700; letter-spacing: -.02em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .chk-topo-txt span { display: block; font-size: 11.5px; color: var(--tinta-40); font-weight: 500; }
+  
+  /* Marcas de passo: traços que se preenchem. Rótulo só do passo atual —
+     os nomes dos outros passos não ajudam ninguém e roubam altura. */
+  .chk-passos { display: flex; gap: 4px; margin-top: 10px; }
+  .chk-passo { flex: 1; height: 3px; border-radius: 3px; background: var(--borda-2); overflow: hidden; }
+  .chk-passo span { display: block; height: 100%; width: 0; background: var(--cruz); border-radius: 3px; transition: width .5s cubic-bezier(.22,.9,.3,1); }
+  .chk-passo.feito span { width: 100%; background: var(--ok); }
+  .chk-passo.agora span { width: 100%; }
+  .chk-rot {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+    font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--cruz); margin-top: 7px;
+  }
+  .chk-rot i { font-style: normal; color: var(--tinta-40); letter-spacing: .04em; }
+  
+  /* ═══ CORPO ══════════════════════════════════════════════════════════════ */
+  .chk-corpo { padding: 18px 16px 0; }
+  .chk-cab { margin-bottom: 16px; }
+  .chk-cab h2 { font-size: 26px; font-weight: 800; line-height: 1.08; margin-bottom: 6px; text-wrap: balance; }
+  .chk-cab p { font-size: 14px; color: var(--tinta-60); margin: 0; }
+  
+  .chk-secao {
+    font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--tinta-40); margin: 0 0 10px;
+  }
+  
+  /* ── Contrato em sanfona ─────────────────────────────────────────────── */
+  .chk-sanfona { border: 1px solid var(--borda); border-radius: var(--r); overflow: hidden; margin-bottom: 14px; background: var(--branco); }
+  .chk-grupo { border-bottom: 1px solid var(--borda); }
+  .chk-grupo:last-child { border-bottom: none; }
+  .chk-grupo > summary {
+    list-style: none; cursor: pointer; padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+    font-size: 14.5px; font-weight: 600; transition: background .18s ease;
+  }
+  .chk-grupo > summary::-webkit-details-marker { display: none; }
+  .chk-grupo > summary:hover { background: var(--neve); }
+  .chk-grupo > summary:focus-visible { outline: 2px solid var(--cruz); outline-offset: -2px; }
+  .chk-grupo-n {
+    flex: none; width: 26px; height: 26px; border-radius: 8px; background: var(--neve);
+    color: var(--tinta-40); font-size: 11px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    font-variant-numeric: tabular-nums; transition: .22s ease;
+  }
+  .chk-grupo[open] .chk-grupo-n { background: var(--cruz); color: #fff; }
+  .chk-grupo-t { flex: 1; }
+  .chk-grupo-t em { display: block; font-style: normal; font-size: 11.5px; font-weight: 500; color: var(--tinta-40); margin-top: 1px; }
+  .chk-seta { flex: none; font-size: 11px; color: var(--tinta-40); transition: transform .25s ease; }
+  .chk-grupo[open] .chk-seta { transform: rotate(180deg); }
+  .chk-corpo-grupo { padding: 0 16px 16px 54px; font-size: 13.5px; line-height: 1.65; color: var(--tinta-60); animation: chkSobe .3s ease both; }
+  .chk-corpo-grupo h4 { font-family: inherit; font-size: 13px; font-weight: 700; color: var(--tinta); margin: 14px 0 3px; letter-spacing: -.01em; }
+  .chk-corpo-grupo h4:first-child { margin-top: 0; }
+  .chk-corpo-grupo p { margin: 0; }
+  
+  /* ── Aceite: interruptor, não caixinha ───────────────────────────────── */
+  .chk-aceite {
+    display: flex; align-items: center; gap: 14px; cursor: pointer;
+    border: 1.5px solid var(--borda); border-radius: var(--r); padding: 14px 16px;
+    font-size: 14px; font-weight: 600; line-height: 1.4; transition: .22s ease; background: var(--branco);
+  }
+  .chk-aceite input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .chk-chave {
+    flex: none; width: 46px; height: 27px; border-radius: 999px; background: var(--borda-2);
+    position: relative; transition: background .25s ease;
+  }
+  .chk-chave::after {
+    content: ''; position: absolute; top: 3px; left: 3px; width: 21px; height: 21px;
+    border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25);
+    transition: transform .25s cubic-bezier(.34,1.4,.64,1);
+  }
+  .chk-aceite input:checked ~ .chk-chave { background: var(--ok); }
+  .chk-aceite input:checked ~ .chk-chave::after { transform: translateX(19px); }
+  .chk-aceite input:focus-visible ~ .chk-chave { box-shadow: 0 0 0 3px rgba(204,0,0,.3); }
+  .chk-aceite:has(input:checked) { border-color: var(--ok); background: var(--ok-bg); }
+  
+  /* ── Planos: lado a lado mesmo no celular ────────────────────────────── */
+  .chk-planos { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 18px; }
+  .chk-plano {
+    position: relative; cursor: pointer; display: flex; flex-direction: column; gap: 2px;
+    border: 1.5px solid var(--borda); border-radius: var(--r); padding: 13px 13px 12px;
+    background: var(--branco); transition: border-color .2s, box-shadow .2s, background .2s;
+  }
+  .chk-plano input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .chk-plano-rot { font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--tinta-40); }
+  .chk-plano-v { font-size: 18px; font-weight: 800; letter-spacing: -.04em; line-height: 1.2; }
+  .chk-plano-o { font-size: 11.5px; color: var(--tinta-40); font-weight: 500; line-height: 1.35; }
+  .chk-plano.ativo { border-color: var(--cruz); background: var(--cruz-bg); box-shadow: inset 0 0 0 1px var(--cruz); }
+  .chk-plano.ativo .chk-plano-rot { color: var(--cruz); }
+  
+  /* ── Resumo: linha de total em destaque ──────────────────────────────── */
+  .chk-resumo { border: 1px solid var(--borda); border-radius: var(--r); overflow: hidden; margin-bottom: 16px; }
+  .chk-linha {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    padding: 11px 15px; font-size: 14px; color: var(--tinta-60);
+    border-bottom: 1px solid var(--borda);
+  }
+  .chk-linha strong { font-weight: 600; color: var(--tinta); }
+  .chk-linha:last-child { border-bottom: none; }
+  .chk-linha-total { background: var(--neve); padding: 13px 15px; }
+  .chk-linha-total span { font-weight: 700; color: var(--tinta); font-size: 14.5px; }
+  .chk-linha-total strong { font-size: 19px; font-weight: 800; letter-spacing: -.04em; color: var(--cruz); }
+  .chk-nota { font-size: 12px; color: var(--tinta-40); padding: 0 15px 12px; margin: -4px 0 0; line-height: 1.45; }
+  
+  /* ── Formas de pagamento ─────────────────────────────────────────────── */
+  .chk-formas { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 16px; }
+  .chk-formas-4 { grid-template-columns: 1fr 1fr; }
+  .chk-forma {
+    position: relative; display: flex; align-items: center; gap: 9px; cursor: pointer;
+    border: 1.5px solid var(--borda); border-radius: var(--r-s); padding: 13px 12px;
+    font-size: 13.5px; font-weight: 600; background: var(--branco); transition: .2s ease;
+  }
+  .chk-forma input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .chk-forma i { color: var(--tinta-40); font-size: 15px; transition: color .2s; }
+  .chk-forma.ativa, .chk-forma:has(input:checked) { border-color: var(--cruz); background: var(--cruz-bg); box-shadow: inset 0 0 0 1px var(--cruz); }
+  .chk-forma.ativa i, .chk-forma:has(input:checked) i { color: var(--cruz); }
+  .chk-forma:has(input:focus-visible) { outline: 2px solid rgba(204,0,0,.4); outline-offset: 2px; }
+  
+  /* ── Avisos ──────────────────────────────────────────────────────────── */
+  .chk-aviso {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: var(--neve); border-radius: var(--r-s); padding: 12px 14px;
+    font-size: 13px; line-height: 1.5; color: var(--tinta-60); margin-bottom: 16px;
+  }
+  .chk-aviso i { color: var(--cruz); margin-top: 2px; font-size: 13px; }
+  .chk-aviso strong { color: var(--tinta); font-weight: 700; }
+  .chk-aviso-ok { background: var(--ok-bg); color: #0a5c43; }
+  .chk-aviso-ok i { color: var(--ok); }
+  .chk-erro {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: var(--cruz-bg); border: 1px solid #ffcfcf; border-radius: var(--r-s);
+    padding: 12px 14px; margin-bottom: 16px; font-size: 13.5px; color: var(--cruz-esc); line-height: 1.5;
+  }
+  .chk-erro i { margin-top: 2px; }
+  .chk-erro strong { display: block; margin-bottom: 1px; }
+  
+  /* ── Campos de cartão ────────────────────────────────────────────────── */
+  .chk-dobra { animation: chkSobe .3s ease both; }
+  .chk-cartao { border: 1px solid var(--borda); border-radius: var(--r); padding: 15px; background: var(--neve); margin-bottom: 4px; }
+  .chk-campo { margin-bottom: 11px; }
+  .chk-campo:last-child { margin-bottom: 0; }
+  .chk-par { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .chk-rot-campo { display: block; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--tinta-40); margin-bottom: 5px; }
+  .chk-in {
+    width: 100%; padding: 13px 13px; border: 1.5px solid var(--borda-2); border-radius: var(--r-s);
+    font-size: 16px; /* 16px evita o zoom automático do iOS ao focar */
+    font-family: inherit; font-weight: 500; color: var(--tinta); background: var(--branco);
+    transition: border-color .18s, box-shadow .18s;
+  }
+  .chk-in::placeholder { color: #b6bcc4; font-weight: 400; }
+  .chk-in:focus { outline: none; border-color: var(--cruz); box-shadow: 0 0 0 3px rgba(204,0,0,.12); }
+  .chk-caps { text-transform: uppercase; }
+  
+  /* ═══ BARRA DE AÇÃO FIXA ══════════════════════════════════════════════════
+     O elemento mais importante do redesign: o botão nunca sai da tela, e leva
+     junto o valor que está sendo cobrado — some a dúvida "quanto mesmo?". */
+  .chk-acao {
+    position: sticky; bottom: 0; z-index: 15;
+    margin: 18px -16px 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(255,255,255,.92); backdrop-filter: blur(14px);
+    border-top: 1px solid var(--borda);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .chk-acao-valor { flex: none; line-height: 1.15; }
+  .chk-acao-valor em { display: block; font-style: normal; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--tinta-40); }
+  .chk-acao-valor strong { font-size: 17px; font-weight: 800; letter-spacing: -.04em; }
+  
+  .chk-btn {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 9px;
+    background: var(--cruz); color: #fff; border: none; border-radius: var(--r-s);
+    padding: 15px 18px; font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 15px; font-weight: 700; letter-spacing: -.02em; cursor: pointer;
+    transition: background .18s, transform .15s, opacity .18s;
+  }
+  .chk-btn i { font-size: 12px; transition: transform .2s ease; }
+  .chk-btn:hover:not(:disabled) { background: var(--cruz-esc); }
+  .chk-btn:hover:not(:disabled) i { transform: translateX(3px); }
+  .chk-btn:active:not(:disabled) { transform: scale(.985); }
+  .chk-btn:focus-visible { outline: 3px solid rgba(204,0,0,.35); outline-offset: 2px; }
+  .chk-btn:disabled { background: #dcdfe4; color: #9aa1aa; cursor: not-allowed; }
+  
+  .chk-nota-acao { font-size: 11.5px; color: var(--tinta-40); text-align: center; margin: 8px 0 0; }
+  
+  .chk-link {
+    background: none; border: none; padding: 0; margin: 0 0 14px; cursor: pointer;
+    font: inherit; font-size: 13.5px; font-weight: 600; color: var(--tinta-40);
+    display: flex; align-items: center; gap: 7px; transition: color .18s;
+  }
+  .chk-link:hover { color: var(--cruz); }
+  .chk-link i { font-size: 10px; }
+  
+  .chk-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  
+  /* ═══ TELAS MAIORES ═══════════════════════════════════════════════════════
+     O layout de app continua, só ganha respiro e vira um cartão centralizado. */
+  @media (min-width: 700px) {
+    .chk { padding-bottom: 60px; }
+    .chk-quadro {
+      max-width: 560px; margin: 26px auto; background: var(--branco);
+      border: 1px solid var(--borda); border-radius: 20px; overflow: hidden;
+      box-shadow: 0 1px 2px rgba(11,12,14,.04), 0 20px 46px -26px rgba(11,12,14,.4);
+    }
+    .chk-topo { border-radius: 20px 20px 0 0; padding: 14px 22px 13px; }
+    .chk-corpo { padding: 24px 22px 0; }
+    .chk-cab h2 { font-size: 29px; }
+    .chk-acao { margin: 22px -22px 0; padding: 14px 22px; border-radius: 0 0 20px 20px; }
+    .chk-formas-4 { grid-template-columns: repeat(4, 1fr); }
+    .chk-forma { justify-content: center; }
+  }
+  
+  /* ── Movimento reduzido ──────────────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .chk *, .chk *::before, .chk *::after { animation: none !important; transition-duration: .01ms !important; }
+  }
+  
+  /* ── Ponteiro: o cursor-cruz global esconde a mãozinha nos controles ──── */
+  .chk button, .chk a, .chk label, .chk summary, .chk input { cursor: pointer; }
+  .chk .chk-in { cursor: text; }
+
+
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PIX RETORNO — pix-retorno.css
+   Salvar em: public/pix-retorno.css
+   Carregado após inscrever.css (tokens base já disponíveis).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+   .pix-wrap {
+    min-height: 70vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 28px 16px 96px;
+    font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  .pix-card {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  /* ── Cabeçalho com logo PIX ───────────────────────────────────────────── */
+  .pix-topo {
+    text-align: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e6e8ec;
+  }
+  .pix-icone-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px; height: 64px;
+    margin-bottom: 12px;
+  }
+  .pix-icone-wrap i {
+    font-size: 36px;
+    color: #32BCAD;
+    position: relative;
+    z-index: 2;
+  }
+  .pix-pulso {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1.5px solid rgba(50,188,173,.4);
+    animation: pixPulso 2.4s ease-out infinite;
+  }
+  .pix-pulso:nth-child(2) { animation-delay: 1s; }
+  @keyframes pixPulso {
+    0%   { transform: scale(1);    opacity: .85; }
+    100% { transform: scale(1.75); opacity: 0;   }
+  }
+  .pix-titulo {
+    font-family: 'Bricolage Grotesque', 'Manrope', sans-serif;
+    font-size: 22px; font-weight: 800; letter-spacing: -.04em;
+    color: #0b0c0e; margin: 0 0 5px;
+  }
+  .pix-sub {
+    font-size: 13.5px; color: #565d66; line-height: 1.5; margin: 0;
+  }
+  
+  /* ── Card QR + timer ──────────────────────────────────────────────────── */
+  .pix-qr-card {
+    border: 1px solid #e6e8ec;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 2px 12px rgba(11,12,14,.05);
+  }
+  .pix-qr-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 18px 18px 14px;
+    gap: 14px;
+  }
+  .pix-qr-area img {
+    width: 200px; height: 200px;
+    display: block;
+    border-radius: 8px;
+  }
+  
+  /* Scanner animado */
+  .pix-scanner-wrap {
+    position: relative;
+    display: inline-block;
+  }
+  .pix-scanner {
+    position: absolute;
+    left: 3px; right: 3px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #32BCAD, transparent);
+    border-radius: 2px;
+    animation: pixScan 2.4s ease-in-out infinite;
+    top: 0;
+    box-shadow: 0 0 8px rgba(50,188,173,.5);
+  }
+  @keyframes pixScan {
+    0%   { top: 3px; opacity: .9; }
+    50%  { top: calc(100% - 5px); opacity: .9; }
+    100% { top: 3px; opacity: .9; }
+  }
+  /* Cantinhos viewfinder */
+  .pix-scanner-wrap::before,
+  .pix-scanner-wrap::after {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+    border-color: #32BCAD;
+    border-style: solid;
+  }
+  .pix-scanner-wrap::before {
+    top: 3px; left: 3px;
+    border-width: 2.5px 0 0 2.5px;
+    border-radius: 3px 0 0 0;
+  }
+  .pix-scanner-wrap::after {
+    bottom: 3px; right: 3px;
+    border-width: 0 2.5px 2.5px 0;
+    border-radius: 0 0 3px 0;
+  }
+  
+  /* Botão copiar */
+  .pix-btn-copiar {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%;
+    padding: 11px;
+    background: #32BCAD; color: #fff;
+    border: none; border-radius: 9px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 13.5px; font-weight: 700;
+    cursor: pointer; transition: background .18s, transform .15s;
+  }
+  .pix-btn-copiar:hover  { background: #28a99b; }
+  .pix-btn-copiar:active { transform: scale(.98); }
+  .pix-btn-copiar.copiado { background: #0d7a58; }
+  
+  /* Timer — barra integrada ao card QR */
+  .pix-timer-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 15px;
+    border-top: 1px solid #e6e8ec;
+    background: #f4f5f7;
+  }
+  .pix-timer-anel {
+    flex: none;
+    position: relative;
+    width: 36px; height: 36px;
+  }
+  .pix-timer-anel svg {
+    transform: rotate(-90deg);
+    width: 36px; height: 36px;
+  }
+  .pix-timer-trilha {
+    fill: none;
+    stroke: #e6e8ec;
+    stroke-width: 3.5;
+  }
+  .pix-timer-arco {
+    fill: none;
+    stroke: #cc0000;
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    stroke-dasharray: 95.53; /* 2π × 15.2 */
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset .95s linear, stroke .5s;
+  }
+  .pix-timer-num {
+    position: absolute;
+    inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bricolage Grotesque', 'Manrope', sans-serif;
+    font-size: 10px; font-weight: 800;
+    color: #cc0000;
+    font-variant-numeric: tabular-nums;
+  }
+  .pix-timer-info { flex: 1; }
+  .pix-timer-label {
+    font-size: 10px; font-weight: 800; letter-spacing: .07em;
+    text-transform: uppercase; color: #8a929c; margin: 0 0 2px;
+  }
+  .pix-timer-msg {
+    font-size: 13px; font-weight: 600; color: #0b0c0e; margin: 0; line-height: 1.35;
+  }
+  .pix-timer-alt {
+    display: none;
+    font-size: 11px; font-weight: 500; color: #8a929c;
+  }
+  
+  /* ── Etapas visuais ───────────────────────────────────────────────────── */
+  .pix-etapas {
+    border: 1px solid #e6e8ec;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .pix-etapa {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 15px;
+    border-bottom: 1px solid #e6e8ec;
+    transition: background .3s;
+  }
+  .pix-etapa:last-child { border-bottom: none; }
+  
+  .pix-etapa[data-estado="espera"] { opacity: .4; }
+  .pix-etapa[data-estado="atual"]  { background: #f4f5f7; }
+  .pix-etapa[data-estado="feito"]  { background: #eefaf5; }
+  
+  .pix-et-icone {
+    flex: none;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    background: #e6e8ec; color: #8a929c;
+    transition: background .35s, color .35s;
+    position: relative;
+  }
+  .pix-etapa[data-estado="atual"] .pix-et-icone { background: #cc0000; color: #fff; }
+  .pix-etapa[data-estado="feito"] .pix-et-icone { background: #0d7a58; color: #fff; }
+  
+  .pix-et-spinner {
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: #cc0000;
+    animation: pixSpin .9s linear infinite;
+    display: none;
+  }
+  .pix-etapa[data-estado="atual"] .pix-et-spinner { display: block; }
+  .pix-etapa[data-estado="feito"] .pix-et-spinner { display: none; }
+  @keyframes pixSpin { to { transform: rotate(360deg); } }
+  
+  .pix-et-texto { flex: 1; }
+  .pix-et-rot {
+    font-size: 10px; font-weight: 800; letter-spacing: .07em;
+    text-transform: uppercase; color: #8a929c; margin: 0 0 1px;
+  }
+  .pix-etapa[data-estado="atual"] .pix-et-rot { color: #cc0000; }
+  .pix-etapa[data-estado="feito"] .pix-et-rot { color: #0d7a58; }
+  .pix-et-desc {
+    font-size: 13.5px; font-weight: 600; color: #0b0c0e; margin: 0; line-height: 1.3;
+  }
+  .pix-et-badge {
+    flex: none; font-size: 10px; font-weight: 700;
+    padding: 2px 9px; border-radius: 99px;
+    background: #f4f5f7; color: #565d66;
+  }
+  .pix-etapa[data-estado="atual"] .pix-et-badge { background: #fff3f3; color: #cc0000; }
+  .pix-etapa[data-estado="feito"] .pix-et-badge { background: #eefaf5; color: #0d7a58; }
+  
+  /* ── Estado sem QR ────────────────────────────────────────────────────── */
+  .pix-aguardando {
+    text-align: center;
+    padding: 48px 24px;
+  }
+  .pix-aguardando-icone {
+    font-size: 52px;
+    color: #e2a800;
+    display: block;
+    margin-bottom: 18px;
+  }
+  @keyframes pixGiro { to { transform: rotate(360deg); } }
+  .pix-aguardando-icone.girando {
+    display: inline-block;
+    animation: pixGiro 2s linear infinite;
+  }
+  
+  /* ── Rodapé ───────────────────────────────────────────────────────────── */
+  .pix-rodape {
+    text-align: center;
+    padding-top: 16px;
+    border-top: 1px solid #e6e8ec;
+  }
+  .pix-rodape a {
+    font-size: 13px; font-weight: 600; color: #8a929c;
+    text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+    transition: color .18s;
+  }
+  .pix-rodape a:hover { color: #cc0000; }
+  
+  /* ── Desktop ──────────────────────────────────────────────────────────── */
+  @media (min-width: 700px) {
+    .pix-wrap { padding-top: 40px; }
+    .pix-card {
+      background: #fff;
+      border: 1px solid #e6e8ec;
+      border-radius: 20px;
+      box-shadow: 0 1px 2px rgba(11,12,14,.04), 0 20px 46px -26px rgba(11,12,14,.35);
+      padding: 32px 28px 28px;
+    }
+    .pix-topo { padding-bottom: 20px; }
+  }
+  
+  /* ── Movimento reduzido ───────────────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .pix-pulso,
+    .pix-scanner,
+    .pix-et-spinner,
+    .pix-aguardando-icone { animation: none !important; }
+  }
+
+
+
+
+
+
+
+  <%- include('partials/site-head', { titulo: 'Pagamento no cartão' }) %>
+  <%- include('partials/site-header') %>
+  
+  <%
+  // ═══════════════════════════════════════════════════════════════════════════
+  // INSCREVER-RETORNO — pagamento no cartão
+  // Salvar como: src/views/inscrever-retorno.ejs
+  //
+  // O CSS desta tela mora no fim do inscrever.css (bloco "CARTÃO — TELA DE
+  // RETORNO"), que o site-head já carrega em todas as páginas. Por isso não há
+  // cssExtra aqui.
+  //
+  // Espelha o pix-retorno: a matrícula já existe, a cobrança já está definida
+  // no backend. Aqui o aluno só digita o cartão e acompanha as etapas.
+  //
+  // A sessão de pagamento tem prazo de 5 minutos, igual ao PIX:
+  //   • toda transação nova (chegada vinda de um POST, ou nova tentativa depois
+  //     de uma recusa) zera o relógio;
+  //   • o tempo sobrevive a um reload, porque fica preso à referência da
+  //     transação — não ao carregamento da página;
+  //   • esgotado o prazo, a transação é cancelada no servidor e o aluno volta
+  //     para a lista de cursos.
+  //
+  // Variáveis esperadas:
+  //   matricula        objeto com .id
+  //   turma, curso     para o cabeçalho e o redirecionamento
+  //   etapa            'taxa' | 'curso' | 'unico'
+  //   valorCobranca    número, o que será cobrado AGORA
+  //   numParcelas      inteiro (1 quando à vista)
+  //   valorParcela     número (opcional, só quando numParcelas > 1)
+  //   transacaoRef     vem do `t` da querystring (urlRetorno em cursos.js).
+  //                    Cada POST gera um `t` novo — é o que zera o cronômetro.
+  //   csrfToken        string
+  //   formatBRL        helper já usado nas outras telas
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  const _parcelas = typeof numParcelas !== 'undefined' && numParcelas ? Number(numParcelas) : 1;
+  const _rotuloValor = etapa === 'taxa' ? 'Taxa de inscrição'
+                     : _parcelas > 1    ? 'Curso parcelado'
+                     : 'Total';
+  const _ultimoPasso = etapa === 'taxa' ? 'Taxa confirmada' : 'Matrícula confirmada';
+  
+  // Sem transacaoRef o timer ainda funciona, mas só zera quando a aba fecha.
+  const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
+             ? String(transacaoRef)
+             : String(matricula ? matricula.id : '') + ':' + etapa;
+  %>
+  
+  <main class="cc-wrap">
+    <div class="cc-card" id="ccCard">
+  
+      <% if (matricula) { %>
+  
+      <!-- ══ Cabeçalho ══════════════════════════════════════════════════════ -->
+      <div class="cc-topo">
+        <h1 class="cc-titulo">Pagar no cartão</h1>
+        <p class="cc-sub">
+          <%= curso.nome %><br>
+          <% if (etapa === 'taxa') { %>
+            Taxa de inscrição. O curso vem logo depois.
+          <% } else if (_parcelas > 1) { %>
+            <%= _parcelas %>× de <%= formatBRL(valorParcela) %> no crédito.
+          <% } else { %>
+            Um pagamento único no crédito.
+          <% } %>
+        </p>
+      </div>
+  
+      <!-- ══ Timer da transação ═════════════════════════════════════════════ -->
+      <div class="cc-timer-bar">
+        <div class="cc-timer-anel">
+          <svg viewBox="0 0 36 36" aria-hidden="true">
+            <circle class="cc-timer-trilha" cx="18" cy="18" r="15.2"/>
+            <circle class="cc-timer-arco" id="ccTimerArco" cx="18" cy="18" r="15.2"/>
+          </svg>
+          <div class="cc-timer-num" id="ccTimerNum">05:00</div>
+        </div>
+        <div class="cc-timer-info">
+          <p class="cc-timer-label">Tempo restante</p>
+          <p class="cc-timer-msg" id="ccTimerMsg">Conclua o pagamento antes do fim do prazo.</p>
+        </div>
+      </div>
+  
+      <!-- ══ Cartão-espelho ═════════════════════════════════════════════════ -->
+      <div class="cc-espelho" id="ccEspelho" aria-hidden="true">
+        <div class="cc-espelho-in">
+          <div class="cc-face">
+            <div class="cc-face-topo">
+              <div class="cc-chip"></div>
+              <div class="cc-bandeira" id="ccBandeira"><i class="fa-regular fa-credit-card"></i></div>
+            </div>
+            <p class="cc-face-numero" id="ccFaceNumero">•••• •••• •••• ••••</p>
+            <div class="cc-face-rodape">
+              <div class="cc-face-nome">
+                <p class="cc-face-rot">Titular</p>
+                <p class="cc-face-val" id="ccFaceNome">NOME NO CARTÃO</p>
+              </div>
+              <div>
+                <p class="cc-face-rot">Validade</p>
+                <p class="cc-face-val" id="ccFaceValidade">MM/AA</p>
+              </div>
+            </div>
+          </div>
+          <div class="cc-face cc-face-tras">
+            <div class="cc-tarja"></div>
+            <div class="cc-assinatura">
+              <div class="cc-assinatura-faixa"></div>
+              <div class="cc-assinatura-cvv" id="ccFaceCvv">•••</div>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <!-- ══ Erro do gateway ════════════════════════════════════════════════ -->
+      <div class="cc-erro" id="ccErro" role="alert">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <div>
+          <strong>O pagamento não passou</strong>
+          <span id="ccErroTexto">Confira os dados e tente de novo.</span>
+        </div>
+      </div>
+  
+      <!-- ══ Formulário ═════════════════════════════════════════════════════ -->
+      <div class="cc-form-card">
+        <div class="cc-valor">
+          <span><%= _rotuloValor %></span>
+          <div>
+            <strong><%= formatBRL(valorCobranca) %></strong>
+            <% if (_parcelas > 1) { %>
+            <em><%= _parcelas %>× de <%= formatBRL(valorParcela) %></em>
+            <% } %>
+          </div>
+        </div>
+  
+        <form id="ccForm" novalidate>
+          <input type="hidden" name="_csrf" id="ccCsrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+  
+          <div class="cc-campo" id="campoNumero">
+            <label class="cc-rot" for="ccNumero">Número do cartão</label>
+            <input id="ccNumero" name="numero" type="text" class="cc-in num"
+                   inputmode="numeric" maxlength="19" placeholder="0000 0000 0000 0000"
+                   autocomplete="cc-number" autofocus>
+            <p class="cc-erro-campo">Número incompleto ou inválido.</p>
+          </div>
+  
+          <div class="cc-campo" id="campoTitular">
+            <label class="cc-rot" for="ccTitular">Nome impresso no cartão</label>
+            <input id="ccTitular" name="titular" type="text" class="cc-in cc-caps"
+                   placeholder="COMO ESTÁ NO CARTÃO" autocomplete="cc-name">
+            <p class="cc-erro-campo">Escreva o nome como aparece no cartão.</p>
+          </div>
+  
+          <div class="cc-par">
+            <div class="cc-campo" id="campoValidade">
+              <label class="cc-rot" for="ccValidade">Validade</label>
+              <input id="ccValidade" name="validade" type="text" class="cc-in num"
+                     inputmode="numeric" maxlength="5" placeholder="MM/AA" autocomplete="cc-exp">
+              <p class="cc-erro-campo">Data inválida.</p>
+            </div>
+            <div class="cc-campo" id="campoCvv">
+              <label class="cc-rot" for="ccCvv">CVV</label>
+              <input id="ccCvv" name="cvv" type="text" class="cc-in num"
+                     inputmode="numeric" maxlength="4" placeholder="000" autocomplete="cc-csc">
+              <p class="cc-erro-campo">CVV incompleto.</p>
+            </div>
+          </div>
+  
+          <button type="submit" class="cc-btn" id="ccBtn" style="margin-top:14px">
+            <span id="ccBtnTexto">Pagar <%= formatBRL(valorCobranca) %></span>
+            <i class="fa-solid fa-arrow-right" id="ccBtnIcone"></i>
+          </button>
+          <p class="cc-seguro">
+            <i class="fa-solid fa-lock"></i> Os dados vão direto para a operadora. Não guardamos o cartão.
+          </p>
+        </form>
+      </div>
+  
+      <!-- ══ Etapas ═════════════════════════════════════════════════════════ -->
+      <div class="cc-etapas" id="ccEtapas">
+  
+        <div class="cc-etapa" data-estado="atual" data-step="dados">
+          <div class="cc-et-icone">
+            <div class="cc-et-spinner"></div>
+            <i class="fa-solid fa-keyboard"></i>
+          </div>
+          <div class="cc-et-texto">
+            <p class="cc-et-rot">Passo 1</p>
+            <p class="cc-et-desc">Dados do cartão</p>
+          </div>
+          <span class="cc-et-badge">Preenchendo</span>
+        </div>
+  
+        <div class="cc-etapa" data-estado="espera" data-step="envio">
+          <div class="cc-et-icone">
+            <div class="cc-et-spinner"></div>
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div class="cc-et-texto">
+            <p class="cc-et-rot">Passo 2</p>
+            <p class="cc-et-desc">Envio para a operadora</p>
+          </div>
+          <span class="cc-et-badge">Em breve</span>
+        </div>
+  
+        <div class="cc-etapa" data-estado="espera" data-step="banco">
+          <div class="cc-et-icone">
+            <div class="cc-et-spinner"></div>
+            <i class="fa-solid fa-building-columns"></i>
+          </div>
+          <div class="cc-et-texto">
+            <p class="cc-et-rot">Passo 3</p>
+            <p class="cc-et-desc">Banco autoriza a cobrança</p>
+          </div>
+          <span class="cc-et-badge">Em breve</span>
+        </div>
+  
+        <div class="cc-etapa" data-estado="espera" data-step="matricula">
+          <div class="cc-et-icone">
+            <div class="cc-et-spinner"></div>
+            <i class="fa-solid fa-graduation-cap"></i>
+          </div>
+          <div class="cc-et-texto">
+            <p class="cc-et-rot">Passo 4</p>
+            <p class="cc-et-desc"><%= _ultimoPasso %></p>
+          </div>
+          <span class="cc-et-badge">Em breve</span>
+        </div>
+  
+      </div>
+  
+      <% } else { %>
+  
+      <div class="cc-aguardando">
+        <i class="fa-solid fa-arrows-rotate cc-aguardando-icone"></i>
+        <h1 class="cc-titulo" style="margin-bottom:8px">Processando…</h1>
+        <p class="cc-sub">Estamos localizando sua inscrição. Se a tela não mudar em alguns
+        segundos, abra suas inscrições e continue por lá.</p>
+      </div>
+  
+      <% } %>
+  
+      <div class="cc-rodape">
+        <a href="/minha-conta?sec=inscricoes">
+          <i class="fa-solid fa-arrow-left"></i> Ver minhas inscrições
+        </a>
+      </div>
+  
+    </div>
+  </main>
+  
+  <% if (matricula) { %>
+  <script>
+  (function () {
+    var MATRICULA_ID = '<%= matricula.id %>';
+    var TURMA_ID     = '<%= turma.id %>';
+    var ETAPA        = '<%= etapa %>';
+    var PARCELAS     = <%= _parcelas %>;
+    var REF          = '<%= _ref %>';
+  
+    var card   = document.getElementById('ccCard');
+    var form   = document.getElementById('ccForm');
+    var btn    = document.getElementById('ccBtn');
+    var btnTxt = document.getElementById('ccBtnTexto');
+    var btnIco = document.getElementById('ccBtnIcone');
+    var erro   = document.getElementById('ccErro');
+    var erroTx = document.getElementById('ccErroTexto');
+  
+    var inNumero   = document.getElementById('ccNumero');
+    var inTitular  = document.getElementById('ccTitular');
+    var inValidade = document.getElementById('ccValidade');
+    var inCvv      = document.getElementById('ccCvv');
+  
+    var espelho = document.getElementById('ccEspelho');
+    var faceNum = document.getElementById('ccFaceNumero');
+    var faceNom = document.getElementById('ccFaceNome');
+    var faceVal = document.getElementById('ccFaceValidade');
+    var faceCvv = document.getElementById('ccFaceCvv');
+    var bandeira = document.getElementById('ccBandeira');
+  
+    function soDigitos(v) { return (v || '').replace(/\D/g, ''); }
+  
+    /* ═══════════════════════════════════════════════════════════════════════
+       TIMER DA TRANSAÇÃO
+       A chave guarda { ref, seg }. Se a ref do servidor mudou, é outra
+       transação: o relógio volta para 05:00. Se é a mesma, continua de onde
+       parou — é isso que faz o tempo sobreviver a um reload sem "ganhar"
+       minutos extras a cada F5.
+       ═══════════════════════════════════════════════════════════════════════ */
+    var TOTAL_SEG   = 5 * 60;
+    var STORAGE_KEY = 'cc_timer_' + MATRICULA_ID;
+    var CIRC        = 95.53; // 2π × 15.2
+  
+    var arco    = document.getElementById('ccTimerArco');
+    var numEl   = document.getElementById('ccTimerNum');
+    var msgEl   = document.getElementById('ccTimerMsg');
+    var restante = TOTAL_SEG;
+    var timerInterval = null;
+    var polling = null;
+    var encerrado = false;
+  
+    function lerSalvo() {
+      try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null'); }
+      catch (e) { return null; }
+    }
+    function salvar() {
+      try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ref: REF, seg: restante })); }
+      catch (e) {}
+    }
+    function limparSalvo() {
+      try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    }
+  
+    function pintarTimer() {
+      var mm = Math.floor(restante / 60), ss = restante % 60;
+      if (numEl) numEl.textContent = String(mm).padStart(2, '0') + ':' + String(ss).padStart(2, '0');
+      if (arco) {
+        arco.style.strokeDashoffset = CIRC * (1 - restante / TOTAL_SEG);
+        arco.style.stroke = restante <= 30 ? '#e2a800' : '#cc0000';
+      }
+      if (numEl) numEl.style.color = restante <= 30 ? '#e2a800' : '#cc0000';
+    }
+  
+    function pararTimer() {
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+      limparSalvo();
+    }
+  
+    // Toda transação nova (chegada, ou nova tentativa) passa por aqui.
+    function iniciarTimer(zerar) {
+      if (timerInterval) clearInterval(timerInterval);
+      var salvo = lerSalvo();
+      restante = (!zerar && salvo && salvo.ref === REF && salvo.seg > 0) ? salvo.seg : TOTAL_SEG;
+      pintarTimer();
+      salvar();
+      timerInterval = setInterval(function () {
+        if (restante > 0) { restante--; pintarTimer(); salvar(); }
+        else { expirar(); }
+      }, 1000);
+    }
+  
+    async function expirar() {
+      if (encerrado) return;
+      encerrado = true;
+      if (timerInterval) clearInterval(timerInterval);
+      if (polling) clearInterval(polling);
+      limparSalvo();
+  
+      card.classList.add('cc-expirado');
+      if (numEl) { numEl.textContent = '00:00'; numEl.style.color = '#8a929c'; }
+      if (arco)  { arco.style.stroke = '#8a929c'; arco.style.strokeDashoffset = CIRC; }
+      if (msgEl) msgEl.textContent = 'Tempo esgotado. Voltando para os cursos…';
+      set('dados', 'falhou', 'Expirou');
+      set('envio', 'espera', '—');
+      set('banco', 'espera', '—');
+      set('matricula', 'espera', '—');
+  
+      try {
+        await fetch('/inscricao/cancelar-transacao/' + MATRICULA_ID, {
+          method: 'POST',
+          headers: { 'CSRF-Token': document.getElementById('ccCsrf').value }
+        });
+      } catch (e) {
+        // Se falhar, o backend derruba por expiração do gateway mesmo assim.
+      }
+      setTimeout(function () { location.href = '/cursos'; }, 1400);
+    }
+  
+    iniciarTimer(false);
+  
+    // ── Bandeira ─────────────────────────────────────────────────────────
+    var BANDEIRAS = [
+      { re: /^4/,                         icone: 'fa-brands fa-cc-visa',       nome: 'visa' },
+      { re: /^(5[1-5]|2[2-7])/,           icone: 'fa-brands fa-cc-mastercard', nome: 'mastercard' },
+      { re: /^3[47]/,                     icone: 'fa-brands fa-cc-amex',       nome: 'amex' },
+      { re: /^(636368|438935|451416|509|627780|636297|650)/, icone: 'fa-solid fa-credit-card', nome: 'elo' },
+      { re: /^(606282|3841)/,             icone: 'fa-solid fa-credit-card',    nome: 'hipercard' },
+      { re: /^3(0[0-5]|[68])/,            icone: 'fa-brands fa-cc-diners-club',nome: 'diners' },
+      { re: /^6(011|5)/,                  icone: 'fa-brands fa-cc-discover',   nome: 'discover' }
+    ];
+    var bandeiraAtual = null;
+  
+    function detectarBandeira(digitos) {
+      for (var i = 0; i < BANDEIRAS.length; i++) {
+        if (BANDEIRAS[i].re.test(digitos)) return BANDEIRAS[i];
+      }
+      return null;
+    }
+  
+    // ── Luhn ─────────────────────────────────────────────────────────────
+    function luhn(num) {
+      var soma = 0, alterna = false;
+      for (var i = num.length - 1; i >= 0; i--) {
+        var d = parseInt(num.charAt(i), 10);
+        if (alterna) { d *= 2; if (d > 9) d -= 9; }
+        soma += d; alterna = !alterna;
+      }
+      return soma % 10 === 0;
+    }
+  
+    // ── Espelho + máscaras ───────────────────────────────────────────────
+    inNumero.addEventListener('input', function () {
+      var v = soDigitos(this.value).slice(0, 19);
+      bandeiraAtual = detectarBandeira(v);
+      var eAmex = bandeiraAtual && bandeiraAtual.nome === 'amex';
+  
+      v = v.slice(0, eAmex ? 15 : 16);
+      this.value = eAmex
+        ? v.replace(/^(\d{0,4})(\d{0,6})(\d{0,5}).*/, function (_, a, b, c) {
+            return [a, b, c].filter(Boolean).join(' ');
+          })
+        : v.replace(/(.{4})/g, '$1 ').trim();
+  
+      bandeira.innerHTML = '<i class="' + (bandeiraAtual ? bandeiraAtual.icone : 'fa-regular fa-credit-card') + '"></i>';
+      inCvv.maxLength = eAmex ? 4 : 3;
+      inCvv.placeholder = eAmex ? '0000' : '000';
+  
+      var molde = eAmex ? '•••• •••••• •••••' : '•••• •••• •••• ••••';
+      faceNum.textContent = this.value + molde.slice(this.value.length);
+      limparErro('campoNumero');
+    });
+  
+    inTitular.addEventListener('input', function () {
+      this.value = this.value.replace(/[^A-Za-zÀ-ÿ\s.'-]/g, '');
+      faceNom.textContent = this.value.trim() ? this.value.toUpperCase() : 'NOME NO CARTÃO';
+      limparErro('campoTitular');
+    });
+  
+    inValidade.addEventListener('input', function () {
+      var v = soDigitos(this.value).slice(0, 4);
+      if (v.length >= 3) v = v.slice(0, 2) + '/' + v.slice(2);
+      this.value = v;
+      faceVal.textContent = v || 'MM/AA';
+      limparErro('campoValidade');
+    });
+  
+    inCvv.addEventListener('input', function () {
+      this.value = soDigitos(this.value).slice(0, this.maxLength);
+      faceCvv.textContent = this.value || '•••';
+      limparErro('campoCvv');
+    });
+  
+    inCvv.addEventListener('focus', function () { espelho.classList.add('virado'); });
+    inCvv.addEventListener('blur',  function () { espelho.classList.remove('virado'); });
+  
+    // ── Validação ────────────────────────────────────────────────────────
+    function marcarErro(id, msg) {
+      var campo = document.getElementById(id);
+      campo.classList.add('tem-erro');
+      campo.querySelector('.cc-in').classList.add('invalido');
+      if (msg) campo.querySelector('.cc-erro-campo').textContent = msg;
+    }
+    function limparErro(id) {
+      var campo = document.getElementById(id);
+      campo.classList.remove('tem-erro');
+      campo.querySelector('.cc-in').classList.remove('invalido');
+    }
+  
+    function validar() {
+      var ok = true;
+      var num = soDigitos(inNumero.value);
+      var minimo = bandeiraAtual && bandeiraAtual.nome === 'amex' ? 15 : 16;
+  
+      if (num.length < minimo || !luhn(num)) { marcarErro('campoNumero'); ok = false; }
+      if (inTitular.value.trim().length < 3 || inTitular.value.trim().indexOf(' ') === -1) {
+        marcarErro('campoTitular', 'Escreva nome e sobrenome como no cartão.'); ok = false;
+      }
+  
+      var val = soDigitos(inValidade.value);
+      if (val.length < 4) {
+        marcarErro('campoValidade', 'Preencha MM/AA.'); ok = false;
+      } else {
+        var mes = parseInt(val.slice(0, 2), 10);
+        var ano = 2000 + parseInt(val.slice(2), 10);
+        var fim = new Date(ano, mes, 0, 23, 59, 59);
+        if (mes < 1 || mes > 12)   { marcarErro('campoValidade', 'Mês inválido.'); ok = false; }
+        else if (fim < new Date()) { marcarErro('campoValidade', 'Cartão vencido.'); ok = false; }
+      }
+  
+      var cvvMin = bandeiraAtual && bandeiraAtual.nome === 'amex' ? 4 : 3;
+      if (soDigitos(inCvv.value).length < cvvMin) { marcarErro('campoCvv'); ok = false; }
+  
+      return ok;
+    }
+  
+    // ── Etapas ───────────────────────────────────────────────────────────
+    function set(nome, estado, badge) {
+      var el = document.querySelector('[data-step="' + nome + '"]');
+      if (!el) return;
+      el.dataset.estado = estado;
+      if (badge) el.querySelector('.cc-et-badge').textContent = badge;
+    }
+  
+    function entrarEmProcessamento() {
+      card.classList.add('cc-processando');
+      erro.classList.remove('visivel');
+      set('dados', 'feito', 'Pronto');
+      set('envio', 'atual', 'Enviando');
+      if (msgEl) msgEl.textContent = 'Aguarde a resposta do banco.';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  
+    // Recusa = a transação anterior morreu. A próxima tentativa é nova, e o
+    // relógio começa de novo do zero.
+    function voltarAoFormulario(msg) {
+      if (encerrado) return;
+      card.classList.remove('cc-processando');
+      set('dados', 'atual', 'Preenchendo');
+      set('envio', 'espera', 'Em breve');
+      set('banco', 'espera', 'Em breve');
+      set('matricula', 'espera', 'Em breve');
+      erroTx.textContent = msg || 'Confira os dados e tente de novo.';
+      erro.classList.add('visivel');
+      btn.disabled = false;
+      btnTxt.textContent = 'Tentar de novo';
+      btnIco.className = 'fa-solid fa-rotate-right';
+      if (msgEl) msgEl.textContent = 'Prazo reiniciado para a nova tentativa.';
+      iniciarTimer(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  
+    function concluir() {
+      encerrado = true;
+      pararTimer();
+      if (msgEl) msgEl.textContent = 'Pagamento aprovado.';
+      if (numEl) { numEl.textContent = '✓'; numEl.style.color = '#0d7a58'; }
+      if (arco)  arco.style.stroke = '#0d7a58';
+      set('envio', 'feito', 'Enviado');
+      set('banco', 'feito', 'Autorizado');
+      set('matricula', 'atual', 'Registrando…');
+      setTimeout(function () {
+        set('matricula', 'feito', 'Confirmado');
+        setTimeout(function () {
+          location.href = ETAPA === 'taxa'
+            ? '/inscrever/' + TURMA_ID + '/pagar-curso'
+            : '/minha-conta?inscrito=1';
+        }, 1200);
+      }, 900);
+    }
+  
+    // ── Polling ──────────────────────────────────────────────────────────
+    function iniciarPolling() {
+      polling = setInterval(async function () {
+        if (encerrado) { clearInterval(polling); return; }
+        try {
+          var r = await fetch('/inscricao/status/' + MATRICULA_ID);
+          if (!r.ok) return;
+          var m = await r.json();
+  
+          var quitado = ETAPA === 'taxa'
+            ? m.taxaConfirmada
+            : ['PAGO', 'PARCELADO'].includes(m.statusPagamento);
+  
+          if (quitado) {
+            clearInterval(polling);
+            concluir();
+          } else if (m.statusPagamento === 'RECUSADO' || m.statusPagamento === 'CANCELADO') {
+            clearInterval(polling);
+            voltarAoFormulario('O banco recusou a cobrança. Tente outro cartão.');
+          }
+        } catch (e) {
+          // rede oscilou — tenta no próximo tick
+        }
+      }, 4000);
+    }
+  
+    // ── Envio ────────────────────────────────────────────────────────────
+    form.addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      if (encerrado) return;
+      if (!validar()) return;
+  
+      btn.disabled = true;
+      btnTxt.textContent = 'Processando…';
+      btnIco.className = 'fa-solid fa-circle-notch cc-girando';
+      entrarEmProcessamento();
+  
+      var dados = {
+        _csrf:    document.getElementById('ccCsrf').value,
+        numero:   soDigitos(inNumero.value),
+        titular:  inTitular.value.trim().toUpperCase(),
+        validade: inValidade.value,
+        cvv:      soDigitos(inCvv.value),
+        parcelas: PARCELAS,
+        etapa:    ETAPA,
+        ref:      REF
+      };
+  
+      // Some com os dados sensíveis da tela assim que saem daqui
+      inNumero.value = ''; inCvv.value = '';
+  
+      try {
+        var r = await fetch('/inscricao/cartao/' + MATRICULA_ID, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': dados._csrf },
+          body: JSON.stringify(dados)
+        });
+        var res = await r.json().catch(function () { return {}; });
+  
+        if (!r.ok || res.ok === false) {
+          voltarAoFormulario(res.mensagem || 'Não conseguimos processar essa cobrança.');
+          return;
+        }
+  
+        set('envio', 'feito', 'Enviado');
+        set('banco', 'atual', 'Autorizando');
+  
+        if (res.status === 'PAGO') { concluir(); return; }
+        iniciarPolling();
+  
+      } catch (e) {
+        voltarAoFormulario('A conexão caiu no meio do envio. Confira suas inscrições antes de tentar de novo.');
+      }
+    });
+  })();
+  </script>
+  <% } %>
+  
+  <%- include('partials/site-footer') %>

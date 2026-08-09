@@ -1,481 +1,435 @@
-<%- include('partials/site-head', { titulo: 'Inscrição' }) %>
+<%- include('partials/site-head', { titulo: 'Inscrição', cssExtra: '/inscrever.css' }) %>
 <%- include('partials/site-header') %>
 
 <%
-// ── helpers locais ─────────────────────────────────────────────────────────
-// etapaAtual: 'escolha' | 'pagar-taxa' | 'pagar-curso'
-// Em 'escolha'    → contrato PRIMEIRO; só depois de aceitar aparece o
-//                   pagamento (dois passos visuais na MESMA tela, sem
-//                   recarregar a página nem trocar de rota)
-// Em 'pagar-taxa' → formulário de pagamento da taxa (PIX ou Cartão)
-// Em 'pagar-curso'→ formulário de cartão parcelado do curso
+// ═══════════════════════════════════════════════════════════════════════════
+// INSCRIÇÃO — v3 (layout de aplicativo, pensado primeiro para o celular)
 //
-// 💡 PLANO PRESENCIAL DESATIVADO: os blocos ficaram no arquivo, envoltos num
-// scriptlet com condicao sempre falsa, pra poder ser religado depois sem
-// reescrever. O backend (cursos.js) também precisa aceitar 'PRESENCIAL' de
-// volta pra que isto volte a funcionar.
+// A lógica é a mesma de sempre: mesmas etapas, rotas, names de campo e CSRF.
+// O que mudou na v2:
+//   • Topo fixo com o nome do curso e as marcas de passo.
+//   • Contrato em sanfona: 5 grupos fechados no lugar da caixa rolável.
+//   • Barra de ação fixa no rodapé, com o valor ao lado do botão.
+//
+// O que mudou na v3:
+//   • O CARTÃO SAIU DAQUI. Assim como o PIX, o crédito agora tem tela própria
+//     de retorno (/inscricao/cartao/:matriculaId), com timer, validação e a
+//     mesma trilha de etapas. Esta tela só escolhe o plano e a forma.
+//   • Sem campos de cartão, sem máscaras: os botões levam para a tela de
+//     pagamento em vez de cobrar no clique — e os textos dizem isso.
+//
+// etapaAtual: 'escolha' | 'pagar-taxa' | 'pagar-curso'
+//
+// 💡 PLANO PRESENCIAL DESATIVADO: blocos preservados sob condição sempre
+// falsa. Religar exige também reativar 'PRESENCIAL' no cursos.js.
+// ═══════════════════════════════════════════════════════════════════════════
 
 const _planoBody = typeof plano !== 'undefined' ? plano : '';
 
-// Quando a página volta com erro de validação, o aluno já tinha aceitado o
-// contrato e estava no passo de pagamento — reabre direto nele, em vez de
-// obrigar a rolar o contrato de novo pra achar onde estava.
+// Voltou com erro de validação → o aluno já tinha aceitado o contrato,
+// então reabre direto no passo de pagamento.
 const _abrirNoPagamento = !!erro;
 
-// ── snippet reutilizável dos campos de cartão (antes era um partial) ──────
-// Basta chamar a função camposCartao() (via include/output unescaped) onde precisar do formulário de cartão.
-// Nomes dos campos alinhados ao backend (pagamentoCursoSchema / pagamentoTaxaSchema):
-// numero, titular, validade (MM/AA), cvv
-function camposCartao() {
-  return `
-    <div class="cartao-campos" style="margin-bottom:16px">
-      <label style="display:block;font-size:13px;font-weight:700;color:#4a5568;margin-bottom:6px">
-        Número do cartão
-      </label>
-      <input type="text" name="numero" class="js-numero-cartao" inputmode="numeric" maxlength="19"
-             placeholder="0000 0000 0000 0000" autocomplete="cc-number"
-             style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;margin-bottom:12px">
-
-      <label style="display:block;font-size:13px;font-weight:700;color:#4a5568;margin-bottom:6px">
-        Nome impresso no cartão
-      </label>
-      <input type="text" name="titular" placeholder="Nome como no cartão" autocomplete="cc-name"
-             style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;margin-bottom:12px;text-transform:uppercase">
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div>
-          <label style="display:block;font-size:13px;font-weight:700;color:#4a5568;margin-bottom:6px">Validade</label>
-          <input type="text" name="validade" class="js-validade-cartao" placeholder="MM/AA" maxlength="5"
-                 autocomplete="cc-exp" inputmode="numeric"
-                 style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px">
-        </div>
-        <div>
-          <label style="display:block;font-size:13px;font-weight:700;color:#4a5568;margin-bottom:6px">CVV</label>
-          <input type="text" name="cvv" class="js-cvv-cartao" inputmode="numeric" maxlength="4"
-                 autocomplete="cc-csc"
-                 style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px">
-        </div>
-      </div>
-    </div>
-  `;
-}
+// ── Passos ───────────────────────────────────────────────────────────────
+// À vista / passaporte → contrato, pagamento                       = 2
+// Parcelado            → contrato, plano, taxa, curso              = 4
+const _totalPassos = etapaAtual === 'escolha' ? 2 : 4;
+const _passoAtual  = etapaAtual === 'escolha' ? (_abrirNoPagamento ? 2 : 1)
+                   : etapaAtual === 'pagar-taxa' ? 3 : 4;
+const _trilha = _totalPassos === 2
+  ? ['Contrato', 'Pagamento']
+  : ['Contrato', 'Plano', 'Taxa de inscrição', 'Curso'];
 %>
 
-<main class="interna-wrap" style="padding-top:15px">
-  <div class="painel-card" style="max-width:540px;position:relative;margin-top:0">
+<main class="chk">
+  <div class="chk-quadro">
 
-    <!-- Botão voltar -->
-    <% if (etapaAtual === 'escolha') { %>
-    <a href="/cursos/<%= curso.id %>" class="cat-back"
-       title="Voltar ao curso"
-       style="position:absolute;top:16px;left:16px;width:34px;height:34px;
-              display:flex;align-items:center;justify-content:center;
-              background:#f7f8fa;border:1px solid #e2e8f0;border-radius:50%;
-              color:#4a5568;text-decoration:none;z-index:2">
-      <i class="fa-solid fa-arrow-left"></i>
-    </a>
-    <% } else { %>
-    <a href="/inscrever/<%= turma.id %>" class="cat-back"
-       title="Voltar"
-       style="position:absolute;top:16px;left:16px;width:34px;height:34px;
-              display:flex;align-items:center;justify-content:center;
-              background:#f7f8fa;border:1px solid #e2e8f0;border-radius:50%;
-              color:#4a5568;text-decoration:none;z-index:2">
-      <i class="fa-solid fa-arrow-left"></i>
-    </a>
-    <% } %>
+    <!-- ════════════════════════════════════════════════════════════════════
+         TOPO FIXO
+         ════════════════════════════════════════════════════════════════════ -->
+    <header class="chk-topo">
+      <div class="chk-topo-linha">
+        <% if (etapaAtual === 'escolha') { %>
+        <a href="/cursos/<%= curso.id %>" class="chk-voltar" aria-label="Voltar ao curso">
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <% } else { %>
+        <a href="/inscrever/<%= turma.id %>" class="chk-voltar" aria-label="Voltar">
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <% } %>
+        <div class="chk-topo-txt">
+          <strong><%= curso.nome %></strong>
+          <span class="num">
+            <% if (turma.aulas && turma.aulas.length) { %><%= turma.aulas[0].horario %> · <% } %>início
+            <%= new Date(turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
+          </span>
+        </div>
+      </div>
 
-    <!-- ── Barra de progresso ────────────────────────────────────────────
-         Quantos passos o aluno REALMENTE vê, por fluxo:
-           À vista / passaporte → 1) contrato  2) pagamento            = 2
-           Parcelado            → 1) contrato  2) plano  3) taxa
-                                  4) curso                            = 4
-         Na tela de escolha começa em 2 (à vista é o plano pré-selecionado);
-         o JS refaz a barra para 4 se o aluno trocar para parcelado.
-         ────────────────────────────────────────────────────────────────── -->
-    <%
-      const _totalPassos = etapaAtual === 'escolha' ? 2 : 4;
-      const _passoAtual  = etapaAtual === 'escolha' ? (_abrirNoPagamento ? 2 : 1)
-                         : etapaAtual === 'pagar-taxa' ? 3
-                         : 4; // pagar-curso
-      const _titulos = {
-        'contrato':    'Contrato',
-        'pagamento':   'Forma de pagamento',
-        'pagar-taxa':  'Taxa de inscrição',
-        'pagar-curso': 'Pagamento do curso',
-      };
-      const _tituloAtual = etapaAtual === 'escolha'
-            ? (_abrirNoPagamento ? _titulos['pagamento'] : _titulos['contrato'])
-            : _titulos[etapaAtual];
-    %>
-    <div id="barraProgresso"
-         style="display:flex;gap:5px;margin:0 0 14px;max-width:260px;margin-left:auto;margin-right:auto">
-      <% for (let i = 1; i <= _totalPassos; i++) { %>
-      <div class="prog-step <%= i <= _passoAtual ? 'active' : '' %>"></div>
+      <div class="chk-passos" id="barraProgresso" aria-hidden="true">
+        <% for (let i = 1; i <= _totalPassos; i++) { %>
+        <div class="chk-passo <%= i < _passoAtual ? 'feito' : i === _passoAtual ? 'agora' : '' %>"><span></span></div>
+        <% } %>
+      </div>
+      <p class="chk-rot" id="rotuloEtapa" aria-live="polite">
+        <span id="rotuloTitulo"><%= _trilha[_passoAtual - 1] %></span>
+        <i class="num" id="rotuloContagem"><%= _passoAtual %>/<%= _totalPassos %></i>
+      </p>
+    </header>
+
+    <div class="chk-corpo">
+
+      <% if (erro) { %>
+      <div class="chk-erro anima" role="alert">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <div><strong>Não foi possível continuar</strong><%= erro %></div>
+      </div>
       <% } %>
-    </div>
 
-    <p id="rotuloEtapa"
-       style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;
-              color:#cc0000;margin:0 0 8px;text-align:center">
-      Passo <%= _passoAtual %> de <%= _totalPassos %> — <%= _tituloAtual %>
-    </p>
+      <!-- ══════════════════════════════════════════════════════════════════
+           ETAPA 1 — contrato e escolha do plano na mesma tela
+           ══════════════════════════════════════════════════════════════════ -->
+      <% if (etapaAtual === 'escolha') { %>
 
-    <h1 style="text-align:center"><%= curso.nome %></h1>
-    <p class="painel-sub" style="text-align:center">
-      <% if (turma.aulas && turma.aulas.length) { %><%= turma.aulas[0].horario %> · <% } %>início em
-      <%= new Date(turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
-    </p>
+      <!-- ───────────────── PASSO A: contrato ───────────────── -->
+      <div id="passoContrato" <% if (_abrirNoPagamento) { %>hidden<% } %>>
+        <div class="chk-cab anima" style="--d:0">
+          <h2>Contrato de matrícula</h2>
+          <p>Toque em cada item para ler. Depois de concordar, você escolhe como pagar.</p>
+        </div>
 
-    <% if (erro) { %>
-    <div class="aviso-erro">
-      <i class="fa-solid fa-circle-exclamation"></i> <%= erro %>
-    </div>
-    <% } %>
+        <div class="chk-sanfona anima" style="--d:1">
+          <details class="chk-grupo">
+            <summary>
+              <span class="chk-grupo-n num">1</span>
+              <span class="chk-grupo-t">O curso e a turma<em>Objeto, início e vigência</em></span>
+              <i class="fa-solid fa-chevron-down chk-seta"></i>
+            </summary>
+            <div class="chk-corpo-grupo">
+              <h4>Contratada</h4>
+              <p>CRUZ VERMELHA BRASILEIRA — FILIAL DO ESTADO DO RIO DE JANEIRO, neste ato
+              representada por seu Presidente, LUIZ CARLOS DOS SANTOS. Fundamento legal:
+              Constituição Federal art. 209; Lei 9.394/96; Lei 8.078/90; Lei 13.709/18;
+              arts. 421, 422 e 593 a 609 do Código Civil; legislação educacional aplicável.</p>
 
-    <!-- ══════════════════════════════════════════════════════════════════
-         ETAPA 1 — dois passos na MESMA tela:
-           PASSO A (#passoContrato)  → ler e aceitar o contrato
-           PASSO B (#passoPagamento) → escolher plano e forma de pagamento
-         A troca acontece só no navegador; nada é enviado ao servidor entre
-         um passo e outro, então voltar pro contrato não perde nada.
-         ══════════════════════════════════════════════════════════════════ -->
-    <% if (etapaAtual === 'escolha') { %>
+              <h4>Cláusula 1 — Objeto</h4>
+              <p>A prestação de serviços educacionais relativos ao curso identificado neste
+              instrumento, compreendendo aulas, atividades práticas, avaliações, material
+              institucional quando previsto, certificação e demais atividades constantes do
+              plano pedagógico.</p>
 
-    <!-- ───────────────────── PASSO A: contrato ───────────────────── -->
-    <div id="passoContrato" <% if (_abrirNoPagamento) { %>style="display:none"<% } %>>
-      <p style="font-size:14px;text-align:center;color:#718096;margin:0 0 16px">
-        Leia os termos abaixo. Depois de concordar, você escolhe como pagar.
-      </p>
+              <h4>Cláusula 2 — Início da turma</h4>
+              <p>O curso somente terá início após a confirmação de, no mínimo, 15 (quinze)
+              alunos regularmente matriculados. Caso o número mínimo não seja atingido, a
+              CONTRATADA poderá remarcar a data de início ou cancelar a turma, assegurando a
+              restituição integral dos valores pagos, observada a legislação consumerista.</p>
 
-      <div style="background:#f7f8fa;border:1px solid #e2e8f0;border-radius:10px;padding:16px;
-                  font-size:13px;line-height:1.75;color:#4a5568;max-height:280px;
-                  overflow-y:auto;margin-bottom:16px">
-        <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS EDUCACIONAIS</strong><br><br>
+              <h4>Cláusula 3 — Vigência</h4>
+              <p>O contrato vigorará da assinatura até a conclusão do curso ou sua rescisão.</p>
+            </div>
+          </details>
 
-        <strong>CONTRATADA</strong><br>
-        CRUZ VERMELHA BRASILEIRA – FILIAL DO ESTADO DO RIO DE JANEIRO, neste ato
-        representada por seu Presidente, LUIZ CARLOS DOS SANTOS.<br><br>
+          <details class="chk-grupo">
+            <summary>
+              <span class="chk-grupo-n num">2</span>
+              <span class="chk-grupo-t">Deveres das partes<em>Escola, aluno e matrícula</em></span>
+              <i class="fa-solid fa-chevron-down chk-seta"></i>
+            </summary>
+            <div class="chk-corpo-grupo">
+              <h4>Cláusula 4 — Obrigações da contratada</h4>
+              <p>Executar o curso; disponibilizar docentes qualificados; infraestrutura
+              adequada; calendário; avaliações; certificados; substituir docentes quando
+              necessário; alterar cronograma por motivo pedagógico, força maior ou caso
+              fortuito.</p>
 
-        <strong>Fundamento Legal</strong><br>
-        Constituição Federal art. 209; Lei 9.394/96; Lei 8.078/90; Lei 13.709/18;
-        arts. 421, 422 e 593 a 609 do Código Civil; legislação educacional aplicável.<br><br>
+              <h4>Cláusula 5 — Obrigações do contratante</h4>
+              <p>Cumprir o regimento; manter frequência mínima; respeitar docentes e alunos;
+              manter adimplência; apresentar documentação; utilizar corretamente instalações
+              e materiais.</p>
 
-        <strong>Cláusula 1 - Objeto</strong><br>
-        A prestação de serviços educacionais relativos ao curso identificado neste
-        instrumento, compreendendo aulas, atividades práticas, avaliações, material
-        institucional quando previsto, certificação e demais atividades constantes
-        do plano pedagógico.<br><br>
+              <h4>Cláusula 6 — Matrícula</h4>
+              <p>A matrícula somente será efetivada após entrega dos documentos exigidos e
+              pagamento previsto.</p>
+            </div>
+          </details>
 
-        <strong>Cláusula 2 - Início da Turma</strong><br>
-        O curso somente terá início após a confirmação de, no mínimo, 15 (quinze)
-        alunos regularmente matriculados. Caso o número mínimo não seja atingido,
-        a CONTRATADA poderá remarcar a data de início ou cancelar a turma,
-        assegurando a restituição integral dos valores pagos, observada a
-        legislação consumerista.<br><br>
+          <details class="chk-grupo">
+            <summary>
+              <span class="chk-grupo-n num">3</span>
+              <span class="chk-grupo-t">Valores e cancelamento<em>Pagamento, atraso e desistência</em></span>
+              <i class="fa-solid fa-chevron-down chk-seta"></i>
+            </summary>
+            <div class="chk-corpo-grupo">
+              <h4>Cláusula 7 — Preço e pagamento</h4>
+              <p>Os valores constantes neste contrato poderão ser pagos conforme plano
+              financeiro acima. Incidirão reajustes apenas na forma da legislação aplicável.</p>
 
-        <strong>Cláusula 3 - Vigência</strong><br>
-        O contrato vigorará da assinatura até a conclusão do curso ou sua rescisão.<br><br>
+              <h4>Cláusula 8 — Inadimplemento</h4>
+              <p>Multa de 2%, juros de 1% ao mês e correção monetária, sem prejuízo da
+              cobrança judicial ou extrajudicial.</p>
 
-        <strong>Cláusula 4 - Obrigações da Contratada</strong><br>
-        Executar o curso; disponibilizar docentes qualificados; infraestrutura
-        adequada; calendário; avaliações; certificados; substituir docentes quando
-        necessário; alterar cronograma por motivo pedagógico, força maior ou caso
-        fortuito.<br><br>
+              <h4>Cláusula 9 — Cancelamento</h4>
+              <p>O cancelamento deverá ser solicitado por escrito, observadas as regras do
+              regimento escolar e do Código de Defesa do Consumidor.</p>
+            </div>
+          </details>
 
-        <strong>Cláusula 5 - Obrigações do Contratante</strong><br>
-        Cumprir o regimento; manter frequência mínima; respeitar docentes e alunos;
-        manter adimplência; apresentar documentação; utilizar corretamente
-        instalações e materiais.<br><br>
+          <details class="chk-grupo">
+            <summary>
+              <span class="chk-grupo-n num">4</span>
+              <span class="chk-grupo-t">Certificado<em>O que é exigido para receber</em></span>
+              <i class="fa-solid fa-chevron-down chk-seta"></i>
+            </summary>
+            <div class="chk-corpo-grupo">
+              <h4>Cláusula 10 — Certificação</h4>
+              <p>A certificação dependerá da aprovação acadêmica, frequência mínima, estágio
+              quando exigido e inexistência de pendências documentais.</p>
+            </div>
+          </details>
 
-        <strong>Cláusula 6 - Matrícula</strong><br>
-        A matrícula somente será efetivada após entrega dos documentos exigidos e
-        pagamento previsto.<br><br>
+          <details class="chk-grupo">
+            <summary>
+              <span class="chk-grupo-n num">5</span>
+              <span class="chk-grupo-t">Seus dados e disposições finais<em>LGPD, direitos autorais e foro</em></span>
+              <i class="fa-solid fa-chevron-down chk-seta"></i>
+            </summary>
+            <div class="chk-corpo-grupo">
+              <h4>Cláusula 11 — LGPD</h4>
+              <p>A CONTRATADA atuará como Controladora dos dados pessoais coletados para
+              execução deste contrato. Os dados serão tratados exclusivamente para matrícula,
+              gestão acadêmica, emissão de certificados, obrigações legais e comunicações
+              institucionais, observando a Lei nº 13.709/2018. O aluno poderá exercer os
+              direitos previstos no art. 18 da LGPD. Os dados somente serão compartilhados
+              quando exigido por lei, determinação judicial ou indispensáveis à execução
+              deste contrato.</p>
 
-        <strong>Cláusula 7 - Preço e Pagamento</strong><br>
-        Os valores constantes neste contrato poderão ser pagos conforme plano
-        financeiro acima. Incidirão reajustes apenas na forma da legislação
-        aplicável.<br><br>
+              <h4>Cláusula 12 — Propriedade intelectual</h4>
+              <p>Todo material didático permanece protegido pela legislação de direitos
+              autorais, sendo vedada sua reprodução sem autorização.</p>
 
-        <strong>Cláusula 8 - Inadimplemento</strong><br>
-        Multa de 2%, juros de 1% ao mês e correção monetária, sem prejuízo da
-        cobrança judicial ou extrajudicial.<br><br>
+              <h4>Cláusula 13 — Anticorrupção e integridade</h4>
+              <p>As partes comprometem-se a observar a Lei nº 12.846/2013 e princípios de
+              integridade institucional.</p>
 
-        <strong>Cláusula 9 - Cancelamento</strong><br>
-        O cancelamento deverá ser solicitado por escrito, observadas as regras do
-        regimento escolar e do Código de Defesa do Consumidor.<br><br>
+              <h4>Cláusula 14 — Assinatura eletrônica</h4>
+              <p>As partes reconhecem a validade de assinatura eletrônica, conforme Lei nº
+              14.063/2020.</p>
 
-        <strong>Cláusula 10 - Certificação</strong><br>
-        A certificação dependerá da aprovação acadêmica, frequência mínima,
-        estágio quando exigido e inexistência de pendências documentais.<br><br>
+              <h4>Cláusula 15 — Disposições gerais</h4>
+              <p>Aplicam-se subsidiariamente o Regimento Escolar e a legislação vigente.</p>
 
-        <strong>Cláusula 11 - LGPD</strong><br>
-        A CONTRATADA atuará como Controladora dos dados pessoais coletados para
-        execução deste contrato. Os dados serão tratados exclusivamente para
-        matrícula, gestão acadêmica, emissão de certificados, obrigações legais e
-        comunicações institucionais, observando a Lei nº 13.709/2018. O aluno
-        poderá exercer os direitos previstos no art. 18 da LGPD. Os dados somente
-        serão compartilhados quando exigido por lei, determinação judicial ou
-        indispensáveis à execução deste contrato.<br><br>
+              <h4>Cláusula 16 — Foro</h4>
+              <p>Fica eleito o foro da Comarca da Capital do Estado do Rio de Janeiro.</p>
+            </div>
+          </details>
+        </div>
 
-        <strong>Cláusula 12 - Propriedade Intelectual</strong><br>
-        Todo material didático permanece protegido pela legislação de direitos
-        autorais, sendo vedada sua reprodução sem autorização.<br><br>
+        <label class="chk-aceite anima" style="--d:2">
+          <input type="checkbox" id="aceiteContrato" <% if (_abrirNoPagamento) { %>checked<% } %>>
+          <span class="chk-chave" aria-hidden="true"></span>
+          <span>Li e concordo com os termos do contrato de matrícula.</span>
+        </label>
 
-        <strong>Cláusula 13 - Anticorrupção e Integridade</strong><br>
-        As partes comprometem-se a observar a Lei nº 12.846/2013 e princípios de
-        integridade institucional.<br><br>
+        <div class="chk-acao">
+          <button id="btnIrPagamento" class="chk-btn" type="button" disabled>
+            Continuar <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+        <p class="chk-nota-acao">Nada é cobrado neste passo.</p>
+      </div><!-- /passoContrato -->
 
-        <strong>Cláusula 14 - Assinatura Eletrônica</strong><br>
-        As partes reconhecem a validade de assinatura eletrônica, conforme Lei nº
-        14.063/2020.<br><br>
+      <!-- ───────────────── PASSO B: pagamento ───────────────── -->
+      <div id="passoPagamento" <% if (!_abrirNoPagamento) { %>hidden<% } %>>
 
-        <strong>Cláusula 15 - Disposições Gerais</strong><br>
-        Aplicam-se subsidiariamente o Regimento Escolar e a legislação vigente.<br><br>
+        <button id="btnVoltarContrato" type="button" class="chk-link">
+          <i class="fa-solid fa-arrow-left"></i> Rever o contrato
+        </button>
 
-        <strong>Cláusula 16 - Foro</strong><br>
-        Fica eleito o foro da Comarca da Capital do Estado do Rio de Janeiro.
-      </div>
-
-      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;
-                    font-size:14px;color:#4a5568;margin-bottom:20px">
-        <input type="checkbox" id="aceiteContrato" <% if (_abrirNoPagamento) { %>checked<% } %>
-               style="margin-top:2px;width:16px;height:16px;accent-color:#cc0000;cursor:pointer;flex:none">
-        Li e concordo com os termos do contrato de matrícula.
-      </label>
-
-      <button id="btnIrPagamento" class="btn-acao" type="button" disabled>
-        Continuar para o pagamento
-      </button>
-      <p style="font-size:12px;color:#718096;margin:10px 0 0;text-align:center">
-        Nada é cobrado neste passo — a forma de pagamento vem a seguir.
-      </p>
-    </div><!-- /passoContrato -->
-
-    <!-- ──────────────────── PASSO B: pagamento ──────────────────── -->
-    <div id="passoPagamento" <% if (!_abrirNoPagamento) { %>style="display:none"<% } %>>
-
-      <button id="btnVoltarContrato" type="button"
-              style="background:none;border:none;padding:0;margin:0 0 14px;cursor:pointer;
-                     font:inherit;font-size:13px;color:#718096;display:flex;align-items:center;gap:6px">
-        <i class="fa-solid fa-arrow-left" style="font-size:11px"></i> Rever o contrato
-      </button>
-
-      <div class="aviso-neutro" style="margin-bottom:18px">
-        <i class="fa-solid fa-circle-check" style="color:#166534"></i>
-        <span>Contrato aceito. Agora escolha como quer pagar — <strong>tudo acontece
-        nesta mesma janela</strong>, você não é levado para fora do site.</span>
-      </div>
+        <div class="chk-aviso chk-aviso-ok">
+          <i class="fa-solid fa-circle-check"></i>
+          <span>Contrato aceito. O pagamento acontece <strong>na próxima tela deste site</strong>.</span>
+        </div>
 
         <% if (ehPassaporte) { %>
-        <!-- ── Passaporte: somente à vista presencial ────────────────── -->
+        <!-- ── Passaporte: à vista, pago na secretaria ─────────────────── -->
         <form method="POST" action="/inscrever/<%= turma.id %>" novalidate>
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <input type="hidden" name="plano" value="A_VISTA">
 
-          <!-- Resumo de valores -->
-          <div class="resumo-box" style="margin-bottom:20px">
-            <div class="resumo-linha">
-              <span>Valor do curso</span>
-              <strong><%= formatBRL(aVista.valorCurso) %></strong>
+          <div class="chk-resumo">
+            <div class="chk-linha">
+              <span>Valor do curso</span><strong class="num"><%= formatBRL(aVista.valorCurso) %></strong>
             </div>
             <% if (Number(aVista.valorTaxaMatricula) > 0) { %>
-            <div class="resumo-linha">
-              <span>Taxa de matrícula</span>
-              <strong><%= formatBRL(aVista.valorTaxaMatricula) %></strong>
+            <div class="chk-linha">
+              <span>Taxa de matrícula</span><strong class="num"><%= formatBRL(aVista.valorTaxaMatricula) %></strong>
             </div>
             <% } %>
-            <div class="resumo-linha resumo-total">
-              <span>Total</span>
-              <strong style="color:#cc0000"><%= formatBRL(aVista.total) %></strong>
+            <div class="chk-linha chk-linha-total">
+              <span>Total</span><strong class="num"><%= formatBRL(aVista.total) %></strong>
             </div>
-            <small style="display:block;font-size:12px;color:#718096;margin-top:8px;text-align:center">
-              + 1 kg de alimento não perecível, entregue na secretaria.
-            </small>
+            <p class="chk-nota">+ 1 kg de alimento não perecível, entregue na secretaria.</p>
           </div>
 
-          <div class="aviso-info" style="margin-bottom:16px">
-            <i class="fa-solid fa-circle-info"></i>
-            <span>Sua inscrição é registrada agora e o <strong>pagamento é feito
-            presencialmente na secretaria</strong>. Nenhuma cobrança é gerada online.</span>
+          <div class="chk-aviso">
+            <i class="fa-solid fa-building-columns"></i>
+            <span>A inscrição é registrada agora e o <strong>pagamento é feito na
+            secretaria</strong>. Nenhuma cobrança é gerada online.</span>
           </div>
 
-          <p style="font-size:13px;font-weight:700;color:#4a5568;margin:0 0 12px;text-align:center">
-            Forma de pagamento na secretaria
-          </p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px">
-            <label class="forma-card">
-              <input type="radio" name="forma" value="PIX" required> PIX
+          <p class="chk-secao">Como você vai pagar na secretaria</p>
+          <div class="chk-formas chk-formas-4">
+            <label class="chk-forma">
+              <input type="radio" name="forma" value="PIX" required>
+              <i class="fa-solid fa-mobile-screen-button"></i>PIX
             </label>
-            <label class="forma-card">
-              <input type="radio" name="forma" value="CREDITO"> Cartão de Crédito
+            <label class="chk-forma">
+              <input type="radio" name="forma" value="CREDITO">
+              <i class="fa-solid fa-credit-card"></i>Crédito
             </label>
-            <label class="forma-card">
-              <input type="radio" name="forma" value="DEBITO"> Cartão de Débito
+            <label class="chk-forma">
+              <input type="radio" name="forma" value="DEBITO">
+              <i class="fa-regular fa-credit-card"></i>Débito
             </label>
-            <label class="forma-card">
-              <input type="radio" name="forma" value="DINHEIRO"> Dinheiro
+            <label class="chk-forma">
+              <input type="radio" name="forma" value="DINHEIRO">
+              <i class="fa-solid fa-money-bill-wave"></i>Dinheiro
             </label>
           </div>
 
-          <button id="btnConfirmar" class="btn-acao" type="submit" disabled>
-            Confirmar inscrição
-          </button>
+          <div class="chk-acao">
+            <div class="chk-acao-valor"><em>Total</em><strong class="num"><%= formatBRL(aVista.total) %></strong></div>
+            <button id="btnConfirmar" class="chk-btn" type="submit" disabled>
+              Confirmar inscrição <i class="fa-solid fa-arrow-right"></i>
+            </button>
+          </div>
         </form>
 
         <% } else { %>
-        <!-- ── CPF/CNPJ: à vista online ou parcelado ─────────────────── -->
+        <!-- ── CPF/CNPJ: à vista online ou parcelado ───────────────────── -->
 
-        <!-- Seletor de plano -->
-        <p style="font-size:13px;font-weight:700;color:#4a5568;margin:0 0 10px">Plano de pagamento</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
-          <label id="labelAVista"
-                 style="display:flex;flex-direction:column;gap:3px;border:2px solid #cc0000;border-radius:12px;padding:14px 12px;cursor:pointer;box-shadow:0 0 0 3px rgba(204,0,0,.08);background:#fff">
-            <input type="radio" name="_planoUI" value="A_VISTA" checked style="display:none">
-            <span style="font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#718096">À vista</span>
-            <span style="font-size:22px;font-weight:900;color:#0f1318;line-height:1.2"><%= formatBRL(aVista.total) %></span>
-            <span style="font-size:12px;color:#718096">curso + taxa</span>
+        <p class="chk-secao">Plano de pagamento</p>
+        <div class="chk-planos">
+          <label id="labelAVista" class="chk-plano ativo">
+            <input type="radio" name="_planoUI" value="A_VISTA" checked>
+            <span class="chk-plano-rot">À vista</span>
+            <span class="chk-plano-v num"><%= formatBRL(aVista.total) %></span>
+            <span class="chk-plano-o">um pagamento só</span>
           </label>
 
           <%
             // ══════════════════════════════════════════════════════════════
-            // CARD "PRESENCIAL" — DESATIVADO.
-            // O `if (false)` mantém o markup no arquivo sem renderizar nada.
-            // Para religar: trocar por `if (true)` E reativar o plano
-            // PRESENCIAL no cursos.js (validação, branch do POST /inscrever
-            // e guards das rotas /pagar-taxa e /pagar-curso).
+            // CARD "PRESENCIAL" — DESATIVADO. `if (false)` preserva o markup.
+            // Religar: trocar por `if (true)` E reativar PRESENCIAL no
+            // cursos.js (validação, POST /inscrever, guards das rotas).
             // ══════════════════════════════════════════════════════════════
           %>
           <% if (false) { %>
-          <label id="labelPresencial"
-                 style="display:flex;flex-direction:column;gap:3px;border:2px solid #e2e8f0;border-radius:12px;padding:14px 12px;cursor:pointer;background:#fff">
-            <input type="radio" name="_planoUI" value="PRESENCIAL" style="display:none">
-            <span style="font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#718096">Presencial</span>
-            <span style="font-size:22px;font-weight:900;color:#0f1318;line-height:1.2"><%= formatBRL(aVista.total) %></span>
-            <span style="font-size:12px;color:#718096">paga taxa online</span>
+          <label id="labelPresencial" class="chk-plano">
+            <input type="radio" name="_planoUI" value="PRESENCIAL">
+            <span class="chk-plano-rot">Presencial</span>
+            <span class="chk-plano-v num"><%= formatBRL(aVista.total) %></span>
+            <span class="chk-plano-o">só a taxa online</span>
           </label>
           <% } %>
 
           <% if (parcelado && parceladoComJuros) { %>
-            <label id="labelParcelado"
-                   style="display:flex;flex-direction:column;gap:3px;border:2px solid #e2e8f0;border-radius:12px;padding:14px 12px;cursor:pointer;background:#fff">
-              <input type="radio" name="_planoUI" value="PARCELADO" style="display:none">
-              <span style="font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#718096">Parcelado</span>
-              <span style="font-size:22px;font-weight:900;color:#0f1318;line-height:1.2">
-                <%= parceladoComJuros.numParcelas %>× de <%= formatBRL(parceladoComJuros.valorParcela) %>
-              </span>
-              <span style="display:flex;justify-content:space-between;font-size:12px;color:#718096;margin-top:4px">
-                <span>Curso (c/ juros)</span><span><%= formatBRL(parceladoComJuros.cursoComJuros) %></span>
-              </span>
-              <span style="display:flex;justify-content:space-between;font-size:12px;color:#718096">
-                <span>Taxa de inscrição</span><span><%= formatBRL(parceladoComJuros.taxa) %></span>
-              </span>
-              <span style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;color:#0f1318;margin-top:2px;padding-top:4px;border-top:1px solid #e2e8f0">
-                <span>Total</span><span><%= formatBRL(parceladoComJuros.total) %></span>
-              </span>
-            </label>
-            <% } %>
+          <label id="labelParcelado" class="chk-plano">
+            <input type="radio" name="_planoUI" value="PARCELADO">
+            <span class="chk-plano-rot">Parcelado</span>
+            <span class="chk-plano-v num"><%= parceladoComJuros.numParcelas %>× <%= formatBRL(parceladoComJuros.valorParcela) %></span>
+            <span class="chk-plano-o">total <%= formatBRL(parceladoComJuros.total) %></span>
+          </label>
+          <% } %>
         </div>
 
-        <!-- ── SUB-BLOCO: À Vista ───────────────────────────────────────── -->
+        <!-- ── À vista ──────────────────────────────────────────────────── -->
         <div id="blocoAVista">
           <form method="POST" action="/inscrever/<%= turma.id %>" novalidate id="formAVista">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <input type="hidden" name="plano" value="A_VISTA">
 
-            <!-- Resumo -->
-            <div class="resumo-box" style="margin-bottom:16px">
-              <div class="resumo-linha">
-                <span>Valor do curso</span>
-                <strong><%= formatBRL(aVista.valorCurso) %></strong>
+            <div class="chk-resumo">
+              <div class="chk-linha">
+                <span>Valor do curso</span><strong class="num"><%= formatBRL(aVista.valorCurso) %></strong>
               </div>
               <% if (Number(aVista.valorTaxaMatricula) > 0) { %>
-              <div class="resumo-linha">
-                <span>Taxa de matrícula</span>
-                <strong><%= formatBRL(aVista.valorTaxaMatricula) %></strong>
+              <div class="chk-linha">
+                <span>Taxa de matrícula</span><strong class="num"><%= formatBRL(aVista.valorTaxaMatricula) %></strong>
               </div>
               <% } %>
-              <div class="resumo-linha resumo-total">
-                <span>Total</span>
-                <strong style="color:#cc0000"><%= formatBRL(aVista.total) %></strong>
+              <div class="chk-linha chk-linha-total">
+                <span>Total</span><strong class="num"><%= formatBRL(aVista.total) %></strong>
               </div>
             </div>
 
-            <!-- Seletor de forma -->
-            <p style="font-size:13px;font-weight:700;color:#4a5568;margin:0 0 10px">Forma de pagamento</p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
-              <label id="formaAvistaPix"
-                     style="display:flex;align-items:center;justify-content:center;gap:8px;border:2px solid #cc0000;border-radius:10px;padding:11px 8px;cursor:pointer;font-size:14px;font-weight:700;color:#cc0000;background:#fff;box-shadow:0 0 0 3px rgba(204,0,0,.08)">
-                <input type="radio" name="forma" value="PIX" checked style="display:none">
-                <i class="fa-solid fa-mobile-screen-button" style="color:#cc0000"></i> PIX
+            <p class="chk-secao">Forma de pagamento</p>
+            <div class="chk-formas">
+              <label id="formaAvistaPix" class="chk-forma">
+                <input type="radio" name="forma" value="PIX">
+                <i class="fa-solid fa-mobile-screen-button"></i>PIX
               </label>
-              <label id="formaAvistaCredito"
-                     style="display:flex;align-items:center;justify-content:center;gap:8px;border:2px solid #e2e8f0;border-radius:10px;padding:11px 8px;cursor:pointer;font-size:14px;font-weight:700;color:#4a5568;background:#fff">
-                <input type="radio" name="forma" value="CREDITO" style="display:none">
-                <i class="fa-solid fa-credit-card" style="color:#cc0000"></i> Cartão de Crédito
+              <label id="formaAvistaCredito" class="chk-forma">
+                <input type="radio" name="forma" value="CREDITO">
+                <i class="fa-solid fa-credit-card"></i>Crédito
               </label>
             </div>
 
-            <!-- Aviso do que acontece ao continuar — alterna junto com a forma -->
-            <div class="aviso-info" style="margin-bottom:16px" id="avisoAVistaPix">
+            <div class="chk-aviso" id="avisoAVistaPix" hidden>
               <i class="fa-solid fa-qrcode"></i>
-              <span>Ao continuar, o <strong>QR Code PIX aparece na próxima tela deste
-              mesmo site</strong>. Você paga pelo app do banco e volta para cá — a
-              página avança sozinha quando o pagamento for confirmado.
-              <strong>Não feche esta janela</strong> enquanto isso.</span>
+              <span>O <strong>QR Code aparece na próxima tela deste site</strong>. Pague pelo
+              app do banco e volte: a página avança sozinha quando o banco confirmar.
+              <strong>Não feche esta janela.</strong></span>
             </div>
-            <div class="aviso-info" style="margin-bottom:16px;display:none" id="avisoAVistaCredito">
+            <div class="chk-aviso" id="avisoAVistaCredito" hidden>
               <i class="fa-solid fa-credit-card"></i>
-              <span>Ao continuar, a cobrança é processada <strong>sem sair desta
-              janela</strong>. Pode levar alguns segundos — não atualize nem feche
-              a página.</span>
+              <span>Você preenche o cartão <strong>na próxima tela deste site</strong> e
+              acompanha a autorização do banco por lá. O prazo para concluir é de
+              <strong>5 minutos</strong>.</span>
             </div>
 
-            <!-- Formulário de cartão (oculto por padrão — só aparece quando CREDITO selecionado) -->
-            <div id="camposCartaoAVista" style="display:none">
-              <%- camposCartao() %>
+            <div class="chk-acao">
+              <div class="chk-acao-valor"><em>Total</em><strong class="num"><%= formatBRL(aVista.total) %></strong></div>
+              <button class="chk-btn" type="submit" id="btnAVista" disabled>
+                <span id="txtBtnAVista">Escolha como pagar</span> <i class="fa-solid fa-arrow-right"></i>
+              </button>
             </div>
-
-            <button class="btn-acao" type="submit">Continuar</button>
           </form>
         </div>
 
-        <!-- ── SUB-BLOCO: Parcelado ────────────────────────────────────── -->
+        <!-- ── Parcelado ────────────────────────────────────────────────── -->
         <% if (parcelado && parceladoComJuros) { %>
-        <div id="blocoParcelado" style="display:none">
+        <div id="blocoParcelado" hidden>
           <form method="POST" action="/inscrever/<%= turma.id %>" novalidate id="formParcelado">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <input type="hidden" name="plano" value="PARCELADO">
 
-            <div class="aviso-info" style="margin-bottom:16px">
-              <i class="fa-solid fa-circle-info"></i>
-              <span>São <strong>dois pagamentos</strong>: primeiro a taxa de inscrição
-              (PIX ou cartão) e, em seguida, o curso parcelado no cartão. As duas
-              etapas acontecem <strong>aqui mesmo, sem sair do site</strong>.</span>
+            <div class="chk-aviso">
+              <i class="fa-solid fa-list-check"></i>
+              <span>São <strong>dois pagamentos</strong>: a taxa de inscrição agora (PIX ou
+              cartão) e, em seguida, o curso parcelado no cartão. Cada um tem a sua tela.</span>
             </div>
 
-            <!-- Resumo parcelado -->
-            <div class="resumo-box" style="margin-bottom:16px">
-              <div class="resumo-linha">
-                <span>Taxa de inscrição (agora)</span>
-                <strong><%= formatBRL(parcelado.valorTaxaMatricula) %></strong>
+            <div class="chk-resumo">
+              <div class="chk-linha">
+                <span>Taxa de inscrição (agora)</span><strong class="num"><%= formatBRL(parcelado.valorTaxaMatricula) %></strong>
               </div>
-              <div class="resumo-linha">
-                <span>Curso (<%= parcelado.numParcelas %>× no cartão)</span>
-                <strong><%= formatBRL(parceladoComJuros.valorParcela) %>/mês</strong>
+              <div class="chk-linha">
+                <span>Curso, <%= parcelado.numParcelas %>× no cartão</span><strong class="num"><%= formatBRL(parceladoComJuros.valorParcela) %>/mês</strong>
               </div>
-              <div class="resumo-linha resumo-total">
-                <span>Total</span>
-                <strong style="color:#cc0000"><%= formatBRL(parceladoComJuros.total) %></strong>
+              <div class="chk-linha chk-linha-total">
+                <span>Total</span><strong class="num"><%= formatBRL(parceladoComJuros.total) %></strong>
               </div>
               <% if (parceladoComJuros.taxaJuros > 0) { %>
-              <small style="display:block;font-size:12px;color:#718096;margin-top:6px;text-align:center">
-                Inclui <%= parceladoComJuros.taxaJuros %>% de juros
-              </small>
+              <p class="chk-nota">Inclui <%= parceladoComJuros.taxaJuros %>% de juros.</p>
               <% } %>
             </div>
 
-            <button class="btn-acao" type="submit">Ir para pagamento da taxa</button>
+            <div class="chk-acao">
+              <div class="chk-acao-valor"><em>Agora</em><strong class="num"><%= formatBRL(parcelado.valorTaxaMatricula) %></strong></div>
+              <button class="chk-btn" type="submit">Continuar <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
           </form>
         </div>
         <% } %>
@@ -486,326 +440,262 @@ function camposCartao() {
           // ══════════════════════════════════════════════════════════════
         %>
         <% if (false) { %>
-        <div id="blocoPresencial" style="display:none">
+        <div id="blocoPresencial" hidden>
           <form method="POST" action="/inscrever/<%= turma.id %>" novalidate id="formPresencial">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <input type="hidden" name="plano" value="PRESENCIAL">
 
-            <div class="aviso-info" style="margin-bottom:16px">
-              <i class="fa-solid fa-circle-info"></i>
-              Você pagará apenas a <strong>taxa de inscrição</strong> agora.
-              O restante do curso será pago presencialmente na secretaria.
+            <div class="chk-aviso">
+              <i class="fa-solid fa-building-columns"></i>
+              <span>Você paga apenas a <strong>taxa de inscrição</strong> agora. O curso é
+              pago na secretaria.</span>
             </div>
 
-            <!-- Resumo presencial -->
-            <div class="resumo-box">
-              <div class="resumo-linha">
-                <span>Taxa de inscrição</span>
-                <strong><%= formatBRL(aVista.valorTaxaMatricula) %></strong>
+            <div class="chk-resumo">
+              <div class="chk-linha">
+                <span>Taxa de inscrição</span><strong class="num"><%= formatBRL(aVista.valorTaxaMatricula) %></strong>
               </div>
-              <div class="resumo-linha">
-                <span>Curso</span>
-                <strong><%= formatBRL(aVista.valorCurso) %></strong>
+              <div class="chk-linha">
+                <span>Curso</span><strong class="num"><%= formatBRL(aVista.valorCurso) %></strong>
               </div>
-              <div class="resumo-linha resumo-total">
-                <span>Total</span>
-                <strong style="color:#cc0000"><%= formatBRL(aVista.total) %></strong>
+              <div class="chk-linha chk-linha-total">
+                <span>Total</span><strong class="num"><%= formatBRL(aVista.total) %></strong>
               </div>
             </div>
 
-            <button class="btn-acao" type="submit">Ir para pagamento da taxa</button>
+            <div class="chk-acao">
+              <button class="chk-btn" type="submit">Pagar a taxa <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
           </form>
         </div>
         <% } %>
 
         <% } // fim else CPF/CNPJ %>
-    </div><!-- /passoPagamento -->
+      </div><!-- /passoPagamento -->
 
-    <!-- ══════════════════════════════════════════════════════════════════
-         ETAPA 2 — Pagar taxa (PARCELADO: PIX ou Cartão)
-         ══════════════════════════════════════════════════════════════════ -->
-    <% } else if (etapaAtual === 'pagar-taxa') { %>
+      <!-- ══════════════════════════════════════════════════════════════════
+           ETAPA 2 — Pagar taxa (PIX ou cartão)
+           ══════════════════════════════════════════════════════════════════ -->
+      <% } else if (etapaAtual === 'pagar-taxa') { %>
 
-    <p style="font-size:14px;color:#718096;margin:0 0 20px;text-align:center">
-      Pague a taxa de inscrição para reservar sua vaga.
-    </p>
-
-    <!-- Valor destaque -->
-    <div class="resumo-box" style="margin-bottom:20px;text-align:center">
-      <div style="font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#718096;margin-bottom:6px">
-        Taxa de inscrição
+      <div class="chk-cab anima" style="--d:0">
+        <h2>Taxa de inscrição</h2>
+        <p>Pague a taxa para reservar sua vaga. O curso vem no passo seguinte.</p>
       </div>
-      <div style="font-size:38px;font-weight:900;color:#0f1318;line-height:1.1">
-        <%= formatBRL(valorTaxa) %>
-      </div>
-    </div>
 
-    <!-- Seletor de forma -->
-    <p style="font-size:13px;font-weight:700;color:#4a5568;margin:0 0 10px">Forma de pagamento</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px">
-      <label id="formaTaxaPix"
-             style="display:flex;align-items:center;justify-content:center;gap:8px;border:2px solid #cc0000;border-radius:10px;padding:11px 8px;cursor:pointer;font-size:14px;font-weight:700;color:#cc0000;background:#fff;box-shadow:0 0 0 3px rgba(204,0,0,.08)">
-        <input type="radio" name="_formaTaxaUI" value="PIX" checked style="display:none">
-        <i class="fa-solid fa-mobile-screen-button" style="color:#cc0000"></i> PIX
-      </label>
-      <label id="formaTaxaCredito"
-             style="display:flex;align-items:center;justify-content:center;gap:8px;border:2px solid #e2e8f0;border-radius:10px;padding:11px 8px;cursor:pointer;font-size:14px;font-weight:700;color:#4a5568;background:#fff">
-        <input type="radio" name="_formaTaxaUI" value="CREDITO" style="display:none">
-        <i class="fa-solid fa-credit-card" style="color:#cc0000"></i> Cartão de Crédito
-      </label>
-    </div>
-
-    <!-- Formulário PIX da taxa -->
-    <div id="blocoTaxaPix">
-      <form method="POST" action="/inscrever/<%= turma.id %>/pagar-taxa" novalidate>
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <input type="hidden" name="forma" value="PIX">
-        <div class="aviso-info" style="margin-bottom:16px">
-          <i class="fa-solid fa-qrcode"></i>
-          <span>O QR Code aparece <strong>na próxima tela deste site</strong>. Pague
-          pelo app do banco e volte para esta janela: assim que o banco confirmar,
-          você segue direto para o pagamento do curso, sem precisar fazer nada.</span>
+      <div class="chk-resumo anima" style="--d:1">
+        <div class="chk-linha chk-linha-total">
+          <span>Taxa de inscrição</span><strong class="num"><%= formatBRL(valorTaxa) %></strong>
         </div>
-        <button class="btn-acao" type="submit">Gerar QR Code PIX</button>
-      </form>
-    </div>
+      </div>
 
-    <!-- Formulário Cartão da taxa -->
-    <div id="blocoTaxaCredito" style="display:none">
-      <form method="POST" action="/inscrever/<%= turma.id %>/pagar-taxa" novalidate>
+      <p class="chk-secao anima" style="--d:2">Forma de pagamento</p>
+      <div class="chk-formas anima" style="--d:2">
+        <label id="formaTaxaPix" class="chk-forma">
+          <input type="radio" name="_formaTaxaUI" value="PIX">
+          <i class="fa-solid fa-mobile-screen-button"></i>PIX
+        </label>
+        <label id="formaTaxaCredito" class="chk-forma">
+          <input type="radio" name="_formaTaxaUI" value="CREDITO">
+          <i class="fa-solid fa-credit-card"></i>Crédito
+        </label>
+      </div>
+
+      <div id="blocoTaxaPix" hidden class="anima" style="--d:3">
+        <form method="POST" action="/inscrever/<%= turma.id %>/pagar-taxa" novalidate>
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="hidden" name="forma" value="PIX">
+          <div class="chk-aviso">
+            <i class="fa-solid fa-qrcode"></i>
+            <span>O QR Code aparece <strong>na próxima tela deste site</strong>. Pague pelo app
+            do banco e volte: assim que o banco confirmar, você segue direto para o curso.</span>
+          </div>
+          <div class="chk-acao">
+            <div class="chk-acao-valor"><em>Taxa</em><strong class="num"><%= formatBRL(valorTaxa) %></strong></div>
+            <button class="chk-btn" type="submit">Gerar QR Code <i class="fa-solid fa-arrow-right"></i></button>
+          </div>
+        </form>
+      </div>
+
+      <div id="blocoTaxaCredito" hidden class="anima" style="--d:3">
+        <form method="POST" action="/inscrever/<%= turma.id %>/pagar-taxa" novalidate>
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="hidden" name="forma" value="CREDITO">
+          <div class="chk-aviso">
+            <i class="fa-solid fa-credit-card"></i>
+            <span>Você preenche o cartão <strong>na próxima tela</strong>, com prazo de
+            5 minutos. Aprovada a taxa, você segue para o pagamento do curso.</span>
+          </div>
+          <div class="chk-acao">
+            <div class="chk-acao-valor"><em>Taxa</em><strong class="num"><%= formatBRL(valorTaxa) %></strong></div>
+            <button class="chk-btn" type="submit">Ir para o cartão <i class="fa-solid fa-arrow-right"></i></button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════════
+           ETAPA 3 — Pagar curso (parcelado no cartão)
+           ══════════════════════════════════════════════════════════════════ -->
+      <% } else if (etapaAtual === 'pagar-curso') { %>
+
+      <%
+        // ══════════════════════════════════════════════════════════════════
+        // RAMO "PRESENCIAL" — DESATIVADO. O `false &&` curto-circuita sem
+        // apagar o markup. Religar: remover o `false &&`.
+        // ══════════════════════════════════════════════════════════════════
+      %>
+      <% if (false && plano === 'PRESENCIAL') { %>
+
+      <div class="chk-aviso chk-aviso-ok anima">
+        <i class="fa-solid fa-circle-check"></i>
+        <span>Taxa de inscrição confirmada.</span>
+      </div>
+
+      <div class="chk-resumo anima" style="--d:1">
+        <div class="chk-linha">
+          <span>Valor do curso</span><strong class="num"><%= formatBRL(valorCurso) %></strong>
+        </div>
+        <div class="chk-linha chk-linha-total">
+          <span>A pagar na secretaria</span><strong class="num"><%= formatBRL(valorCurso) %></strong>
+        </div>
+      </div>
+
+      <div class="chk-aviso anima" style="--d:2">
+        <i class="fa-solid fa-building-columns"></i>
+        <span>O restante é pago presencialmente. A forma (PIX, crédito, débito ou dinheiro)
+        você escolhe na hora.</span>
+      </div>
+
+      <form method="POST" action="/inscrever/<%= turma.id %>/pagar-curso" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="plano" value="PRESENCIAL">
+        <div class="chk-acao">
+          <button class="chk-btn" type="submit">Confirmar inscrição <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      </form>
+
+      <% } else { %>
+
+      <div class="chk-aviso chk-aviso-ok anima">
+        <i class="fa-solid fa-circle-check"></i>
+        <span>Taxa confirmada. Falta só o pagamento do curso.</span>
+      </div>
+
+      <div class="chk-cab anima" style="--d:1">
+        <h2>Pagamento do curso</h2>
+        <p>Parcelado no cartão de crédito, em <%= numParcelas %> vezes.</p>
+      </div>
+
+      <div class="chk-resumo anima" style="--d:2">
+        <div class="chk-linha">
+          <span>Valor do curso</span><strong class="num"><%= formatBRL(valorCurso) %></strong>
+        </div>
+        <% if (parceladoComJuros) { %>
+        <div class="chk-linha">
+          <span><%= numParcelas %>× de</span><strong class="num"><%= formatBRL(parceladoComJuros.valorParcela) %></strong>
+        </div>
+        <div class="chk-linha chk-linha-total">
+          <span>Total com juros</span><strong class="num"><%= formatBRL(parceladoComJuros.total) %></strong>
+        </div>
+        <% if (parceladoComJuros.taxaJuros > 0) { %>
+        <p class="chk-nota">Juros de <%= parceladoComJuros.taxaJuros %>% incluídos.</p>
+        <% } %>
+        <% } else { %>
+        <div class="chk-linha chk-linha-total">
+          <span>Total</span><strong class="num"><%= formatBRL(valorCurso) %></strong>
+        </div>
+        <% } %>
+      </div>
+
+      <form method="POST" action="/inscrever/<%= turma.id %>/pagar-curso" novalidate class="anima" style="--d:3">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input type="hidden" name="forma" value="CREDITO">
-        <div class="aviso-info" style="margin-bottom:16px">
+        <input type="hidden" name="parcelas" value="<%= numParcelas %>">
+        <div class="chk-aviso">
           <i class="fa-solid fa-credit-card"></i>
-          <span>A cobrança é processada <strong>sem sair desta janela</strong>. Assim
-          que for aprovada, você segue para o pagamento do curso.</span>
+          <span>Você preenche o cartão <strong>na próxima tela</strong>, com prazo de
+          5 minutos para concluir. Não feche a janela durante a autorização.</span>
         </div>
-        <%- camposCartao() %>
-        <button class="btn-acao" type="submit" style="margin-top:8px">Pagar taxa com cartão</button>
+        <div class="chk-acao">
+          <div class="chk-acao-valor">
+            <em><%= numParcelas %>× de</em>
+            <strong class="num"><%= parceladoComJuros ? formatBRL(parceladoComJuros.valorParcela) : formatBRL(valorCurso) %></strong>
+          </div>
+          <button class="chk-btn" type="submit">Ir para o cartão <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
       </form>
-    </div>
 
-    <!-- ══════════════════════════════════════════════════════════════════
-         ETAPA 3 — Pagar curso
-         PARCELADO: sempre Cartão de crédito parcelado
-         (o ramo PRESENCIAL, com aviso de pagamento na secretaria, está
-          desativado logo abaixo — ver nota)
-         ══════════════════════════════════════════════════════════════════ -->
-    <% } else if (etapaAtual === 'pagar-curso') { %>
-
-    <%
-      // ══════════════════════════════════════════════════════════════════
-      // RAMO "PRESENCIAL" DA ETAPA 3 — DESATIVADO.
-      // O `false &&` curto-circuita a condição sem apagar o markup.
-      // Para religar: remover o `false &&`.
-      // ══════════════════════════════════════════════════════════════════
-    %>
-    <% if (false && plano === 'PRESENCIAL') { %>
-
-    <div class="aviso-info" style="margin-bottom:16px">
-      <i class="fa-solid fa-circle-check" style="color:#166534"></i>
-      Taxa de inscrição confirmada.
-    </div>
-
-    <div class="resumo-box" style="margin-bottom:20px">
-      <div class="resumo-linha">
-        <span>Valor do curso</span>
-        <strong><%= formatBRL(valorCurso) %></strong>
-      </div>
-      <div class="resumo-linha resumo-total">
-        <span>Total a pagar na secretaria</span>
-        <strong style="color:#cc0000"><%= formatBRL(valorCurso) %></strong>
-      </div>
-    </div>
-
-    <p style="font-size:14px;color:#718096;margin:0 0 20px;text-align:center">
-      O restante do curso será pago presencialmente na secretaria.
-      A forma de pagamento (PIX, cartão de crédito, cartão de débito ou dinheiro)
-      será escolhida no momento do pagamento.
-    </p>
-
-    <form method="POST" action="/inscrever/<%= turma.id %>/pagar-curso" novalidate>
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <input type="hidden" name="plano" value="PRESENCIAL">
-      <button class="btn-acao" type="submit">Confirmar inscrição</button>
-    </form>
-
-    <% } else { %>
-
-    <div class="aviso-info" style="margin-bottom:16px">
-      <i class="fa-solid fa-circle-check" style="color:#166534"></i>
-      Taxa de inscrição confirmada. Agora pague o curso parcelado.
-    </div>
-
-    <div class="resumo-box" style="margin-bottom:20px">
-      <div class="resumo-linha">
-        <span>Valor do curso</span>
-        <strong><%= formatBRL(valorCurso) %></strong>
-      </div>
-      <% if (parceladoComJuros) { %>
-      <div class="resumo-linha">
-        <span><%= numParcelas %>× de</span>
-        <strong><%= formatBRL(parceladoComJuros.valorParcela) %></strong>
-      </div>
-      <div class="resumo-linha resumo-total">
-        <span>Total com juros</span>
-        <strong style="color:#cc0000"><%= formatBRL(parceladoComJuros.total) %></strong>
-      </div>
-      <% if (parceladoComJuros.taxaJuros > 0) { %>
-      <small style="display:block;font-size:12px;color:#718096;margin-top:6px;text-align:center">
-        Juros de <%= parceladoComJuros.taxaJuros %>% incluídos
-      </small>
       <% } %>
-      <% } else { %>
-      <div class="resumo-linha resumo-total">
-        <span>Total</span>
-        <strong style="color:#cc0000"><%= formatBRL(valorCurso) %></strong>
-      </div>
+
       <% } %>
-    </div>
 
-    <div class="aviso-info" style="margin-bottom:16px">
-      <i class="fa-solid fa-credit-card"></i>
-      <span>A cobrança é processada <strong>sem sair desta janela</strong>. Pode
-      levar alguns segundos — não atualize nem feche a página.</span>
-    </div>
-
-    <form method="POST" action="/inscrever/<%= turma.id %>/pagar-curso" novalidate>
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <input type="hidden" name="forma" value="CREDITO">
-      <input type="hidden" name="parcelas" value="<%= numParcelas %>">
-      <%- camposCartao() %>
-      <button class="btn-acao" type="submit" style="margin-top:8px">
-        Pagar <%= numParcelas %>× com cartão
-      </button>
-    </form>
-
-    <% } %>
-
-    <% } %>
-
-  </div><!-- /painel-card -->
+    </div><!-- /chk-corpo -->
+  </div><!-- /chk-quadro -->
 </main>
 
-<%- include('partials/site-footer') %>
-
 <!-- ═══════════════════════════════════════════════════════════════════════
-     Estilos locais
-     ═══════════════════════════════════════════════════════════════════════ -->
-<style>
-/* Barra de progresso */
-.prog-step { flex:1; height:3px; background:#e2e8f0; border-radius:2px; transition:background .3s; }
-.prog-step.active { background:#cc0000; }
-
-/* Cards de forma de pagamento (usado no fluxo Passaporte, sem toggle JS) */
-.forma-card {
-  display:flex; align-items:center; justify-content:center; gap:8px;
-  border:2px solid #e2e8f0; border-radius:10px; padding:11px 8px;
-  cursor:pointer; font-size:14px; font-weight:700; color:#4a5568;
-  transition:border-color .2s, box-shadow .2s;
-}
-.forma-card:hover { border-color:#cc0000; }
-.forma-card:has(input:checked) { border-color:#cc0000; box-shadow:0 0 0 3px rgba(204,0,0,.08); color:#cc0000; }
-
-/* Caixa de resumo de valores */
-.resumo-box {
-  background:#f7f8fa; border:1px solid #e2e8f0; border-radius:12px; padding:16px 18px;
-}
-.resumo-linha {
-  display:flex; justify-content:space-between; align-items:center;
-  font-size:14px; color:#4a5568; padding:7px 0; border-bottom:1px solid #e2e8f0;
-}
-.resumo-linha:last-of-type { border-bottom:none; }
-.resumo-total {
-  font-size:16px; color:#1f2733; font-weight:800; padding-top:10px; border-top:1px solid #e2e8f0;
-}
-
-/* Aviso informativo (verde) */
-.aviso-info {
-  background:#f0fdf4; border:1px solid #86efac; border-radius:10px;
-  padding:12px 14px; font-size:13px; color:#166534;
-  display:flex; gap:9px; align-items:flex-start;
-}
-.aviso-info i { margin-top:2px; }
-
-/* Aviso de estado/confirmação — cinza, menos chamativo que o verde */
-.aviso-neutro {
-  background:#f7f8fa; border:1px solid #e2e8f0; border-radius:10px;
-  padding:12px 14px; font-size:13px; color:#4a5568;
-  display:flex; gap:9px; align-items:flex-start;
-}
-.aviso-neutro i { margin-top:2px; }
-
-/* Botão de ação desabilitado (usado no "Continuar para o pagamento") */
-.btn-acao:disabled { opacity:.5; cursor:not-allowed; }
-</style>
-
-<!-- ═══════════════════════════════════════════════════════════════════════
-     Scripts
+     Scripts — sempre ANTES do footer, que já fecha </body></html>
+     Sem máscaras de cartão: elas moraram aqui até a v2 e agora vivem na tela
+     /inscricao/cartao/:matriculaId, junto com os campos.
      ═══════════════════════════════════════════════════════════════════════ -->
 <% if (etapaAtual === 'escolha') { %>
 <script>
 (function () {
-  // ══════════════════════════════════════════════════════════════════════
-  // Navegação entre os DOIS PASSOS da etapa 1 (contrato → pagamento).
-  // É só mostrar/esconder: nada vai ao servidor entre os passos, então voltar
-  // pro contrato não descarta nada do que o aluno já preencheu.
-  // ══════════════════════════════════════════════════════════════════════
+  // Troca entre contrato e pagamento: só mostrar/esconder. Nada vai ao
+  // servidor no meio, então voltar não descarta o que foi preenchido.
   var chk            = document.getElementById('aceiteContrato');
   var btnIrPagamento = document.getElementById('btnIrPagamento');
   var btnVoltar      = document.getElementById('btnVoltarContrato');
   var passoContrato  = document.getElementById('passoContrato');
   var passoPagamento = document.getElementById('passoPagamento');
-  var rotuloEtapa    = document.getElementById('rotuloEtapa');
-  var barraProgresso = document.getElementById('barraProgresso');
+  var barra          = document.getElementById('barraProgresso');
+  var rotTitulo      = document.getElementById('rotuloTitulo');
+  var rotContagem    = document.getElementById('rotuloContagem');
 
-  // Plano corrente só para saber QUANTOS passos o fluxo tem.
-  // À vista e passaporte terminam no pagamento (2). Parcelado ainda passa por
-  // taxa e curso (4). O passaporte nunca troca de plano, então fica em 2.
+  // Quantos passos o fluxo tem depende do plano: parcelado passa por taxa e
+  // curso (4); à vista e passaporte terminam no pagamento (2).
   var planoAtual = 'A_VISTA';
-  function totalPassos() { return planoAtual === 'PARCELADO' ? 4 : 2; }
+  var TITULOS = {
+    A_VISTA:   ['Contrato', 'Pagamento'],
+    PARCELADO: ['Contrato', 'Plano', 'Taxa de inscrição', 'Curso']
+  };
 
-  function atualizarProgresso(passo, titulo) {
-    var total = totalPassos();
-    if (barraProgresso) {
-      barraProgresso.innerHTML = '';
-      for (var i = 1; i <= total; i++) {
-        var seg = document.createElement('div');
-        seg.className = 'prog-step' + (i <= passo ? ' active' : '');
-        barraProgresso.appendChild(seg);
+  function atualizarProgresso(passo) {
+    var lista = TITULOS[planoAtual] || TITULOS.A_VISTA;
+    if (barra) {
+      barra.innerHTML = '';
+      for (var i = 1; i <= lista.length; i++) {
+        var d = document.createElement('div');
+        d.className = 'chk-passo' + (i < passo ? ' feito' : i === passo ? ' agora' : '');
+        d.appendChild(document.createElement('span'));
+        barra.appendChild(d);
       }
     }
-    if (rotuloEtapa) {
-      rotuloEtapa.textContent = 'Passo ' + passo + ' de ' + total + ' — ' + titulo;
-    }
+    if (rotTitulo)   rotTitulo.textContent = lista[passo - 1];
+    if (rotContagem) rotContagem.textContent = passo + '/' + lista.length;
   }
 
-  // O checkbox pode já vir marcado quando a página recarrega com erro.
-  if (btnIrPagamento) btnIrPagamento.disabled = !chk.checked;
-
-  chk.addEventListener('change', function () {
+  if (btnIrPagamento && chk) btnIrPagamento.disabled = !chk.checked;
+  if (chk) chk.addEventListener('change', function () {
     if (btnIrPagamento) btnIrPagamento.disabled = !this.checked;
   });
 
-  function mostrarPagamento() {
-    passoContrato.style.display = 'none';
-    passoPagamento.style.display = 'block';
-    atualizarProgresso(2, 'Forma de pagamento');
+  if (btnIrPagamento) btnIrPagamento.addEventListener('click', function () {
+    passoContrato.hidden = true;
+    passoPagamento.hidden = false;
+    atualizarProgresso(2);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
+  });
 
-  function mostrarContrato() {
-    passoPagamento.style.display = 'none';
-    passoContrato.style.display = 'block';
-    atualizarProgresso(1, 'Contrato');
+  if (btnVoltar) btnVoltar.addEventListener('click', function () {
+    passoPagamento.hidden = true;
+    passoContrato.hidden = false;
+    atualizarProgresso(1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  if (btnIrPagamento) btnIrPagamento.addEventListener('click', mostrarPagamento);
-  if (btnVoltar)      btnVoltar.addEventListener('click', mostrarContrato);
+  });
 
   <% if (ehPassaporte) { %>
-  // Passaporte: o botão de confirmar só libera depois de escolher a forma.
+  // Passaporte: confirmar só libera depois de escolher a forma.
   var btnConfirmar = document.getElementById('btnConfirmar');
   document.querySelectorAll('input[name="forma"]').forEach(function (r) {
     r.addEventListener('change', function () {
@@ -814,18 +704,10 @@ function camposCartao() {
   });
 
   <% } else { %>
-  // ── Estilos inline usados no toggle de plano e forma (à vista) ────────
-  var PLANO_ATIVO   = 'display:flex;flex-direction:column;gap:3px;border:2px solid #cc0000;border-radius:12px;padding:14px 12px;cursor:pointer;box-shadow:0 0 0 3px rgba(204,0,0,.08);background:#fff';
-  var PLANO_INATIVO = 'display:flex;flex-direction:column;gap:3px;border:2px solid #e2e8f0;border-radius:12px;padding:14px 12px;cursor:pointer;background:#fff';
-
-  var FORMA_ATIVO   = 'display:flex;align-items:center;justify-content:center;gap:8px;border:2px solid #cc0000;border-radius:10px;padding:11px 8px;cursor:pointer;font-size:14px;font-weight:700;color:#cc0000;background:#fff;box-shadow:0 0 0 3px rgba(204,0,0,.08)';
-  var FORMA_INATIVO = 'display:flex;align-items:center;justify-content:center;gap:8px;border:2px solid #e2e8f0;border-radius:10px;padding:11px 8px;cursor:pointer;font-size:14px;font-weight:700;color:#4a5568;background:#fff';
-
-  // ── Troca de plano (À Vista / Parcelado) ─────────────────────────────
-  // 💡 PRESENCIAL desativado: as linhas dele ficam comentadas abaixo. Como
-  // getElementById devolveria null de qualquer forma (o markup não renderiza),
-  // os guards `if (...)` já bastariam — mas deixar comentado torna explícito
-  // o que precisa voltar se o plano for religado.
+  // ── Troca de plano ───────────────────────────────────────────────────
+  // 💡 PRESENCIAL desativado: linhas comentadas. Os guards `if (...)` já
+  // dariam conta (o markup não renderiza), mas assim fica explícito o que
+  // precisa voltar.
   var labelAVista     = document.getElementById('labelAVista');
   var labelParcelado  = document.getElementById('labelParcelado');
   // var labelPresencial = document.getElementById('labelPresencial');
@@ -834,63 +716,57 @@ function camposCartao() {
   var blocoParcelado  = document.getElementById('blocoParcelado');
   // var blocoPresencial = document.getElementById('blocoPresencial');
 
-  function selecionarPlano(plano) {
-    var avista = plano === 'A_VISTA';
-    var parcelado = plano === 'PARCELADO';
-    // var presencial = plano === 'PRESENCIAL';
+  function selecionarPlano(p) {
+    var avista    = p === 'A_VISTA';
+    var parcelado = p === 'PARCELADO';
+    // var presencial = p === 'PRESENCIAL';
 
-    // O parcelado tem 2 telas a mais (taxa e curso) — a barra cresce de 2 pra 4.
-    planoAtual = plano;
-    if (passoPagamento && passoPagamento.style.display !== 'none') {
-      atualizarProgresso(2, 'Forma de pagamento');
-    }
+    planoAtual = p;
+    if (passoPagamento && !passoPagamento.hidden) atualizarProgresso(2);
 
-    labelAVista.style.cssText = avista ? PLANO_ATIVO : PLANO_INATIVO;
-    if (labelParcelado)  labelParcelado.style.cssText  = parcelado  ? PLANO_ATIVO : PLANO_INATIVO;
-    // if (labelPresencial) labelPresencial.style.cssText = presencial ? PLANO_ATIVO : PLANO_INATIVO;
+    if (labelAVista)    labelAVista.classList.toggle('ativo', avista);
+    if (labelParcelado) labelParcelado.classList.toggle('ativo', parcelado);
+    // if (labelPresencial) labelPresencial.classList.toggle('ativo', presencial);
 
-    blocoAVista.style.display = avista ? 'block' : 'none';
+    if (labelAVista)    labelAVista.querySelector('input').checked = avista;
+    if (labelParcelado) labelParcelado.querySelector('input').checked = parcelado;
 
-    if (blocoParcelado) blocoParcelado.style.display = parcelado ? 'block' : 'none';
-    // if (blocoPresencial) blocoPresencial.style.display = presencial ? 'block' : 'none';
+    if (blocoAVista)    blocoAVista.hidden = !avista;
+    if (blocoParcelado) blocoParcelado.hidden = !parcelado;
+    // if (blocoPresencial) blocoPresencial.hidden = !presencial;
   }
 
-  if (labelAVista) {
-    labelAVista.addEventListener('click', function () { selecionarPlano('A_VISTA'); });
-  }
-  if (labelParcelado) {
-    labelParcelado.addEventListener('click', function () { selecionarPlano('PARCELADO'); });
-  }
-  // if (labelPresencial) {
-  //   labelPresencial.addEventListener('click', function () { selecionarPlano('PRESENCIAL'); });
-  // }
+  if (labelAVista)    labelAVista.addEventListener('click', function () { selecionarPlano('A_VISTA'); });
+  if (labelParcelado) labelParcelado.addEventListener('click', function () { selecionarPlano('PARCELADO'); });
+  // if (labelPresencial) labelPresencial.addEventListener('click', function () { selecionarPlano('PRESENCIAL'); });
 
-  // ── Troca de forma à vista (PIX / Cartão) ────────────────────────────
+  // ── Troca de forma à vista ───────────────────────────────────────────
+  // O botão muda de nome junto: o clique leva para telas diferentes.
   var formaAvistaPix     = document.getElementById('formaAvistaPix');
   var formaAvistaCredito = document.getElementById('formaAvistaCredito');
-  var camposCartaoAVista = document.getElementById('camposCartaoAVista');
   var avisoAVistaPix     = document.getElementById('avisoAVistaPix');
   var avisoAVistaCredito = document.getElementById('avisoAVistaCredito');
+  var txtBtnAVista       = document.getElementById('txtBtnAVista');
+  var btnAVista          = document.getElementById('btnAVista');
 
+  // Nada vem pré-selecionado: os dois avisos nascem escondidos e o botão
+  // nasce desabilitado. Só o aviso da forma escolhida aparece — mostrar os
+  // dois de uma vez faria o aluno ler uma instrução que não vale pra ele.
   function selecionarFormaAVista(forma) {
     var eCredito = forma === 'CREDITO';
-    if (formaAvistaPix)     formaAvistaPix.style.cssText     = eCredito ? FORMA_INATIVO : FORMA_ATIVO;
-    if (formaAvistaCredito) formaAvistaCredito.style.cssText = eCredito ? FORMA_ATIVO   : FORMA_INATIVO;
-    if (camposCartaoAVista) camposCartaoAVista.style.display = eCredito ? 'block' : 'none';
-    // Troca o aviso do que vai acontecer ao continuar
-    if (avisoAVistaPix)     avisoAVistaPix.style.display     = eCredito ? 'none' : 'flex';
-    if (avisoAVistaCredito) avisoAVistaCredito.style.display = eCredito ? 'flex' : 'none';
-    // Sincroniza o radio real dentro do label para o form submeter o valor certo
+    if (formaAvistaPix)     formaAvistaPix.classList.toggle('ativa', !eCredito);
+    if (formaAvistaCredito) formaAvistaCredito.classList.toggle('ativa', eCredito);
+    if (avisoAVistaPix)     avisoAVistaPix.hidden     = eCredito;
+    if (avisoAVistaCredito) avisoAVistaCredito.hidden = !eCredito;
+    if (txtBtnAVista)       txtBtnAVista.textContent  = eCredito ? 'Ir para o cartão' : 'Gerar QR Code';
+    if (btnAVista)          btnAVista.disabled = false;
+    // Sincroniza o radio real para o form enviar o valor certo
     if (formaAvistaPix)     formaAvistaPix.querySelector('input').checked     = !eCredito;
     if (formaAvistaCredito) formaAvistaCredito.querySelector('input').checked = eCredito;
   }
 
-  if (formaAvistaPix) {
-    formaAvistaPix.addEventListener('click', function () { selecionarFormaAVista('PIX'); });
-  }
-  if (formaAvistaCredito) {
-    formaAvistaCredito.addEventListener('click', function () { selecionarFormaAVista('CREDITO'); });
-  }
+  if (formaAvistaPix)     formaAvistaPix.addEventListener('click', function () { selecionarFormaAVista('PIX'); });
+  if (formaAvistaCredito) formaAvistaCredito.addEventListener('click', function () { selecionarFormaAVista('CREDITO'); });
   <% } %>
 })();
 </script>
@@ -899,59 +775,27 @@ function camposCartao() {
 <% if (etapaAtual === 'pagar-taxa') { %>
 <script>
 (function () {
-  var formaTaxaPix     = document.getElementById('formaTaxaPix');
-  var formaTaxaCredito = document.getElementById('formaTaxaCredito');
-  var blocoTaxaPix     = document.getElementById('blocoTaxaPix');
-  var blocoTaxaCredito = document.getElementById('blocoTaxaCredito');
+  // Os dois blocos nascem escondidos: o aviso e o botão só aparecem depois
+  // que o aluno escolhe a forma.
+  var pix     = document.getElementById('formaTaxaPix');
+  var credito = document.getElementById('formaTaxaCredito');
+  var bPix    = document.getElementById('blocoTaxaPix');
+  var bCred   = document.getElementById('blocoTaxaCredito');
 
-  var FORMA_ATIVO   = 'display:flex;align-items:center;justify-content:center;gap:8px;border:2px solid #cc0000;border-radius:10px;padding:11px 8px;cursor:pointer;font-size:14px;font-weight:700;color:#cc0000;background:#fff;box-shadow:0 0 0 3px rgba(204,0,0,.08)';
-  var FORMA_INATIVO = 'display:flex;align-items:center;justify-content:center;gap:8px;border:2px solid #e2e8f0;border-radius:10px;padding:11px 8px;cursor:pointer;font-size:14px;font-weight:700;color:#4a5568;background:#fff';
-
-  function selecionarFormaTaxa(forma) {
+  function selecionar(forma) {
     var ePix = forma === 'PIX';
-    formaTaxaPix.style.cssText     = ePix ? FORMA_ATIVO   : FORMA_INATIVO;
-    formaTaxaCredito.style.cssText = ePix ? FORMA_INATIVO : FORMA_ATIVO;
-    blocoTaxaPix.style.display     = ePix ? 'block' : 'none';
-    blocoTaxaCredito.style.display = ePix ? 'none'  : 'block';
-    formaTaxaPix.querySelector('input').checked     = ePix;
-    formaTaxaCredito.querySelector('input').checked = !ePix;
+    pix.classList.toggle('ativa', ePix);
+    credito.classList.toggle('ativa', !ePix);
+    bPix.hidden  = !ePix;
+    bCred.hidden = ePix;
+    pix.querySelector('input').checked     = ePix;
+    credito.querySelector('input').checked = !ePix;
   }
 
-  formaTaxaPix.addEventListener('click', function () { selecionarFormaTaxa('PIX'); });
-  formaTaxaCredito.addEventListener('click', function () { selecionarFormaTaxa('CREDITO'); });
+  pix.addEventListener('click', function () { selecionar('PIX'); });
+  credito.addEventListener('click', function () { selecionar('CREDITO'); });
 })();
 </script>
 <% } %>
 
-<!-- ═══════════════════════════════════════════════════════════════════════
-     Script de máscaras dos campos de cartão (antes era partials/campos-cartao-script)
-     ═══════════════════════════════════════════════════════════════════════ -->
-<script>
-(function () {
-  function soDigitos(v) { return (v || '').replace(/\D/g, ''); }
-
-  // Número do cartão: agrupa em blocos de 4
-  document.querySelectorAll('.js-numero-cartao').forEach(function (el) {
-    el.addEventListener('input', function () {
-      var v = soDigitos(this.value).slice(0, 16);
-      this.value = v.replace(/(.{4})/g, '$1 ').trim();
-    });
-  });
-
-  // Validade: MM/AA
-  document.querySelectorAll('.js-validade-cartao').forEach(function (el) {
-    el.addEventListener('input', function () {
-      var v = soDigitos(this.value).slice(0, 4);
-      if (v.length >= 3) v = v.slice(0, 2) + '/' + v.slice(2);
-      this.value = v;
-    });
-  });
-
-  // CVV: só dígitos
-  document.querySelectorAll('.js-cvv-cartao').forEach(function (el) {
-    el.addEventListener('input', function () {
-      this.value = soDigitos(this.value).slice(0, 4);
-    });
-  });
-})();
-</script>
+<%- include('partials/site-footer') %>

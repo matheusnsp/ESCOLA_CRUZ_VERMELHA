@@ -151,7 +151,8 @@ body {
     gap: 32px;
     position: absolute;
     left: 50%;
-    transform: translateX(-50%);
+    top: 50%;                              /* faltava: sem isso o nav não centraliza na vertical */
+    transform: translate(-50%, -50%);      /* era translateX(-50%) */
     justify-content: center;
 }
 
@@ -338,7 +339,7 @@ body {
     border: 1px solid var(--gray-200);
     border-radius: 16px;
     box-shadow: 0 20px 48px rgba(16,24,40,0.12);
-    padding: 32px 40px;
+    padding: 32px 20px;
 }
 
 .features-container h2 {
@@ -1211,14 +1212,28 @@ button:focus-visible {
 .nav-toggle {
     display: none;
     background: none;
-    border: 1px solid var(--gray-200, #e7ebf2);
-    border-radius: 10px;
-    width: 44px; height: 44px;
-    font-size: 20px; color: var(--ink, #0b1220);
-    cursor: pointer; align-items: center; justify-content: center;
+    border: none;
+    border-radius: 50%;
+    width: 44px; height: 44px;   /* mantém o alvo de toque de 44px mesmo sem a moldura */
+    font-size: 22px;
+    color: var(--black);
+    cursor: pointer;
+    align-items: center; justify-content: center;
+    transition: background-color 0.18s, color 0.18s;
+    -webkit-tap-highlight-color: transparent;
 }
-/* No desktop o wrapper não interfere no layout */
-.header-collapse { display: contents; }
+/* o foco por teclado continua visível — a regra global de :focus-visible
+   já desenha o contorno vermelho, então não removemos o outline */
+
+   /* só aplica hover onde existe cursor de verdade; no celular o :hover
+   fica preso depois do toque e o círculo cinza continua na tela */
+@media (hover: hover) {
+    .nav-toggle:hover { color: var(--red); }
+}
+.nav-toggle:active { color: var(--red); }
+
+/* aberto: só o ícone muda de cor (o "X" já indica o estado) */
+.main-header.nav-open .nav-toggle { color: var(--red); }
 
 @media (max-width: 1024px) {
     :root { --section-gap: 56px; }
@@ -1228,16 +1243,25 @@ button:focus-visible {
     .hero-text-content p  { font-size: 15px; }
 
     .features-section { margin-top: -36px; }
-    .features-row {
-        grid-template-columns: 1fr;
-        gap: 20px;
-    }
+    .features-container { padding: 28px 24px; }
+
+    /* Diferenciais continuam LADO A LADO no tablet — só trocam a direção
+       (ícone em cima do texto) pra caber em coluna estreita. Empilhados de
+       verdade só abaixo de 600px, no bloco lá embaixo. */
     .feature-item {
-        border-right: none !important;
-        border-bottom: 1px solid var(--gray-200);
-        padding: 0 0 20px !important;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 10px;
+        padding: 4px 18px;
     }
-    .feature-item:last-child { border-bottom: none; padding-bottom: 0 !important; }
+    .feature-item:first-child { padding-left: 0; }
+    .feature-item:last-child  { padding-right: 0; }
+
+    .feature-item .icon-red { font-size: 24px; }
+    .feature-text { align-items: center; }
+    .feature-text strong { font-size: 13.5px; line-height: 1.35; }
+    .feature-text span   { font-size: 12px; }
 
     /* Impacto: mesmo espaçamento lateral das outras seções (igual .courses-section) */
     .impact-container {
@@ -1309,6 +1333,21 @@ button:focus-visible {
     .wpp-float-text { display: none; }
     .nav-links { gap: 14px; }
     .courses-section::before { font-size: 26px; }
+
+    /* Aqui sim os diferenciais empilham: três colunas não cabem em celular.
+       O seletor precisa ser :not(:last-child) — igual ao da regra base lá em
+       cima — senão ela vence por especificidade e a divisória VERTICAL
+       continua aparecendo mesmo com os itens um embaixo do outro. */
+    .features-row {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .feature-item { padding: 0 0 20px; }
+    .feature-item:not(:last-child) {
+        border-right: none;
+        border-bottom: 1px solid var(--gray-200);
+    }
+    .feature-item:last-child { padding-bottom: 0; }
 
     .impact-container { padding: 0 20px; }
 

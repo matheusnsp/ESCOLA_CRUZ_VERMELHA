@@ -1,96 +1,813 @@
-<%- include('partials/site-head', { titulo: 'Inscrição' }) %>
+<% var _isPix = typeof isPix !== 'undefined' ? isPix : false; %>
+<%- include('partials/site-head', { titulo: _isPix ? 'Aguardando pagamento' : 'Pagamento no cartão' }) %>
 <%- include('partials/site-header') %>
-<main class="interna-wrap">
-<div class="painel-card" style="text-align: center; padding: 48px 24px; max-width: 600px; margin: 0 auto;">
-<% if (isPix && pixQrCode) { %>
-<div style="margin-bottom: 20px;">
-<i class="fa-brands fa-pix" style="font-size: 56px; color: #32BCAD;"></i>
-</div>
-<h1 style="font-size: 24px; margin-bottom: 8px; color: #333;">Pague via PIX</h1>
-<p class="painel-sub" style="color: #666; font-size: 14px; max-width: 450px; margin: 0 auto 24px; line-height: 1.5;">
-        Abra o aplicativo do seu banco e aponte a câmera para o QR Code abaixo, ou copie o código PIX Copia e Cola.
-</p>
-<div style="margin: 24px auto; display: inline-block; background: #fff; padding: 12px; border: 1px solid #e0e0e0; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-<% if (pixBase64) { %>
-<%# QR vindo do próprio gateway — não expõe o payload PIX a serviço externo %>
-<img
-src="<%= /^(https?:|data:)/i.test(pixBase64) ? pixBase64 : ('data:image/png;base64,' + pixBase64) %>"
-alt="QR Code Pix"
-style="max-width: 230px; width: 100%; display: block;"
-/>
-<% } else { %>
-<img 
-src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=<%= encodeURIComponent(pixQrCode || pixUrl) %>"
-alt="QR Code Pix" 
-style="max-width: 230px; width: 100%; display: block;"
-/>
-<% } %>
-</div>
-<p class="painel-sub" style="margin: 24px 0 8px; font-weight: 600; color: #333; font-size: 14px;">
-        Código PIX Copia e Cola:
-</p>
-<textarea 
-id="chavePix"
-readonly
-style="width: 100%; max-width: 450px; padding: 12px; margin: 0 auto 16px; display: block; font-size: 12px; border-radius: 8px; border: 1px solid #ccc; background: #f9f9f9; color: #555; font-family: monospace; resize: none; height: 80px;"
-><%= pixQrCode %></textarea>
-<button 
-id="btnCopiar"
-style="padding: 12px 32px; background: #32BCAD; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; transition: background 0.2s; display: inline-block; margin-bottom: 16px;"
->
-<i class="fa-regular fa-copy"></i> Copiar código PIX
-</button>
-<p class="painel-sub" style="font-size: 12px; color: #888; margin-top: 8px;">
-        Após o pagamento, a confirmação pode levar alguns minutos.
-        Assim que o banco confirmar, esta página avança sozinha.
-</p>
-<% } else { %>
-<div style="margin-bottom: 20px;">
-<i class="fa-solid fa-clock" style="font-size: 56px; color: #e2a800;"></i>
-</div>
-<h1 style="font-size: 24px; margin-bottom: 8px; color: #333;">Aguardando confirmação</h1>
-<p class="painel-sub" style="color: #666; font-size: 14px; max-width: 450px; margin: 0 auto; line-height: 1.5;">
-        Seu pagamento está sendo processado. Assim que confirmado, sua matrícula será atualizada automaticamente.
-</p>
-<% } %>
-<div style="margin-top: 32px; border-top: 1px solid #eee; padding-top: 24px;">
-<a href="/minha-conta?sec=inscricoes" class="btn-acao" style="display: inline-block; padding: 12px 24px;">
-        Ver minhas inscrições
-</a>
-</div>
-</div>
+
+<%#
+  ═══════════════════════════════════════════════════════════════════════════
+  RETORNO DA INSCRIÇÃO — PIX e CARTÃO na mesma view
+
+  A rota /inscricao/retorno manda `isPix`. Daí saem os dois ramos:
+    • !isPix → tela do cartão: formulário, cartão-espelho e etapas.
+    • isPix  → tela do QR Code, exatamente como antes.
+
+  Só o PIX tem cronômetro: lá existe uma cobrança pendente no gateway
+  esperando ser paga, e o fim do prazo cancela essa cobrança e devolve o
+  aluno para /cursos. No cartão o envio é imediato, então não há o que
+  expirar — o aluno preenche e a resposta do banco vem em seguida.
+
+  CSS: tudo mora no public/inscrever.css, que o site-head já carrega em todas
+  as páginas — por isso não há cssExtra aqui.
+  ═══════════════════════════════════════════════════════════════════════════
+%>
+
+<% if (!_isPix) { %>
+
+<%
+// ═══════════════════════════════════════════════════════════════════════════
+// INSCREVER-RETORNO — pagamento no cartão
+// Salvar como: src/views/inscrever-retorno.ejs
+//
+// O CSS desta tela mora no fim do inscrever.css (bloco "CARTÃO — TELA DE
+// RETORNO"), que o site-head já carrega em todas as páginas. Por isso não há
+// cssExtra aqui.
+//
+// Espelha o pix-retorno: a matrícula já existe, a cobrança já está definida
+// no backend. Aqui o aluno só digita o cartão e acompanha as etapas.
+//
+// Variáveis esperadas:
+//   matricula        objeto com .id
+//   turma, curso     para o cabeçalho e o redirecionamento
+//   etapa            'taxa' | 'curso' | 'unico'
+//   valorCobranca    número, o que será cobrado AGORA
+//   numParcelas      inteiro (1 quando à vista)
+//   valorParcela     número (opcional, só quando numParcelas > 1)
+//   transacaoRef     vem do `t` da querystring (urlRetorno em cursos.js).
+//                    Aqui serve só para identificar a tentativa no log.
+//   csrfToken        string
+//   formatBRL        helper já usado nas outras telas
+// ═══════════════════════════════════════════════════════════════════════════
+
+const _parcelas = typeof numParcelas !== 'undefined' && numParcelas ? Number(numParcelas) : 1;
+const _rotuloValor = etapa === 'taxa' ? 'Taxa de inscrição'
+                   : _parcelas > 1    ? 'Curso parcelado'
+                   : 'Total';
+const _ultimoPasso = etapa === 'taxa' ? 'Taxa confirmada' : 'Matrícula confirmada';
+
+const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
+           ? String(transacaoRef)
+           : String(matricula ? matricula.id : '') + ':' + etapa;
+%>
+
+<main class="cc-wrap">
+  <div class="cc-card" id="ccCard">
+
+    <% if (matricula) { %>
+
+    <!-- ══ Cabeçalho ══════════════════════════════════════════════════════ -->
+    <div class="cc-topo">
+      <h1 class="cc-titulo">Pagar no cartão</h1>
+      <p class="cc-sub">
+        <%= curso.nome %><br>
+        <% if (etapa === 'taxa') { %>
+          Taxa de inscrição. O curso vem logo depois.
+        <% } else if (_parcelas > 1) { %>
+          <%= _parcelas %>× de <%= formatBRL(valorParcela) %> no crédito.
+        <% } else { %>
+          Um pagamento único no crédito.
+        <% } %>
+      </p>
+    </div>
+
+    <!-- ══ Cartão-espelho ═════════════════════════════════════════════════ -->
+    <div class="cc-espelho" id="ccEspelho" aria-hidden="true">
+      <div class="cc-espelho-in">
+        <div class="cc-face">
+          <div class="cc-face-topo">
+            <div class="cc-chip"></div>
+            <div class="cc-bandeira" id="ccBandeira"><i class="fa-regular fa-credit-card"></i></div>
+          </div>
+          <p class="cc-face-numero" id="ccFaceNumero">•••• •••• •••• ••••</p>
+          <div class="cc-face-rodape">
+            <div class="cc-face-nome">
+              <p class="cc-face-rot">Titular</p>
+              <p class="cc-face-val" id="ccFaceNome">NOME NO CARTÃO</p>
+            </div>
+            <div>
+              <p class="cc-face-rot">Validade</p>
+              <p class="cc-face-val" id="ccFaceValidade">MM/AA</p>
+            </div>
+          </div>
+        </div>
+        <div class="cc-face cc-face-tras">
+          <div class="cc-tarja"></div>
+          <div class="cc-assinatura">
+            <div class="cc-assinatura-faixa"></div>
+            <div class="cc-assinatura-cvv" id="ccFaceCvv">•••</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Erro do gateway ════════════════════════════════════════════════ -->
+    <div class="cc-erro" id="ccErro" role="alert">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <div>
+        <strong>O pagamento não passou</strong>
+        <span id="ccErroTexto">Confira os dados e tente de novo.</span>
+      </div>
+    </div>
+
+    <!-- ══ Formulário ═════════════════════════════════════════════════════ -->
+    <div class="cc-form-card">
+      <div class="cc-valor">
+        <span><%= _rotuloValor %></span>
+        <div>
+          <strong><%= formatBRL(valorCobranca) %></strong>
+          <% if (_parcelas > 1) { %>
+          <em><%= _parcelas %>× de <%= formatBRL(valorParcela) %></em>
+          <% } %>
+        </div>
+      </div>
+
+      <form id="ccForm" novalidate>
+        <input type="hidden" name="_csrf" id="ccCsrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+
+        <div class="cc-campo" id="campoNumero">
+          <label class="cc-rot" for="ccNumero">Número do cartão</label>
+          <input id="ccNumero" name="numero" type="text" class="cc-in num"
+                 inputmode="numeric" maxlength="19" placeholder="0000 0000 0000 0000"
+                 autocomplete="cc-number" autofocus>
+          <p class="cc-erro-campo">Número incompleto ou inválido.</p>
+        </div>
+
+        <div class="cc-campo" id="campoTitular">
+          <label class="cc-rot" for="ccTitular">Nome impresso no cartão</label>
+          <input id="ccTitular" name="titular" type="text" class="cc-in cc-caps"
+                 placeholder="COMO ESTÁ NO CARTÃO" autocomplete="cc-name">
+          <p class="cc-erro-campo">Escreva o nome como aparece no cartão.</p>
+        </div>
+
+        <div class="cc-par">
+          <div class="cc-campo" id="campoValidade">
+            <label class="cc-rot" for="ccValidade">Validade</label>
+            <input id="ccValidade" name="validade" type="text" class="cc-in num"
+                   inputmode="numeric" maxlength="5" placeholder="MM/AA" autocomplete="cc-exp">
+            <p class="cc-erro-campo">Data inválida.</p>
+          </div>
+          <div class="cc-campo" id="campoCvv">
+            <label class="cc-rot" for="ccCvv">CVV</label>
+            <input id="ccCvv" name="cvv" type="text" class="cc-in num"
+                   inputmode="numeric" maxlength="4" placeholder="000" autocomplete="cc-csc">
+            <p class="cc-erro-campo">CVV incompleto.</p>
+          </div>
+        </div>
+
+        <button type="submit" class="cc-btn" id="ccBtn" style="margin-top:14px">
+          <span id="ccBtnTexto">Pagar <%= formatBRL(valorCobranca) %></span>
+          <i class="fa-solid fa-arrow-right" id="ccBtnIcone"></i>
+        </button>
+        <p class="cc-seguro">
+          <i class="fa-solid fa-lock"></i> Os dados vão direto para a operadora. Não guardamos o cartão.
+        </p>
+      </form>
+    </div>
+
+    <!-- ══ Etapas ═════════════════════════════════════════════════════════ -->
+    <div class="cc-etapas" id="ccEtapas">
+
+      <div class="cc-etapa" data-estado="atual" data-step="dados">
+        <div class="cc-et-icone">
+          <div class="cc-et-spinner"></div>
+          <i class="fa-solid fa-keyboard"></i>
+        </div>
+        <div class="cc-et-texto">
+          <p class="cc-et-rot">Passo 1</p>
+          <p class="cc-et-desc">Dados do cartão</p>
+        </div>
+        <span class="cc-et-badge">Preenchendo</span>
+      </div>
+
+      <div class="cc-etapa" data-estado="espera" data-step="envio">
+        <div class="cc-et-icone">
+          <div class="cc-et-spinner"></div>
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <div class="cc-et-texto">
+          <p class="cc-et-rot">Passo 2</p>
+          <p class="cc-et-desc">Envio para a operadora</p>
+        </div>
+        <span class="cc-et-badge">Em breve</span>
+      </div>
+
+      <div class="cc-etapa" data-estado="espera" data-step="banco">
+        <div class="cc-et-icone">
+          <div class="cc-et-spinner"></div>
+          <i class="fa-solid fa-building-columns"></i>
+        </div>
+        <div class="cc-et-texto">
+          <p class="cc-et-rot">Passo 3</p>
+          <p class="cc-et-desc">Banco autoriza a cobrança</p>
+        </div>
+        <span class="cc-et-badge">Em breve</span>
+      </div>
+
+      <div class="cc-etapa" data-estado="espera" data-step="matricula">
+        <div class="cc-et-icone">
+          <div class="cc-et-spinner"></div>
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+        <div class="cc-et-texto">
+          <p class="cc-et-rot">Passo 4</p>
+          <p class="cc-et-desc"><%= _ultimoPasso %></p>
+        </div>
+        <span class="cc-et-badge">Em breve</span>
+      </div>
+
+    </div>
+
+    <% } else { %>
+
+    <div class="cc-aguardando">
+      <i class="fa-solid fa-arrows-rotate cc-aguardando-icone"></i>
+      <h1 class="cc-titulo" style="margin-bottom:8px">Processando…</h1>
+      <p class="cc-sub">Estamos localizando sua inscrição. Se a tela não mudar em alguns
+      segundos, abra suas inscrições e continue por lá.</p>
+    </div>
+
+    <% } %>
+
+    <div class="cc-rodape">
+      <a href="/minha-conta?sec=inscricoes">
+        <i class="fa-solid fa-arrow-left"></i> Ver minhas inscrições
+      </a>
+    </div>
+
+  </div>
 </main>
+
+<% if (matricula) { %>
+<script>
+(function () {
+  var MATRICULA_ID = '<%= matricula.id %>';
+  var TURMA_ID     = '<%= turma.id %>';
+  var ETAPA        = '<%= etapa %>';
+  var PARCELAS     = <%= _parcelas %>;
+  var REF          = '<%= _ref %>';
+
+  var card   = document.getElementById('ccCard');
+  var form   = document.getElementById('ccForm');
+  var btn    = document.getElementById('ccBtn');
+  var btnTxt = document.getElementById('ccBtnTexto');
+  var btnIco = document.getElementById('ccBtnIcone');
+  var erro   = document.getElementById('ccErro');
+  var erroTx = document.getElementById('ccErroTexto');
+
+  var inNumero   = document.getElementById('ccNumero');
+  var inTitular  = document.getElementById('ccTitular');
+  var inValidade = document.getElementById('ccValidade');
+  var inCvv      = document.getElementById('ccCvv');
+
+  var espelho = document.getElementById('ccEspelho');
+  var faceNum = document.getElementById('ccFaceNumero');
+  var faceNom = document.getElementById('ccFaceNome');
+  var faceVal = document.getElementById('ccFaceValidade');
+  var faceCvv = document.getElementById('ccFaceCvv');
+  var bandeira = document.getElementById('ccBandeira');
+
+  function soDigitos(v) { return (v || '').replace(/\D/g, ''); }
+
+  // Sem cronômetro nesta tela: o cartão é preenchido e enviado na hora, então
+  // não há uma cobrança pendente esperando no gateway como no PIX.
+  var polling = null;
+  var encerrado = false;
+
+  // ── Bandeira ─────────────────────────────────────────────────────────
+  var BANDEIRAS = [
+    { re: /^4/,                         icone: 'fa-brands fa-cc-visa',       nome: 'visa' },
+    { re: /^(5[1-5]|2[2-7])/,           icone: 'fa-brands fa-cc-mastercard', nome: 'mastercard' },
+    { re: /^3[47]/,                     icone: 'fa-brands fa-cc-amex',       nome: 'amex' },
+    { re: /^(636368|438935|451416|509|627780|636297|650)/, icone: 'fa-solid fa-credit-card', nome: 'elo' },
+    { re: /^(606282|3841)/,             icone: 'fa-solid fa-credit-card',    nome: 'hipercard' },
+    { re: /^3(0[0-5]|[68])/,            icone: 'fa-brands fa-cc-diners-club',nome: 'diners' },
+    { re: /^6(011|5)/,                  icone: 'fa-brands fa-cc-discover',   nome: 'discover' }
+  ];
+  var bandeiraAtual = null;
+
+  function detectarBandeira(digitos) {
+    for (var i = 0; i < BANDEIRAS.length; i++) {
+      if (BANDEIRAS[i].re.test(digitos)) return BANDEIRAS[i];
+    }
+    return null;
+  }
+
+  // ── Luhn ─────────────────────────────────────────────────────────────
+  function luhn(num) {
+    var soma = 0, alterna = false;
+    for (var i = num.length - 1; i >= 0; i--) {
+      var d = parseInt(num.charAt(i), 10);
+      if (alterna) { d *= 2; if (d > 9) d -= 9; }
+      soma += d; alterna = !alterna;
+    }
+    return soma % 10 === 0;
+  }
+
+  // ── Espelho + máscaras ───────────────────────────────────────────────
+  inNumero.addEventListener('input', function () {
+    var v = soDigitos(this.value).slice(0, 19);
+    bandeiraAtual = detectarBandeira(v);
+    var eAmex = bandeiraAtual && bandeiraAtual.nome === 'amex';
+
+    v = v.slice(0, eAmex ? 15 : 16);
+    this.value = eAmex
+      ? v.replace(/^(\d{0,4})(\d{0,6})(\d{0,5}).*/, function (_, a, b, c) {
+          return [a, b, c].filter(Boolean).join(' ');
+        })
+      : v.replace(/(.{4})/g, '$1 ').trim();
+
+    bandeira.innerHTML = '<i class="' + (bandeiraAtual ? bandeiraAtual.icone : 'fa-regular fa-credit-card') + '"></i>';
+    inCvv.maxLength = eAmex ? 4 : 3;
+    inCvv.placeholder = eAmex ? '0000' : '000';
+
+    var molde = eAmex ? '•••• •••••• •••••' : '•••• •••• •••• ••••';
+    faceNum.textContent = this.value + molde.slice(this.value.length);
+    limparErro('campoNumero');
+  });
+
+  inTitular.addEventListener('input', function () {
+    this.value = this.value.replace(/[^A-Za-zÀ-ÿ\s.'-]/g, '');
+    faceNom.textContent = this.value.trim() ? this.value.toUpperCase() : 'NOME NO CARTÃO';
+    limparErro('campoTitular');
+  });
+
+  inValidade.addEventListener('input', function () {
+    var v = soDigitos(this.value).slice(0, 4);
+    if (v.length >= 3) v = v.slice(0, 2) + '/' + v.slice(2);
+    this.value = v;
+    faceVal.textContent = v || 'MM/AA';
+    limparErro('campoValidade');
+  });
+
+  inCvv.addEventListener('input', function () {
+    this.value = soDigitos(this.value).slice(0, this.maxLength);
+    faceCvv.textContent = this.value || '•••';
+    limparErro('campoCvv');
+  });
+
+  inCvv.addEventListener('focus', function () { espelho.classList.add('virado'); });
+  inCvv.addEventListener('blur',  function () { espelho.classList.remove('virado'); });
+
+  // ── Validação ────────────────────────────────────────────────────────
+  function marcarErro(id, msg) {
+    var campo = document.getElementById(id);
+    campo.classList.add('tem-erro');
+    campo.querySelector('.cc-in').classList.add('invalido');
+    if (msg) campo.querySelector('.cc-erro-campo').textContent = msg;
+  }
+  function limparErro(id) {
+    var campo = document.getElementById(id);
+    campo.classList.remove('tem-erro');
+    campo.querySelector('.cc-in').classList.remove('invalido');
+  }
+
+  function validar() {
+    var ok = true;
+    var num = soDigitos(inNumero.value);
+    var minimo = bandeiraAtual && bandeiraAtual.nome === 'amex' ? 15 : 16;
+
+    if (num.length < minimo || !luhn(num)) { marcarErro('campoNumero'); ok = false; }
+    if (inTitular.value.trim().length < 3 || inTitular.value.trim().indexOf(' ') === -1) {
+      marcarErro('campoTitular', 'Escreva nome e sobrenome como no cartão.'); ok = false;
+    }
+
+    var val = soDigitos(inValidade.value);
+    if (val.length < 4) {
+      marcarErro('campoValidade', 'Preencha MM/AA.'); ok = false;
+    } else {
+      var mes = parseInt(val.slice(0, 2), 10);
+      var ano = 2000 + parseInt(val.slice(2), 10);
+      var fim = new Date(ano, mes, 0, 23, 59, 59);
+      if (mes < 1 || mes > 12)   { marcarErro('campoValidade', 'Mês inválido.'); ok = false; }
+      else if (fim < new Date()) { marcarErro('campoValidade', 'Cartão vencido.'); ok = false; }
+    }
+
+    var cvvMin = bandeiraAtual && bandeiraAtual.nome === 'amex' ? 4 : 3;
+    if (soDigitos(inCvv.value).length < cvvMin) { marcarErro('campoCvv'); ok = false; }
+
+    return ok;
+  }
+
+  // ── Etapas ───────────────────────────────────────────────────────────
+  function set(nome, estado, badge) {
+    var el = document.querySelector('[data-step="' + nome + '"]');
+    if (!el) return;
+    el.dataset.estado = estado;
+    if (badge) el.querySelector('.cc-et-badge').textContent = badge;
+  }
+
+  function entrarEmProcessamento() {
+    card.classList.add('cc-processando');
+    erro.classList.remove('visivel');
+    set('dados', 'feito', 'Pronto');
+    set('envio', 'atual', 'Enviando');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function voltarAoFormulario(msg) {
+    if (encerrado) return;
+    card.classList.remove('cc-processando');
+    set('dados', 'atual', 'Preenchendo');
+    set('envio', 'espera', 'Em breve');
+    set('banco', 'espera', 'Em breve');
+    set('matricula', 'espera', 'Em breve');
+    erroTx.textContent = msg || 'Confira os dados e tente de novo.';
+    erro.classList.add('visivel');
+    btn.disabled = false;
+    btnTxt.textContent = 'Tentar de novo';
+    btnIco.className = 'fa-solid fa-rotate-right';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function concluir() {
+    encerrado = true;
+    set('envio', 'feito', 'Enviado');
+    set('banco', 'feito', 'Autorizado');
+    set('matricula', 'atual', 'Registrando…');
+    setTimeout(function () {
+      set('matricula', 'feito', 'Confirmado');
+      setTimeout(function () {
+        location.href = ETAPA === 'taxa'
+          ? '/inscrever/' + TURMA_ID + '/pagar-curso'
+          : '/minha-conta?inscrito=1';
+      }, 1200);
+    }, 900);
+  }
+
+  // ── Polling ──────────────────────────────────────────────────────────
+  function iniciarPolling() {
+    polling = setInterval(async function () {
+      if (encerrado) { clearInterval(polling); return; }
+      try {
+        var r = await fetch('/inscricao/status/' + MATRICULA_ID);
+        if (!r.ok) return;
+        var m = await r.json();
+
+        var quitado = ETAPA === 'taxa'
+          ? m.taxaConfirmada
+          : ['PAGO', 'PARCELADO'].includes(m.statusPagamento);
+
+        if (quitado) {
+          clearInterval(polling);
+          concluir();
+        } else if (m.statusPagamento === 'RECUSADO' || m.statusPagamento === 'CANCELADO') {
+          clearInterval(polling);
+          voltarAoFormulario('O banco recusou a cobrança. Tente outro cartão.');
+        }
+      } catch (e) {
+        // rede oscilou — tenta no próximo tick
+      }
+    }, 4000);
+  }
+
+  // ── Envio ────────────────────────────────────────────────────────────
+  form.addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    if (encerrado) return;
+    if (!validar()) return;
+
+    btn.disabled = true;
+    btnTxt.textContent = 'Processando…';
+    btnIco.className = 'fa-solid fa-circle-notch cc-girando';
+    entrarEmProcessamento();
+
+    var dados = {
+      _csrf:    document.getElementById('ccCsrf').value,
+      numero:   soDigitos(inNumero.value),
+      titular:  inTitular.value.trim().toUpperCase(),
+      validade: inValidade.value,
+      cvv:      soDigitos(inCvv.value),
+      parcelas: PARCELAS,
+      etapa:    ETAPA,
+      ref:      REF
+    };
+
+    // Some com os dados sensíveis da tela assim que saem daqui
+    inNumero.value = ''; inCvv.value = '';
+
+    try {
+      var r = await fetch('/inscricao/cartao/' + MATRICULA_ID, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'CSRF-Token': dados._csrf },
+        body: JSON.stringify(dados)
+      });
+      var res = await r.json().catch(function () { return {}; });
+
+      if (!r.ok || res.ok === false) {
+        voltarAoFormulario(res.mensagem || 'Não conseguimos processar essa cobrança.');
+        return;
+      }
+
+      set('envio', 'feito', 'Enviado');
+      set('banco', 'atual', 'Autorizando');
+
+      if (res.status === 'PAGO') { concluir(); return; }
+      iniciarPolling();
+
+    } catch (e) {
+      voltarAoFormulario('A conexão caiu no meio do envio. Confira suas inscrições antes de tentar de novo.');
+    }
+  });
+})();
+</script>
+<% } %>
+<% } else { %>
+
+<main class="pix-wrap">
+  <div class="pix-card">
+
+    <% if (pixQrCode) { %>
+
+    <!-- ══ Cabeçalho com logo PIX ═════════════════════════════════════════ -->
+    <div class="pix-topo">
+      <div class="pix-icone-wrap">
+        <div class="pix-pulso"></div>
+        <div class="pix-pulso"></div>
+        <i class="fa-brands fa-pix"></i>
+      </div>
+      <h1 class="pix-titulo">Escaneie e pague</h1>
+      <p class="pix-sub">Abra o app do banco e aponte a câmera,<br>ou use o código Copia e Cola.</p>
+    </div>
+
+    <!-- ══ QR Code + timer integrado ═════════════════════════════════════ -->
+    <div class="pix-qr-card">
+      <div class="pix-qr-area">
+        <div class="pix-scanner-wrap">
+          <% if (pixBase64) { %>
+          <img
+            src="<%= /^(https?:|data:)/i.test(pixBase64) ? pixBase64 : ('data:image/png;base64,' + pixBase64) %>"
+            alt="QR Code PIX"
+          />
+          <% } else { %>
+          <img
+            src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=<%= encodeURIComponent(pixQrCode || pixUrl) %>"
+            alt="QR Code PIX"
+          />
+          <% } %>
+          <div class="pix-scanner"></div>
+        </div>
+
+        <button id="btnCopiar" class="pix-btn-copiar" type="button">
+          <i class="fa-regular fa-copy"></i>
+          <span>Copiar código PIX</span>
+        </button>
+      </div>
+
+      <!-- timer colado embaixo do QR -->
+      <div class="pix-timer-bar">
+        <div class="pix-timer-anel">
+          <svg viewBox="0 0 36 36" aria-hidden="true">
+            <circle class="pix-timer-trilha" cx="18" cy="18" r="15.2"/>
+            <circle class="pix-timer-arco" id="timerArco" cx="18" cy="18" r="15.2"/>
+          </svg>
+          <div class="pix-timer-num" id="timerNum">05:00</div>
+        </div>
+        <div class="pix-timer-info">
+          <p class="pix-timer-label">Tempo restante</p>
+          <p class="pix-timer-msg">
+            Verificando automaticamente…
+            <span class="pix-timer-alt" id="timerAlt">Tentando…</span>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Etapas visuais ═════════════════════════════════════════════════ -->
+    <div class="pix-etapas" id="etapas">
+
+      <div class="pix-etapa" data-estado="feito" data-step="qr">
+        <div class="pix-et-icone">
+          <div class="pix-et-spinner"></div>
+          <i class="fa-solid fa-qrcode"></i>
+        </div>
+        <div class="pix-et-texto">
+          <p class="pix-et-rot">Passo 1</p>
+          <p class="pix-et-desc">QR Code gerado</p>
+        </div>
+        <span class="pix-et-badge">Pronto</span>
+      </div>
+
+      <div class="pix-etapa" data-estado="atual" data-step="pagamento">
+        <div class="pix-et-icone">
+          <div class="pix-et-spinner"></div>
+          <i class="fa-solid fa-mobile-screen-button"></i>
+        </div>
+        <div class="pix-et-texto">
+          <p class="pix-et-rot">Passo 2</p>
+          <p class="pix-et-desc">Aguardando pagamento</p>
+        </div>
+        <span class="pix-et-badge">Aguardando</span>
+      </div>
+
+      <div class="pix-etapa" data-estado="espera" data-step="banco">
+        <div class="pix-et-icone">
+          <div class="pix-et-spinner"></div>
+          <i class="fa-solid fa-building-columns"></i>
+        </div>
+        <div class="pix-et-texto">
+          <p class="pix-et-rot">Passo 3</p>
+          <p class="pix-et-desc">Banco confirma a transação</p>
+        </div>
+        <span class="pix-et-badge">Em breve</span>
+      </div>
+
+      <div class="pix-etapa" data-estado="espera" data-step="matricula">
+        <div class="pix-et-icone">
+          <div class="pix-et-spinner"></div>
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+        <div class="pix-et-texto">
+          <p class="pix-et-rot">Passo 4</p>
+          <p class="pix-et-desc">Matrícula confirmada</p>
+        </div>
+        <span class="pix-et-badge">Em breve</span>
+      </div>
+
+    </div>
+
+    <% } else { %>
+
+    <!-- ══ Sem QR: processando ════════════════════════════════════════════ -->
+    <div class="pix-aguardando">
+      <i class="fa-solid fa-arrows-rotate pix-aguardando-icone girando"></i>
+      <h1 class="pix-titulo" style="margin-bottom:8px">Processando…</h1>
+      <p class="pix-sub">Seu pagamento está sendo processado. Assim que o banco confirmar, sua matrícula é atualizada aqui.</p>
+    </div>
+
+    <% } %>
+
+    <!-- ══ Rodapé ══════════════════════════════════════════════════════════ -->
+    <div class="pix-rodape">
+      <a href="/minha-conta?sec=inscricoes">
+        <i class="fa-solid fa-arrow-left"></i> Ver minhas inscrições
+      </a>
+    </div>
+
+  </div>
+</main>
+
 <script src="/js/pix.js"></script>
 
 <% if (matricula) { %>
 <script>
-// ── Polling de confirmação ─────────────────────────────────────────────
-// Consulta /inscricao/status a cada 4s. Quando o webhook confirmar:
-//   etapa 'taxa'  → redireciona pra etapa 3 (/pagar-curso)
-//   etapa 'curso' → redireciona pra "Minha conta"
 (function () {
   var MATRICULA_ID = '<%= matricula.id %>';
-  var ETAPA = '<%= etapa %>';
+  var ETAPA        = '<%= etapa %>';
+  var REF          = '<%= transacaoRef %>';
+  var PIX_CODE     = '<%= (pixQrCode || '').replace(/'/g, "\\'") %>';
 
-  var timer = setInterval(async function () {
+  // ── Cronômetro preso à transação ─────────────────────────────────────
+  // A chave guarda { ref, seg }. Ref igual = mesmo QR Code, o tempo continua
+  // de onde parou num reload. Ref diferente = transação nova, volta a 05:00.
+  var STORAGE_KEY = 'pix_timer_' + MATRICULA_ID;
+  var TOTAL_SEG   = 5 * 60;
+
+  var salvo;
+  try { salvo = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null'); }
+  catch (e) { salvo = null; }
+
+  var restante = (salvo && salvo.ref === REF && salvo.seg > 0) ? salvo.seg : TOTAL_SEG;
+
+  var arco  = document.getElementById('timerArco');
+  var numEl = document.getElementById('timerNum');
+  var altEl = document.getElementById('timerAlt');
+  var CIRC  = 95.53; // 2π × 15.2
+  var encerrado = false;
+
+  // ── Copiar PIX ──────────────────────────────────────────────────────
+  var btnCopiar = document.getElementById('btnCopiar');
+  if (btnCopiar && PIX_CODE) {
+    btnCopiar.addEventListener('click', function () {
+      navigator.clipboard.writeText(PIX_CODE).then(function () {
+        btnCopiar.classList.add('copiado');
+        btnCopiar.querySelector('span').textContent = 'Copiado!';
+        btnCopiar.querySelector('i').className = 'fa-solid fa-check';
+        setTimeout(function () {
+          btnCopiar.classList.remove('copiado');
+          btnCopiar.querySelector('span').textContent = 'Copiar código PIX';
+          btnCopiar.querySelector('i').className = 'fa-regular fa-copy';
+        }, 2500);
+      });
+    });
+  }
+
+  // ── Timer ────────────────────────────────────────────────────────────
+  function atualizarTimer() {
+    var mm = Math.floor(restante / 60);
+    var ss = restante % 60;
+    if (numEl) numEl.textContent = String(mm).padStart(2,'0') + ':' + String(ss).padStart(2,'0');
+    if (arco) {
+      arco.style.strokeDashoffset = CIRC * (1 - restante / TOTAL_SEG);
+      if (restante <= 30 && restante > 0) arco.style.stroke = '#e2a800';
+      if (restante === 0) {
+        arco.style.stroke = '#8a929c';
+        if (numEl) { numEl.textContent = '00:00'; numEl.style.color = '#8a929c'; }
+      }
+    }
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ref: REF, seg: restante })); }
+    catch (e) {}
+  }
+
+  function mostrarTentativa() {
+    if (!altEl) return;
+    altEl.style.display = 'inline';
+    setTimeout(function () { altEl.style.display = 'none'; }, 1200);
+  }
+
+  // ── Fim do prazo: cancela a cobrança e volta para os cursos ──────────
+  async function cancelarESair() {
+    if (encerrado) return;
+    encerrado = true;
+    clearInterval(timerInterval);
+    clearInterval(pollingInterval);
+    try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
+
+    try {
+      await fetch('/inscricao/cancelar-transacao/' + MATRICULA_ID, { method: 'POST' });
+    } catch (e) {
+      // Se falhar, o gateway derruba por expiração de qualquer jeito.
+    }
+
+    location.href = '/cursos';
+  }
+
+  var timerInterval = setInterval(function () {
+    if (restante > 0) {
+      restante--;
+      atualizarTimer();
+    } else {
+      cancelarESair();
+    }
+  }, 1000);
+  atualizarTimer();
+
+  // ── Etapas ───────────────────────────────────────────────────────────
+  function avancarEtapas() {
+    var etapaPgto      = document.querySelector('[data-step="pagamento"]');
+    var etapaBanco     = document.querySelector('[data-step="banco"]');
+    var etapaMatricula = document.querySelector('[data-step="matricula"]');
+
+    if (etapaPgto) {
+      etapaPgto.dataset.estado = 'feito';
+      etapaPgto.querySelector('.pix-et-badge').textContent = 'Pago';
+    }
+    setTimeout(function () {
+      if (etapaBanco) {
+        etapaBanco.dataset.estado = 'atual';
+        etapaBanco.querySelector('.pix-et-badge').textContent = 'Aguardando';
+      }
+      setTimeout(function () {
+        if (etapaBanco)     { etapaBanco.dataset.estado = 'feito'; etapaBanco.querySelector('.pix-et-badge').textContent = 'Confirmado'; }
+        if (etapaMatricula) { etapaMatricula.dataset.estado = 'atual'; etapaMatricula.querySelector('.pix-et-badge').textContent = 'Registrando…'; }
+      }, 900);
+    }, 600);
+  }
+
+  // ── Polling ──────────────────────────────────────────────────────────
+  var pollingInterval = setInterval(async function () {
+    if (encerrado) { clearInterval(pollingInterval); return; }
+    mostrarTentativa();
     try {
       var r = await fetch('/inscricao/status/' + MATRICULA_ID);
       if (!r.ok) return;
       var m = await r.json();
 
-      if (ETAPA === 'taxa' && m.taxaConfirmada) {
-        clearInterval(timer);
-        location.href = '/inscrever/' + m.turmaId + '/pagar-curso';
-      } else if (ETAPA !== 'taxa' && m.statusPagamento === 'PAGO') {
-        clearInterval(timer);
-        location.href = '/minha-conta?sec=inscricoes&pago=1';
-      }
+      // 'PARCELADO' também conta como quitado — é o status que a matrícula
+      // recebe quando o curso é pago em parcelas.
+      var quitado = ETAPA === 'taxa'
+        ? m.taxaConfirmada
+        : ['PAGO', 'PARCELADO'].indexOf(m.statusPagamento) !== -1;
+
+      if (!quitado) return;
+
+      encerrado = true;
+      clearInterval(pollingInterval);
+      clearInterval(timerInterval);
+      try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      avancarEtapas();
+
+      setTimeout(function () {
+        location.href = ETAPA === 'taxa'
+          ? '/inscrever/' + m.turmaId + '/pagar-curso'
+          : '/minha-conta?inscrito=1';
+      }, 2200);
     } catch (e) {
-      // Falha de rede momentânea: silencia e tenta no próximo tick.
+      // Falha momentânea de rede — silencia e tenta no próximo tick.
     }
   }, 4000);
+
 })();
 </script>
+<% } %>
+
 <% } %>
 
 <%- include('partials/site-footer') %>

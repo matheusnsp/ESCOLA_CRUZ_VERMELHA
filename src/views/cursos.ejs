@@ -1,67 +1,127 @@
 <%- include('partials/site-head', { titulo: 'Cursos' }) %>
 <%- include('partials/site-header') %>
 
-<div class="inst-page" style="max-width:1160px;padding-bottom:0;">
-  <header class="inst-hero" style="margin-bottom:0;">
-    <p class="inst-eyebrow">Nossos cursos</p>
-    <h1 class="inst-h1">Cursos disponíveis</h1>
-    <p class="inst-lead">Capacitação oficial da Cruz Vermelha, escolha um curso e faça sua inscrição.</p>
-  </header>
+<%
+var agora = new Date();
+var totalCursos = cursos.length;
+%>
 
-  <div class="cursos-wrap">
-    <% if (!cursos.length) { %>
-      <p class="cursos-vazio">Nenhum curso disponível no momento.</p>
+<main class="cx">
+
+  <!-- ══ Cabeçalho ════════════════════════════════════════════════════════ -->
+  <header class="cxg-topo">
+    <div class="cxg-topo-conteudo">
+      <p class="cxg-olho">Escola de Educação e Saúde CVB-RJ</p>
+      <h1 class="cxg-topo-titulo">Cursos disponíveis</h1>
+      <p class="cxg-topo-lead">
+        Capacitação oficial da Cruz Vermelha. Escolha um curso, confira as
+        turmas abertas e faça sua inscrição.
+      </p>
+    </div>
+  </header><!-- /cxg-topo -->
+
+  <!-- ══ Corpo ════════════════════════════════════════════════════════════ -->
+  <div class="cxg-quadro">
+
+    <% if (!totalCursos) { %>
+
+      <div class="cx-vazio">
+        <i class="fa-regular fa-folder-open"></i>
+        <p>Nenhum curso disponível no momento. Novas capacitações são
+        publicadas com frequência — volte em breve para conferir.</p>
+        <a href="/">Voltar ao início <i class="fa-solid fa-arrow-right"></i></a>
+      </div>
+
     <% } else { %>
-      <div class="cursos-grid">
-        <% cursos.forEach(function(curso) {
-          var total = totalExibicao(curso, cfgMap);
-          var turma = curso.turmas && curso.turmas[0];
+
+      <div class="cxg-barra">
+        <h2 class="cx-secao-t cxg-barra-t">Catálogo</h2>
+        <span class="cxg-barra-n">
+          <%= totalCursos %> <%= totalCursos === 1 ? 'curso listado' : 'cursos listados' %>
+        </span>
+      </div>
+
+      <div class="cxg-grid">
+        <% cursos.forEach(function (curso) {
+             var total   = totalExibicao(curso, cfgMap);
+             var turmas  = curso.turmas || [];
+             var prox    = turmas.find(function (t) { return new Date(t.inicioPrevisto) > agora; });
+             var turma   = prox || turmas[0];
         %>
-          <article class="curso-card">
-            <a class="card-link-overlay" href="/cursos/<%= curso.id %>" aria-label="Ver <%= curso.nome %>"></a>
+        <article class="cxg-card">
 
-            <div class="curso-card-img">
-              <% if (curso.imagemUrl) { %>
-                <img src="<%= curso.imagemUrl %>" alt="<%= curso.nome %>" loading="lazy">
-              <% } else { %>
-                <div class="curso-card-fallback">
-                  <i class="fa-regular fa-image"></i><span>Foto a definir</span>
-                </div>
-              <% } %>
-              <% if (curso.escolaridadeMinima) { %>
-                <span class="curso-tag">
-                  <i class="fa-solid fa-graduation-cap"></i> <%= curso.escolaridadeMinima %>
-                </span>
-              <% } %>
-            </div>
+          <a class="card-link-overlay" href="/cursos/<%= curso.id %>"
+             aria-label="Ver <%= curso.nome %>"></a>
 
-            <div class="curso-card-body">
-              <h3><%= curso.nome %></h3>
-              <p class="curso-desc"><%= curso.descricao || 'Curso de capacitação da Cruz Vermelha.' %></p>
-
-              <ul class="curso-infos">
-                <li><i class="fa-regular fa-clock"></i> <%= curso.cargaHoraria %> horas</li>
-                  <% if (turma) { %>
-                    <li>
-                      <i class="fa-solid fa-flag-checkered"></i>
-                      Início <%= new Date(turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
-                    </li>
-                  <% } %>
-              </ul>
-
-              <div class="curso-preco">
-                <span class="curso-preco-label">A partir de (à vista)</span>
-                <span class="curso-preco-valor"><%= formatBRL(curso.precoAvista) %></span>
-                <span class="curso-preco-total">Total c/ matrícula: <strong><%= formatBRL(total) %></strong></span>
+          <!-- ── Capa ─────────────────────────────────────────────────── -->
+          <div class="cxg-card-capa">
+            <% if (curso.imagemUrl) { %>
+              <img src="<%= curso.imagemUrl %>" alt="<%= curso.nome %>" loading="lazy">
+            <% } else { %>
+              <div class="cxg-card-semfoto">
+                <i class="fa-solid fa-kit-medical"></i>
               </div>
+            <% } %>
 
-              <a class="curso-btn" href="/cursos/<%= curso.id %>">inscrever-se</a>
+            <span class="cxg-selo <%= prox ? 'cxg-selo-on' : 'cxg-selo-off' %>">
+              <i class="fa-solid <%= prox ? 'fa-circle-check' : 'fa-clock' %>"></i>
+              <%= prox ? 'Inscrições abertas' : 'Turmas em breve' %>
+            </span>
+
+            <% if (curso.escolaridadeMinima) { %>
+            <span class="cxg-tag">
+              <i class="fa-solid fa-user-graduate"></i> <%= curso.escolaridadeMinima %>
+            </span>
+            <% } %>
+          </div>
+
+          <!-- ── Corpo ────────────────────────────────────────────────── -->
+          <div class="cxg-card-corpo">
+            <h3 class="cxg-card-titulo"><%= curso.nome %></h3>
+            <p class="cxg-card-desc">
+              <%= curso.descricao || 'Curso de capacitação da Cruz Vermelha.' %>
+            </p>
+
+            <ul class="cxg-card-infos">
+              <li>
+                <i class="fa-regular fa-clock"></i>
+                <span><%= curso.cargaHoraria %> horas</span>
+              </li>
+              <% if (turma) { %>
+              <li>
+                <i class="fa-solid fa-flag-checkered"></i>
+                <span class="num">
+                  Início <%= new Date(turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
+                </span>
+              </li>
+              <% } else { %>
+              <li>
+                <i class="fa-regular fa-calendar-xmark"></i>
+                <span>Data a definir</span>
+              </li>
+              <% } %>
+            </ul>
+
+            <!-- ── Preço ──────────────────────────────────────────────── -->
+            <div class="cxg-card-preco">
+              <em>A partir de (à vista)</em>
+              <strong class="num"><%= formatBRL(curso.precoAvista) %></strong>
+              <span>Total com matrícula: <b class="num"><%= formatBRL(total) %></b></span>
             </div>
-          </article>
+
+            <a class="cxg-card-btn" href="/cursos/<%= curso.id %>">
+              Ver curso e turmas <i class="fa-solid fa-arrow-right"></i>
+            </a>
+          </div>
+
+        </article>
         <% }) %>
       </div>
+
     <% } %>
-  </div>
-</div>
+
+  </div><!-- /cxg-quadro -->
+
+</main>
 
 <%- include('partials/site-footer') %>
