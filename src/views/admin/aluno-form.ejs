@@ -1,57 +1,69 @@
 <%- include('head', { titulo: 'Editar aluno' }) %>
 <%- include('header', { ativo: 'alunos' }) %>
-<div class="adm-h1-row"><h1 class="adm-h1">Editar aluno</h1><a href="/alunos" class="adm-link">← Voltar</a></div>
-<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
 
-<form method="POST" action="/alunos/<%= aluno.id %>/editar" class="adm-box" style="padding:24px;">
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Editar aluno</h1>
+  <a href="/alunos" class="adm-link">← Voltar</a>
+</div>
+
+<% if (erro) { %>
+  <div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div>
+<% } %>
+
+<form method="POST" action="/alunos/<%= aluno.id %>/editar" class="adm-box adm-box-pad">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-  <div class="adm-form" style="padding:0;display:grid;grid-template-columns:1fr;gap:14px;">
+  <div class="adm-form c1 adm-campos">
     <label class="full">Nome completo
       <input type="text" name="nome" value="<%= aluno.nome %>" required>
-      <small style="color:#6b7689;font-weight:400;">Usado no certificado. Confira a grafia.</small>
+      <small class="adm-hint">Usado no certificado. Confira a grafia.</small>
     </label>
   </div>
 
-  <fieldset style="border:1px solid #e7ebf1;border-radius:12px;padding:18px;margin-top:18px;">
-    <legend style="font-size:13px;font-weight:700;padding:0 6px;">Contato</legend>
-    <div class="adm-form" style="padding:0;display:grid;grid-template-columns:2fr 1fr;gap:16px;">
+  <fieldset class="adm-fieldset">
+    <legend>Contato</legend>
+    <div class="adm-form contato adm-campos">
       <label>E-mail (login)
         <input type="email" name="email" value="<%= aluno.email %>" required maxlength="180">
       </label>
       <label>Celular
-        <input type="text" name="celular" value="<%= aluno.celular || '' %>" inputmode="numeric" placeholder="(21) 99999-9999" maxlength="15" data-mask="celular">
+        <input type="text" name="celular" value="<%= aluno.celular || '' %>"
+               inputmode="numeric" placeholder="(21) 99999-9999" maxlength="15" data-mask="celular">
       </label>
     </div>
   </fieldset>
 
-  <fieldset style="border:1px solid #e7ebf1;border-radius:12px;padding:18px;margin-top:18px;">
-    <legend style="font-size:13px;font-weight:700;padding:0 6px;">Documentos</legend>
-    <div class="adm-form" style="padding:0;display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+  <fieldset class="adm-fieldset">
+    <legend>Documentos</legend>
+    <div class="adm-form adm-campos">
       <% if (aluno.tipoDocumento === 'PASSAPORTE') { %>
         <label>Passaporte
-          <input type="text" name="passaporte" value="<%= passaporteDigitado || aluno.passaporte || '' %>" maxlength="20" placeholder="Ex: AB1234567">
-          <small style="color:#6b7689;font-weight:400;">Deixe em branco para manter o atual.</small>
+          <input type="text" name="passaporte" value="<%= passaporteDigitado || aluno.passaporte || '' %>"
+                 maxlength="20" placeholder="Ex: AB1234567">
+          <small class="adm-hint">Deixe em branco para manter o atual.</small>
         </label>
         <label>País de origem
           <input type="text" name="paisOrigem" value="<%= aluno.paisOrigem || '' %>" placeholder="Ex: Argentina">
         </label>
       <% } else { %>
         <label>CPF ou CNPJ
-          <input type="text" name="cpfCnpj" value="<%= cpfCnpjDigitado %>" inputmode="numeric" placeholder="<%= cpfCnpjAtualMascarado ? 'Atual: ' + cpfCnpjAtualMascarado : 'Somente números' %>" maxlength="18" data-mask="cpfCnpj">
-          <small style="color:#6b7689;font-weight:400;">Deixe em branco para manter o documento atual<%= cpfCnpjAtualMascarado ? '' : ' (nenhum cadastrado)' %>.</small>
+          <input type="text" name="cpfCnpj" value="<%= cpfCnpjDigitado %>" inputmode="numeric"
+                 placeholder="<%= cpfCnpjAtualMascarado ? 'Atual: ' + cpfCnpjAtualMascarado : 'Somente números' %>"
+                 maxlength="18" data-mask="cpfCnpj">
+          <small class="adm-hint">Deixe em branco para manter o documento atual<%= cpfCnpjAtualMascarado ? '' : ' (nenhum cadastrado)' %>.</small>
         </label>
         <label>RG
-          <input type="text" name="rg" value="<%= rgDigitado %>" maxlength="14" placeholder="<%= rgAtualMascarado ? 'Atual: ' + rgAtualMascarado : 'Número do RG' %>" data-mask="rg">
-          <small style="color:#6b7689;font-weight:400;">Deixe em branco para manter o RG atual<%= rgAtualMascarado ? '' : ' (nenhum cadastrado)' %>.</small>
+          <input type="text" name="rg" value="<%= rgDigitado %>" maxlength="14"
+                 placeholder="<%= rgAtualMascarado ? 'Atual: ' + rgAtualMascarado : 'Número do RG' %>" data-mask="rg">
+          <small class="adm-hint">Deixe em branco para manter o RG atual<%= rgAtualMascarado ? '' : ' (nenhum cadastrado)' %>.</small>
         </label>
       <% } %>
     </div>
   </fieldset>
 
-  <fieldset style="border:1px solid #e7ebf1;border-radius:12px;padding:18px;margin-top:18px;">
-    <legend style="font-size:13px;font-weight:700;padding:0 6px;">Perfil</legend>
-    <div class="adm-form" style="padding:0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+  <fieldset class="adm-fieldset">
+    <legend>Perfil</legend>
+    <div class="adm-form c3 adm-campos">
       <label>Escolaridade
         <select name="escolaridade">
           <option value="">— não informada —</option>
@@ -79,11 +91,12 @@
     </div>
   </fieldset>
 
-  <fieldset style="border:1px solid #e7ebf1;border-radius:12px;padding:18px;margin-top:18px;">
-    <legend style="font-size:13px;font-weight:700;padding:0 6px;">Endereço (para cobrança)</legend>
-    <div class="adm-form" style="padding:0;display:grid;grid-template-columns:1fr 3fr 1fr 1.5fr;gap:16px;">
+  <fieldset class="adm-fieldset">
+    <legend>Endereço (para cobrança)</legend>
+    <div class="adm-form endereco adm-campos">
       <label>CEP
-        <input type="text" name="cep" value="<%= aluno.cep || '' %>" inputmode="numeric" placeholder="00000000" maxlength="9">
+        <input type="text" name="cep" value="<%= aluno.cep || '' %>"
+               inputmode="numeric" placeholder="00000000" maxlength="9">
       </label>
       <label>Rua / Logradouro
         <input type="text" name="logradouro" value="<%= aluno.logradouro || '' %>">
@@ -95,7 +108,8 @@
         <input type="text" name="complemento" value="<%= aluno.complemento || '' %>">
       </label>
     </div>
-    <div class="adm-form" style="padding:0;margin-top:16px;display:grid;grid-template-columns:2fr 2fr 1fr;gap:16px;">
+
+    <div class="adm-form cidade-uf adm-campos">
       <label>Bairro
         <input type="text" name="bairro" value="<%= aluno.bairro || '' %>">
       </label>
@@ -113,39 +127,56 @@
     </div>
   </fieldset>
 
-  <p class="adm-mut" style="font-size:13px;margin:16px 0 18px;"><i class="fa-solid fa-triangle-exclamation"></i> E-mail e CPF/CNPJ são usados para login e identidade do aluno (inclusive no certificado). Alterações aqui ficam registradas na auditoria.</p>
+  <p class="adm-nota">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    E-mail e CPF/CNPJ são usados para login e identidade do aluno (inclusive no
+    certificado). Alterações aqui ficam registradas na auditoria.
+  </p>
 
-  <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> Salvar alterações</button>
+  <button type="submit" class="adm-btn">
+    <i class="fa-solid fa-floppy-disk"></i> Salvar alterações
+  </button>
 </form>
-<% if (admPapel === 'DEV') { %>
 
-<% if (!aluno.bloqueioTotal) { %>
-  <div class="adm-box" style="padding:24px;margin-top:18px;border:1px solid #fecaca;background:#fff5f5;">
-    <h3 style="color:#991b1b;font-size:15px;font-weight:700;margin:0 0 6px;"><i class="fa-solid fa-ban"></i> Zona de perigo</h3>
-    <p class="adm-mut" style="margin:0 0 14px;font-size:13px;">Banir este aluno cancela todas as matrículas ativas e bloqueia qualquer acesso ao site. A ação fica registrada na auditoria.</p>
-    <form method="POST" action="/alunos/<%= aluno.id %>/banir"
-      onsubmit="return confirm('Tem certeza? Esta ação cancela todas as matrículas ativas do aluno.')">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <textarea name="motivo" required maxlength="300" placeholder="Motivo do banimento (obrigatório)"
-        style="width:100%;padding:8px 12px;border:1px solid #fca5a5;border-radius:8px;font-size:13px;margin-bottom:10px;resize:vertical;min-height:70px;box-sizing:border-box;background:#fff;"></textarea>
-      <button type="submit" class="adm-btn" style="background:#dc2626;border-color:#dc2626;">
-        <i class="fa-solid fa-ban"></i> Banir aluno
-      </button>
-    </form>
-  </div>
+<% if (admPapel === 'DEV') { %>
+  <% if (!aluno.bloqueioTotal) { %>
+
+    <div class="adm-box adm-zona adm-zona-perigo">
+      <h3><i class="fa-solid fa-ban"></i> Zona de perigo</h3>
+      <p class="adm-mut">
+        Banir este aluno cancela todas as matrículas ativas e bloqueia qualquer
+        acesso ao site. A ação fica registrada na auditoria.
+      </p>
+      <form method="POST" action="/alunos/<%= aluno.id %>/banir"
+            onsubmit="return confirm('Tem certeza? Esta ação cancela todas as matrículas ativas do aluno.')">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <textarea name="motivo" required maxlength="300" class="adm-textarea"
+                  placeholder="Motivo do banimento (obrigatório)"></textarea>
+        <button type="submit" class="adm-btn adm-btn-danger">
+          <i class="fa-solid fa-ban"></i> Banir aluno
+        </button>
+      </form>
+    </div>
+
   <% } else { %>
-  <div class="adm-box" style="padding:24px;margin-top:18px;border:1px solid #bbf7d0;background:#f0fdf4;">
-    <h3 style="color:#166534;font-size:15px;font-weight:700;margin:0 0 6px;"><i class="fa-solid fa-lock"></i> Aluno banido</h3>
-    <p class="adm-mut" style="margin:0 0 14px;font-size:13px;">Este aluno está banido e não consegue acessar o site. Todas as matrículas ativas foram canceladas no momento do banimento.</p>
-    <form method="POST" action="/alunos/<%= aluno.id %>/desbanir"
-      onsubmit="return confirm('Desbanir este aluno?')">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <button type="submit" class="adm-btn" style="background:#16a34a;border-color:#16a34a;">
-        <i class="fa-solid fa-lock-open"></i> Desbanir aluno
-      </button>
-    </form>
-  </div>
+
+    <div class="adm-box adm-zona adm-zona-ok">
+      <h3><i class="fa-solid fa-lock"></i> Aluno banido</h3>
+      <p class="adm-mut">
+        Este aluno está banido e não consegue acessar o site. Todas as matrículas
+        ativas foram canceladas no momento do banimento.
+      </p>
+      <form method="POST" action="/alunos/<%= aluno.id %>/desbanir"
+            onsubmit="return confirm('Desbanir este aluno?')">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="adm-btn adm-btn-ok">
+          <i class="fa-solid fa-lock-open"></i> Desbanir aluno
+        </button>
+      </form>
+    </div>
+
   <% } %>
- <% } %> 
+<% } %>
+
 <%- include('foot') %>
 <script src="/js/mascaras.js"></script>

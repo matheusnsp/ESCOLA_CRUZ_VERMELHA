@@ -1,79 +1,106 @@
 <%- include('head', { titulo: 'Alunos' }) %>
 <%- include('header', { ativo: 'alunos' }) %>
-<div class="adm-h1-row"><h1 class="adm-h1">Alunos</h1></div>
-<% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
 
-<form method="GET" action="/alunos" class="adm-filtro" style="margin-bottom:18px;display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;">
-<div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:6px;">
-<label style="font-size:13px;font-weight:600;color:#555;">Buscar</label>
-<input type="text" name="q" value="<%= busca %>" placeholder="Nome, e-mail ou CPF"
-style="border:1px solid #e7ebf1;border-radius:10px;padding:11px 13px;font:inherit;font-size:14px;height:44px;box-sizing:border-box;">
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Alunos</h1>
+  <span class="adm-mut">Total: <strong><%= total %></strong></span>
 </div>
 
-<div style="display:flex;flex-direction:column;gap:6px;">
-<label style="font-size:13px;font-weight:600;color:#555;">Inscrição</label>
-<select name="inscricao"
-style="border:1px solid #e7ebf1;border-radius:10px;padding:0 13px;font:inherit;font-size:14px;height:44px;box-sizing:border-box;min-width:140px;">
-<option value="" <%= inscricao === '' ? 'selected' : '' %>>Todos</option>
-<option value="com" <%= inscricao === 'com' ? 'selected' : '' %>>Com inscrição</option>
-<option value="sem" <%= inscricao === 'sem' ? 'selected' : '' %>>Sem inscrição</option>
-</select>
-</div>
+<% if (ok) { %>
+  <div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div>
+<% } %>
 
-<div style="display:flex;flex-direction:column;gap:6px;">
-<label style="font-size:13px;font-weight:600;color:#555;">Turma</label>
-<select name="turma"
-style="border:1px solid #e7ebf1;border-radius:10px;padding:0 13px;font:inherit;font-size:14px;height:44px;box-sizing:border-box;min-width:280px;">
-<option value="">Todas as turmas</option>
-<% turmas.forEach(function(t){ %>
-<option value="<%= t.id %>" <%= turmaId===t.id ? 'selected' : '' %>><%= t.curso.nome %> — <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %></option>
-<% }) %>
-</select>
-</div>
+<form method="GET" action="/alunos" class="adm-filtros">
+  <label class="adm-campo cresce">
+    <span>Buscar</span>
+    <input type="text" name="q" value="<%= busca %>" placeholder="Nome, e-mail ou CPF">
+  </label>
 
-<button type="submit"
-style="height:44px;padding:0 22px;border:1px solid #e7ebf1;border-radius:10px;background:#fff;font:inherit;font-size:14px;font-weight:600;cursor:pointer;">
-    Filtrar
-</button>
+  <label class="adm-campo">
+    <span>Inscrição</span>
+    <select name="inscricao">
+      <option value=""    <%= inscricao === ''    ? 'selected' : '' %>>Todos</option>
+      <option value="com" <%= inscricao === 'com' ? 'selected' : '' %>>Com inscrição</option>
+      <option value="sem" <%= inscricao === 'sem' ? 'selected' : '' %>>Sem inscrição</option>
+    </select>
+  </label>
+
+  <label class="adm-campo cresce">
+    <span>Turma</span>
+    <select name="turma">
+      <option value="">Todas as turmas</option>
+      <% turmas.forEach(function (t) { %>
+        <option value="<%= t.id %>" <%= turmaId === t.id ? 'selected' : '' %>>
+          <%= t.curso.nome %> — <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %>
+        </option>
+      <% }) %>
+    </select>
+  </label>
+
+  <button type="submit" class="adm-btn-neutro">
+    <i class="fa-solid fa-filter"></i> Filtrar
+  </button>
 </form>
 
-<p class="adm-mut" style="margin:-4px 0 16px;font-size:13px;">
-  Total de alunos: <strong><%= total %></strong>
-</p>
-
 <div class="adm-box">
-<% if (!alunos.length) { %>
-<div class="adm-vazio"><%= turmaId ? 'Nenhum aluno inscrito nesta turma.' : (busca ? 'Nenhum aluno encontrado para essa busca.' : 'Nenhum aluno cadastrado ainda.') %></div>
-<% } else { %>
-<table class="adm-table">
-<thead><tr><th>Aluno</th><th>CPF/CNPJ</th><th>Escolaridade</th><th>Inscrições</th><th>Ações</th></tr></thead>
-<tbody>
-  <% alunos.forEach(function (a) { %>
-  <tr>
-    <td>
-      <strong><%= a.nome %></strong>
-      <% if (a.bloqueioTotal) { %>
-        <span style="background:#fee2e2;color:#991b1b;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:700;margin-left:6px;">BANIDO</span>
-      <% } %>
-      <br><small class="adm-mut"><%= a.email %></small>
-    </td>
-    <td><%= a.cpfCnpj ? a.cpfCnpj : a.passaporte ? a.passaporte : '—' %></td>
-    <td><%= a.escolaridade ? (a.escolaridade + (a.escolaridadeSituacao ? ' (' + a.escolaridadeSituacao + ')' : '')) : '—' %></td>
-    <td><%= a._count.matriculas %></td>
-    <td class="adm-acoes">
-      <a href="/alunos/<%= a.id %>/matriculas" class="adm-mini" title="Ver matrículas"><i class="fa-solid fa-list-check"></i></a>
-      <% if (pode('aluno:gerenciar')) { %>
-        <a href="/alunos/<%= a.id %>/editar" class="adm-mini" title="Editar dados"><i class="fa-solid fa-pen-to-square"></i></a>
-      <% } %>
-    </td>
-  </tr>
-  <% }) %>
-  </tbody>
-</table>
-<% } %>
+  <% if (!alunos.length) { %>
+    <div class="adm-vazio">
+      <%= turmaId ? 'Nenhum aluno inscrito nesta turma.'
+                  : (busca ? 'Nenhum aluno encontrado para essa busca.'
+                           : 'Nenhum aluno cadastrado ainda.') %>
+    </div>
+  <% } else { %>
+    <table class="adm-table">
+      <thead>
+        <tr>
+          <th>Aluno</th>
+          <th>CPF/CNPJ</th>
+          <th>Escolaridade</th>
+          <th>Inscrições</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% alunos.forEach(function (a) { %>
+        <tr>
+          <td>
+            <strong><%= a.nome %></strong>
+            <% if (a.bloqueioTotal) { %>
+              <span class="badge canc">Banido</span>
+            <% } %>
+            <br><small class="adm-mut"><%= a.email %></small>
+          </td>
+          <td><%= a.cpfCnpj ? a.cpfCnpj : a.passaporte ? a.passaporte : '—' %></td>
+          <td>
+            <%= a.escolaridade
+                ? (a.escolaridade + (a.escolaridadeSituacao ? ' (' + a.escolaridadeSituacao + ')' : ''))
+                : '—' %>
+          </td>
+          <td><%= a._count.matriculas %></td>
+          <td class="adm-acoes">
+            <div class="adm-acoes-wrap">
+              <a href="/alunos/<%= a.id %>/matriculas" class="adm-mini" title="Ver matrículas">
+                <i class="fa-solid fa-list-check"></i>
+              </a>
+              <% if (pode('aluno:gerenciar')) { %>
+                <a href="/alunos/<%= a.id %>/editar" class="adm-mini" title="Editar dados">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </a>
+              <% } %>
+            </div>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
 </div>
+
 <% if (alunos.length >= 200) { %>
-<p class="adm-mut" style="margin-top:12px;font-size:13px;">Mostrando os primeiros 200 resultados. Refine a busca para ver outros.</p>
+  <p class="adm-info">
+    <i class="fa-solid fa-circle-info"></i>
+    Mostrando os primeiros 200 resultados. Refine a busca para ver outros.
+  </p>
 <% } %>
 
 <%- include('foot') %>

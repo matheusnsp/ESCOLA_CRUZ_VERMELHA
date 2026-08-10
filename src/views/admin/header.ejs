@@ -1,27 +1,51 @@
 <header class="adm-top">
   <% var secaoAtiva = (typeof ativo !== 'undefined') ? ativo : ''; %>
-    <a href="/" class="adm-brand">
-      <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — RJ" class="adm-logo">
-      <span class="adm-brand-txt">Secretaria <small>Escola de Educação e <br>  Saúde CVB-RJ</small></span>
-    </a>
-    <nav class="adm-nav">
-      <a href="/" class="<%= secaoAtiva === 'home' ? 'on' : '' %>"><i class="fa-solid fa-gauge"></i> Painel</a>
-      <a href="/cursos" class="<%= secaoAtiva === 'cursos' ? 'on' : '' %>"><i class="fa-solid fa-book"></i> Cursos</a>
-      <a href="/turmas" class="<%= secaoAtiva === 'turmas' ? 'on' : '' %>"><i class="fa-solid fa-calendar-days"></i> Turmas</a>
-      <a href="/inscricoes" class="<%= secaoAtiva === 'inscricoes' ? 'on' : '' %>"><i class="fa-solid fa-users"></i> Matriculas</a>
-      <a href="/alunos" class="<%= secaoAtiva === 'alunos' ? 'on' : '' %>"><i class="fa-solid fa-user-graduate"></i> Alunos</a>
-      <% if (pode('financeiro:leitura')) { %>
-        <a href="/financeiro" class="<%= secaoAtiva === 'financeiro' ? 'on' : '' %>"><i class="fa-solid fa-sack-dollar"></i> Financeiro</a>
-      <% } %>
-      <% if (admPapel === 'DEV') { %>
-        <a href="/dev/usuarios" class="<%= secaoAtiva === 'dev-usuarios' ? 'on' : '' %>"><i class="fa-solid fa-user-shield"></i> Admin</a>
-        <a href="/banimentos" class="<%= secaoAtiva === 'banimentos' ? 'on' : '' %>"><i class="fa-solid fa-ban"></i> Ban</a>
-      <% } %>
-    </nav>
-    <form method="POST" action="/logout" class="adm-sair">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <span><%= usuario ? usuario.nome : '' %></span>
-      <button type="submit"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair</button>
-    </form>
-  </header>
-  <main class="adm-wrap">
+
+  <a href="/" class="adm-brand">
+    <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — RJ" class="adm-logo">
+    <span class="adm-brand-txt">Secretaria <small>Escola de Educação e<br>Saúde CVB-RJ</small></span>
+  </a>
+
+  <nav class="adm-nav">
+    <a href="/" class="<%= secaoAtiva === 'home' ? 'on' : '' %>"><i class="fa-solid fa-gauge"></i> Painel</a>
+    <a href="/cursos" class="<%= secaoAtiva === 'cursos' ? 'on' : '' %>"><i class="fa-solid fa-book"></i> Cursos</a>
+    <a href="/turmas" class="<%= secaoAtiva === 'turmas' ? 'on' : '' %>"><i class="fa-solid fa-calendar-days"></i> Turmas</a>
+    <a href="/inscricoes" class="<%= secaoAtiva === 'inscricoes' ? 'on' : '' %>"><i class="fa-solid fa-users"></i> Matriculas</a>
+    <a href="/alunos" class="<%= secaoAtiva === 'alunos' ? 'on' : '' %>"><i class="fa-solid fa-user-graduate"></i> Alunos</a>
+    <% if (pode('financeiro:leitura')) { %>
+      <a href="/financeiro" class="<%= secaoAtiva === 'financeiro' ? 'on' : '' %>"><i class="fa-solid fa-sack-dollar"></i> Financeiro</a>
+    <% } %>
+    <% if (admPapel === 'DEV') { %>
+      <a href="/dev/usuarios" class="<%= secaoAtiva === 'dev-usuarios' ? 'on' : '' %>"><i class="fa-solid fa-user-shield"></i> Admin</a>
+      <a href="/banimentos" class="<%= secaoAtiva === 'banimentos' ? 'on' : '' %>"><i class="fa-solid fa-ban"></i> Ban</a>
+    <% } %>
+  </nav>
+
+  <!-- Fora do <form> de logout de propósito: dentro dele, qualquer
+       clique no botão enviaria o formulário e deslogaria o usuário. -->
+
+  <button type="button" class="adm-tema" id="btnTema"
+          aria-label="Alternar tema claro/escuro" title="Alternar tema">
+    <i class="fa-solid fa-moon ic-escuro"></i>
+    <i class="fa-solid fa-sun ic-claro"></i>
+  </button>
+       
+       
+
+  <form method="POST" action="/logout" class="adm-sair">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <span><%= usuario?.nome?.trim().split(/\s+/)[0] || '' %></span>
+    <button type="submit"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair</button>
+  </form>
+</header>
+
+<script>
+  document.getElementById('btnTema').addEventListener('click', function () {
+    var escuro = document.documentElement.dataset.tema === 'escuro';
+    var novo = escuro ? 'claro' : 'escuro';
+    document.documentElement.dataset.tema = novo;
+    try { localStorage.setItem('adm-tema', novo); } catch (e) {}
+  });
+</script>
+
+<main class="adm-wrap">

@@ -1,64 +1,93 @@
 <%- include('head', { titulo: 'Cursos' }) %>
 <%- include('header', { ativo: 'cursos' }) %>
+
 <div class="adm-h1-row">
-<h1 class="adm-h1">Cursos</h1>
-<% if (pode('cursos:gerenciar')) { %>
-<a href="/cursos/novo" class="adm-btn"><i class="fa-solid fa-plus"></i> Novo curso</a>
-<% } %>
+  <h1 class="adm-h1">Cursos</h1>
+  <% if (pode('cursos:gerenciar')) { %>
+    <a href="/cursos/novo" class="adm-btn"><i class="fa-solid fa-plus"></i> Novo curso</a>
+  <% } %>
 </div>
-<% if (flash) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div><% } %>
-<% if (typeof erro !== 'undefined' && erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+
+<% if (flash) { %>
+  <div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div>
+<% } %>
+<% if (typeof erro !== 'undefined' && erro) { %>
+  <div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div>
+<% } %>
+
 <div class="adm-box">
-<% if (!cursos.length) { %>
-<p class="adm-vazio">Nenhum curso cadastrado. <% if (pode('cursos:gerenciar')) { %><a href="/cursos/novo">Criar o primeiro</a>.<% } %></p>
-<% } else { %>
-<table class="adm-table">
-<thead>
-<tr>
-<th>Curso</th>
-<th>Carga</th>
-<th>À vista</th>
-<th>Turmas</th>
-<th>Status</th>
-<th style="text-align:center;">Ações</th>
-</tr>
-</thead>
-<tbody>
-<% cursos.forEach(function(c){ %>
-<tr>
-<td style="padding:10px 18px;"><strong><%= c.nome %></strong><% if (c.escolaridadeMinima) { %><br><small class="adm-mut"><%= c.escolaridadeMinima %></small><% } %></td>
-<td style="padding:10px 18px;"><%= c.cargaHoraria %>h</td>
-<td style="padding:10px 18px;"><%= formatBRL(c.precoAvista) %></td>
-<td style="padding:10px 18px;"><%= c._count.turmas %></td>
-<td style="padding:10px 18px;"><% if (c.ativo) { %><span class="badge ok">Ativo</span><% } else { %><span class="badge mut">Inativo</span><% } %></td>
-<td style="padding:8px 14px;text-align:center;">
-<% if (pode('cursos:gerenciar')) { %>
-<div style="display:flex;flex-direction:row;flex-wrap:nowrap;gap:7px;align-items:center;justify-content:center;">
-<a href="/cursos/<%= c.id %>/editar" title="Editar curso"
-   style="background:#fff;border:1px solid #e7ebf1;color:#475569;width:34px;height:34px;border-radius:9px;display:inline-grid;place-items:center;text-decoration:none;font-size:13px;flex-shrink:0;">
-  <i class="fa-solid fa-pen"></i>
-</a>
-<form method="POST" action="/cursos/<%= c.id %>/ativar" style="margin:0;display:flex;">
-  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-  <button title="<%= c.ativo ? 'Desativar' : 'Ativar' %>"
-    style="background:#fff;border:1px solid #e7ebf1;color:#475569;width:34px;height:34px;border-radius:9px;display:inline-grid;place-items:center;cursor:pointer;font-size:13px;flex-shrink:0;">
-    <i class="fa-solid <%= c.ativo ? 'fa-eye-slash' : 'fa-eye' %>"></i>
-  </button>
-</form>
-<form method="POST" action="/cursos/<%= c.id %>/excluir" onsubmit="return confirm('Excluir este curso? Só é possível se não houver turmas/matrículas.')" style="margin:0;display:flex;">
-  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-  <button title="Excluir curso"
-    style="background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;width:34px;height:34px;border-radius:9px;display:inline-grid;place-items:center;cursor:pointer;font-size:13px;flex-shrink:0;">
-    <i class="fa-solid fa-trash"></i>
-  </button>
-</form>
+  <% if (!cursos.length) { %>
+
+    <p class="adm-vazio">
+      Nenhum curso cadastrado.
+      <% if (pode('cursos:gerenciar')) { %><a href="/cursos/novo">Criar o primeiro</a>.<% } %>
+    </p>
+
+  <% } else { %>
+
+    <table class="adm-table">
+      <thead>
+        <tr>
+          <th>Curso</th>
+          <th>Carga</th>
+          <th>À vista</th>
+          <th>Turmas</th>
+          <th>Status</th>
+          <th class="centro">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% cursos.forEach(function (c) { %>
+        <tr>
+          <td>
+            <strong><%= c.nome %></strong>
+            <% if (c.escolaridadeMinima) { %>
+              <br><small class="adm-mut"><%= c.escolaridadeMinima %></small>
+            <% } %>
+          </td>
+          <td><%= c.cargaHoraria %>h</td>
+          <td><%= formatBRL(c.precoAvista) %></td>
+          <td><%= c._count.turmas %></td>
+          <td>
+            <% if (c.ativo) { %>
+              <span class="badge ok">Ativo</span>
+            <% } else { %>
+              <span class="badge mut">Inativo</span>
+            <% } %>
+          </td>
+
+          <td class="adm-acoes centro">
+            <% if (pode('cursos:gerenciar')) { %>
+              <div class="adm-acoes-wrap linha">
+
+                <a href="/cursos/<%= c.id %>/editar" class="adm-mini" title="Editar curso">
+                  <i class="fa-solid fa-pen"></i>
+                </a>
+
+                <form method="POST" action="/cursos/<%= c.id %>/ativar">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="adm-mini" title="<%= c.ativo ? 'Desativar' : 'Ativar' %>">
+                    <i class="fa-solid <%= c.ativo ? 'fa-eye-slash' : 'fa-eye' %>"></i>
+                  </button>
+                </form>
+
+                <form method="POST" action="/cursos/<%= c.id %>/excluir"
+                      onsubmit="return confirm('Excluir este curso? Só é possível se não houver turmas/matrículas.')">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="adm-mini danger" title="Excluir curso">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </form>
+
+              </div>
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+
+  <% } %>
 </div>
-<% } %>
-</td>
-</tr>
-<% }) %>
-</tbody>
-</table>
-<% } %>
-</div>
+
 <%- include('foot') %>

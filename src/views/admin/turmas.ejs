@@ -53,7 +53,7 @@
   </div>
 </div>
 
-<div class="adm-cards" style="grid-template-columns:repeat(2,1fr); margin-bottom:26px;">
+<div class="adm-cards c2">
   <div class="adm-stat">
     <span><%= totalInscritos %>/<%= totalVagas %></span>
     <small><i class="fa-solid fa-user-group"></i> Inscritos / vagas (todas as turmas)</small>
@@ -74,15 +74,30 @@
   <% const lista = porStatus[g.chave] || []; %>
   <% if (!lista.length) { return; } %>
 
-  <div class="adm-box" id="grupo-<%= g.chave %>" style="margin-bottom:26px;">
+  <div class="adm-box adm-espaco" id="grupo-<%= g.chave %>">
     <div class="adm-box-head">
       <h2><i class="fa-solid <%= g.icone %>"></i> <%= g.label %></h2>
       <span class="badge <%= g.badge %>"><%= lista.length %> turma(s)</span>
     </div>
 
-    <table class="adm-table">
+    <table class="adm-table adm-table-turmas">
+      <colgroup>
+        <col>
+        <col>
+        <col>
+        <col>
+        <col>
+        <col>
+      </colgroup>
       <thead>
-        <tr><th>Curso</th><th>Início</th><th>Dias / Horário</th><th>Inscritos</th><th>Status</th><th></th></tr>
+        <tr>
+          <th>Curso</th>
+          <th>Início</th>
+          <th>Dias / Horário</th>
+          <th>Inscritos</th>
+          <th>Status</th>
+          <th class="centro">Ações</th>
+        </tr>
       </thead>
       <tbody>
         <% lista.forEach(function(t, i) { %>
@@ -99,18 +114,19 @@
           <td><a href="/inscricoes?turma=<%= t.id %>"><%= t._count.matriculas %>/<%= t.vagas %></a></td>
           <td><span class="badge st-<%= t.status.toLowerCase() %>"><%= t.status %></span></td>
           <td class="adm-acoes">
+            <div class="adm-acoes-wrap linha">
             <% if (pode('turmas:gerenciar') || pode('secretaria:leitura')) { %>
               <a href="/turmas/<%= t.id %>/notas" class="adm-mini" title="Lançar notas da turma"><i class="fa-solid fa-list-check"></i></a>
             <% } %>
             <% if (pode('turmas:gerenciar')) { %>
               <a href="/turmas/<%= t.id %>/editar" class="adm-mini" title="Editar"><i class="fa-solid fa-pen"></i></a>
               <form method="POST" action="/turmas/<%= t.id %>/excluir"
-                    onsubmit="return confirm('Excluir esta turma? Só é possível se não houver alunos matriculados.')"
-                    style="display:inline;">
+                    onsubmit="return confirm('Excluir esta turma? Só é possível se não houver alunos matriculados.')">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <button class="adm-mini danger" title="Excluir turma"><i class="fa-solid fa-trash"></i></button>
               </form>
             <% } %>
+            </div>
           </td>
         </tr>
         <% }) %>

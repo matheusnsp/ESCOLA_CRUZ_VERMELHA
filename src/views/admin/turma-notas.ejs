@@ -1,23 +1,39 @@
 <%- include('head', { titulo: 'Notas da turma' }) %>
 <%- include('header', { ativo: 'turmas' }) %>
+
 <div class="adm-h1-row">
   <h1 class="adm-h1">Notas — <%= turma.curso.nome %></h1>
   <a href="/turmas" class="adm-link">← Voltar</a>
 </div>
-<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
-<% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
 
-<p class="adm-mut" style="font-size:13px;margin-bottom:16px;">
-  Início <%= new Date(turma.inicioPrevisto).toLocaleDateString('pt-BR') %><% if (turma.aulas && turma.aulas.length) { %> · <%= turma.aulas[0].horario %><% } %>.
-  Lance uma avaliação (com peso) para a turma toda de uma vez. Deixe em branco quem não tem nota nessa avaliação.
+<% if (erro) { %>
+  <div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div>
+<% } %>
+<% if (ok) { %>
+  <div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div>
+<% } %>
+
+<p class="adm-explica largo">
+  <i class="fa-solid fa-circle-info"></i>
+  <span>
+    Início <%= new Date(turma.inicioPrevisto).toLocaleDateString('pt-BR') %><% if (turma.aulas && turma.aulas.length) { %> · <%= turma.aulas[0].horario %><% } %>.
+    Lance uma avaliação (com peso) para a turma toda de uma vez. Deixe em branco
+    quem não tem nota nessa avaliação.
+  </span>
 </p>
 
 <% if (!turma.matriculas.length) { %>
-  <div class="adm-box"><div class="adm-vazio">Nenhum aluno inscrito nesta turma.</div></div>
+
+  <div class="adm-box">
+    <div class="adm-vazio">Nenhum aluno inscrito nesta turma.</div>
+  </div>
+
 <% } else { %>
-  <form method="POST" action="/turmas/<%= turma.id %>/notas" class="adm-box" style="padding:20px;">
+
+  <form method="POST" action="/turmas/<%= turma.id %>/notas" class="adm-box adm-box-pad">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <div class="adm-form" style="padding:0;">
+
+    <div class="adm-form adm-campos">
       <label class="full">Nome da avaliação
         <input type="text" name="nome" required maxlength="60" placeholder="Ex.: Prova 1">
       </label>
@@ -26,24 +42,44 @@
       </label>
     </div>
 
-    <table class="adm-table" style="margin-top:16px;">
-      <thead><tr><th>Aluno</th><th>Média atual</th><th>Nota desta avaliação (0–10)</th></tr></thead>
+    <table class="adm-table adm-tabela-form">
+      <thead>
+        <tr>
+          <th>Aluno</th>
+          <th>Média atual</th>
+          <th>Nota desta avaliação (0–10)</th>
+        </tr>
+      </thead>
       <tbody>
         <% turma.matriculas.forEach(function (m) { %>
-          <tr>
-            <td><strong><%= m.aluno.nome %></strong><br><small class="adm-mut"><%= m.aluno.email %></small></td>
-            <td><%= (m.nota !== null && m.nota !== undefined) ? m.nota : '—' %></td>
-            <td><input type="number" name="nota[<%= m.id %>]" min="0" max="10" step="0.1" placeholder="—" style="width:90px;border:1px solid #e7ebf1;border-radius:8px;padding:8px 10px;font:inherit;"></td>
-          </tr>
+        <tr>
+          <td>
+            <strong><%= m.aluno.nome %></strong>
+            <br><small class="adm-mut"><%= m.aluno.email %></small>
+          </td>
+          <td><%= (m.nota !== null && m.nota !== undefined) ? m.nota : '—' %></td>
+          <td>
+            <input type="number" name="nota[<%= m.id %>]" min="0" max="10" step="0.1"
+                   placeholder="—" class="adm-nota-input">
+          </td>
+        </tr>
         <% }) %>
       </tbody>
     </table>
 
-    <div style="margin-top:16px;"><button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> Lançar avaliação para a turma</button></div>
+    <div class="adm-form-acao">
+      <button type="submit" class="adm-btn">
+        <i class="fa-solid fa-floppy-disk"></i> Lançar avaliação para a turma
+      </button>
+    </div>
   </form>
 
-  <p class="adm-mut" style="font-size:13px;margin-top:14px;">
-    <i class="fa-solid fa-circle-info"></i> Para ver/editar todas as avaliações de um aluno (ou remover alguma), use o lápis na tela de Inscrições.
+  <p class="adm-info">
+    <i class="fa-solid fa-circle-info"></i>
+    Para ver/editar todas as avaliações de um aluno (ou remover alguma), use o
+    lápis na tela de Inscrições.
   </p>
+
 <% } %>
+
 <%- include('foot') %>

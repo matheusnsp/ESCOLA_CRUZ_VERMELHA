@@ -10,35 +10,31 @@ function dataBR(d) {
 const LIMITE_GRUPO = 3;
 %>
 
-<div class="adm-h1-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+<div class="adm-h1-row">
   <h1 class="adm-h1">Financeiro</h1>
   <% if (pode('financeiro:aprovar')) { %>
-  <div style="display:flex;gap:8px">
-    <a href="/relatorios/completo.xlsx" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid #16a34a;color:#16a34a;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700">
-      <i class="fa-solid fa-file-excel"></i> Baixar Excel
-    </a>
-    <a href="/relatorios/completo.pdf" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid #cc0000;color:#cc0000;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700">
-      <i class="fa-solid fa-file-pdf"></i> Baixar PDF
-    </a>
-  </div>
+    <div class="adm-acoes-topo">
+      <a href="/relatorios/completo.xlsx" class="adm-btn-out xls">
+        <i class="fa-solid fa-file-excel"></i> Baixar Excel
+      </a>
+      <a href="/relatorios/completo.pdf" class="adm-btn-out pdf">
+        <i class="fa-solid fa-file-pdf"></i> Baixar PDF
+      </a>
+    </div>
   <% } %>
 </div>
 
-<!-- ===== Inscrições / Valores ===== -->
+<!-- ═══ Inscrições / valores ══════════════════════════════════════════════ -->
 <div class="adm-cards">
   <div class="adm-stat ok">
     <span><%= stats.taxaPagaCount %></span>
     <small><i class="fa-solid fa-circle-check"></i> Taxa de inscrição paga</small>
-    <small class="adm-mut" style="display:block;margin-top:2px;font-weight:600;">
-      <%= formatBRL(stats.totalTaxasPagas) %>
-    </small>
+    <small class="adm-stat-sub"><%= formatBRL(stats.totalTaxasPagas) %></small>
   </div>
   <div class="adm-stat ok">
     <span><%= stats.matriculaGeradaCount %></span>
     <small><i class="fa-solid fa-id-badge"></i> Curso pago + matrícula gerada</small>
-    <small class="adm-mut" style="display:block;margin-top:2px;font-weight:600;">
-      <%= formatBRL(stats.totalCursosPagos) %> (sem taxa)
-    </small>
+    <small class="adm-stat-sub"><%= formatBRL(stats.totalCursosPagos) %> (sem taxa)</small>
   </div>
   <div class="adm-stat warn">
     <span><%= stats.pendentesCount %></span>
@@ -50,8 +46,8 @@ const LIMITE_GRUPO = 3;
   </div>
 </div>
 
-<div class="adm-cards" style="grid-template-columns:repeat(3,1fr); margin-bottom:26px;">
-    <div class="adm-stat">
+<div class="adm-cards c3">
+  <div class="adm-stat">
     <span><%= formatBRL(stats.totalPendente) %></span>
     <small><i class="fa-solid fa-triangle-exclamation"></i> Total pendente a receber</small>
   </div>
@@ -65,12 +61,13 @@ const LIMITE_GRUPO = 3;
   </div>
 </div>
 
-<!-- ===== Estornos ===== -->
-<div class="adm-box" id="grupo-estornos" style="margin-bottom:26px;">
+<!-- ═══ Estornos ══════════════════════════════════════════════════════════ -->
+<div class="adm-box adm-espaco" id="grupo-estornos">
   <div class="adm-box-head">
     <h2><i class="fa-solid fa-rotate-left"></i> Estornos</h2>
     <span class="badge est"><%= stats.estornosCount %> registro(s)</span>
   </div>
+
   <% if (estornos.length === 0) { %>
     <p class="adm-vazio">Nenhum estorno registrado.</p>
   <% } else { %>
@@ -81,7 +78,7 @@ const LIMITE_GRUPO = 3;
       <tbody>
         <% estornos.forEach((m, i) => { %>
         <tr<% if (i >= LIMITE_GRUPO) { %> class="adm-extra"<% } %>>
-          <td><%= m.aluno.nome %></td>
+          <td><strong><%= m.aluno.nome %></strong></td>
           <td><%= m.turma.curso.nome %></td>
           <td><%= dataBR(m.atualizadoEm) %></td>
           <td><%= formatBRL(Number(m.valorCurso)) %></td>
@@ -91,19 +88,21 @@ const LIMITE_GRUPO = 3;
       </tbody>
     </table>
     <% if (estornos.length > LIMITE_GRUPO) { %>
-      <button type="button" class="adm-vermais" data-grupo="grupo-estornos" data-extra="<%= estornos.length - LIMITE_GRUPO %>">
+      <button type="button" class="adm-vermais" data-grupo="grupo-estornos"
+              data-extra="<%= estornos.length - LIMITE_GRUPO %>">
         Ver mais <%= estornos.length - LIMITE_GRUPO %>
       </button>
     <% } %>
   <% } %>
 </div>
 
-<!-- ===== Quem pagou a taxa de inscrição ===== -->
-<div class="adm-box" id="grupo-taxa" style="margin-bottom:26px;">
+<!-- ═══ Taxa de inscrição paga ════════════════════════════════════════════ -->
+<div class="adm-box adm-espaco" id="grupo-taxa">
   <div class="adm-box-head">
     <h2><i class="fa-solid fa-circle-check"></i> Taxa de inscrição paga</h2>
     <span class="badge ok"><%= stats.taxaPagaCount %> aluno(s)</span>
   </div>
+
   <% if (taxaPagaLista.length === 0) { %>
     <p class="adm-vazio">Nenhum registro.</p>
   <% } else { %>
@@ -114,7 +113,7 @@ const LIMITE_GRUPO = 3;
       <tbody>
         <% taxaPagaLista.forEach((m, i) => { %>
         <tr<% if (i >= LIMITE_GRUPO) { %> class="adm-extra"<% } %>>
-          <td><%= m.aluno.nome %></td>
+          <td><strong><%= m.aluno.nome %></strong></td>
           <td><%= m.turma.curso.nome %></td>
           <td><%= dataBR(m.taxaConfirmadaEm) %></td>
           <td><%= formatBRL(Number(m.valorTaxaMatricula) || 100) %></td>
@@ -123,19 +122,21 @@ const LIMITE_GRUPO = 3;
       </tbody>
     </table>
     <% if (taxaPagaLista.length > LIMITE_GRUPO) { %>
-      <button type="button" class="adm-vermais" data-grupo="grupo-taxa" data-extra="<%= taxaPagaLista.length - LIMITE_GRUPO %>">
+      <button type="button" class="adm-vermais" data-grupo="grupo-taxa"
+              data-extra="<%= taxaPagaLista.length - LIMITE_GRUPO %>">
         Ver mais <%= taxaPagaLista.length - LIMITE_GRUPO %>
       </button>
     <% } %>
   <% } %>
 </div>
 
-<!-- ===== Quem pagou o curso e gerou matrícula ===== -->
-<div class="adm-box" id="grupo-matriculas" style="margin-bottom:26px;">
+<!-- ═══ Matrículas geradas ════════════════════════════════════════════════ -->
+<div class="adm-box adm-espaco" id="grupo-matriculas">
   <div class="adm-box-head">
     <h2><i class="fa-solid fa-id-badge"></i> Matrículas geradas</h2>
     <span class="badge ok"><%= stats.matriculaGeradaCount %> aluno(s)</span>
   </div>
+
   <% if (matriculaGeradaLista.length === 0) { %>
     <p class="adm-vazio">Nenhum registro.</p>
   <% } else { %>
@@ -146,7 +147,7 @@ const LIMITE_GRUPO = 3;
       <tbody>
         <% matriculaGeradaLista.forEach((m, i) => { %>
         <tr<% if (i >= LIMITE_GRUPO) { %> class="adm-extra"<% } %>>
-          <td><%= m.aluno.nome %></td>
+          <td><strong><%= m.aluno.nome %></strong></td>
           <td><%= m.turma.curso.nome %></td>
           <td><span class="badge mut"><%= codigoMatricula(m) %></span></td>
           <td><%= dataBR(m.confirmadaEm) %></td>
@@ -154,27 +155,23 @@ const LIMITE_GRUPO = 3;
           <td>
             <% if (pode('financeiro:aprovar')) { %>
               <% if (m.forma === 'PIX') { %>
-                <span class="adm-mut" style="font-size:11px;" title="Reembolsos de PIX precisam ser feitos manualmente pelo painel da Únicopag">
-                  <i class="fa-solid fa-triangle-exclamation" style="color:#d97706;"></i>
-                  PIX — estornar manualmente
+                <span class="adm-aviso-cel"
+                      title="Reembolsos de PIX precisam ser feitos manualmente pelo painel da Únicopag">
+                  <i class="fa-solid fa-triangle-exclamation"></i> PIX — estornar manualmente
                 </span>
               <% } else { %>
-                <details>
-                  <summary style="cursor:pointer;color:#991b1b;font-size:12px;font-weight:700;list-style:none">
-                    <i class="fa-solid fa-rotate-left"></i> Estornar
-                  </summary>
+                <details class="adm-estorno">
+                  <summary><i class="fa-solid fa-rotate-left"></i> Estornar</summary>
                   <form method="POST" action="/inscricoes/<%= m.id %>/estornar"
-                        onsubmit="return confirm('Confirmar estorno? Devolve o valor ao aluno e não pode ser desfeito.')"
-                        style="margin-top:8px;display:flex;flex-direction:column;gap:6px;min-width:200px">
+                        class="adm-estorno-form"
+                        onsubmit="return confirm('Confirmar estorno? Devolve o valor ao aluno e não pode ser desfeito.')">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                    <input type="text" name="motivo" required maxlength="200" placeholder="Motivo do estorno"
-                           style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#4a5568">
-                      <input type="checkbox" name="apenasContabil"> Pago fora da Únicopag (só contábil)
+                    <input type="text" name="motivo" required maxlength="200" placeholder="Motivo do estorno">
+                    <label>
+                      <input type="checkbox" name="apenasContabil">
+                      Pago fora da Únicopag (só contábil)
                     </label>
-                    <button type="submit" style="padding:6px 10px;background:#991b1b;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">
-                      Confirmar estorno
-                    </button>
+                    <button type="submit">Confirmar estorno</button>
                   </form>
                 </details>
               <% } %>
@@ -185,19 +182,21 @@ const LIMITE_GRUPO = 3;
       </tbody>
     </table>
     <% if (matriculaGeradaLista.length > LIMITE_GRUPO) { %>
-      <button type="button" class="adm-vermais" data-grupo="grupo-matriculas" data-extra="<%= matriculaGeradaLista.length - LIMITE_GRUPO %>">
+      <button type="button" class="adm-vermais" data-grupo="grupo-matriculas"
+              data-extra="<%= matriculaGeradaLista.length - LIMITE_GRUPO %>">
         Ver mais <%= matriculaGeradaLista.length - LIMITE_GRUPO %>
       </button>
     <% } %>
   <% } %>
 </div>
 
-<!-- ===== Pendentes ===== -->
-<div class="adm-box" id="grupo-pendentes">
+<!-- ═══ Aguardando pagamento ══════════════════════════════════════════════ -->
+<div class="adm-box adm-espaco" id="grupo-pendentes">
   <div class="adm-box-head">
     <h2><i class="fa-solid fa-clock"></i> Aguardando pagamento</h2>
     <span class="badge pend"><%= stats.pendentesCount %> aluno(s)</span>
   </div>
+
   <% if (pendentesLista.length === 0) { %>
     <p class="adm-vazio">Nenhuma pendência.</p>
   <% } else { %>
@@ -208,7 +207,7 @@ const LIMITE_GRUPO = 3;
       <tbody>
         <% pendentesLista.forEach((p, i) => { %>
         <tr<% if (i >= LIMITE_GRUPO) { %> class="adm-extra"<% } %>>
-          <td><%= p.m.aluno.nome %></td>
+          <td><strong><%= p.m.aluno.nome %></strong></td>
           <td><%= p.m.turma.curso.nome %></td>
           <td><span class="badge pend"><%= p.tipo %></span></td>
           <td><%= dataBR(p.desde) %></td>
@@ -218,115 +217,58 @@ const LIMITE_GRUPO = 3;
       </tbody>
     </table>
     <% if (pendentesLista.length > LIMITE_GRUPO) { %>
-      <button type="button" class="adm-vermais" data-grupo="grupo-pendentes" data-extra="<%= pendentesLista.length - LIMITE_GRUPO %>">
+      <button type="button" class="adm-vermais" data-grupo="grupo-pendentes"
+              data-extra="<%= pendentesLista.length - LIMITE_GRUPO %>">
         Ver mais <%= pendentesLista.length - LIMITE_GRUPO %>
       </button>
     <% } %>
   <% } %>
 </div>
 
-<!-- ===== Reembolsos pendentes ===== -->
-<div class="adm-box" id="grupo-reembolsos" style="margin-top:26px;">
+<!-- ═══ Reembolsos pendentes ══════════════════════════════════════════════ -->
+<div class="adm-box" id="grupo-reembolsos">
   <div class="adm-box-head">
-    <h2>
-      <i class="fa-solid fa-money-bill-transfer"></i>
-      Reembolsos pendentes
-    </h2>
-
-    <span class="badge canc">
-      <%= stats.reembolsosCount %> aluno(s)
-    </span>
+    <h2><i class="fa-solid fa-money-bill-transfer"></i> Reembolsos pendentes</h2>
+    <span class="badge canc"><%= stats.reembolsosCount %> aluno(s)</span>
   </div>
 
   <% if (reembolsosPendentesLista.length === 0) { %>
-
-    <p class="adm-vazio">
-      Nenhum reembolso pendente.
-    </p>
-
+    <p class="adm-vazio">Nenhum reembolso pendente.</p>
   <% } else { %>
-
     <table class="adm-table">
       <thead>
-        <tr>
-          <th>Aluno</th>
-          <th>Curso</th>
-          <th>Valor</th>
-          <th>Ação</th>
-        </tr>
+        <tr><th>Aluno</th><th>Curso</th><th>Valor</th><th>Ação</th></tr>
       </thead>
-
       <tbody>
-
-      <% reembolsosPendentesLista.forEach((m,i)=>{ %>
-
-        <tr<% if(i>=LIMITE_GRUPO){ %> class="adm-extra"<% } %>>
-
+        <% reembolsosPendentesLista.forEach((m, i) => { %>
+        <tr<% if (i >= LIMITE_GRUPO) { %> class="adm-extra"<% } %>>
+          <td><strong><%= m.aluno.nome %></strong></td>
+          <td><%= m.turma.curso.nome %></td>
+          <td><strong><%= formatBRL(Math.abs(Number(m.diferencaTransferencia))) %></strong></td>
           <td>
-            <%= m.aluno.nome %>
-          </td>
-
-          <td>
-            <%= m.turma.curso.nome %>
-          </td>
-
-          <td>
-            <strong><%= formatBRL(Math.abs(Number(m.diferencaTransferencia))) %></strong>
-          </td>
-
-          <td>
-
             <% if (pode('financeiro:aprovar')) { %>
-
-              <form
-                method="POST"
-                action="/inscricoes/<%= m.id %>/reembolso-concluido"
-                onsubmit="return confirm('Confirmar que o reembolso foi realizado?')">
-
-                <input
-                  type="hidden"
-                  name="_csrf"
-                  value="<%= csrfToken %>">
-
-                  <button class="adm-mini ok" title="Reembolso concluído">
-                    <i class="fa-solid fa-check"></i>
+              <form method="POST" action="/inscricoes/<%= m.id %>/reembolso-concluido"
+                    onsubmit="return confirm('Confirmar que o reembolso foi realizado?')">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="adm-mini ok" title="Reembolso concluído">
+                  <i class="fa-solid fa-check"></i>
                 </button>
-
               </form>
-
             <% } else { %>
-
-              <span class="adm-mut">
-                Aguardando confirmação
-              </span>
-
+              <span class="adm-mut">Aguardando confirmação</span>
             <% } %>
-
           </td>
-
         </tr>
-
-      <% }) %>
-
+        <% }) %>
       </tbody>
     </table>
-
-    <% if(reembolsosPendentesLista.length>LIMITE_GRUPO){ %>
-
-      <button
-        type="button"
-        class="adm-vermais"
-        data-grupo="grupo-reembolsos"
-        data-extra="<%= reembolsosPendentesLista.length-LIMITE_GRUPO %>">
-
-        Ver mais <%= reembolsosPendentesLista.length-LIMITE_GRUPO %>
-
+    <% if (reembolsosPendentesLista.length > LIMITE_GRUPO) { %>
+      <button type="button" class="adm-vermais" data-grupo="grupo-reembolsos"
+              data-extra="<%= reembolsosPendentesLista.length - LIMITE_GRUPO %>">
+        Ver mais <%= reembolsosPendentesLista.length - LIMITE_GRUPO %>
       </button>
-
     <% } %>
-
   <% } %>
-
 </div>
 
 <script>

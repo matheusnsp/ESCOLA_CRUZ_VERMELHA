@@ -5,6 +5,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= typeof titulo !== 'undefined' ? titulo + ' · ' : '' %>Secretaria · Cruz Vermelha</title>
   <link rel="icon" type="image/png" href="/img/logo-cvb-rj.webp">
+
+  <!-- Tema: aplicado ANTES do CSS carregar, de propósito. Se ficasse no
+       fim do body, a página pintaria branca por um instante e só depois
+       viraria escura — aquele "flash" que incomoda em tela escura.
+       Sem preferência salva, segue o tema do sistema operacional. -->
+  <script>
+    (function () {
+      try {
+        var salvo = localStorage.getItem('adm-tema');
+        var escuro = salvo
+          ? salvo === 'escuro'
+          : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.dataset.tema = escuro ? 'escuro' : 'claro';
+      } catch (e) {
+        document.documentElement.dataset.tema = 'claro';
+      }
+    })();
+  </script>
+
+  <!-- Manrope (corpo) e Bricolage Grotesque (títulos e números):
+       as mesmas fontes do site público. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800;12..96,900&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="/admin.css">
 </head>
