@@ -2,6 +2,7 @@
 
 <main class="auth-wrap">
   <div class="auth-card auth-card-wide">
+
     <div class="auth-brand">
       <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro" class="auth-logo">
       <div class="auth-brand-text">
@@ -35,44 +36,50 @@
         <input type="email" name="email" value="<%= valores.email || '' %>" required autocomplete="email">
       </label>
 
-      <div class="auth-field full" style="grid-column:1 / -1;">
-        <span style="display:block;margin-bottom:6px;">Tipo de cadastro</span>
+      <div class="auth-field full">
+        <span class="auth-bloco-rot">Tipo de cadastro</span>
         <div class="tipo-pessoa-toggle" role="group">
           <button type="button" class="tp-btn" data-tipo="CPF"><i class="fa-solid fa-user"></i> Pessoa física (CPF)</button>
           <button type="button" class="tp-btn" data-tipo="CNPJ"><i class="fa-solid fa-building"></i> Pessoa jurídica (CNPJ)</button>
           <button type="button" class="tp-btn" data-tipo="PASSAPORTE"><i class="fa-solid fa-passport"></i> Estrangeiro (Passaporte)</button>
         </div>
-        <small id="tipo-hint" style="display:block;margin-top:6px;color:#718096;">Escolha o tipo para preencher o documento.</small>
+        <small id="tipo-hint" class="auth-hint">Escolha o tipo para preencher o documento.</small>
       </div>
 
       <input type="hidden" name="tipoDocumento" id="tipoDocumentoInput" value="<%= valores.tipoDocumento || '' %>">
 
-      <label class="auth-field" id="campo-documento" style="display:none;">
+      <!-- Escondidos até o usuário escolher o tipo de cadastro.
+           Quem controla é o cadastro.js, via el.hidden. -->
+      <label class="auth-field" id="campo-documento" hidden>
         <span id="label-documento">CPF</span>
-        <input type="text" name="documento" value="<%= valores.documento || '' %>" inputmode="numeric" placeholder="000.000.000-00" maxlength="18" data-mask="cpfCnpj">
+        <input type="text" name="documento" value="<%= valores.documento || '' %>" inputmode="numeric"
+               placeholder="000.000.000-00" maxlength="18" data-mask="cpfCnpj">
         <small>Usado para emissão do certificado.</small>
       </label>
 
-      <label class="auth-field" id="campo-passaporte" style="display:none;">
+      <label class="auth-field" id="campo-passaporte" hidden>
         <span>Número do passaporte</span>
-        <input type="text" name="passaporte" value="<%= valores.passaporte || '' %>" maxlength="20" placeholder="Ex: AB1234567" autocomplete="off">
+        <input type="text" name="passaporte" value="<%= valores.passaporte || '' %>" maxlength="20"
+               placeholder="Ex: AB1234567" autocomplete="off">
         <small>Usado para emissão do certificado.</small>
       </label>
 
-      <label class="auth-field" id="campo-pais-origem" style="display:none;">
+      <label class="auth-field" id="campo-pais-origem" hidden>
         <span>País de origem</span>
         <input type="text" name="paisOrigem" value="<%= valores.paisOrigem || '' %>" placeholder="Ex: Argentina">
       </label>
 
-      <label class="auth-field" id="campo-rg" style="display:none;">
-        <span>RG <span style="font-weight:400;color:#718096;font-size:.85em;">(opcional)</span></span>
-        <input type="text" name="rg" value="<%= valores.rg || '' %>" maxlength="14" placeholder="Número do RG" data-mask="rg">
+      <label class="auth-field" id="campo-rg" hidden>
+        <span>RG <span class="auth-opcional">(opcional)</span></span>
+        <input type="text" name="rg" value="<%= valores.rg || '' %>" maxlength="14"
+               placeholder="Número do RG" data-mask="rg">
         <small>Preenchimento opcional.</small>
       </label>
 
       <label class="auth-field">
         <span>Celular</span>
-        <input type="text" name="celular" value="<%= valores.celular || '' %>" required inputmode="numeric" placeholder="(21) 90000-0000" maxlength="15" data-mask="celular">
+        <input type="text" name="celular" value="<%= valores.celular || '' %>" required inputmode="numeric"
+               placeholder="(21) 90000-0000" maxlength="15" data-mask="celular">
         <small>Com DDD.</small>
       </label>
 
@@ -97,7 +104,7 @@
       </label>
 
       <label class="auth-field full">
-        <span>Gênero <span style="font-weight:400;color:#718096;font-size:.85em;">(opcional)</span></span>
+        <span>Gênero <span class="auth-opcional">(opcional)</span></span>
         <select name="genero">
           <option value="">— selecione —</option>
           <% generos.forEach(function (g) { %>
@@ -106,40 +113,43 @@
         </select>
       </label>
 
-      <fieldset style="border:1px solid #e7ebf2;border-radius:12px;padding:16px;margin:4px 0 18px;">
-        <legend style="font-size:13px;font-weight:700;padding:0 6px;">Endereço</legend>
-        <p style="font-size:12px;color:#718096;margin:0 0 14px;">Usado para emissão de cobrança em caso de inadimplência.</p>
+      <fieldset class="auth-grupo">
+        <legend>Endereço</legend>
+        <p class="auth-grupo-nota">Usado para emissão de cobrança em caso de inadimplência.</p>
 
-        <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px;">
-          <label class="auth-field" style="margin:0;">
+        <div class="auth-linha auth-linha-cep">
+          <label class="auth-field">
             <span>CEP</span>
-            <input type="text" name="cep" value="<%= valores.cep || '' %>" required inputmode="numeric" placeholder="00000-000" maxlength="9">
+            <input type="text" name="cep" value="<%= valores.cep || '' %>" required
+                   inputmode="numeric" placeholder="00000-000" maxlength="9">
           </label>
-          <label class="auth-field" style="margin:0;">
+          <label class="auth-field">
             <span>Rua / Logradouro</span>
             <input type="text" name="logradouro" value="<%= valores.logradouro || '' %>" required>
           </label>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-top:12px;">
-          <label class="auth-field" style="margin:0;">
+
+        <div class="auth-linha auth-linha-numero">
+          <label class="auth-field">
             <span>Número</span>
             <input type="text" name="numero" value="<%= valores.numero || '' %>" required>
           </label>
-          <label class="auth-field" style="margin:0;">
-            <span>Complemento <span style="font-weight:400;color:#718096;font-size:.85em;">(opcional)</span></span>
+          <label class="auth-field">
+            <span>Complemento <span class="auth-opcional">(opcional)</span></span>
             <input type="text" name="complemento" value="<%= valores.complemento || '' %>" placeholder="Apto, bloco, etc.">
           </label>
         </div>
-        <div style="display:grid;grid-template-columns:2fr 2fr 1fr;gap:12px;margin-top:12px;">
-          <label class="auth-field" style="margin:0;">
+
+        <div class="auth-linha auth-linha-cidade">
+          <label class="auth-field">
             <span>Bairro</span>
             <input type="text" name="bairro" value="<%= valores.bairro || '' %>" required>
           </label>
-          <label class="auth-field" style="margin:0;">
+          <label class="auth-field">
             <span>Cidade</span>
             <input type="text" name="cidade" value="<%= valores.cidade || '' %>" required>
           </label>
-          <label class="auth-field" style="margin:0;">
+          <label class="auth-field">
             <span>UF</span>
             <select name="uf" required>
               <option value="" disabled <%= valores.uf ? '' : 'selected' %>>--</option>
@@ -166,9 +176,13 @@
         <input type="password" name="confirmarSenha" required autocomplete="new-password">
       </label>
 
-      <div class="auth-field full" style="grid-column:1 / -1;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:14px 16px;">
-        <strong style="display:block;font-size:13px;color:#9a3412;margin-bottom:6px;"><i class="fa-solid fa-circle-info"></i> No primeiro dia de aula, traga os originais:</strong>
-        <span style="font-size:13px;color:#7c2d12;">Documento de identidade · Comprovante de residência · Comprovante de escolaridade. Os documentos são apenas conferidos presencialmente (não ficam retidos).</span>
+      <div class="auth-field full auth-aviso">
+        <strong><i class="fa-solid fa-circle-info"></i> No primeiro dia de aula, traga os originais:</strong>
+        <span>
+          Documento de identidade · Comprovante de residência · Comprovante de
+          escolaridade. Os documentos são apenas conferidos presencialmente
+          (não ficam retidos).
+        </span>
       </div>
 
       <label class="auth-check">
@@ -184,6 +198,7 @@
     </form>
 
     <p class="auth-alt">Já tem conta? <a href="/login">Entrar</a></p>
+
   </div>
 </main>
 
