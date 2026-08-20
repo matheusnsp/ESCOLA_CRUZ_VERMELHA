@@ -4,12 +4,15 @@ const rateLimit = require('express-rate-limit');
 const prisma = require('../db');
 const { hashSenha, verificarSenha } = require('../lib/password');
 const {
-  cadastroSchema,
+  // cadastroSchema,
+  cadastroSimplificadoSchema,   // <-- substitui cadastroSchema aqui
+  completarCadastroSchema,
+  trocarSenhaSchema,          // 👈 novo
   loginSchema,
   esqueciSenhaSchema,
   redefinirSenhaSchema,
   ESCOLARIDADES,
-  SITUACOES_ESCOLARIDADE,
+  SITUACOES_ESCOLARIDADE, 
   GENEROS,
   UFS,
   TIPOS_DOCUMENTO,
@@ -24,6 +27,7 @@ const {
 const { enviarEmailResetSenha, enviarEmailConfirmacao } = require('../lib/email');
 const { avaliarSenhaAsync, MENSAGEM_SENHA_FRACA } = require('../lib/senha-forte');
 const { validarCpfCnpj } = require('../lib/documento');
+const { precisaTrocarSenha, registrarTrocaSenha } = require('../lib/seguranca'); // 👈 novo
 
 const router = express.Router();
 
@@ -55,6 +59,13 @@ async function enviarConfirmacao(usuario) {
   await enviarEmailConfirmacao(usuario.email, usuario.nome, link);
 }
 
+function senhaPadraoDoDocumento({ tipoDocumento, cpfCnpjNormalizado, passaporte }) {
+  const base = tipoDocumento === 'PASSAPORTE'
+    ? (passaporte || '').replace(/[^A-Z0-9]/g, '')
+    : (cpfCnpjNormalizado || '');
+  return base.slice(-4);
+}
+
 // ============================================================
 //  CADASTRO
 // ============================================================
@@ -64,25 +75,26 @@ router.get('/cadastro', (req, res) => {
 });
 
 router.post('/cadastro', cadastroLimiter, async (req, res) => {
-  const resultado = cadastroSchema.safeParse(req.body);
+  const resultado = cadastroSimplificadoSchema.safeParse(req.body);
 
   const reRender = (erros, status = 400) =>
     res.status(status).render('cadastro', {
       erros,
       valores: {
-        nome: req.body.nome || '', email: req.body.email || '',
-        tipoDocumento: req.body.tipoDocumento || '', documento: req.body.documento || '',
-        passaporte: req.body.passaporte || '', paisOrigem: req.body.paisOrigem || '',
-        rg: req.body.rg || '', celular: req.body.celular || '',
-        escolaridade: req.body.escolaridade || '', escolaridadeSituacao: req.body.escolaridadeSituacao || '', genero: req.body.genero || '',
-        cep: req.body.cep || '', logradouro: req.body.logradouro || '', numero: req.body.numero || '',
-        complemento: req.body.complemento || '', bairro: req.body.bairro || '', cidade: req.body.cidade || '', uf: req.body.uf || '',
+        nome: req.body.nome || '',
+        email: req.body.email || '',
+        tipoDocumento: req.body.tipoDocumento || '',
+        documento: req.body.documento || '',
+        passaporte: req.body.passaporte || '',
+        paisOrigem: req.body.paisOrigem || '',
+        rg: req.body.rg || '',
+        celular: req.body.celular || '',
+        escolaridade: req.body.escolaridade || '',
+        escolaridadeSituacao: req.body.escolaridadeSituacao || '',
       },
       politicaVersao: POLITICA_VERSAO,
       escolaridades: ESCOLARIDADES,
       situacoes: SITUACOES_ESCOLARIDADE,
-      generos: GENEROS,
-      ufs: UFS,
       tiposDocumento: TIPOS_DOCUMENTO,
     });
 
@@ -90,32 +102,25 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
     return reRender(resultado.error.issues.map((i) => i.message));
   }
 
-  const { nome, email, tipoDocumento, documento, passaporte, paisOrigem, senha, escolaridade, escolaridadeSituacao, genero, cep, logradouro, numero, complemento, bairro, cidade, uf, rg, celular } = resultado.data;
+  const { nome, email, tipoDocumento, documento, passaporte, paisOrigem, escolaridade, escolaridadeSituacao, rg, celular } = resultado.data;
 
-  // CPF/CNPJ válido? (dígitos verificadores) — passaporte já teve o formato checado no schema.
   let cpfCnpjNormalizado = null;
-  if (tipoDocumento === 'PASSAPORTE') {
-    // nada a normalizar aqui: passaporte já vem em maiúsculas e no formato AA123456 do schema.
-  } else {
+  if (tipoDocumento !== 'PASSAPORTE') {
     const doc = validarCpfCnpj(documento);
-    if (!doc.ok) {
-      return reRender(['CPF ou CNPJ inválido.']);
-    }
+    if (!doc.ok) return reRender(['CPF ou CNPJ inválido.']);
     cpfCnpjNormalizado = doc.normalizado;
   }
 
-  // Forca da senha (servidor manda). Penaliza usar nome/e-mail na senha.
-  if (!(await avaliarSenhaAsync(senha, [nome, email])).ok) {
-    return reRender([MENSAGEM_SENHA_FRACA]);
+  const senhaPadrao = senhaPadraoDoDocumento({ tipoDocumento, cpfCnpjNormalizado, passaporte });
+  if (!senhaPadrao || senhaPadrao.length < 4) {
+    return reRender(['Não foi possível gerar sua senha inicial. Confira o documento informado.']);
   }
 
   try {
-    const senhaHash = await hashSenha(senha);
+    const senhaHash = await hashSenha(senhaPadrao);
     const usuario = await prisma.usuario.create({
       data: {
-        nome,
-        email,
-        tipoDocumento,
+        nome, email, tipoDocumento,
         cpfCnpj: tipoDocumento === 'PASSAPORTE' ? null : cpfCnpjNormalizado,
         passaporte: tipoDocumento === 'PASSAPORTE' ? passaporte : null,
         paisOrigem: tipoDocumento === 'PASSAPORTE' ? (paisOrigem || null) : null,
@@ -123,47 +128,25 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
         celular: celular || null,
         escolaridade: escolaridade || null,
         escolaridadeSituacao: escolaridadeSituacao || null,
-        genero: genero || null,
-        cep: cep || null,
-        logradouro: logradouro || null,
-        numero: numero || null,
-        complemento: complemento || null,
-        bairro: bairro || null,
-        cidade: cidade || null,
-        uf: uf || null,
         senhaHash,
-        papel: 'ALUNO', // cadastro publico NUNCA cria SECRETARIA
-        // 💡 CORRIGIDO (M4): verificação de e-mail RELIGADA. Antes entrava com
-        // emailVerificado:true fixo, então e-mail errado = aluno sem recibo e
-        // sem reset de senha. Toda a máquina de confirmação já existia; só
-        // estava desativada. O aluno ainda entra logado (não bloqueia o acesso),
-        // mas recebe o e-mail de confirmação e o status fica pendente até clicar.
+        papel: 'ALUNO',
         emailVerificado: false,
         consentimentoLgpdEm: new Date(),
         consentimentoVersao: POLITICA_VERSAO,
       },
     });
 
-    // 💡 M4 — dispara o e-mail de confirmação (best-effort: falha de e-mail não
-    // impede o cadastro, o aluno pode reenviar depois em /reenviar-confirmacao).
-    try {
-      await enviarConfirmacao(usuario);
-    } catch (e) {
+    try { await enviarConfirmacao(usuario); } catch (e) {
       console.error('[Cadastro] Falha ao enviar e-mail de confirmação:', e.message);
     }
 
-    // Autentica o aluno na hora (sem confirmar e-mail).
     req.session.regenerate((err) => {
-      if (err) {
-        console.error('Erro ao iniciar sessão no cadastro:', err);
-        return res.redirect('/login');
-      }
+      if (err) { console.error('Erro ao iniciar sessão no cadastro:', err); return res.redirect('/login'); }
       req.session.usuarioId = usuario.id;
       req.session.papel = usuario.papel;
       req.session.nome = usuario.nome;
-      res.redirect('/minha-conta');
+      res.redirect('/minha-conta?sec=seguranca');
     });
-    return;
   } catch (err) {
     if (err.code === 'P2002') {
       const alvo = String(err.meta && err.meta.target);
@@ -173,9 +156,140 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
       return reRender([msg], 409);
     }
     console.error('Erro no cadastro:', err);
-    return res.status(500).render('erro', {
-      mensagem: 'Nao foi possivel concluir o cadastro. Tente novamente em instantes.',
+    return res.status(500).render('erro', { mensagem: 'Não foi possível concluir o cadastro. Tente novamente.' });
+  }
+});
+
+
+// ============================================================
+//  COMPLETAR DADOS (endereço pós-cadastro)
+// ============================================================
+
+const { requireLogin } = require('../middleware/auth');
+
+router.get('/completar-dados', requireLogin, async (req, res) => {
+  const usuario = await prisma.usuario.findUnique({ where: { id: req.session.usuarioId } });
+  res.render('completar-dados', {
+    erros: [],
+    usuario,
+    valores: {
+      celular: usuario.celular || '',
+      escolaridade: usuario.escolaridade || '',
+      escolaridadeSituacao: usuario.escolaridadeSituacao || '',
+      cep: usuario.cep || '',
+      logradouro: usuario.logradouro || '',
+      numero: usuario.numero || '',
+      complemento: usuario.complemento || '',
+      bairro: usuario.bairro || '',
+      cidade: usuario.cidade || '',
+      uf: usuario.uf || '',
+    },
+    ufs: UFS,
+    escolaridades: ESCOLARIDADES,
+    situacoes: SITUACOES_ESCOLARIDADE,
+  });
+});
+
+router.post('/completar-dados', requireLogin, async (req, res) => {
+  const resultado = completarCadastroSchema.safeParse(req.body);
+
+  if (!resultado.success) {
+    const usuario = await prisma.usuario.findUnique({ where: { id: req.session.usuarioId } });
+    return res.status(400).render('completar-dados', {
+      erros: resultado.error.issues.map((i) => i.message),
+      usuario,
+      valores: req.body,
+      ufs: UFS,
+      escolaridades: ESCOLARIDADES,
+      situacoes: SITUACOES_ESCOLARIDADE,
     });
+  }
+
+  // 💡 FIX — antes deste ponto, quando a validação passava (resultado.success
+  // === true), o handler não fazia mais nada: não gravava no banco e não
+  // chamava res.render/res.redirect. A requisição ficava pendurada pra
+  // sempre (o Express nunca fechava a resposta), então a página só ficava
+  // "carregando" indefinidamente. Faltava justamente o bloco de salvar +
+  // responder abaixo.
+  const {
+    celular,
+    escolaridade,
+    escolaridadeSituacao,
+    cep,
+    logradouro,
+    numero,
+    complemento,
+    bairro,
+    cidade,
+    uf,
+  } = resultado.data;
+
+  try {
+    await prisma.usuario.update({
+      where: { id: req.session.usuarioId },
+      data: {
+        celular: celular || null,
+        escolaridade: escolaridade || null,
+        escolaridadeSituacao: escolaridadeSituacao || null,
+        cep: cep || null,
+        logradouro: logradouro || null,
+        numero: numero || null,
+        complemento: complemento || null,
+        bairro: bairro || null,
+        cidade: cidade || null,
+        uf: uf || null,
+      },
+    });
+
+    return res.redirect('/minha-conta?sec=dados');
+  } catch (err) {
+    console.error('Erro ao completar cadastro:', err);
+    const usuario = await prisma.usuario.findUnique({ where: { id: req.session.usuarioId } });
+    return res.status(500).render('completar-dados', {
+      erros: ['Não foi possível salvar seus dados. Tente novamente.'],
+      usuario,
+      valores: req.body,
+      ufs: UFS,
+      escolaridades: ESCOLARIDADES,
+      situacoes: SITUACOES_ESCOLARIDADE,
+    });
+  }
+});
+
+
+// ============================================================
+//  TROCAR SENHA (usuário logado)
+// ============================================================
+
+router.post('/conta/senha', requireLogin, async (req, res) => {
+  const resultado = trocarSenhaSchema.safeParse(req.body);
+
+  if (!resultado.success) {
+    return res.redirect('/minha-conta?sec=seguranca&erroSenha=' + encodeURIComponent(resultado.error.issues[0].message));
+  }
+
+  const { senhaAtual, novaSenha } = resultado.data;
+
+  try {
+    const usuario = await prisma.usuario.findUnique({ where: { id: req.session.usuarioId } });
+
+    const senhaOk = usuario.senhaHash && await verificarSenha(usuario.senhaHash, senhaAtual);
+    if (!senhaOk) {
+      return res.redirect('/minha-conta?sec=seguranca&erroSenha=' + encodeURIComponent('Senha atual incorreta.'));
+    }
+
+    if (!(await avaliarSenhaAsync(novaSenha, [usuario.nome, usuario.email])).ok) {
+      return res.redirect('/minha-conta?sec=seguranca&erroSenha=' + encodeURIComponent(MENSAGEM_SENHA_FRACA));
+    }
+
+    const senhaHash = await hashSenha(novaSenha);
+    await prisma.usuario.update({ where: { id: usuario.id }, data: { senhaHash } });
+    await registrarTrocaSenha(usuario.id);
+
+    return res.redirect('/minha-conta?sec=seguranca&senhaAlterada=1');
+  } catch (err) {
+    console.error('Erro ao trocar senha:', err);
+    return res.redirect('/minha-conta?sec=seguranca&erroSenha=' + encodeURIComponent('Não foi possível trocar a senha. Tente novamente.'));
   }
 });
 
@@ -230,118 +344,191 @@ router.post('/reenviar-confirmacao', reenvioLimiter, async (req, res) => {
 // ============================================================
 
 router.get('/login', (req, res) => {
-  // No site do aluno só faz sentido redirecionar quem é ALUNO.
-  // (Em localhost o cookie de sessão é compartilhado entre as portas 3000/3001,
-  // então uma sessão da secretaria pode aparecer aqui — não a mandamos para /admin,
-  // que não existe nesta porta.)
   if (req.session.usuarioId && req.session.papel === 'ALUNO') {
     return res.redirect('/minha-conta');
   }
   const sucesso = req.query.redefinida ? 'Senha redefinida com sucesso. Faca login.' : undefined;
   const info = req.query.banido ? 'Sua conta foi suspensa. Em caso de dúvidas, entre em contato com a secretaria.' : null;
   const erro = null;
-  res.render('login', { erro, email: '', sucesso, info });
+  res.render('login', {
+    erro,
+    identificador: '',
+    sucesso,
+    info,
+  });  
 });
 
-router.post('/login', loginLimiter, async (req, res) => {
-  const resultado = loginSchema.safeParse(req.body);
-  const erroGenerico = 'E-mail ou senha incorretos.';
-  const reRender = (email) => res.status(401).render('login', { erro: erroGenerico, email });
+// Localiza o usuário pelo que foi digitado no login: e-mail (se tiver "@"),
+// ou CPF/CNPJ/passaporte (se for majoritariamente números/alfanumérico).
+// Assume que cpfCnpj é salvo só com dígitos (ver nota no cadastro).
+async function buscarUsuarioPorLogin({ identificador }) {
+  const valor = identificador.trim();
 
-  if (!resultado.success) {
-    return res.status(400).render('login', {
-      erro: 'Preencha e-mail e senha corretamente.',
-      email: req.body.email || '',
+  // Se parece ser e-mail, procura pelo e-mail
+  if (valor.includes('@')) {
+    return prisma.usuario.findUnique({
+      where: {
+        email: valor.toLowerCase(),
+      },
     });
   }
 
-  const { email, senha } = resultado.data;
+  // Caso contrário, tenta como CPF/CNPJ
+  const doc = validarCpfCnpj(valor);
 
-  // 💡 CORRIGIDO (M5): lockout POR CONTA no login do aluno. Antes só havia rate
-  // limit por IP (loginLimiter), então força bruta distribuída (vários IPs)
-  // contra UMA conta não encontrava trava. Reaproveita os campos que já existem
-  // no schema (loginFalhas/bloqueadoAte) — os mesmos que o painel admin usa.
-  const MAX_FALHAS_ALUNO = 8;         // tentativas antes de bloquear
-  const BLOQUEIO_MIN_ALUNO = 15;      // minutos de bloqueio ao estourar
+  if (!doc.ok) return null;
+
+  return prisma.usuario.findUnique({
+    where: {
+      cpfCnpj: doc.normalizado,
+    },
+  });
+}
+
+
+
+router.post('/login', loginLimiter, async (req, res) => {
+  const resultado = loginSchema.safeParse(req.body);
+  const erroGenerico = 'E-mail/CPF ou senha incorretos.';
+
+  const reRender = (identificador = '') =>
+    res.status(401).render('login', {
+      erro: erroGenerico,
+      identificador,
+    });
+
+  if (!resultado.success) {
+    return res.status(400).render('login', {
+      erro:
+        resultado.error.issues[0]?.message ||
+        'Informe seu e-mail ou CPF e sua senha.',
+      identificador: req.body.identificador || '',
+    });
+  }
+
+  const { identificador, senha } = resultado.data;
+
+  const MAX_FALHAS_ALUNO = 8;
+  const BLOQUEIO_MIN_ALUNO = 15;
 
   try {
-    const usuario = await prisma.usuario.findUnique({ where: { email } });
+    const usuario = await buscarUsuarioPorLogin({ identificador });
 
     if (!usuario) {
-      await hashSenha(senha); // equaliza o tempo (anti-enumeracao por timing)
-      return reRender(email);
+      // Equaliza o tempo para evitar enumeração por timing.
+      await hashSenha(senha);
+
+      return reRender(identificador);
     }
 
-    // Conta temporariamente bloqueada por tentativas seguidas.
     if (usuario.bloqueadoAte && usuario.bloqueadoAte > new Date()) {
-      const minutos = Math.ceil((usuario.bloqueadoAte.getTime() - Date.now()) / 60000);
+      const minutos = Math.ceil(
+        (usuario.bloqueadoAte.getTime() - Date.now()) / 60000
+      );
+
       return res.status(429).render('login', {
         erro: `Muitas tentativas. Tente novamente em ${minutos} min.`,
-        email,
+        identificador,
       });
     }
 
-    // Conta sem senha definida.
     if (!usuario.senhaHash) {
-      await hashSenha(senha); // mantém o tempo de resposta parecido
+      await hashSenha(senha);
+
       return res.status(401).render('login', {
-        erro: 'Esta conta ainda não tem senha. Use "Esqueci minha senha" para definir uma.',
-        email,
+        erro:
+          'Esta conta ainda não tem senha. Use "Esqueci minha senha" para definir uma.',
+        identificador,
       });
     }
 
     const senhaOk = await verificarSenha(usuario.senhaHash, senha);
+
     if (!senhaOk) {
-      // Incrementa o contador; ao atingir o teto, bloqueia por uma janela.
       const falhas = (usuario.loginFalhas || 0) + 1;
+
       if (falhas >= MAX_FALHAS_ALUNO) {
         await prisma.usuario.update({
           where: { id: usuario.id },
-          data: { loginFalhas: 0, bloqueadoAte: new Date(Date.now() + BLOQUEIO_MIN_ALUNO * 60000) },
+          data: {
+            loginFalhas: 0,
+            bloqueadoAte: new Date(
+              Date.now() + BLOQUEIO_MIN_ALUNO * 60000
+            ),
+          },
         });
+
         return res.status(429).render('login', {
           erro: `Muitas tentativas. Acesso bloqueado por ${BLOQUEIO_MIN_ALUNO} min.`,
-          email,
+          identificador,
         });
       }
-      await prisma.usuario.update({ where: { id: usuario.id }, data: { loginFalhas: falhas } });
-      return reRender(email);
+
+      await prisma.usuario.update({
+        where: { id: usuario.id },
+        data: {
+          loginFalhas: falhas,
+        },
+      });
+
+      return reRender(identificador);
     }
 
-    // Login OK: zera contadores se houver resquício de tentativas anteriores.
+    // Login bem-sucedido: limpa bloqueio/falhas anteriores.
     if (usuario.loginFalhas || usuario.bloqueadoAte) {
-      await prisma.usuario.update({ where: { id: usuario.id }, data: { loginFalhas: 0, bloqueadoAte: null } });
-    }
-
-    // Conta da secretaria não entra pela área do aluno (o painel fica em outro endereço).
-    if (usuario.papel === 'SECRETARIA') {
-      return res.status(403).render('login', {
-        erro: 'Esta é a área do aluno. O acesso da secretaria é feito pelo painel administrativo.',
-        email,
+      await prisma.usuario.update({
+        where: { id: usuario.id },
+        data: {
+          loginFalhas: 0,
+          bloqueadoAte: null,
+        },
       });
     }
 
+    // Secretaria não entra pela área do aluno.
+    if (usuario.papel === 'SECRETARIA') {
+      return res.status(403).render('login', {
+        erro:
+          'Esta é a área do aluno. O acesso da secretaria é feito pelo painel administrativo.',
+        identificador,
+      });
+    }
+
+    // Regenera a sessão para evitar session fixation.
     return req.session.regenerate((err) => {
       if (err) {
         console.error('Erro ao regenerar sessao:', err);
-        return res.status(500).render('erro', { mensagem: 'Erro ao iniciar a sessao.' });
+
+        return res.status(500).render('erro', {
+          mensagem: 'Erro ao iniciar a sessao.',
+        });
       }
+
       req.session.usuarioId = usuario.id;
       req.session.papel = usuario.papel;
       req.session.nome = usuario.nome;
+
       req.session.save((err2) => {
         if (err2) {
           console.error('Erro ao salvar sessao:', err2);
-          return res.status(500).render('erro', { mensagem: 'Erro ao iniciar a sessao.' });
+
+          return res.status(500).render('erro', {
+            mensagem: 'Erro ao iniciar a sessao.',
+          });
         }
+
         return res.redirect('/minha-conta');
       });
     });
   } catch (err) {
     console.error('Erro no login:', err);
-    return res.status(500).render('erro', { mensagem: 'Erro ao processar o login.' });
+
+    return res.status(500).render('erro', {
+      mensagem: 'Erro ao processar o login.',
+    });
   }
 });
+
 
 router.post('/logout', (req, res) => {
   req.session.destroy((err) => {

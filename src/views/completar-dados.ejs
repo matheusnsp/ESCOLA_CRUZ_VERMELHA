@@ -1,0 +1,230 @@
+<%- include('partials/site-head', { titulo: 'Completar cadastro' }) %>
+<%- include('partials/site-header') %>
+
+<%
+  var faltaCep         = !valores.cep;
+  var faltaLogradouro  = !valores.logradouro;
+  var faltaNumero      = !valores.numero;
+  var faltaBairro      = !valores.bairro;
+  var faltaCidade      = !valores.cidade;
+  var faltaUf          = !valores.uf;
+  var faltaCelular     = !valores.celular;
+
+  var faltaEndereco = faltaCep || faltaLogradouro || faltaNumero || faltaBairro || faltaCidade || faltaUf;
+
+  var faltaEscolaridade = !valores.escolaridade;
+  var faltaSituacao     = !valores.escolaridadeSituacao;
+%>
+
+<main class="cx">
+  <div class="ct-wrap">
+
+    <header class="ct-topo">
+      <p class="ct-olho">Área do aluno</p>
+      <h1>Complete seu cadastro</h1>
+    </header>
+
+    <div class="ct-layout">
+
+      <!-- ══ Lateral ══════════════════════════════════════════════════════ -->
+      <aside class="ct-side">
+        <div class="ct-perfil">
+          <div class="ct-avatar"><%= usuario.nome.charAt(0).toUpperCase() %></div>
+          <div class="ct-perfil-txt">
+            <strong><%= usuario.nome.split(' ')[0] %></strong>
+            <span title="<%= usuario.email %>"><%= usuario.email %></span>
+          </div>
+        </div>
+
+        <nav class="ct-nav">
+          <a href="/minha-conta?sec=inscricoes">
+            <i class="fa-solid fa-graduation-cap"></i> Inscrições
+          </a>
+          <a href="/minha-conta?sec=dados">
+            <i class="fa-solid fa-id-card"></i> Meus dados
+          </a>
+          <a href="/minha-conta?sec=seguranca">
+            <i class="fa-solid fa-key"></i> Segurança
+          </a>
+          <a href="/minha-conta?sec=excluir" class="perigo">
+            <i class="fa-solid fa-trash"></i> Excluir conta
+          </a>
+        </nav>
+      </aside>
+
+      <!-- ══ Conteúdo ═════════════════════════════════════════════════════ -->
+      <section class="ct-main">
+
+        <div class="ct-head">
+          <h2>Dados pendentes</h2>
+        </div>
+
+        <div class="ct-card">
+
+          <p class="ct-grupo-nota" style="margin-bottom:18px;">
+            Precisamos das informações abaixo para manter seu cadastro
+            atualizado e conseguir falar com você caso haja alguma mudança
+            na sua turma ou curso. Elas também são conferidas na secretaria
+            no primeiro dia de aula.
+          </p>
+
+          <% if (erros && erros.length) { %>
+            <div class="ct-erro" role="alert" style="flex-direction:column; align-items:flex-start; gap:6px;">
+              <% erros.forEach(function (e) { %>
+                <p style="margin:0; display:flex; align-items:center; gap:8px;">
+                  <i class="fa-solid fa-circle-exclamation"></i> <%= e %>
+                </p>
+              <% }) %>
+            </div>
+          <% } %>
+
+          <form method="POST" action="/completar-dados" class="ct-form" novalidate>
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+            <!-- ── Celular ─────────────────────────────────────────────── -->
+            <% if (faltaCelular) { %>
+              <label class="ct-campo">
+                <span>Celular</span>
+                <input type="text" name="celular" value="<%= valores.celular || '' %>" required
+                       inputmode="numeric" placeholder="(21) 90000-0000" maxlength="15" data-mask="celular">
+              </label>
+            <% } else { %>
+              <input type="hidden" name="celular" value="<%= valores.celular %>">
+            <% } %>
+
+            <!-- ── Escolaridade ────────────────────────────────────────── -->
+            <% if (faltaEscolaridade) { %>
+              <label class="ct-campo">
+                <span>Escolaridade</span>
+                <select name="escolaridade" required>
+                  <option value="" disabled selected>Selecione...</option>
+                  <% escolaridades.forEach(function (e) { %>
+                    <option value="<%= e %>"><%= e %></option>
+                  <% }) %>
+                </select>
+              </label>
+            <% } else { %>
+              <input type="hidden" name="escolaridade" value="<%= valores.escolaridade %>">
+            <% } %>
+
+            <!-- ── Situação da escolaridade ───────────────────────────── -->
+            <% if (faltaSituacao) { %>
+              <label class="ct-campo">
+                <span>Situação</span>
+                <select name="escolaridadeSituacao" required>
+                  <option value="" disabled selected>Cursando ou completo?</option>
+                  <% situacoes.forEach(function (s) { %>
+                    <option value="<%= s %>"><%= s %></option>
+                  <% }) %>
+                </select>
+              </label>
+            <% } else { %>
+              <input type="hidden" name="escolaridadeSituacao" value="<%= valores.escolaridadeSituacao %>">
+            <% } %>
+
+            <!-- ── Endereço ────────────────────────────────────────────── -->
+            <% if (faltaEndereco) { %>
+              <div class="ct-grupo">
+                <p class="ct-grupo-titulo">Endereço</p>
+
+                <% if (faltaCep) { %>
+                  <label class="ct-campo">
+                    <span>CEP</span>
+                    <input type="text" name="cep" value="<%= valores.cep || '' %>" required
+                           inputmode="numeric" placeholder="00000-000" maxlength="9">
+                  </label>
+                <% } else { %>
+                  <input type="hidden" name="cep" value="<%= valores.cep %>">
+                <% } %>
+
+                <% if (faltaLogradouro) { %>
+                  <label class="ct-campo">
+                    <span>Rua / Logradouro</span>
+                    <input type="text" name="logradouro" value="<%= valores.logradouro || '' %>" required>
+                  </label>
+                <% } else { %>
+                  <input type="hidden" name="logradouro" value="<%= valores.logradouro %>">
+                <% } %>
+
+                <% if (faltaNumero) { %>
+                  <div class="ct-linha-2">
+                    <label class="ct-campo">
+                      <span>Número</span>
+                      <input type="text" name="numero" value="<%= valores.numero || '' %>" required>
+                    </label>
+                    <label class="ct-campo">
+                      <span>Complemento <em>(opcional)</em></span>
+                      <input type="text" name="complemento" value="<%= valores.complemento || '' %>" placeholder="Apto, bloco...">
+                    </label>
+                  </div>
+                <% } else { %>
+                  <input type="hidden" name="numero" value="<%= valores.numero %>">
+                  <label class="ct-campo">
+                    <span>Complemento <em>(opcional)</em></span>
+                    <input type="text" name="complemento" value="<%= valores.complemento || '' %>" placeholder="Apto, bloco...">
+                  </label>
+                <% } %>
+
+                <% if (faltaBairro || faltaCidade || faltaUf) { %>
+                  <div class="ct-linha-3">
+                    <% if (faltaBairro) { %>
+                      <label class="ct-campo">
+                        <span>Bairro</span>
+                        <input type="text" name="bairro" value="<%= valores.bairro || '' %>" required>
+                      </label>
+                    <% } else { %>
+                      <input type="hidden" name="bairro" value="<%= valores.bairro %>">
+                    <% } %>
+
+                    <% if (faltaCidade) { %>
+                      <label class="ct-campo">
+                        <span>Cidade</span>
+                        <input type="text" name="cidade" value="<%= valores.cidade || '' %>" required>
+                      </label>
+                    <% } else { %>
+                      <input type="hidden" name="cidade" value="<%= valores.cidade %>">
+                    <% } %>
+
+                    <% if (faltaUf) { %>
+                      <label class="ct-campo">
+                        <span>UF</span>
+                        <select name="uf" required>
+                          <option value="" disabled selected>--</option>
+                          <% ufs.forEach(function (u) { %>
+                            <option value="<%= u %>"><%= u %></option>
+                          <% }) %>
+                        </select>
+                      </label>
+                    <% } else { %>
+                      <input type="hidden" name="uf" value="<%= valores.uf %>">
+                    <% } %>
+                  </div>
+                <% } else { %>
+                  <input type="hidden" name="bairro" value="<%= valores.bairro %>">
+                  <input type="hidden" name="cidade" value="<%= valores.cidade %>">
+                  <input type="hidden" name="uf" value="<%= valores.uf %>">
+                <% } %>
+              </div>
+            <% } else { %>
+              <input type="hidden" name="cep" value="<%= valores.cep %>">
+              <input type="hidden" name="logradouro" value="<%= valores.logradouro %>">
+              <input type="hidden" name="numero" value="<%= valores.numero %>">
+              <input type="hidden" name="complemento" value="<%= valores.complemento || '' %>">
+              <input type="hidden" name="bairro" value="<%= valores.bairro %>">
+              <input type="hidden" name="cidade" value="<%= valores.cidade %>">
+              <input type="hidden" name="uf" value="<%= valores.uf %>">
+            <% } %>
+
+            <button type="submit" class="ct-btn">Salvar dados</button>
+          </form>
+
+        </div>
+
+      </section>
+    </div>
+
+  </div>
+</main>
+
+<script src="/js/mascaras.js"></script>
+<%- include('partials/site-footer') %>

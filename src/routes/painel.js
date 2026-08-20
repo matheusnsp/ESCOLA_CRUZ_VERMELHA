@@ -5,6 +5,7 @@ const { formatBRL } = require('../lib/matricula');
 const { verificarSenha } = require('../lib/password');
 const { mascarar } = require('../lib/documento');
 const { perfilSchema, ESCOLARIDADES, SITUACOES_ESCOLARIDADE, GENEROS, UFS } = require('../lib/validation');
+const { precisaTrocarSenha } = require('../lib/seguranca');
 
 const router = express.Router();
 
@@ -39,9 +40,9 @@ const FILTRO_MATRICULA_FANTASMA = {
   NOT: { statusPagamento: 'PENDENTE', taxaConfirmada: false },
 };
 
-// Área do aluno — painel único com seções (inscricoes | dados | excluir).
+// Área do aluno — painel único com seções (inscricoes | dados | seguranca | excluir).
 router.get('/minha-conta', requireLogin, async (req, res) => {
-  const secValidas = ['inscricoes', 'dados', 'excluir'];
+  const secValidas = ['inscricoes', 'dados', 'seguranca', 'excluir'];
   const sec = secValidas.includes(req.query.sec) ? req.query.sec : 'inscricoes';
 
   const usuario = await prisma.usuario.findUnique({ where: { id: req.session.usuarioId } });
@@ -50,7 +51,7 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
     return res.redirect('/login');
   }
 
-  const [matriculas, matriculasAtivas] = await Promise.all([
+  const [matriculas, matriculasAtivas, senhaPrecisaTrocar] = await Promise.all([
     prisma.matricula.findMany({
       where: { alunoId: usuario.id, ...FILTRO_MATRICULA_FANTASMA },
       orderBy: { criadoEm: 'desc' },
@@ -59,6 +60,7 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
     prisma.matricula.count({
       where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' }, ...FILTRO_MATRICULA_FANTASMA },
     }),
+    precisaTrocarSenha(usuario.id),
   ]);
 
   res.render('minha-conta', {
@@ -75,10 +77,14 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
     ufs: UFS,
     salvo: !!req.query.salvo,
     erro: null,
+    senhaPrecisaTrocar,
+    erroSenha: req.query.erroSenha || null,
+    senhaAlterada: !!req.query.senhaAlterada,
   });
 });
 
-// Atualizar dados do perfil (nome + escolaridade). E-mail e CPF não mudam aqui.
+// Atualizar dados do perfil (escolaridade, situação, gênero). E-mail, nome e
+// documento não mudam aqui. Endereço vai só como hidden (ver minha-conta.ejs).
 router.post('/conta/dados', requireLogin, async (req, res) => {
   const usuario = await prisma.usuario.findUnique({ where: { id: req.session.usuarioId } });
   if (!usuario) {
@@ -88,9 +94,10 @@ router.post('/conta/dados', requireLogin, async (req, res) => {
 
   const resultado = perfilSchema.safeParse(req.body);
   if (!resultado.success) {
-    const [matriculas, matriculasAtivas] = await Promise.all([
+    const [matriculas, matriculasAtivas, senhaPrecisaTrocar] = await Promise.all([
       prisma.matricula.findMany({ where: { alunoId: usuario.id, ...FILTRO_MATRICULA_FANTASMA }, orderBy: { criadoEm: 'desc' }, include: { turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } } }),
       prisma.matricula.count({ where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' }, ...FILTRO_MATRICULA_FANTASMA } }),
+      precisaTrocarSenha(usuario.id),
     ]);
     return res.status(400).render('minha-conta', {
       usuario: { ...usuario, escolaridade: req.body.escolaridade || '', escolaridadeSituacao: req.body.escolaridadeSituacao || '', genero: req.body.genero || '',
@@ -100,9 +107,13 @@ router.post('/conta/dados', requireLogin, async (req, res) => {
       docMascarado: usuario.cpfCnpj ? mascarar(usuario.cpfCnpj) : usuario.passaporte ? usuario.passaporte : '—',
       formatBRL, inscrito: false, escolaridades: ESCOLARIDADES, situacoes: SITUACOES_ESCOLARIDADE, generos: GENEROS, ufs: UFS, salvo: false,
       erro: null, erroDados: resultado.error.issues.map((i) => i.message).join(' '),
+      senhaPrecisaTrocar, erroSenha: null, senhaAlterada: false,
     });
   }
 
+  // 💡 FIX — este bloco estava faltando: quando a validação passava, o
+  // handler não gravava nada no banco nem respondia, deixando a requisição
+  // pendurada pra sempre (mesmo bug que já existia em /completar-dados).
   const { escolaridade, escolaridadeSituacao, genero, cep, logradouro, numero, complemento, bairro, cidade, uf } = resultado.data;
   await prisma.usuario.update({
     where: { id: usuario.id },
@@ -127,7 +138,7 @@ router.post('/conta/excluir', requireLogin, async (req, res) => {
   }
 
   const reRender = async (erro) => {
-    const [matriculas, matriculasAtivas] = await Promise.all([
+    const [matriculas, matriculasAtivas, senhaPrecisaTrocar] = await Promise.all([
       prisma.matricula.findMany({
         where: { alunoId: usuario.id, ...FILTRO_MATRICULA_FANTASMA },
         orderBy: { criadoEm: 'desc' },
@@ -136,6 +147,7 @@ router.post('/conta/excluir', requireLogin, async (req, res) => {
       prisma.matricula.count({
         where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' }, ...FILTRO_MATRICULA_FANTASMA },
       }),
+      precisaTrocarSenha(usuario.id),
     ]);
     return res.status(400).render('minha-conta', {
       usuario,
@@ -146,6 +158,7 @@ router.post('/conta/excluir', requireLogin, async (req, res) => {
       formatBRL,
       inscrito: false,
       erro,
+      senhaPrecisaTrocar, erroSenha: null, senhaAlterada: false,
     });
   };
 

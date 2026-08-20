@@ -2033,16 +2033,16 @@ body > section { flex: 1 0 auto; }
   .ct-grupo {
     border: 1px solid var(--borda);
     border-radius: var(--r);
-    padding: 18px;
+    padding: 20px 18px 18px;
     margin: 0 0 18px;
   }
-  .ct-grupo legend {
+  .ct-grupo-titulo {
     font-size: 12.5px;
     font-weight: 800;
-    letter-spacing: .04em;
+    letter-spacing: .06em;
     text-transform: uppercase;
     color: var(--tinta-40);
-    padding: 0 6px;
+    margin: 0 0 16px;
   }
   .ct-grupo-nota { font-size: 12.5px; color: var(--tinta-40); margin: 0 0 14px; }
   
@@ -2152,3 +2152,107 @@ body > section { flex: 1 0 auto; }
   .nav-links a { gap: 12px; }
   .nav-links .nav-externo-ic { margin-left: auto; } /* item vira linha cheia; joga a seta pra direita */
 }
+
+
+/* ── Aviso de cadastro incompleto (sidebar da conta) ──────── */
+.aviso-cadastro-incompleto {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 8px 4px 4px;
+  padding: 13px 14px;
+  background: var(--cruz-bg);
+  border: 1px solid #f4dede;
+  border-radius: var(--r-s);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--tinta-60);
+}
+.aviso-cadastro-incompleto i {
+  color: var(--cruz);
+  font-size: 13px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+.aviso-cadastro-incompleto a {
+  color: var(--cruz);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.aviso-cadastro-incompleto a:hover {
+  color: var(--cruz-esc);
+}
+
+/* ── Aviso de cadastro incompleto (banner no topo) ────────── */
+.ct-aviso-topo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--cruz-bg);
+  border: 1px solid #f4dede;
+  border-radius: var(--r);
+  padding: 14px 18px;
+  margin-bottom: 22px;
+  font-size: 14px;
+  color: var(--tinta-60);
+}
+.ct-aviso-topo i:first-child {
+  color: var(--cruz);
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.ct-aviso-topo span { flex: 1; }
+.ct-aviso-topo a {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--cruz);
+  text-decoration: none;
+  padding: 9px 16px;
+  border-radius: var(--r-s);
+  white-space: nowrap;
+  transition: background .15s;
+}
+.ct-aviso-topo a i { font-size: 11px; }
+.ct-aviso-topo a:hover { background: var(--cruz-esc); }
+
+@media (max-width: 560px) {
+  .ct-aviso-topo { flex-wrap: wrap; }
+  .ct-aviso-topo a { width: 100%; justify-content: center; }
+}
+
+/* Adicionar/mesclar no CSS global onde já existe .senha-forca / .senha-barra.
+   Só a parte da transição é nova — se as classes já existem no seu CSS,
+   adicione apenas as linhas "transition" dentro delas. */
+
+   .senha-barra {
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    background: #e5e7eb; /* trilho de fundo */
+    overflow: hidden;
+  }
+  
+  .senha-barra > span {
+    display: block;
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    transition: width 0.25s ease, background-color 0.25s ease;
+  }
+  
+  .senha-forca {
+    margin-top: 6px;
+  }
+  
+  .senha-label {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.8rem;
+    transition: color 0.25s ease;
+  }

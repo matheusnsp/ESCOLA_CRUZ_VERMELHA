@@ -25,17 +25,20 @@
     <form method="POST" action="/cadastro" class="auth-form-grid" novalidate>
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
+      <!-- Nome -->
       <label class="auth-field full">
         <span>Nome completo</span>
         <input type="text" name="nome" value="<%= valores.nome || '' %>" required autocomplete="name">
-        <small>Nome completo (nome e sobrenome). Usado no certificado — confira antes de continuar.</small>
+        <small>Nome e sobrenome. Será usado no certificado.</small>
       </label>
 
-      <label class="auth-field">
+      <!-- E-mail -->
+      <label class="auth-field full">
         <span>E-mail</span>
         <input type="email" name="email" value="<%= valores.email || '' %>" required autocomplete="email">
       </label>
 
+      <!-- Tipo de documento -->
       <div class="auth-field full">
         <span class="auth-bloco-rot">Tipo de cadastro</span>
         <div class="tipo-pessoa-toggle" role="group">
@@ -48,20 +51,16 @@
 
       <input type="hidden" name="tipoDocumento" id="tipoDocumentoInput" value="<%= valores.tipoDocumento || '' %>">
 
-      <!-- Escondidos até o usuário escolher o tipo de cadastro.
-           Quem controla é o cadastro.js, via el.hidden. -->
       <label class="auth-field" id="campo-documento" hidden>
         <span id="label-documento">CPF</span>
         <input type="text" name="documento" value="<%= valores.documento || '' %>" inputmode="numeric"
                placeholder="000.000.000-00" maxlength="18" data-mask="cpfCnpj">
-        <small>Usado para emissão do certificado.</small>
       </label>
 
       <label class="auth-field" id="campo-passaporte" hidden>
         <span>Número do passaporte</span>
         <input type="text" name="passaporte" value="<%= valores.passaporte || '' %>" maxlength="20"
                placeholder="Ex: AB1234567" autocomplete="off">
-        <small>Usado para emissão do certificado.</small>
       </label>
 
       <label class="auth-field" id="campo-pais-origem" hidden>
@@ -71,18 +70,18 @@
 
       <label class="auth-field" id="campo-rg" hidden>
         <span>RG <span class="auth-opcional">(opcional)</span></span>
-        <input type="text" name="rg" value="<%= valores.rg || '' %>" maxlength="14"
-               placeholder="Número do RG" data-mask="rg">
-        <small>Preenchimento opcional.</small>
+        <input type="text" name="rg" value="<%= valores.rg || '' %>" maxlength="20" placeholder="Número do RG">
       </label>
 
+      <!-- Celular — opcional no cadastro, obrigatório ao completar -->
       <label class="auth-field">
         <span>Celular</span>
-        <input type="text" name="celular" value="<%= valores.celular || '' %>" required inputmode="numeric"
+        <input type="text" name="celular" value="<%= valores.celular || '' %>" inputmode="numeric"
                placeholder="(21) 90000-0000" maxlength="15" data-mask="celular">
         <small>Com DDD.</small>
       </label>
 
+      <!-- Escolaridade -->
       <label class="auth-field">
         <span>Escolaridade</span>
         <select name="escolaridade" required>
@@ -103,65 +102,16 @@
         </select>
       </label>
 
-      <label class="auth-field full">
-        <span>Gênero <span class="auth-opcional">(opcional)</span></span>
-        <select name="genero">
-          <option value="">— selecione —</option>
-          <% generos.forEach(function (g) { %>
-            <option value="<%= g %>" <%= (valores.genero === g) ? 'selected' : '' %>><%= g %></option>
-          <% }) %>
-        </select>
-      </label>
+      <!-- Senha -->
 
-      <fieldset class="auth-grupo">
-        <legend>Endereço</legend>
-        <p class="auth-grupo-nota">Usado para emissão de cobrança em caso de inadimplência.</p>
-
-        <div class="auth-linha auth-linha-cep">
-          <label class="auth-field">
-            <span>CEP</span>
-            <input type="text" name="cep" value="<%= valores.cep || '' %>" required
-                   inputmode="numeric" placeholder="00000-000" maxlength="9">
-          </label>
-          <label class="auth-field">
-            <span>Rua / Logradouro</span>
-            <input type="text" name="logradouro" value="<%= valores.logradouro || '' %>" required>
-          </label>
-        </div>
-
-        <div class="auth-linha auth-linha-numero">
-          <label class="auth-field">
-            <span>Número</span>
-            <input type="text" name="numero" value="<%= valores.numero || '' %>" required>
-          </label>
-          <label class="auth-field">
-            <span>Complemento <span class="auth-opcional">(opcional)</span></span>
-            <input type="text" name="complemento" value="<%= valores.complemento || '' %>" placeholder="Apto, bloco, etc.">
-          </label>
-        </div>
-
-        <div class="auth-linha auth-linha-cidade">
-          <label class="auth-field">
-            <span>Bairro</span>
-            <input type="text" name="bairro" value="<%= valores.bairro || '' %>" required>
-          </label>
-          <label class="auth-field">
-            <span>Cidade</span>
-            <input type="text" name="cidade" value="<%= valores.cidade || '' %>" required>
-          </label>
-          <label class="auth-field">
-            <span>UF</span>
-            <select name="uf" required>
-              <option value="" disabled <%= valores.uf ? '' : 'selected' %>>--</option>
-              <% ufs.forEach(function (u) { %>
-                <option value="<%= u %>" <%= (valores.uf === u) ? 'selected' : '' %>><%= u %></option>
-              <% }) %>
-            </select>
-          </label>
-        </div>
-      </fieldset>
-
-      <label class="auth-field">
+      <div class="auth-field full" style="background:#eef6ff;border:1px solid #b6d8ff;border-radius:8px;padding:12px 14px;">
+        <p style="margin:0;font-size:.9rem;">
+          <i class="fa-solid fa-circle-info"></i>
+          Sua senha inicial será os <strong>4 últimos dígitos do seu CPF/CNPJ (ou passaporte)</strong>.
+          No primeiro acesso, vamos pedir pra você trocá-la por uma senha só sua.
+        </p>
+      </div>
+      <!-- <label class="auth-field">
         <span>Senha</span>
         <input type="password" name="senha" required minlength="10" autocomplete="new-password">
         <small>Mínimo de 10 caracteres.</small>
@@ -174,18 +124,10 @@
       <label class="auth-field">
         <span>Confirmar senha</span>
         <input type="password" name="confirmarSenha" required autocomplete="new-password">
-      </label>
+      </label> -->
 
-      <div class="auth-field full auth-aviso">
-        <strong><i class="fa-solid fa-circle-info"></i> No primeiro dia de aula, traga os originais:</strong>
-        <span>
-          Documento de identidade · Comprovante de residência · Comprovante de
-          escolaridade. Os documentos são apenas conferidos presencialmente
-          (não ficam retidos).
-        </span>
-      </div>
-
-      <label class="auth-check">
+      <!-- Consentimento -->
+      <label class="auth-check full">
         <input type="checkbox" name="consentimento">
         <span>
           Li e aceito a
@@ -194,11 +136,10 @@
         </span>
       </label>
 
-      <button type="submit" class="auth-btn">Criar conta</button>
+      <button type="submit" class="auth-btn full">Criar conta</button>
     </form>
 
     <p class="auth-alt">Já tem conta? <a href="/login">Entrar</a></p>
-
   </div>
 </main>
 

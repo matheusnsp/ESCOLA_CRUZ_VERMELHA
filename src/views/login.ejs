@@ -4,7 +4,12 @@
   <div class="auth-card">
 
     <div class="auth-brand">
-      <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro" class="auth-logo">
+      <img
+        src="/img/logo-cvb-rj.webp"
+        alt="Cruz Vermelha Brasileira — Rio de Janeiro"
+        class="auth-logo"
+      >
+
       <div class="auth-brand-text">
         <strong>ESCOLA DE EDUCAÇÃO</strong>
         <span>E SAÚDE CVB-RJ</span>
@@ -16,34 +21,65 @@
 
     <% if (typeof sucesso !== 'undefined' && sucesso) { %>
       <div class="auth-erros ok">
-        <p><i class="fa-solid fa-circle-check"></i> <%= sucesso %></p>
+        <p>
+          <i class="fa-solid fa-circle-check"></i>
+          <%= sucesso %>
+        </p>
       </div>
     <% } %>
 
     <% if (erro) { %>
       <div class="auth-erros" role="alert">
-        <p><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></p>
+        <p>
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <%= erro %>
+        </p>
       </div>
     <% } %>
 
     <form method="POST" action="/login" novalidate>
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <input
+        type="hidden"
+        name="_csrf"
+        value="<%= csrfToken %>"
+      >
+
       <label class="auth-field">
-        <span>E-mail</span>
-        <input type="email" name="email" value="<%= email || '' %>" required autocomplete="email">
+        <span>E-mail ou CPF</span>
+        <input
+          type="text"
+          name="identificador"
+          value="<%= typeof identificador !== 'undefined' ? identificador : '' %>"
+          autocomplete="username"
+          placeholder="seu@email.com ou 000.000.000-00"
+          required
+        >
       </label>
+
       <label class="auth-field">
         <span>Senha</span>
-        <input type="password" name="senha" required autocomplete="current-password">
+        <input
+          type="password"
+          name="senha"
+          autocomplete="current-password"
+          required
+        >
       </label>
-      <button type="submit" class="auth-btn">Entrar</button>
+
+      <button type="submit" class="auth-btn">
+        Entrar
+      </button>
+
     </form>
 
-    <p class="auth-alt discreto auth-alt-junto"><a href="/esqueci-senha">Esqueci minha senha</a></p>
+    <p class="auth-alt discreto auth-alt-junto">
+      <a href="/esqueci-senha">Esqueci minha senha</a>
+    </p>
 
-    <!-- <p class="auth-alt auth-alt-junto">Não confirmou o e-mail? <a href="/reenviar-confirmacao">Reenviar confirmação</a></p> -->
-
-    <p class="auth-alt">Não tem conta? <a href="/cadastro">Criar conta</a></p>
+    <p class="auth-alt">
+      Não tem conta? <a href="/cadastro">Criar conta</a>
+    </p>
 
   </div>
 </main>

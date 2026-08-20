@@ -11,6 +11,40 @@
       </div>
     <% } %>
 
+    <%
+      // Campos que realmente faltam preencher — mesma lógica usada em
+      // completar-dados.ejs, pra manter os dois lugares consistentes.
+      var faltaCep        = !usuario.cep;
+      var faltaLogradouro = !usuario.logradouro;
+      var faltaNumero     = !usuario.numero;
+      var faltaBairro     = !usuario.bairro;
+      var faltaCidade     = !usuario.cidade;
+      var faltaUf         = !usuario.uf;
+
+      var faltaEndereco = faltaCep || faltaLogradouro || faltaNumero || faltaBairro || faltaCidade || faltaUf;
+
+      var faltaEscolaridade = !usuario.escolaridade;
+      var faltaSituacao     = !usuario.escolaridadeSituacao;
+
+      var cadastroIncompleto = faltaEndereco || faltaEscolaridade || faltaSituacao;
+    %>
+
+    <% if (cadastroIncompleto) { %>
+      <div class="ct-aviso-topo">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>Seu cadastro está incompleto. Complete seus dados para evitar problemas com sua matrícula.</span>
+        <a href="/completar-dados">Completar agora</a>
+      </div>
+    <% } %>
+
+    <% if (senhaPrecisaTrocar) { %>
+      <div class="ct-aviso-topo">
+        <i class="fa-solid fa-key"></i>
+        <span>Você está usando a senha temporária gerada no cadastro. Troque agora para proteger sua conta.</span>
+        <a href="/minha-conta?sec=seguranca">Trocar senha</a>
+      </div>
+    <% } %>
+
     <header class="ct-topo">
       <p class="ct-olho">Área do aluno</p>
       <h1>Minha conta</h1>
@@ -34,6 +68,9 @@
           </a>
           <a href="/minha-conta?sec=dados" class="<%= sec === 'dados' ? 'ativo' : '' %>">
             <i class="fa-solid fa-id-card"></i> Meus dados
+          </a>
+          <a href="/minha-conta?sec=seguranca" class="<%= sec === 'seguranca' ? 'ativo' : '' %>">
+            <i class="fa-solid fa-key"></i> Segurança
           </a>
           <a href="/minha-conta?sec=excluir" class="perigo <%= sec === 'excluir' ? 'ativo' : '' %>">
             <i class="fa-solid fa-trash"></i> Excluir conta
@@ -202,52 +239,17 @@
                 </select>
               </label>
 
-              <fieldset class="ct-grupo">
-                <legend>Endereço</legend>
-                <p class="ct-grupo-nota">Usado para emissão de cobrança em caso de inadimplência.</p>
-
-                <label class="ct-campo">
-                  <span>CEP</span>
-                  <input type="text" name="cep" value="<%= usuario.cep || '' %>" required
-                         inputmode="numeric" placeholder="00000-000" maxlength="9">
-                </label>
-
-                <label class="ct-campo">
-                  <span>Rua / Logradouro</span>
-                  <input type="text" name="logradouro" value="<%= usuario.logradouro || '' %>" required>
-                </label>
-
-                <div class="ct-linha-2">
-                  <label class="ct-campo">
-                    <span>Número</span>
-                    <input type="text" name="numero" value="<%= usuario.numero || '' %>" required>
-                  </label>
-                  <label class="ct-campo">
-                    <span>Complemento <em>(opcional)</em></span>
-                    <input type="text" name="complemento" value="<%= usuario.complemento || '' %>">
-                  </label>
-                </div>
-
-                <div class="ct-linha-3">
-                  <label class="ct-campo">
-                    <span>Bairro</span>
-                    <input type="text" name="bairro" value="<%= usuario.bairro || '' %>" required>
-                  </label>
-                  <label class="ct-campo">
-                    <span>Cidade</span>
-                    <input type="text" name="cidade" value="<%= usuario.cidade || '' %>" required>
-                  </label>
-                  <label class="ct-campo">
-                    <span>UF</span>
-                    <select name="uf" required>
-                      <option value="" disabled <%= usuario.uf ? '' : 'selected' %>>--</option>
-                      <% ufs.forEach(function (u) { %>
-                        <option value="<%= u %>" <%= (usuario.uf === u) ? 'selected' : '' %>><%= u %></option>
-                      <% }) %>
-                    </select>
-                  </label>
-                </div>
-              </fieldset>
+              <!-- ── Endereço: aqui é só leitura/preservação. Se estiver
+                   faltando, não oferecemos pra preencher nesta aba — quem
+                   estiver com cadastro incompleto vai pelo banner do topo
+                   até /completar-dados. ── -->
+              <input type="hidden" name="cep" value="<%= usuario.cep || '' %>">
+              <input type="hidden" name="logradouro" value="<%= usuario.logradouro || '' %>">
+              <input type="hidden" name="numero" value="<%= usuario.numero || '' %>">
+              <input type="hidden" name="complemento" value="<%= usuario.complemento || '' %>">
+              <input type="hidden" name="bairro" value="<%= usuario.bairro || '' %>">
+              <input type="hidden" name="cidade" value="<%= usuario.cidade || '' %>">
+              <input type="hidden" name="uf" value="<%= usuario.uf || '' %>">
 
               <button type="submit" class="ct-btn">Salvar alterações</button>
             </form>
@@ -262,6 +264,11 @@
               <% if (usuario.tipoDocumento === 'PASSAPORTE' && usuario.paisOrigem) { %>
                 <div><span>País de origem</span><strong><%= usuario.paisOrigem %></strong></div>
               <% } %>
+              <% if (!faltaEndereco) { %>
+                <div><span>Endereço</span>
+                  <strong><%= usuario.logradouro %>, <%= usuario.numero %><% if (usuario.complemento) { %> - <%= usuario.complemento %><% } %> · <%= usuario.bairro %>, <%= usuario.cidade %>/<%= usuario.uf %> · <%= usuario.cep %></strong>
+                </div>
+              <% } %>
               <div><span>E-mail confirmado</span><strong><%= usuario.emailVerificado ? 'Sim' : 'Não' %></strong></div>
               <div><span>Cadastro em</span><strong class="num"><%= new Date(usuario.criadoEm).toLocaleDateString('pt-BR') %></strong></div>
             </div>
@@ -273,6 +280,55 @@
               Para corrigir algum deles, fale com a secretaria.
             </p>
 
+          </div>
+
+        <!-- ── Segurança ─────────────────────────────────────────────────── -->
+        <% } else if (sec === 'seguranca') { %>
+
+          <div class="ct-head"><h2>Segurança</h2></div>
+
+          <div class="ct-card">
+
+            <% if (senhaPrecisaTrocar) { %>
+              <div class="ct-aviso">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                Sua senha atual é temporária (gerada a partir do seu documento). Defina uma senha só sua.
+              </div>
+            <% } %>
+
+            <% if (typeof senhaAlterada !== 'undefined' && senhaAlterada) { %>
+              <div class="ct-ok"><i class="fa-solid fa-circle-check"></i> Senha alterada com sucesso.</div>
+            <% } %>
+            <% if (typeof erroSenha !== 'undefined' && erroSenha) { %>
+              <div class="ct-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erroSenha %></div>
+            <% } %>
+
+            <form method="POST" action="/conta/senha" novalidate class="ct-form" style="max-width:400px;">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="nome" value="<%= usuario.nome %>">
+              <input type="hidden" name="email" value="<%= usuario.email %>">
+
+              <label class="ct-campo">
+                <span>Senha atual</span>
+                <input type="password" name="senhaAtual" required autocomplete="current-password">
+              </label>
+
+              <label class="ct-campo">
+                <span>Nova senha</span>
+                <input type="password" name="novaSenha" required minlength="10" autocomplete="new-password">
+                <div class="senha-forca" id="senhaForca" hidden>
+                  <div class="senha-barra"><span></span></div>
+                  <small class="senha-label"></small>
+                </div>
+              </label>
+
+              <label class="ct-campo">
+                <span>Confirmar nova senha</span>
+                <input type="password" name="confirmarNovaSenha" required autocomplete="new-password">
+              </label>
+
+              <button type="submit" class="ct-btn">Salvar nova senha</button>
+            </form>
           </div>
 
         <!-- ── Excluir conta ─────────────────────────────────────────────── -->
@@ -316,4 +372,6 @@
   </div>
 </main>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
+<script src="/js/senha.js"></script>
 <%- include('partials/site-footer') %>

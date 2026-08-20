@@ -31,6 +31,28 @@ cidade: z.string().trim().min(1, 'Informe a cidade.').max(80, 'Cidade muito long
 uf: ufField,
 };
 
+// Versão "leniente" do endereço: usada onde o endereço já pode ter sido
+// preenchido em outra etapa (ex.: /completar-dados) e este formulário não
+// deve exigi-lo de novo. Campo vazio passa; campo preenchido é validado
+// no mesmo formato do shape obrigatório acima.
+const cepOpcionalField = z.string().trim().optional()
+  .transform(v => v ? v.replace(/\D/g, '') : '')
+  .refine(v => v === '' || v.length === 8, { message: 'CEP inválido.' });
+
+const ufOpcionalField = z.string().trim().optional()
+  .transform(v => (v || '').toUpperCase())
+  .refine(v => v === '' || UFS.includes(v), { message: 'Selecione a UF.' });
+
+const enderecoOpcionalShape = {
+  cep: cepOpcionalField,
+  logradouro: opcionalTexto(160, 'Endereço muito longo.'),
+  numero: opcionalTexto(20, 'Número muito longo.'),
+  complemento: opcionalTexto(80, 'Complemento muito longo.'),
+  bairro: opcionalTexto(80, 'Bairro muito longo.'),
+  cidade: opcionalTexto(80, 'Cidade muito longa.'),
+  uf: ufOpcionalField,
+};
+
 // Documento/passaporte não têm um shape fixo comum (um é obrigatório dependendo do outro),
 // então validamos como texto livre aqui e a regra condicional real fica no superRefine abaixo.
 const tipoDocumentoField = z.string().trim().refine(v => TIPOS_DOCUMENTO.includes(v), { message: 'Selecione o tipo de documento.' });
@@ -156,19 +178,113 @@ vagas: z.coerce.number().int().min(1),
 minimoAlunos: z.coerce.number().int().min(1),
 });
 
+// Schema simplificado para o cadastro público (endereço preenchido depois)
+const cadastroSimplificadoSchema = z.object({
+  nome: z.string().trim().min(3, 'Nome completo obrigatório.')
+    .refine(v => v.split(/\s+/).filter(Boolean).length >= 2, { message: 'Informe nome e sobrenome.' }),
+  email: z.string().trim().toLowerCase().email('E-mail inválido.').max(180),
+  tipoDocumento: tipoDocumentoField,
+  documento: documentoBrutoField,
+  passaporte: passaporteBrutoField,
+  paisOrigem: paisOrigemField,
+  rg: z.string().trim().optional().transform(v => v || ''),
+  celular: z.string().trim().transform(v => v.replace(/\D/g, ''))
+    .refine(v => v.length === 10 || v.length === 11, { message: 'Celular inválido.' }),
+  escolaridade: escolaridadeField,
+  escolaridadeSituacao: escolaridadeSituacaoField,
+  consentimento: z.literal('on', { errorMap: () => ({ message: 'Aceite a Política de Privacidade.' }) }),
+})
+.superRefine((d, ctx) => {
+  if (d.tipoDocumento === 'PASSAPORTE') {
+    const p = d.passaporte.replace(/[^A-Z0-9]/g, '');
+    if (!/^[A-Z]{2}\d{6}$/.test(p)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['passaporte'], message: 'Passaporte deve estar no formato AA123456.' });
+    }
+    if (!d.paisOrigem) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['paisOrigem'], message: 'Informe o país de origem.' });
+    }
+  } else {
+    const doc = d.documento.replace(/\D/g, '');
+    if (d.tipoDocumento === 'CPF' && doc.length !== 11) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['documento'], message: 'CPF deve ter 11 dígitos.' });
+    }
+    if (d.tipoDocumento === 'CNPJ' && doc.length !== 14) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['documento'], message: 'CNPJ deve ter 14 dígitos.' });
+    }
+  }
+})
+
+// .refine(d => d.senha === d.confirmarSenha, { path: ['confirmarSenha'], message: 'As senhas não coincidem.' })
+
+
+// Schema para completar o cadastro depois (endereço + escolaridade, quando faltarem)
+const completarCadastroSchema = z.object({
+  celular: z.string().trim().transform(v => v.replace(/\D/g, ''))
+    .refine(v => v.length === 10 || v.length === 11, { message: 'Celular inválido.' }),
+  escolaridade: escolaridadeField,
+  escolaridadeSituacao: escolaridadeSituacaoField,
+  ...enderecoShape,
+});
+
+
+const trocarSenhaSchema = z.object({
+  senhaAtual: z.string().min(1, 'Informe sua senha atual.'),
+  novaSenha: z.string().min(10, 'A nova senha deve ter ao menos 10 caracteres.'),
+  confirmarNovaSenha: z.string(),
+}).refine(d => d.novaSenha === d.confirmarNovaSenha, {
+  path: ['confirmarNovaSenha'],
+  message: 'As senhas não coincidem.',
+});
+
+
 module.exports = {
-cadastroSchema,
-perfilSchema: z.object({ escolaridade: escolaridadeField, escolaridadeSituacao: escolaridadeSituacaoField, genero: generoField, ...enderecoShape }),
-loginSchema: z.object({ email: z.string().email(), senha: z.string().min(1) }),
-esqueciSenhaSchema: z.object({ email: z.string().email() }),
-redefinirSenhaSchema: z.object({ token: z.string(), senha: z.string().min(10), confirmarSenha: z.string() }).refine(d => d.senha === d.confirmarSenha, { path: ['confirmarSenha'], message: 'Senhas não coincidem.' }),
-turmaSchema,
-inscricaoSchema,
-pagamentoTaxaSchema,
-pagamentoCursoSchema,
-ESCOLARIDADES,
-SITUACOES_ESCOLARIDADE,
-GENEROS,
-UFS,
-TIPOS_DOCUMENTO
+  cadastroSimplificadoSchema,
+  completarCadastroSchema,
+  cadastroSchema,
+  trocarSenhaSchema,
+
+  perfilSchema: z.object({
+    escolaridade: escolaridadeField,
+    escolaridadeSituacao: escolaridadeSituacaoField,
+    genero: generoField,
+    ...enderecoOpcionalShape
+  }),
+
+  loginSchema: z.object({
+    identificador: z
+      .string()
+      .trim()
+      .min(1, 'Informe seu e-mail ou CPF.'),
+
+    senha: z
+      .string()
+      .min(1, 'Informe sua senha.'),
+  }),
+
+  esqueciSenhaSchema: z.object({
+    email: z.string().email()
+  }),
+
+  redefinirSenhaSchema: z.object({
+    token: z.string(),
+    senha: z.string().min(10),
+    confirmarSenha: z.string()
+  }).refine(
+    d => d.senha === d.confirmarSenha,
+    {
+      path: ['confirmarSenha'],
+      message: 'Senhas não coincidem.'
+    }
+  ),
+
+  turmaSchema,
+  inscricaoSchema,
+  pagamentoTaxaSchema,
+  pagamentoCursoSchema,
+
+  ESCOLARIDADES,
+  SITUACOES_ESCOLARIDADE,
+  GENEROS,
+  UFS,
+  TIPOS_DOCUMENTO
 };
