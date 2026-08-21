@@ -39,9 +39,12 @@ model Usuario {
   atualizadoEm         DateTime       @updatedAt
   celular              String?
   rg                   String?
+  ultimoLogin          DateTime?
+  ultimaAtividade      DateTime?
   matriculas           Matricula[]
 
   @@index([papel])
+  @@index([ultimaAtividade])
 }
 
 model Curso {

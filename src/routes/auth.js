@@ -474,16 +474,20 @@ router.post('/login', loginLimiter, async (req, res) => {
       return reRender(identificador);
     }
 
-    // Login bem-sucedido: limpa bloqueio/falhas anteriores.
-    if (usuario.loginFalhas || usuario.bloqueadoAte) {
-      await prisma.usuario.update({
-        where: { id: usuario.id },
-        data: {
-          loginFalhas: 0,
-          bloqueadoAte: null,
-        },
-      });
-    }
+    // 💡 FIX — login bem-sucedido: este update agora roda SEMPRE (antes só
+    // rodava dentro de um "if (usuario.loginFalhas || usuario.bloqueadoAte)",
+    // então na maioria dos logins — sem falhas anteriores — o bloco inteiro
+    // era pulado e ultimoLogin/ultimaAtividade nunca eram gravados). Registra
+    // o acesso sempre, e só inclui a limpeza de loginFalhas/bloqueadoAte no
+    // update quando fazia sentido (evita um write desnecessário no caso comum).
+    await prisma.usuario.update({
+      where: { id: usuario.id },
+      data: {
+        ultimoLogin: new Date(),
+        ultimaAtividade: new Date(),
+        ...(usuario.loginFalhas || usuario.bloqueadoAte ? { loginFalhas: 0, bloqueadoAte: null } : {}),
+      },
+    });
 
     // Secretaria não entra pela área do aluno.
     if (usuario.papel === 'SECRETARIA') {
@@ -531,8 +535,13 @@ router.post('/login', loginLimiter, async (req, res) => {
 
 
 router.post('/logout', (req, res) => {
+  const id = req.session?.usuarioId;
   req.session.destroy((err) => {
     if (err) console.error('Erro ao sair:', err);
+    if (id) prisma.usuario.update({
+      where: { id },
+      data: { ultimaAtividade: new Date(0) },
+    }).catch(() => {});
     res.clearCookie('escola.sid');
     res.redirect('/login');
   });

@@ -38,6 +38,11 @@ const asyncHandler = require('../lib/asyncHandler');
 // Tempo maximo de inatividade no painel antes de deslogar (15 min).
 const IDLE_MS = 15 * 60 * 1000;
 
+function whereAlunoOnline() {
+  const cincoMinAtras = new Date(Date.now() - 5 * 60 * 1000);
+  return { papel: 'ALUNO', ultimaAtividade: { gte: cincoMinAtras } };
+}
+
 function requireAdmin(req, res, next) {
   if (req.session && req.session.usuarioId && PAPEIS_ADMIN.includes(req.session.papel)) {
     const agora = Date.now();
@@ -122,7 +127,18 @@ async function sincronizarPagamentoManual(req, matricula, tipo, novoStatus) {
 
 function back(req, msg) {
   const turma = req.body && req.body.turma ? String(req.body.turma) : null;
-  const url = turma ? `/inscricoes?turma=${encodeURIComponent(turma)}` : (req.get('Referer') || '/inscricoes');
+  const status = req.body && req.body.status ? String(req.body.status) : null;
+
+  let url;
+  if (turma || status) {
+    const params = new URLSearchParams();
+    if (turma) params.set('turma', turma);
+    if (status) params.set('status', status);
+    url = `/inscricoes?${params.toString()}`;
+  } else {
+    url = req.get('Referer') || '/inscricoes';
+  }
+
   const queryConector = url.includes('?') ? '&' : '?';
   return `${url}${queryConector}ok=${encodeURIComponent(msg)}`;
 }
@@ -145,6 +161,21 @@ const DEVICE_2FA_COOKIE = 'cvbrj_admin_2fa';
 
 function hojeSPStr() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+}
+
+// 💡 FIX — Novo helper: retorna o instante exato da meia-noite de "hoje" em
+// horario de Brasilia (America/Sao_Paulo), independente do timezone
+// configurado no processo Node/servidor. Antes, o Dashboard calculava
+// "inicio do dia" com `new Date(); setHours(0,0,0,0)`, que usa o timezone
+// LOCAL do servidor — se o servidor rodar em UTC (comum em hospedagens tipo
+// Render/Heroku/Docker sem TZ definida), a meia-noite do Node cai as 21h de
+// Brasilia do dia anterior, deslocando o contador "alunosHoje" em 3 horas.
+// O Brasil nao usa mais horario de verao desde 2019, entao o offset fixo
+// "-03:00" e seguro aqui (diferente do calculo de expiracao do cookie 2FA
+// em msAteMeiaNoiteSP, que usa outra abordagem por outro motivo).
+function inicioDoDiaSP() {
+  const diaSP = hojeSPStr(); // ex.: "2026-08-21"
+  return new Date(`${diaSP}T00:00:00-03:00`);
 }
 
 function assinarDispositivo(usuarioId, dia) {
@@ -511,12 +542,23 @@ const FILTRO_MATRICULA_FANTASMA = {
 };
 
 router.get('/', async (req, res) => {
-  const [totalCursos, cursosAtivos, turmasAbertas, pendentes, pagas] = await Promise.all([
+  const inicioHoje = inicioDoDiaSP();
+  const cincoMinAtras = new Date(Date.now() - 5 * 60 * 1000);
+
+  const [totalCursos, cursosAtivos, turmasAbertas, pendentes, pagas, alunosOnline, alunosHoje, alunosHojeLista] = await Promise.all([
     prisma.curso.count(),
     prisma.curso.count({ where: { ativo: true } }),
     prisma.turma.count({ where: { status: 'ABERTA' } }),
     prisma.matricula.count({ where: { statusPagamento: 'PENDENTE', ...FILTRO_MATRICULA_FANTASMA } }),
     prisma.matricula.count({ where: { statusPagamento: 'PAGO' } }),
+    prisma.usuario.count({ where: whereAlunoOnline() }), // 👈 antes: { papel: 'ALUNO', ultimaAtividade: { gte: cincoMinAtras } }
+    prisma.usuario.count({ where: { papel: 'ALUNO', ultimoLogin: { gte: inicioHoje } } }),
+    prisma.usuario.findMany({
+      where: { papel: 'ALUNO', ultimoLogin: { gte: inicioHoje } },
+      orderBy: { ultimoLogin: 'desc' },
+      select: { id: true, nome: true, email: true, celular: true, ultimoLogin: true },
+      take: 200,
+    }),
   ]);
   const ultimas = await prisma.matricula.findMany({
     where: FILTRO_MATRICULA_FANTASMA,
@@ -525,7 +567,8 @@ router.get('/', async (req, res) => {
     include: { aluno: true, turma: { include: { curso: true } } },
   });
   res.render('admin/dashboard', {
-    stats: { totalCursos, cursosAtivos, turmasAbertas, pendentes, pagas },
+    stats: { totalCursos, cursosAtivos, turmasAbertas, pendentes, pagas, alunosOnline, alunosHoje },
+    alunosHojeLista,
     ultimas,
     formatBRL,
     statusBadge,
@@ -535,12 +578,26 @@ router.get('/', async (req, res) => {
 // ---------- Cursos ----------
 
 router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), async (req, res) => {
+  const statusFiltro = ['ATIVO', 'INATIVO'].includes(req.query.status) ? req.query.status : null;
+
+  const where = {};
+  if (statusFiltro === 'ATIVO') where.ativo = true;
+  else if (statusFiltro === 'INATIVO') where.ativo = false;
+
   const cursos = await prisma.curso.findMany({
+    where,
     orderBy: { nome: 'asc' },
     include: { _count: { select: { turmas: true } } },
   });
-  res.render('admin/cursos', { cursos, formatBRL, flash: req.query.ok || null, erro: req.query.erro || null });
+  res.render('admin/cursos', { cursos, statusFiltro, formatBRL, flash: req.query.ok || null, erro: req.query.erro || null });
 });
+
+function backCursos(req, msg, tipo = 'ok') {
+  const status = req.body && req.body.status ? String(req.body.status) : null;
+  const url = status ? `/cursos?status=${encodeURIComponent(status)}` : '/cursos';
+  const conector = url.includes('?') ? '&' : '?';
+  return `${url}${conector}${tipo}=${encodeURIComponent(msg)}`;
+}
 
 router.get('/cursos/novo', requirePermissao('cursos:criar'), (req, res) => {
   res.render('admin/curso-form', { curso: null, escolaridades: ESCOLARIDADES, erro: null });
@@ -639,21 +696,22 @@ router.post('/cursos/:id/excluir', requirePermissao('cursos:gerenciar'), async (
   const matriculas = turmaIds.length ? await prisma.matricula.count({ where: { turmaId: { in: turmaIds } } }) : 0;
 
   if (turmas.length > 0 || matriculas > 0) {
-    return res.redirect('/cursos?erro=' + encodeURIComponent('Nao e possivel excluir: o curso tem turmas e/ou matriculas. Use "desativar" para tira-lo do site preservando o historico.'));
+    return res.redirect(backCursos(req, 'Nao e possivel excluir: o curso tem turmas e/ou matriculas. Use "desativar" para tira-lo do site preservando o historico.', 'erro'));
   }
 
   await prisma.curso.delete({ where: { id: curso.id } });
   await removerFotoCurso(curso.imagemUrl);
   await auditar(req, 'EXCLUIU_CURSO', 'Curso', curso.id, { nome: curso.nome });
-  res.redirect('/cursos?ok=Curso excluido.');
+  res.redirect(backCursos(req, 'Curso excluido.'));
 });
+
 
 router.post('/cursos/:id/ativar', requirePermissao('cursos:gerenciar'), async (req, res) => {
   const curso = await prisma.curso.findUnique({ where: { id: req.params.id } });
   if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
   await prisma.curso.update({ where: { id: curso.id }, data: { ativo: !curso.ativo } });
   await auditar(req, curso.ativo ? 'DESATIVOU_CURSO' : 'ATIVOU_CURSO', 'Curso', curso.id, null);
-  res.redirect('/cursos?ok=' + (curso.ativo ? 'Curso desativado.' : 'Curso ativado.'));
+  res.redirect(backCursos(req, curso.ativo ? 'Curso desativado.' : 'Curso ativado.'));
 });
 
 // ---------- Turmas ----------
@@ -825,12 +883,20 @@ router.post('/turmas/:id/excluir', requirePermissao('turmas:gerenciar'), async (
 
 router.get('/inscricoes', requirePermissao('doacao:confirmar', 'financeiro:aprovar', 'financeiro:leitura'), async (req, res) => {
   const turmaId = req.query.turma || null;
+  const statusFiltro = ['PAGO', 'PENDENTE'].includes(req.query.status) ? req.query.status : null;
 
   const where = {
     taxaConfirmada: true,
     statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] },
     ...(turmaId ? { turmaId } : {})
   };
+
+  if (statusFiltro === 'PAGO') {
+    // "Pago" = tudo com statusPagamento PAGO, inclui quem está no plano parcelado
+    where.statusPagamento = 'PAGO';
+  } else if (statusFiltro === 'PENDENTE') {
+    where.statusPagamento = 'PENDENTE';
+  }
 
   const [inscricoes, turmas] = await Promise.all([
     prisma.matricula.findMany({
@@ -840,7 +906,7 @@ router.get('/inscricoes', requirePermissao('doacao:confirmar', 'financeiro:aprov
     }),
     prisma.turma.findMany({ orderBy: { criadoEm: 'desc' }, include: { curso: true } }),
 ]);
-  res.render('admin/inscricoes', { inscricoes, turmas, turmaId, formatBRL, statusBadge, flash: req.query.ok || null });
+  res.render('admin/inscricoes', { inscricoes, turmas, turmaId, statusFiltro, formatBRL, statusBadge, flash: req.query.ok || null });
 });
 
 router.post('/inscricoes/:id/confirmar', requirePermissao('financeiro:aprovar', 'pagamento:confirmar'), async (req, res) => {
@@ -1722,5 +1788,37 @@ router.post('/alunos/:id/desbanir', requireDev, async (req, res) => {
   await auditar(req, 'DESBANIU_ALUNO', 'Usuario', aluno.id, {});
   res.redirect('/banimentos?ok=' + encodeURIComponent(`${aluno.nome.split(' ')[0]} foi desbanido.`));
 });
+
+const clientesSSE = new Set();
+
+router.get('/stats/online/stream', requireAdmin, (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  clientesSSE.add(res);
+  req.on('close', () => clientesSSE.delete(res));
+});
+
+router.get('/stats/online/lista', requireAdmin, async (req, res) => {
+  const alunos = await prisma.usuario.findMany({
+    where: whereAlunoOnline(),
+    orderBy: { ultimaAtividade: 'desc' },
+    select: { id: true, nome: true, email: true },
+    take: 200,
+  });
+  res.json(alunos);
+});
+
+async function emitirOnline() {
+  if (!clientesSSE.size) return;
+  const online = await prisma.usuario.count({ where: whereAlunoOnline() });
+  for (const res of clientesSSE) {
+    res.write(`data: ${online}\n\n`);
+  }
+}
+
+setInterval(emitirOnline, 5_000);
 
 module.exports = router;

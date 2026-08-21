@@ -3,10 +3,27 @@
 
 <div class="adm-h1-row">
   <h1 class="adm-h1">Cursos</h1>
+  
+</div>
+
+<form method="GET" action="/cursos" class="adm-filtros">
+  <label class="adm-campo">
+    <span>Filtrar por status</span>
+    <select name="status">
+      <option value="">Todos os status</option>
+      <option value="ATIVO" <%= statusFiltro === 'ATIVO' ? 'selected' : '' %>>Ativo</option>
+      <option value="INATIVO" <%= statusFiltro === 'INATIVO' ? 'selected' : '' %>>Inativo</option>
+    </select>
+  </label>
+
+  <button type="submit" class="adm-btn-neutro">
+    <i class="fa-solid fa-filter"></i> Filtrar
+  </button>
+
   <% if (pode('cursos:gerenciar')) { %>
     <a href="/cursos/novo" class="adm-btn"><i class="fa-solid fa-plus"></i> Novo curso</a>
   <% } %>
-</div>
+</form>
 
 <% if (flash) { %>
   <div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div>
@@ -15,12 +32,18 @@
   <div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div>
 <% } %>
 
+
+
 <div class="adm-box">
   <% if (!cursos.length) { %>
 
     <p class="adm-vazio">
-      Nenhum curso cadastrado.
-      <% if (pode('cursos:gerenciar')) { %><a href="/cursos/novo">Criar o primeiro</a>.<% } %>
+      <% if (statusFiltro) { %>
+        Nenhum curso <%= statusFiltro === 'ATIVO' ? 'ativo' : 'inativo' %>.
+      <% } else { %>
+        Nenhum curso cadastrado.
+        <% if (pode('cursos:gerenciar')) { %><a href="/cursos/novo">Criar o primeiro</a>.<% } %>
+      <% } %>
     </p>
 
   <% } else { %>
@@ -66,6 +89,7 @@
 
                 <form method="POST" action="/cursos/<%= c.id %>/ativar">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <% if (statusFiltro) { %><input type="hidden" name="status" value="<%= statusFiltro %>"><% } %>
                   <button class="adm-mini" title="<%= c.ativo ? 'Desativar' : 'Ativar' %>">
                     <i class="fa-solid <%= c.ativo ? 'fa-eye-slash' : 'fa-eye' %>"></i>
                   </button>
@@ -74,6 +98,7 @@
                 <form method="POST" action="/cursos/<%= c.id %>/excluir"
                       onsubmit="return confirm('Excluir este curso? Só é possível se não houver turmas/matrículas.')">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <% if (statusFiltro) { %><input type="hidden" name="status" value="<%= statusFiltro %>"><% } %>
                   <button class="adm-mini danger" title="Excluir curso">
                     <i class="fa-solid fa-trash"></i>
                   </button>

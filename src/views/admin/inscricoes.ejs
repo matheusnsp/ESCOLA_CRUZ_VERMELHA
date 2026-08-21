@@ -20,6 +20,15 @@
     </select>
   </label>
 
+  <label class="adm-campo">
+    <span>Filtrar por status</span>
+    <select name="status">
+      <option value="">Todos os status</option>
+      <option value="PAGO,PENDENTE" <%= ['PAGO', 'PENDENTE'].includes(statusFiltro) ? 'selected' : '' %>>Pago</option>
+      <option value="PENDENTE" <%= statusFiltro === 'PENDENTE' ? 'selected' : '' %>>Pendente</option>
+    </select>
+  </label>
+
   <button type="submit" class="adm-btn-neutro">
     <i class="fa-solid fa-filter"></i> Filtrar
   </button>
@@ -27,7 +36,7 @@
 
 <div class="adm-box">
   <% if (!inscricoes.length) { %>
-    <p class="adm-vazio">Nenhuma inscrição<%= turmaId ? ' nesta turma' : '' %>.</p>
+    <p class="adm-vazio">Nenhuma inscrição<%= turmaId ? ' nesta turma' : '' %><%= statusFiltro ? ' com este status' : '' %>.</p>
   <% } else { %>
 
     <table class="adm-table adm-table-fixa adm-table-insc">
@@ -86,6 +95,7 @@
               <form method="POST" action="/inscricoes/<%= m.id %>/alimento">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %>
+                <% if (statusFiltro) { %><input type="hidden" name="status" value="<%= statusFiltro %>"><% } %>
                 <button class="adm-chip <%= m.alimentoEntregue ? 'on' : '' %>">
                   <i class="fa-solid <%= m.alimentoEntregue ? 'fa-check' : 'fa-xmark' %>"></i> 1kg
                 </button>
@@ -126,6 +136,7 @@
                   <form method="POST" action="/inscricoes/<%= m.id %>/confirmar">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %>
+                    <% if (statusFiltro) { %><input type="hidden" name="status" value="<%= statusFiltro %>"><% } %>
                     <button class="adm-mini ok" title="Confirmar pagamento">
                       <i class="fa-solid fa-check"></i>
                     </button>
@@ -135,6 +146,7 @@
                         onsubmit="return confirm('Cancelar esta inscrição?')">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %>
+                    <% if (statusFiltro) { %><input type="hidden" name="status" value="<%= statusFiltro %>"><% } %>
                     <button class="adm-mini danger" title="Cancelar inscrição">
                       <i class="fa-solid fa-ban"></i>
                     </button>
@@ -146,6 +158,7 @@
                         onsubmit="return confirm('Estornar este pagamento?')">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %>
+                    <% if (statusFiltro) { %><input type="hidden" name="status" value="<%= statusFiltro %>"><% } %>
                     <button class="adm-mini danger" title="Estornar">
                       <i class="fa-solid fa-rotate-left"></i>
                     </button>
@@ -156,6 +169,7 @@
                   <form method="POST" action="/inscricoes/<%= m.id %>/confirmar">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <% if (turmaId) { %><input type="hidden" name="turma" value="<%= turmaId %>"><% } %>
+                    <% if (statusFiltro) { %><input type="hidden" name="status" value="<%= statusFiltro %>"><% } %>
                     <button class="adm-mini" title="Reativar como pago">
                       <i class="fa-solid fa-arrow-rotate-right"></i>
                     </button>

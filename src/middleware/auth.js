@@ -22,8 +22,9 @@ const requireLogin = asyncHandler(async function requireLogin(req, res, next) {
   if (!req.session || !req.session.usuarioId) return res.redirect('/login');
 
   const prisma = require('../db');
-  const usuario = await prisma.usuario.findUnique({
+  const usuario = await prisma.usuario.update({
     where: { id: req.session.usuarioId },
+    data: { ultimaAtividade: new Date() },
     select: { bloqueioTotal: true },
   });
 

@@ -806,3 +806,83 @@
   /* ===== Alertas dentro de uma caixa (complemento) ======= */
   .adm-alerta-pendente  { background: var(--erro-bg); color: var(--erro-tx); }
   .adm-alerta-reembolso { background: var(--roxo-bg); color: var(--roxo-tx); }
+
+
+
+
+
+  /* ===== Modal (ex.: "Alunos que entraram hoje") =========== */
+.adm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 25, 29, .45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 24px;
+}
+.adm-modal-overlay.aberto { display: flex; }
+
+.adm-modal {
+  background: var(--card);
+  border: 1px solid var(--linha);
+  border-radius: var(--r);
+  box-shadow: var(--sombra);
+  width: 100%;
+  max-width: 560px;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.adm-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--linha);
+}
+.adm-modal-head h2 {
+  font-family: var(--fonte-t);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  margin: 0;
+  color: var(--tinta);
+}
+
+.adm-modal-close {
+  background: var(--campo);
+  border: 1px solid var(--linha);
+  color: var(--tinta-60);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  flex: none;
+  transition: border-color .12s, color .12s;
+}
+.adm-modal-close:hover { border-color: var(--vermelho); color: var(--vermelho); }
+
+.adm-modal-body {
+  padding: 0;
+  overflow-y: auto;
+}
+.adm-modal-body .adm-table { width: 100%; }
+.adm-modal-body .adm-vazio { padding: 32px 20px; }
+
+/* card do painel que abre o modal */
+.adm-stat-clicavel { cursor: pointer; transition: border-color .12s, box-shadow .12s; }
+.adm-stat-clicavel:hover { border-color: var(--vermelho); box-shadow: 0 0 0 3px var(--vermelho-bg); }
+
+a.adm-stat { text-decoration: none; color: inherit; }
+
+
+

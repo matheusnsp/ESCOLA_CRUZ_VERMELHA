@@ -87,7 +87,7 @@ async function enviarCodigo2fa(email, nome, codigo) {
       <div style="font-size:34px;font-weight:800;letter-spacing:8px;color:#0b1220;background:#f5f6f9;border:1px solid #e7ebf2;border-radius:12px;padding:18px 0;text-align:center;margin:22px 0;">${codigo}</div>
       <p style="color:#718096;font-size:13px;">O código expira em 10 minutos. Se não foi você que tentou entrar, troque sua senha imediatamente.</p>
     </div>`;
-  await enviar(email, 'Seu código de acesso — Secretaria CVB-RJ', html, `Código 2FA da secretaria: ${codigo}`, '(código no corpo do e-mail)');
+  await enviar(email, 'Seu código de acesso — Secretaria CVB-RJ', html, `Código 2FA da secretaria: ${codigo}`, codigo);
 }
 
 async function enviarAlertaLoginSecretaria(email, nome, quando, ip) {
