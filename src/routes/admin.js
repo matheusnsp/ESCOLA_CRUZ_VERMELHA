@@ -1119,7 +1119,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
   });
 });
 
-// ---------- Relatórios (Excel + PDF) ----------
+// ---------- Relatórios (Excel + PDF + Csv) ----------
 
 router.get('/relatorios/completo.xlsx', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const dados = await coletarDadosRelatorio(prisma);
@@ -1139,6 +1139,41 @@ router.get('/relatorios/completo.pdf', requirePermissao('financeiro:aprovar'), a
   res.setHeader('Content-Disposition', `attachment; filename="${nome}"`);
   gerarPdf(dados, res);
 });
+
+router.get('/relatorios/completo.csv', requirePermissao('financeiro:aprovar'), async (req, res) => {
+  const dados = await coletarDadosRelatorio(prisma);
+  await auditar(req, 'BAIXOU_RELATORIO', 'Relatorio', null, { formato: 'csv' });
+
+  const linhas = [
+    ['Aluno', 'E-mail', 'CPF/CNPJ', 'Curso', 'Turma', 'Status', 'Forma', 'Plano', 'Valor Taxa', 'Valor Curso', 'Taxa Confirmada', 'Data Inscrição', 'Data Confirmação'],
+    ...dados.matriculas.map((m) => [
+      m.aluno.nome,
+      m.aluno.email,
+      m.aluno.cpfCnpj || m.aluno.passaporte || '',
+      m.turma.curso.nome,
+      m.turma.id,
+      m.statusPagamento,
+      m.forma || '',
+      m.plano || '',
+      Number(m.valorTaxaMatricula || 0).toFixed(2),
+      Number(m.valorCurso || 0).toFixed(2),
+      m.taxaConfirmada ? 'Sim' : 'Não',
+      m.criadoEm ? new Date(m.criadoEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '',
+      m.confirmadaEm ? new Date(m.confirmadaEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '',
+    ]),
+  ];
+
+  const csv = linhas
+    .map((row) => row.map((cel) => `"${String(cel ?? '').replace(/"/g, '""')}"`).join(','))
+    .join('\r\n');
+
+  const nome = `relatorio-cvbrj-${new Date().toISOString().slice(0, 10)}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${nome}"`);
+  res.send('\uFEFF' + csv);
+});
+
+
 
 router.post('/inscricoes/:id/reembolso-concluido', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({

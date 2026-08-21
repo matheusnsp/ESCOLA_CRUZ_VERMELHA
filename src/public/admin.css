@@ -231,6 +231,8 @@
   .adm-btn-out.xls:hover { background: var(--ok-bg); }
   .adm-btn-out.pdf { color: var(--vermelho); }
   .adm-btn-out.pdf:hover { background: var(--vermelho-bg); }
+  .adm-btn-out.csv { color: var(--azul); }
+  .adm-btn-out.csv:hover { background: var(--azul-bg); }
   
   /* espaço entre caixas empilhadas na mesma tela */
   .adm-espaco { margin-bottom: 24px; }
