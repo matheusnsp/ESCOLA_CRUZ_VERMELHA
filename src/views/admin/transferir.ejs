@@ -3,7 +3,7 @@
 
 <div class="adm-h1-row">
   <h1 class="adm-h1">Transferir aluno</h1>
-  <a href="/inscricoes" class="adm-link">← Voltar</a>
+  <a href="/inscricoes<% if (origemQ || origemTurma || origemStatus) { %>?<%= new URLSearchParams({ ...(origemQ ? {q: origemQ} : {}), ...(origemTurma ? {turma: origemTurma} : {}), ...(origemStatus ? {status: origemStatus} : {}) }).toString() %><% } %>" class="adm-link">← Voltar</a>
 </div>
 
 <% if (erro) { %>
@@ -57,6 +57,19 @@
 <form method="POST" action="/inscricoes/<%= m.id %>/transferir" class="adm-box adm-box-pad"
       onsubmit="return confirm('Confirmar a transferência deste aluno?')">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+  <!-- 💡 Preserva a busca/filtros da listagem de origem, pra voltar exatamente
+       pra mesma pesquisa depois da transferência (mesmo padrão usado nos
+       forms de confirmar/cancelar/estornar/alimento em inscricoes.ejs) -->
+  <% if (origemQ) { %>
+    <input type="hidden" name="q" value="<%= origemQ %>">
+  <% } %>
+  <% if (origemTurma) { %>
+    <input type="hidden" name="turma" value="<%= origemTurma %>">
+  <% } %>
+  <% if (origemStatus) { %>
+    <input type="hidden" name="status" value="<%= origemStatus %>">
+  <% } %>
 
   <label class="adm-campo-largo">
     Turma de destino

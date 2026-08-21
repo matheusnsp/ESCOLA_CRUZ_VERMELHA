@@ -128,10 +128,12 @@ async function sincronizarPagamentoManual(req, matricula, tipo, novoStatus) {
 function back(req, msg) {
   const turma = req.body && req.body.turma ? String(req.body.turma) : null;
   const status = req.body && req.body.status ? String(req.body.status) : null;
+  const q = req.body && req.body.q ? String(req.body.q) : null;
 
   let url;
-  if (turma || status) {
+  if (turma || status || q) {
     const params = new URLSearchParams();
+    if (q) params.set('q', q);
     if (turma) params.set('turma', turma);
     if (status) params.set('status', status);
     url = `/inscricoes?${params.toString()}`;
@@ -538,58 +540,202 @@ router.use(requireAdmin);
 // "Pagamentos pendentes", como se fossem inscrições reais aguardando
 // pagamento — quando na verdade é lixo de tentativa abandonada.
 const FILTRO_MATRICULA_FANTASMA = {
-  NOT: { statusPagamento: 'PENDENTE', taxaConfirmada: false },
+  NOT: {
+    statusPagamento: 'PENDENTE',
+    taxaConfirmada: false,
+  },
 };
 
 router.get('/', async (req, res) => {
-  const inicioHoje = inicioDoDiaSP();
-  const cincoMinAtras = new Date(Date.now() - 5 * 60 * 1000);
 
-  const [totalCursos, cursosAtivos, turmasAbertas, pendentes, pagas, alunosOnline, alunosHoje, alunosHojeLista] = await Promise.all([
+  const inicioHoje = inicioDoDiaSP();
+
+  const cincoMinAtras = new Date(
+    Date.now() - 5 * 60 * 1000
+  );
+
+  const [
+    totalCursos,
+    cursosAtivos,
+    turmasAbertas,
+    pendentes,
+    pagas,
+    alunosOnline,
+    alunosHoje,
+    alunosHojeLista
+  ] = await Promise.all([
+
     prisma.curso.count(),
-    prisma.curso.count({ where: { ativo: true } }),
-    prisma.turma.count({ where: { status: 'ABERTA' } }),
-    prisma.matricula.count({ where: { statusPagamento: 'PENDENTE', ...FILTRO_MATRICULA_FANTASMA } }),
-    prisma.matricula.count({ where: { statusPagamento: 'PAGO' } }),
-    prisma.usuario.count({ where: whereAlunoOnline() }), // 👈 antes: { papel: 'ALUNO', ultimaAtividade: { gte: cincoMinAtras } }
-    prisma.usuario.count({ where: { papel: 'ALUNO', ultimoLogin: { gte: inicioHoje } } }),
+
+    prisma.curso.count({
+      where: {
+        ativo: true,
+      },
+    }),
+
+    prisma.turma.count({
+      where: {
+        status: 'ABERTA',
+      },
+    }),
+
+    // Pagamentos pendentes
+    prisma.matricula.count({
+      where: {
+        statusPagamento: 'PENDENTE',
+        ...FILTRO_MATRICULA_FANTASMA,
+      },
+    }),
+
+    // Pagos = PAGO + PARCELADO
+    prisma.matricula.count({
+      where: {
+        statusPagamento: {
+          in: ['PAGO', 'PARCELADO'],
+        },
+        ...FILTRO_MATRICULA_FANTASMA,
+      },
+    }),
+
+    // Alunos online
+    prisma.usuario.count({
+      where: whereAlunoOnline(),
+    }),
+
+    // Alunos que entraram hoje
+    prisma.usuario.count({
+      where: {
+        papel: 'ALUNO',
+        ultimoLogin: {
+          gte: inicioHoje,
+        },
+      },
+    }),
+
+    // Lista de alunos que entraram hoje
     prisma.usuario.findMany({
-      where: { papel: 'ALUNO', ultimoLogin: { gte: inicioHoje } },
-      orderBy: { ultimoLogin: 'desc' },
-      select: { id: true, nome: true, email: true, celular: true, ultimoLogin: true },
+      where: {
+        papel: 'ALUNO',
+        ultimoLogin: {
+          gte: inicioHoje,
+        },
+      },
+
+      orderBy: {
+        ultimoLogin: 'desc',
+      },
+
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        celular: true,
+        ultimoLogin: true,
+      },
+
       take: 200,
     }),
+
   ]);
+
   const ultimas = await prisma.matricula.findMany({
+
     where: FILTRO_MATRICULA_FANTASMA,
-    orderBy: { criadoEm: 'desc' },
+
+    orderBy: {
+      criadoEm: 'desc',
+    },
+
     take: 8,
-    include: { aluno: true, turma: { include: { curso: true } } },
+
+    include: {
+      aluno: true,
+      turma: {
+        include: {
+          curso: true,
+        },
+      },
+    },
+
   });
+
   res.render('admin/dashboard', {
-    stats: { totalCursos, cursosAtivos, turmasAbertas, pendentes, pagas, alunosOnline, alunosHoje },
+
+    stats: {
+      totalCursos,
+      cursosAtivos,
+      turmasAbertas,
+      pendentes,
+      pagas,
+      alunosOnline,
+      alunosHoje,
+    },
+
     alunosHojeLista,
+
     ultimas,
+
     formatBRL,
+
     statusBadge,
+
   });
+
 });
 
 // ---------- Cursos ----------
 
 router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), async (req, res) => {
-  const statusFiltro = ['ATIVO', 'INATIVO'].includes(req.query.status) ? req.query.status : null;
+
+  const statusFiltro = ['ATIVO', 'INATIVO'].includes(req.query.status)
+    ? req.query.status
+    : null;
+
+  const busca = String(req.query.q || '').trim();
 
   const where = {};
-  if (statusFiltro === 'ATIVO') where.ativo = true;
-  else if (statusFiltro === 'INATIVO') where.ativo = false;
 
-  const cursos = await prisma.curso.findMany({
-    where,
-    orderBy: { nome: 'asc' },
-    include: { _count: { select: { turmas: true } } },
+  if (statusFiltro === 'ATIVO') {
+    where.ativo = true;
+  } else if (statusFiltro === 'INATIVO') {
+    where.ativo = false;
+  }
+
+  if (busca) {
+    where.nome = {
+      contains: busca,
+      mode: 'insensitive',
+    };
+  }
+
+  const [cursos, total] = await Promise.all([
+
+    prisma.curso.findMany({
+      where,
+      orderBy: { nome: 'asc' },
+      include: {
+        _count: {
+          select: {
+            turmas: true,
+          },
+        },
+      },
+    }),
+
+    prisma.curso.count(),
+
+  ]);
+
+  res.render('admin/cursos', {
+    cursos,
+    total,
+    busca,
+    statusFiltro,
+    formatBRL,
+    flash: req.query.ok || null,
+    erro: req.query.erro || null,
   });
-  res.render('admin/cursos', { cursos, statusFiltro, formatBRL, flash: req.query.ok || null, erro: req.query.erro || null });
+
 });
 
 function backCursos(req, msg, tipo = 'ok') {
@@ -881,32 +1027,106 @@ router.post('/turmas/:id/excluir', requirePermissao('turmas:gerenciar'), async (
 
 // ---------- Inscricoes / Pagamentos ----------
 
-router.get('/inscricoes', requirePermissao('doacao:confirmar', 'financeiro:aprovar', 'financeiro:leitura'), async (req, res) => {
+router.get('/inscricoes', requirePermissao(
+  'doacao:confirmar',
+  'financeiro:aprovar',
+  'financeiro:leitura'
+), async (req, res) => {
+
   const turmaId = req.query.turma || null;
-  const statusFiltro = ['PAGO', 'PENDENTE'].includes(req.query.status) ? req.query.status : null;
+
+  const busca = String(req.query.q || '').trim();
+
+  const statusFiltro = ['PAGO,PARCELADO', 'PENDENTE'].includes(req.query.status)
+    ? req.query.status
+    : null;
 
   const where = {
     taxaConfirmada: true,
-    statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] },
-    ...(turmaId ? { turmaId } : {})
+
+    statusPagamento: {
+      in: ['PAGO', 'PARCELADO', 'PENDENTE'],
+    },
+
+    ...(turmaId ? { turmaId } : {}),
   };
 
-  if (statusFiltro === 'PAGO') {
-    // "Pago" = tudo com statusPagamento PAGO, inclui quem está no plano parcelado
-    where.statusPagamento = 'PAGO';
+  // Busca pelo aluno (nome, e-mail, CPF/CNPJ ou passaporte)
+  if (busca) {
+    where.aluno = {
+      OR: [
+        { nome: { contains: busca, mode: 'insensitive' } },
+        { email: { contains: busca, mode: 'insensitive' } },
+        { cpfCnpj: { contains: busca, mode: 'insensitive' } },
+        { passaporte: { contains: busca, mode: 'insensitive' } },
+      ],
+    };
+  }
+
+  // Filtro de status
+  if (statusFiltro === 'PAGO,PARCELADO') {
+    where.statusPagamento = { in: ['PAGO', 'PARCELADO'] };
   } else if (statusFiltro === 'PENDENTE') {
     where.statusPagamento = 'PENDENTE';
   }
 
-  const [inscricoes, turmas] = await Promise.all([
+  const [inscricoes, turmas, totalFiltrado, totalGeral] = await Promise.all([
+
     prisma.matricula.findMany({
       where,
+
       orderBy: { criadoEm: 'desc' },
-      include: { aluno: true, turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } },
+
+      include: {
+        aluno: {
+          include: {
+            _count: { select: { matriculas: true } },
+          },
+        },
+
+        turma: {
+          include: {
+            curso: true,
+            aulas: { orderBy: { data: 'asc' }, take: 1 },
+          },
+        },
+      },
     }),
-    prisma.turma.findMany({ orderBy: { criadoEm: 'desc' }, include: { curso: true } }),
-]);
-  res.render('admin/inscricoes', { inscricoes, turmas, turmaId, statusFiltro, formatBRL, statusBadge, flash: req.query.ok || null });
+
+    prisma.turma.findMany({
+      orderBy: { criadoEm: 'desc' },
+      include: { curso: true },
+    }),
+
+    // Total considerando os filtros atuais (q + turma + status)
+    prisma.matricula.count({ where }),
+
+    // Total geral da tela, sem nenhum filtro aplicado
+    prisma.matricula.count({
+      where: {
+        taxaConfirmada: true,
+        statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] },
+      },
+    }),
+
+  ]);
+
+  const filtrosAtivos = Boolean(busca || turmaId || statusFiltro);
+
+  res.render('admin/inscricoes', {
+    inscricoes,
+    turmas,
+    turmaId,
+    statusFiltro,
+    busca,
+    totalFiltrado,
+    totalGeral,
+    filtrosAtivos,
+    formatBRL,
+    statusBadge,
+    flash: req.query.ok || null,
+  });
+
 });
 
 router.post('/inscricoes/:id/confirmar', requirePermissao('financeiro:aprovar', 'pagamento:confirmar'), async (req, res) => {
@@ -1359,7 +1579,12 @@ router.get('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), 
     orderBy: { criadoEm: 'desc' },
     include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
   });
-  res.render('admin/transferir', { m, turmas, formatBRL, erro: null });
+  res.render('admin/transferir', {
+    m, turmas, formatBRL, erro: null,
+    origemQ: req.query.q || '',
+    origemTurma: req.query.turma || '',
+    origemStatus: req.query.status || '',
+  });
 });
 
 router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), async (req, res) => {
@@ -1451,7 +1676,7 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
     diferenca,
   });
 
-  res.redirect('/inscricoes?ok=' + encodeURIComponent(msg));
+  res.redirect(back(req, msg));
 });
 
 // ---------- Alunos ----------
@@ -1617,11 +1842,24 @@ router.get('/alunos/:id/matriculas', requirePermissao('aluno:gerenciar', 'painel
 
   const matriculas = await prisma.matricula.findMany({
     where: { alunoId: req.params.id },
-    include: { turma: { include: { curso: true } } },
+    include: {
+      turma: {
+        include: {
+          curso: true,
+          aulas: { orderBy: { data: 'asc' }, take: 1 },
+        },
+      },
+    },
     orderBy: { criadoEm: 'desc' },
   });
 
-  res.render('admin/aluno-matriculas', { aluno, matriculas, formatBRL, ok: req.query.ok || null });
+  res.render('admin/aluno-matriculas', {
+    aluno,
+    matriculas,
+    formatBRL,
+    statusBadge,
+    ok: req.query.ok || null,
+  });
 });
 
 router.post('/alunos/:id/matriculas/:matriculaId/confirmar-taxa', requirePermissao('taxa:aprovar'), async (req, res) => {

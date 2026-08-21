@@ -4,6 +4,7 @@
 <h1 class="adm-h1">Painel</h1>
 
 <div class="adm-cards c3">
+
   <a href="/cursos?status=ATIVO" class="adm-stat adm-stat-clicavel">
     <span><%= stats.cursosAtivos %>/<%= stats.totalCursos %></span>
     <small>Cursos ativos</small>
@@ -33,151 +34,484 @@
     <span><%= stats.alunosHoje %></span>
     <small>Entraram hoje</small>
   </div>
+
 </div>
 
+
+<!-- ========================================================= -->
 <!-- Modal: alunos que entraram hoje -->
+<!-- ========================================================= -->
+
 <div id="modalAlunosHoje" class="adm-modal-overlay">
+
   <div class="adm-modal">
+
     <div class="adm-modal-head">
-      <h2>Alunos que entraram hoje (<%= stats.alunosHoje %>)</h2>
-      <button type="button" id="fecharModalAlunosHoje" class="adm-modal-close" aria-label="Fechar">&times;</button>
+
+      <div>
+        <h2>
+          Alunos que entraram hoje
+          (<%= stats.alunosHoje %>)
+        </h2>
+
+        <small class="adm-modal-data">
+          <i class="fa-regular fa-calendar"></i>
+
+          <%= new Date().toLocaleDateString('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            weekday: 'long',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          }) %>
+        </small>
+      </div>
+
+      <button
+        type="button"
+        id="fecharModalAlunosHoje"
+        class="adm-modal-close"
+        aria-label="Fechar"
+      >
+        &times;
+      </button>
+
     </div>
+
     <div class="adm-modal-body">
+
       <% if (!alunosHojeLista.length) { %>
-        <p class="adm-vazio">Ninguém entrou hoje ainda.</p>
+
+        <p class="adm-vazio">
+          Ninguém entrou hoje ainda.
+        </p>
+
       <% } else { %>
+
         <table class="adm-table">
-          <thead><tr><th>Nome</th><th>E-mail</th><th>Horário</th></tr></thead>
-          <tbody>
-            <% alunosHojeLista.forEach(function(a){ %>
+
+          <thead>
             <tr>
-              <td><a href="/alunos/<%= a.id %>/editar"><%= a.nome %></a></td>
-              <td><%= a.email %></td>
-              <td><%= new Date(a.ultimoLogin).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }) %></td>
+              <th>Nome</th>
+              <th>E-mail</th>
+              <th>Horário</th>
             </tr>
+          </thead>
+
+          <tbody>
+
+            <% alunosHojeLista.forEach(function(a){ %>
+
+              <tr>
+
+                <td>
+                  <!-- 💡 Trocado /alunos/:id/editar por /alunos/:id/matriculas:
+                       essa rota aceita tanto 'aluno:gerenciar' quanto
+                       'painel:leitura', então não quebra pra quem só tem
+                       leitura (editar exige 'aluno:gerenciar' e dava 403). -->
+                  <a href="/alunos/<%= a.id %>/matriculas" class="adm-link-aluno">
+                    <strong><%= a.nome %></strong>
+                  </a>
+                </td>
+
+                <td>
+                  <%= a.email %>
+                </td>
+
+                <td>
+                  <%= new Date(a.ultimoLogin).toLocaleTimeString('pt-BR', {
+                    timeZone: 'America/Sao_Paulo',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }) %>
+                </td>
+
+              </tr>
+
             <% }) %>
+
           </tbody>
+
         </table>
+
       <% } %>
+
     </div>
+
   </div>
+
 </div>
 
+
+<!-- ========================================================= -->
 <!-- Modal: alunos online agora -->
+<!-- ========================================================= -->
+
 <div id="modalAlunosOnline" class="adm-modal-overlay">
+
   <div class="adm-modal">
+
     <div class="adm-modal-head">
-      <h2>Alunos online agora (<span id="qtdOnlineModal"><%= stats.alunosOnline %></span>)</h2>
-      <button type="button" id="fecharModalAlunosOnline" class="adm-modal-close" aria-label="Fechar">&times;</button>
+
+      <div>
+        <h2>
+          Alunos online agora
+          (<span id="qtdOnlineModal"><%= stats.alunosOnline %></span>)
+        </h2>
+      </div>
+
+      <button
+        type="button"
+        id="fecharModalAlunosOnline"
+        class="adm-modal-close"
+        aria-label="Fechar"
+      >
+        &times;
+      </button>
+
     </div>
+
     <div class="adm-modal-body">
-      <table class="adm-table" id="tabelaAlunosOnline" style="display:none;">
-        <thead><tr><th>Nome</th><th>E-mail</th></tr></thead>
+
+      <table
+        class="adm-table"
+        id="tabelaAlunosOnline"
+        style="display:none;"
+      >
+
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>E-mail</th>
+          </tr>
+        </thead>
+
         <tbody></tbody>
+
       </table>
-      <p class="adm-vazio" id="vazioAlunosOnline" style="display:none;">Ninguém online no momento.</p>
-      <p class="adm-vazio" id="carregandoAlunosOnline">Carregando...</p>
+
+      <p
+        class="adm-vazio"
+        id="vazioAlunosOnline"
+        style="display:none;"
+      >
+        Ninguém online no momento.
+      </p>
+
+      <p
+        class="adm-vazio"
+        id="carregandoAlunosOnline"
+      >
+        Carregando...
+      </p>
+
     </div>
+
   </div>
+
 </div>
+
+
+<!-- ========================================================= -->
+<!-- Últimas inscrições -->
+<!-- ========================================================= -->
 
 <div class="adm-box">
-<div class="adm-box-head"><h2>Últimas inscrições</h2><a href="/inscricoes" class="adm-link">Ver todas</a></div>
-<% if (!ultimas.length) { %>
-<p class="adm-vazio">Nenhuma inscrição ainda.</p>
-<% } else { %>
-<table class="adm-table">
-<thead><tr><th>Aluno</th><th>Curso</th><th>Valor</th><th>Status</th><th>Quando</th></tr></thead>
-<tbody>
-<% ultimas.forEach(function(m){ %>
-<tr>
-<td><%= m.aluno.nome %></td>
-<td><%= m.turma.curso.nome %></td>
-<td><%= formatBRL(Number(m.valorCurso)) %></td>
-<td><%- statusBadge(m.statusPagamento) %></td>
-<td><%= new Date(m.criadoEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) %></td>
-</tr>
-<% }) %>
-</tbody>
-</table>
-<% } %>
+
+  <div class="adm-box-head">
+    <h2>Últimas inscrições</h2>
+
+    <a href="/inscricoes" class="adm-link">
+      Ver todas
+    </a>
+  </div>
+
+  <% if (!ultimas.length) { %>
+
+    <p class="adm-vazio">
+      Nenhuma inscrição ainda.
+    </p>
+
+  <% } else { %>
+
+    <table class="adm-table">
+
+      <thead>
+        <tr>
+          <th>Aluno</th>
+          <th>Curso</th>
+          <th>Valor</th>
+          <th>Status</th>
+          <th>Quando</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        <% ultimas.forEach(function(m){ %>
+
+          <tr>
+
+            <td>
+              <a href="/alunos/<%= m.aluno.id %>/matriculas" class="adm-link-aluno">
+                <strong><%= m.aluno.nome %></strong>
+              </a>
+            </td>
+
+            <td>
+              <%= m.turma.curso.nome %>
+            </td>
+
+            <td>
+              <%= formatBRL(Number(m.valorCurso)) %>
+            </td>
+
+            <td>
+              <%- statusBadge(m.statusPagamento) %>
+            </td>
+
+            <td>
+              <%= new Date(m.criadoEm).toLocaleDateString('pt-BR', {
+                timeZone: 'America/Sao_Paulo'
+              }) %>
+            </td>
+
+          </tr>
+
+        <% }) %>
+
+      </tbody>
+
+    </table>
+
+  <% } %>
+
 </div>
+
 
 <%- include('foot') %>
 
+
 <script>
+
+  /* =========================================================
+     Alunos online em tempo real
+     ========================================================= */
+
   const es = new EventSource('/stats/online/stream');
+
   es.onmessage = (e) => {
+
     document.getElementById('alunosOnline').textContent = e.data;
+
   };
 
-  // ---- modal: Entraram hoje ----
-  const cardAlunosHoje = document.getElementById('cardAlunosHoje');
-  const modalAlunosHoje = document.getElementById('modalAlunosHoje');
-  const fecharModalAlunosHoje = document.getElementById('fecharModalAlunosHoje');
 
-  cardAlunosHoje.addEventListener('click', () => { modalAlunosHoje.classList.add('aberto'); });
-  fecharModalAlunosHoje.addEventListener('click', () => { modalAlunosHoje.classList.remove('aberto'); });
-  modalAlunosHoje.addEventListener('click', (e) => {
-    if (e.target === modalAlunosHoje) modalAlunosHoje.classList.remove('aberto');
+  /* =========================================================
+     Modal: Entraram hoje
+     ========================================================= */
+
+  const cardAlunosHoje =
+    document.getElementById('cardAlunosHoje');
+
+  const modalAlunosHoje =
+    document.getElementById('modalAlunosHoje');
+
+  const fecharModalAlunosHoje =
+    document.getElementById('fecharModalAlunosHoje');
+
+
+  cardAlunosHoje.addEventListener('click', () => {
+
+    modalAlunosHoje.classList.add('aberto');
+
   });
 
-  // ---- modal: Alunos online agora ----
-  const cardAlunosOnline = document.getElementById('cardAlunosOnline');
-  const modalAlunosOnline = document.getElementById('modalAlunosOnline');
-  const fecharModalAlunosOnline = document.getElementById('fecharModalAlunosOnline');
-  const tabelaOnline = document.getElementById('tabelaAlunosOnline');
-  const tbodyOnline = tabelaOnline.querySelector('tbody');
-  const vazioOnline = document.getElementById('vazioAlunosOnline');
-  const carregandoOnline = document.getElementById('carregandoAlunosOnline');
-  const qtdOnlineModal = document.getElementById('qtdOnlineModal');
+
+  fecharModalAlunosHoje.addEventListener('click', () => {
+
+    modalAlunosHoje.classList.remove('aberto');
+
+  });
+
+
+  modalAlunosHoje.addEventListener('click', (e) => {
+
+    if (e.target === modalAlunosHoje) {
+
+      modalAlunosHoje.classList.remove('aberto');
+
+    }
+
+  });
+
+
+  /* =========================================================
+     Modal: Alunos online agora
+     ========================================================= */
+
+  const cardAlunosOnline =
+    document.getElementById('cardAlunosOnline');
+
+  const modalAlunosOnline =
+    document.getElementById('modalAlunosOnline');
+
+  const fecharModalAlunosOnline =
+    document.getElementById('fecharModalAlunosOnline');
+
+  const tabelaOnline =
+    document.getElementById('tabelaAlunosOnline');
+
+  const tbodyOnline =
+    tabelaOnline.querySelector('tbody');
+
+  const vazioOnline =
+    document.getElementById('vazioAlunosOnline');
+
+  const carregandoOnline =
+    document.getElementById('carregandoAlunosOnline');
+
+  const qtdOnlineModal =
+    document.getElementById('qtdOnlineModal');
+
 
   async function carregarAlunosOnline() {
+
     tabelaOnline.style.display = 'none';
+
     vazioOnline.style.display = 'none';
+
     carregandoOnline.style.display = 'block';
+
     try {
-      const res = await fetch('/stats/online/lista');
-      const alunos = await res.json();
-      qtdOnlineModal.textContent = alunos.length;
+
+      const res =
+        await fetch('/stats/online/lista');
+
+      const alunos =
+        await res.json();
+
+      qtdOnlineModal.textContent =
+        alunos.length;
+
       tbodyOnline.innerHTML = '';
-      carregandoOnline.style.display = 'none';
+
+      carregandoOnline.style.display =
+        'none';
+
+
       if (!alunos.length) {
-        vazioOnline.style.display = 'block';
+
+        vazioOnline.style.display =
+          'block';
+
         return;
+
       }
+
+
       alunos.forEach(a => {
-        const tr = document.createElement('tr');
-        const tdNome = document.createElement('td');
-        const link = document.createElement('a');
-        link.href = `/alunos/${a.id}/editar`;
-        link.textContent = a.nome;
+
+        const tr =
+          document.createElement('tr');
+
+
+        const tdNome =
+          document.createElement('td');
+
+        const link =
+          document.createElement('a');
+
+        // 💡 Trocado /alunos/:id/editar por /alunos/:id/matriculas: rota
+        // acessível também com 'painel:leitura', evitando 403 pra quem
+        // não tem 'aluno:gerenciar'.
+        link.href =
+          `/alunos/${a.id}/matriculas`;
+
+        link.className =
+          'adm-link-aluno';
+
+        const strongNome =
+          document.createElement('strong');
+
+        strongNome.textContent =
+          a.nome;
+
+        link.appendChild(strongNome);
+
         tdNome.appendChild(link);
-        const tdEmail = document.createElement('td');
-        tdEmail.textContent = a.email;
+
+
+        const tdEmail =
+          document.createElement('td');
+
+        tdEmail.textContent =
+          a.email;
+
+
         tr.appendChild(tdNome);
+
         tr.appendChild(tdEmail);
+
         tbodyOnline.appendChild(tr);
+
       });
-      tabelaOnline.style.display = 'table';
+
+
+      tabelaOnline.style.display =
+        'table';
+
     } catch (e) {
-      carregandoOnline.textContent = 'Erro ao carregar a lista.';
+
+      carregandoOnline.textContent =
+        'Erro ao carregar a lista.';
+
     }
+
   }
 
+
   cardAlunosOnline.addEventListener('click', () => {
+
     modalAlunosOnline.classList.add('aberto');
+
     carregarAlunosOnline();
-  });
-  fecharModalAlunosOnline.addEventListener('click', () => modalAlunosOnline.classList.remove('aberto'));
-  modalAlunosOnline.addEventListener('click', (e) => {
-    if (e.target === modalAlunosOnline) modalAlunosOnline.classList.remove('aberto');
+
   });
 
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      modalAlunosHoje.classList.remove('aberto');
-      modalAlunosOnline.classList.remove('aberto');
-    }
+
+  fecharModalAlunosOnline.addEventListener('click', () => {
+
+    modalAlunosOnline.classList.remove('aberto');
+
   });
+
+
+  modalAlunosOnline.addEventListener('click', (e) => {
+
+    if (e.target === modalAlunosOnline) {
+
+      modalAlunosOnline.classList.remove('aberto');
+
+    }
+
+  });
+
+
+  /* =========================================================
+     ESC fecha os modais
+     ========================================================= */
+
+  document.addEventListener('keydown', (e) => {
+
+    if (e.key === 'Escape') {
+
+      modalAlunosHoje.classList.remove('aberto');
+
+      modalAlunosOnline.classList.remove('aberto');
+
+    }
+
+  });
+
 </script>

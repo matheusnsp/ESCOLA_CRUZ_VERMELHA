@@ -3,47 +3,193 @@
 
 <div class="adm-h1-row">
   <h1 class="adm-h1">Matrículas de <%= aluno.nome %></h1>
-  <a href="/alunos" class="adm-voltar">
-    <i class="fa-solid fa-arrow-left"></i> Voltar
+  <a href="/alunos" class="adm-link">
+    <i class="fa-solid"></i>← Voltar
   </a>
 </div>
+
+
 
 <% if (ok) { %>
   <div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div>
 <% } %>
 
+<!-- DADOS DO ALUNO -->
+<div class="adm-box adm-box-pad adm-espaco">
+  <p><strong>E-mail:</strong> <%= aluno.email %></p>
+  <p><strong>CPF/CNPJ ou Passaporte:</strong> <%= aluno.cpfCnpj || aluno.passaporte || '—' %></p>
+  <p><strong>Celular:</strong> <%= aluno.celular || '—' %></p>
+  <p>
+    <strong>Escolaridade:</strong>
+    <%= aluno.escolaridade
+          ? (aluno.escolaridade + (aluno.escolaridadeSituacao ? ' (' + aluno.escolaridadeSituacao + ')' : ''))
+          : '—' %>
+  </p>
+  <p>
+    <strong>Cadastrado em:</strong>
+    <%= new Date(aluno.criadoEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) %>
+  </p>
+  <% if (aluno.bloqueioTotal) { %>
+    <p><span class="badge canc">Banido</span></p>
+  <% } %>
+</div>
+
+<!-- MATRÍCULAS -->
 <div class="adm-box">
+
   <% if (!matriculas.length) { %>
 
-    <div class="adm-vazio">Este aluno ainda não possui matrículas.</div>
+    <p class="adm-vazio">Este aluno ainda não possui matrículas.</p>
 
   <% } else { %>
 
-    <div class="adm-linhas">
-      <% matriculas.forEach(function (m) { %>
-      <div>
-        <div class="adm-linha-txt">
-          <strong><%= m.turma.curso.nome %></strong>
-          <div><small class="adm-mut"><%= m.turma.diasSemana %> · <%= m.turma.horario %></small></div>
-        </div>
+    <table class="adm-table adm-table-fixa">
 
-        <div class="adm-linha-acao">
-          <% if (m.taxaConfirmada) { %>
-            <span class="adm-selo-ok"><i class="fa-solid fa-check"></i> Confirmada</span>
-          <% } else { %>
-            <form method="POST" action="/alunos/<%= aluno.id %>/matriculas/<%= m.id %>/confirmar-taxa">
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-              <button type="submit" class="adm-btn-mini">
-                <i class="fa-solid fa-money-bill"></i> Confirmar (R$ 100)
-              </button>
-            </form>
-          <% } %>
-        </div>
-      </div>
-      <% }) %>
-    </div>
+      <colgroup>
+        <col>
+        <col>
+        <col>
+        <col>
+        <col>
+        <col>
+      </colgroup>
+
+      <thead>
+        <tr>
+          <th>Curso / Turma</th>
+          <th>Plano</th>
+          <th>Valor</th>
+          <th>Status</th>
+          <th>Alimento</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        <% matriculas.forEach(function (m) { %>
+
+          <tr>
+
+            <!-- CURSO / TURMA -->
+            <td>
+              <strong><%= m.turma.curso.nome %></strong>
+
+              <% if (m.turma.diasSemana || m.turma.horario) { %>
+                <br>
+                <small class="adm-mut">
+                  <%= [m.turma.diasSemana, m.turma.horario].filter(Boolean).join(' · ') %>
+                </small>
+              <% } %>
+            </td>
+
+            <!-- PLANO / STATUS TAXA -->
+            <td>
+              <% if (!m.taxaConfirmada) { %>
+
+                <span class="adm-mut">Aguardando confirmação da taxa</span>
+
+              <% } else { %>
+
+                <%= m.plano === 'A_VISTA' ? 'À vista' : 'Parcelado' %>
+                <br>
+                <small class="adm-mut"><%= m.forma %></small>
+
+              <% } %>
+            </td>
+
+            <!-- VALOR -->
+            <td>
+              <% if (m.taxaConfirmada) { %>
+                <%= formatBRL(Number(m.valorCurso)) %>
+              <% } else { %>
+                <span class="adm-mut">—</span>
+              <% } %>
+            </td>
+
+            <!-- STATUS -->
+            <td>
+              <% if (!m.taxaConfirmada) { %>
+
+                <span class="adm-mut">Taxa pendente</span>
+
+              <% } else if (m.statusPagamento === 'PAGO' && m.plano === 'PARCELADO') { %>
+
+                <span class="badge parc">Parcelado</span>
+
+              <% } else { %>
+
+                <%- statusBadge(m.statusPagamento) %>
+
+              <% } %>
+            </td>
+
+            <!-- ALIMENTO -->
+            <td>
+              <% if (m.taxaConfirmada) { %>
+                <span class="adm-chip estatico <%= m.alimentoEntregue ? 'on' : '' %>">
+                  <i class="fa-solid <%= m.alimentoEntregue ? 'fa-check' : 'fa-xmark' %>"></i>
+                  1kg
+                </span>
+              <% } else { %>
+                <span class="adm-mut">—</span>
+              <% } %>
+            </td>
+
+            <!-- AÇÕES -->
+            <td class="adm-acoes">
+              <div class="adm-acoes-wrap">
+
+                <% if (!m.taxaConfirmada) { %>
+
+                  <% if (pode('taxa:aprovar')) { %>
+                    <form method="POST" action="/alunos/<%= aluno.id %>/matriculas/<%= m.id %>/confirmar-taxa">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <button class="adm-mini ok" title="Confirmar taxa (R$ <%= Number(m.valorTaxaMatricula) || 100 %>)">
+                        <i class="fa-solid fa-money-bill"></i>
+                      </button>
+                    </form>
+                  <% } %>
+
+                <% } else { %>
+
+                  <span class="adm-selo-ok" title="Taxa confirmada">
+                    <i class="fa-solid fa-check"></i>
+                  </span>
+
+                  <% if (pode('turmas:gerenciar') || pode('secretaria:leitura')) { %>
+                    <a href="/inscricoes/<%= m.id %>/nota" class="adm-mini" title="Lançar nota">
+                      <i class="fa-solid fa-pen-to-square"></i>
+                    </a>
+                  <% } %>
+
+                  <% if (pode('aluno:mover_turma')) { %>
+                    <a href="/inscricoes/<%= m.id %>/transferir" class="adm-mini" title="Transferir de turma">
+                      <i class="fa-solid fa-right-left"></i>
+                    </a>
+                  <% } %>
+
+                  <% if (pode('doacao:confirmar') || pode('financeiro:aprovar') || pode('financeiro:leitura')) { %>
+                    <a href="/inscricoes?q=<%= encodeURIComponent(aluno.email) %>" class="adm-mini" title="Ver na listagem de inscrições">
+                      <i class="fa-solid fa-magnifying-glass"></i>
+                    </a>
+                  <% } %>
+
+                <% } %>
+
+              </div>
+            </td>
+
+          </tr>
+
+        <% }) %>
+
+      </tbody>
+
+    </table>
 
   <% } %>
+
 </div>
 
 <%- include('foot') %>

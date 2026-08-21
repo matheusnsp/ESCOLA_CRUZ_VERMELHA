@@ -888,3 +888,19 @@ a.adm-stat { text-decoration: none; color: inherit; }
 
 
 
+
+.adm-modal-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.adm-modal-data {
+  color: var(--text-muted, #888);
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.adm-modal-data i {
+  margin-right: 4px;
+}
