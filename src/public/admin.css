@@ -904,3 +904,24 @@ a.adm-stat { text-decoration: none; color: inherit; }
 .adm-modal-data i {
   margin-right: 4px;
 }
+
+.adm-permissoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.adm-permissao {
+  font-size: 11px;
+  border-radius: 6px;
+  padding: 2px 6px;
+  white-space: nowrap;
+
+  background: #f0f2f5;
+  color: #1f2937;
+}
+
+body.dark .adm-permissao {
+  background: #2a2a2a;
+  color: #f1f1f1;
+}

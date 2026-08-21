@@ -37,9 +37,9 @@
             <td style="border-bottom:none;word-break:break-all;"><small class="adm-mut"><%= u.email %></small></td>
             <td style="border-bottom:none;"><span class="badge ok"><%= u.papel %></span></td>
             <td style="border-bottom:none;">
-              <div style="display:flex;flex-wrap:wrap;gap:4px;">
+              <div class="adm-permissoes">
                 <% u.permissoes.forEach(function(p) { %>
-                  <code style="font-size:11px;background:#f0f2f5;border-radius:6px;padding:2px 6px;white-space:nowrap;"><%= p %></code>
+                  <code class="adm-permissao"><%= p %></code>
                 <% }) %>
               </div>
             </td>

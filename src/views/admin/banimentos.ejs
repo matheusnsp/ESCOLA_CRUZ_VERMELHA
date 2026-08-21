@@ -10,13 +10,22 @@
   <div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div>
 <% } %>
 
-<form method="GET" action="/banimentos" style="margin-bottom:18px;display:flex;gap:8px;">
-  <input type="text" name="q" value="<%= busca %>" placeholder="Buscar por nome ou e-mail"
-    style="flex:1;border:1px solid #e7ebf1;border-radius:10px;padding:11px 13px;font:inherit;font-size:14px;height:44px;box-sizing:border-box;">
-  <button type="submit"
-    style="height:44px;padding:0 22px;border:1px solid #e7ebf1;border-radius:10px;background:#fff;font:inherit;font-size:14px;font-weight:600;cursor:pointer;">
-    Filtrar
+<form method="GET" action="/banimentos" class="adm-filtros">
+
+  <label class="adm-campo cresce">
+    <span>Buscar</span>
+    <input
+      type="text"
+      name="q"
+      value="<%= busca %>"
+      placeholder="Nome ou e-mail"
+    >
+  </label>
+
+  <button type="submit" class="adm-btn-neutro">
+    <i class="fa-solid fa-filter"></i> Filtrar
   </button>
+
 </form>
 
 <div class="adm-box">
