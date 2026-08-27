@@ -29,8 +29,11 @@
     else { if (!porStatus[s]) porStatus[s] = []; porStatus[s].push(t); }
   });
 
-  const totalInscritos = turmas.reduce((soma, t) => soma + (t._count?.matriculas || 0), 0);
-  const totalVagas     = turmas.reduce((soma, t) => soma + (t.vagas || 0), 0);
+  // Só turmas ainda ativas (abertas/confirmadas) entram no resumo de vagas —
+  // canceladas e encerradas ficam de fora pra não inflar o total.
+  const turmasAtivas = turmas.filter(t => ['aberta', 'confirmada'].includes(t.status.toLowerCase()));
+  const totalInscritos = turmasAtivas.reduce((soma, t) => soma + (t._count?.matriculas || 0), 0);
+  const totalVagas     = turmasAtivas.reduce((soma, t) => soma + (t.vagas || 0), 0);
 %>
 
 <!-- ===== Resumo ===== -->
