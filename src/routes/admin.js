@@ -602,28 +602,35 @@ router.get('/', async (req, res) => {
       where: whereAlunoOnline(),
     }),
 
-    // Alunos que entraram hoje
+    // 💡 FIX — "Entraram hoje" agora inclui também quem criou conta hoje.
+    // Antes filtrava só por ultimoLogin, mas quem se cadastra é redirecionado
+    // direto para /minha-conta sem passar pelo handler de login, então
+    // ultimoLogin fica null e o aluno não aparecia no card no mesmo dia.
     prisma.usuario.count({
       where: {
         papel: 'ALUNO',
-        ultimoLogin: {
-          gte: inicioHoje,
-        },
+        OR: [
+          { ultimoLogin: { gte: inicioHoje } },
+          { criadoEm:   { gte: inicioHoje } },
+        ],
       },
     }),
 
-    // Lista de alunos que entraram hoje
+    // Lista de alunos que entraram hoje (login OU cadastro no dia)
     prisma.usuario.findMany({
       where: {
         papel: 'ALUNO',
-        ultimoLogin: {
-          gte: inicioHoje,
-        },
+        OR: [
+          { ultimoLogin: { gte: inicioHoje } },
+          { criadoEm:   { gte: inicioHoje } },
+        ],
       },
 
-      orderBy: {
-        ultimoLogin: 'desc',
-      },
+      // Quem fez login aparece antes; dentro do mesmo grupo, mais recente primeiro.
+      orderBy: [
+        { ultimoLogin: 'desc' },
+        { criadoEm: 'desc' },
+      ],
 
       select: {
         id: true,
@@ -631,6 +638,7 @@ router.get('/', async (req, res) => {
         email: true,
         celular: true,
         ultimoLogin: true,
+        criadoEm: true,   // necessário para o fallback no template
       },
 
       take: 200,
