@@ -628,7 +628,7 @@ router.get('/', async (req, res) => {
 
       // Quem fez login aparece antes; dentro do mesmo grupo, mais recente primeiro.
       orderBy: [
-        { ultimoLogin: 'desc', nulls: 'last' },
+        { ultimoLogin: { sort: 'desc', nulls: 'last' } },
         { criadoEm: 'desc' },
       ],
 
