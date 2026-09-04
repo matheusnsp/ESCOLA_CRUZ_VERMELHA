@@ -117,6 +117,12 @@ model Matricula {
   taxaConfirmadaPor   String?
   taxaConfirmadaEm    DateTime?
   statusPagamento     StatusPagamento    @default(PENDENTE)
+  // avisoPagamentoEm    DateTime?
+  // avisoPagamentoPor   String?
+  // Prazo pra pagar o curso (3 dias antes do início da turma), calculado
+  // no momento em que a taxa é confirmada. Null enquanto a taxa não foi
+  // paga, ou se o plano não for PARCELADO (único que separa taxa/curso).
+  prazoPagamentoCurso DateTime?
   nota                Float?
   situacao            SituacaoAcademica?
   confirmadaPor       String?
@@ -127,8 +133,7 @@ model Matricula {
   aluno               Usuario            @relation(fields: [alunoId], references: [id])
   turma               Turma              @relation(fields: [turmaId], references: [id])
   pagamentos          Pagamento[]
-  diferencaTransferencia Decimal? // > 0 = pendente a pagar; < 0 = valor a reembolsar; null = sem diferença em aberto
-
+  diferencaTransferencia Decimal?
 
   @@unique([alunoId, turmaId])
 }

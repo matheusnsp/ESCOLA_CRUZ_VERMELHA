@@ -2257,5 +2257,48 @@ body > section { flex: 1 0 auto; }
     transition: color 0.25s ease;
   }
 
+  /* checklist de requisitos — espelha as regras do servidor */
+.senha-checklist {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+.senha-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #5f6873;
+  transition: color .15s;
+}
+.senha-checklist li i { width: 1em; text-align: center; flex: none; font-size: 12px; }
+.senha-checklist li b { font-weight: 700; color: inherit; }
+.senha-checklist li[data-estado="ok"]   { color: #14653a; }
+.senha-checklist li[data-estado="erro"] { color: #a21b1b; }
+
+
+/* ===== Botão "ver senha" ================================= */
+.senha-campo { position: relative; display: block; }
+.senha-campo input { padding-right: 44px !important; }
+
+.senha-olho {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 42px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; cursor: pointer;
+  color: #5f6873; font-size: 15px;
+  border-radius: 0 10px 10px 0;
+  transition: color .15s;
+}
+.senha-olho:hover { color: #16191d; }
+.senha-olho:focus-visible {
+  outline: 2px solid #cc0000;
+  outline-offset: -2px;
+}
+
 
   

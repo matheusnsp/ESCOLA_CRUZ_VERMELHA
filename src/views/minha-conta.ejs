@@ -307,26 +307,50 @@
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <input type="hidden" name="nome" value="<%= usuario.nome %>">
               <input type="hidden" name="email" value="<%= usuario.email %>">
-
+            
               <label class="ct-campo">
                 <span>Senha atual</span>
                 <input type="password" name="senhaAtual" required autocomplete="current-password">
               </label>
-
+            
               <label class="ct-campo">
                 <span>Nova senha</span>
                 <input type="password" name="novaSenha" required minlength="10" autocomplete="new-password">
+            
                 <div class="senha-forca" id="senhaForca" hidden>
                   <div class="senha-barra"><span></span></div>
                   <small class="senha-label"></small>
                 </div>
+            
+                <ul class="senha-checklist" aria-live="polite">
+                  <li data-regra="tamanho" data-estado="erro">
+                    <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>
+                    <span>Pelo menos <b class="min-chars">10</b> caracteres</span>
+                  </li>
+                  <li data-regra="forca" data-estado="erro">
+                    <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>
+                    <span>Força "Boa" ou superior</span>
+                  </li>
+                  <li data-regra="pessoal" data-estado="erro" hidden>
+                    <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>
+                    <span>Não usa seu nome ou e-mail</span>
+                  </li>
+                </ul>
               </label>
-
+            
               <label class="ct-campo">
                 <span>Confirmar nova senha</span>
-                <input type="password" name="confirmarNovaSenha" required autocomplete="new-password">
+                <input type="password" name="confirmarNovaSenha" required autocomplete="new-password"
+                       data-confirma="novaSenha">
+            
+                <ul class="senha-checklist" aria-live="polite">
+                  <li data-regra="igual" data-estado="erro">
+                    <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>
+                    <span>As duas senhas são iguais</span>
+                  </li>
+                </ul>
               </label>
-
+            
               <button type="submit" class="ct-btn">Salvar nova senha</button>
             </form>
           </div>
