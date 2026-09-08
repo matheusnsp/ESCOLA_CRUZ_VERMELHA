@@ -1,8 +1,10 @@
 // ============================================================
-//  Geração de relatórios do painel (Excel + PDF)
+//  Geração de relatórios do painel (Excel + PDF + OFX)
 //  - coletarDadosRelatorio(prisma): junta matrículas, financeiro e auditoria
-//  - gerarExcel(dados): retorna um Buffer .xlsx (3 abas)
+//  - gerarExcel(dados): retorna um Buffer .xlsx (4 abas)
 //  - gerarPdf(dados, stream): escreve o PDF direto no stream de resposta
+//  - coletarLancamentosOfx(prisma, {de, ate}) + gerarOfx(lancamentos):
+//    extrato OFX pro contador importar no sistema contábil
 //
 //  Auditoria vai RESUMIDA de propósito (ação, quem, quando, alvo) — o campo
 //  `detalhe` dos logs pode conter dado sensível de aluno (CPF/endereço), então
@@ -155,7 +157,7 @@ async function coletarDadosRelatorio(prisma) {
 }
 
 // ============================================================
-//  EXCEL (.xlsx) — 3 abas
+//  EXCEL (.xlsx) — 4 abas
 // ============================================================
 async function gerarExcel(dados) {
   const wb = new ExcelJS.Workbook();
@@ -311,7 +313,7 @@ async function gerarExcel(dados) {
 }
 
 // ============================================================
-//  PDF — mesmas 3 seções, A4 paisagem
+//  PDF — mesmas seções, A4 paisagem
 //  Escreve direto no stream (res). Tabelas simples com quebra de página.
 // ============================================================
 function gerarPdf(dados, stream) {
@@ -464,4 +466,209 @@ function gerarPdf(dados, stream) {
   doc.end();
 }
 
-module.exports = { coletarDadosRelatorio, gerarExcel, gerarPdf };
+// ============================================================
+//  💡 NOVO — OFX (Open Financial Exchange)
+//
+//  OFX não é "CSV com outra extensão": é o formato de EXTRATO BANCÁRIO que
+//  os sistemas contábeis (Domínio, Contmatic, Conta Azul e afins) importam
+//  direto, conciliando lançamento a lançamento.
+//
+//  Por isso ele NÃO usa o coletarDadosRelatorio acima. Aquele monta tudo a
+//  partir de Matricula, que é um CONTRATO — tem valor total, plano, status.
+//  Extrato precisa de TRANSAÇÕES: data em que o dinheiro entrou, valor,
+//  identificador único. Isso é a tabela Pagamento, e é de lá que vem.
+//
+//  Versão gerada: OFX 1.0.2 em SGML. É a mais aceita no Brasil — os bancos
+//  daqui exportam nesse formato, então é o que os importadores esperam.
+//  (OFX 2.x é XML e tem suporte irregular nos sistemas contábeis nacionais.)
+// ============================================================
+
+// ⚠️ CONFIGURE — identificação da conta no arquivo.
+//
+// O sistema contábil usa estes campos pra saber EM QUAL conta lançar. Se
+// vierem errados, o contador importa na conta errada e a conciliação fica
+// furada — por isso vale confirmar os valores com ele antes de usar em
+// produção. Defina no .env; os padrões abaixo são placeholders óbvios.
+const OFX_BANKID   = process.env.OFX_BANKID   || '000';          // código do banco (3 dígitos)
+const OFX_ACCTID   = process.env.OFX_ACCTID   || 'CVBRJ-ESCOLA'; // conta / identificador
+const OFX_ACCTTYPE = process.env.OFX_ACCTTYPE || 'CHECKING';     // CHECKING | SAVINGS
+const OFX_ORG      = process.env.OFX_ORG      || 'CVBRJ';
+
+// OFX 1.x com CHARSET:1252 engasga com acento em vários importadores.
+// Tira acento e caractere de controle, deixando ASCII limpo.
+function asciiOfx(txt) {
+  return String(txt || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')   // remove diacríticos
+    .replace(/[<>&]/g, ' ')            // < e > quebrariam o SGML
+    .replace(/[^\x20-\x7E]/g, ' ')     // sobra só ASCII imprimível
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// OFX quer data como AAAAMMDD (ou AAAAMMDDHHMMSS). Fuso de Brasília.
+function dataOfx(d, comHora = false) {
+  const p = (n) => String(n).padStart(2, '0');
+  // Converte pra horário de Brasília antes de formatar — sem isso, um
+  // pagamento das 22h viraria o dia seguinte no arquivo.
+  const br = new Date(new Date(d).toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const base = `${br.getFullYear()}${p(br.getMonth() + 1)}${p(br.getDate())}`;
+  if (!comHora) return base;
+  return `${base}${p(br.getHours())}${p(br.getMinutes())}${p(br.getSeconds())}[-3:BRT]`;
+}
+
+/**
+ * Busca os lançamentos que entram no extrato.
+ *
+ * PAGO      → CREDIT (dinheiro entrou)
+ * ESTORNADO → DEBIT  (dinheiro voltou pro aluno)
+ *
+ * PENDENTE e CANCELADO ficam de fora de propósito: extrato registra o que
+ * aconteceu, não o que pode vir a acontecer. Pendência tem a sua seção no
+ * Excel e no PDF.
+ *
+ * @param {object} opts  { de, ate } — Date, opcionais. Sem eles, tudo.
+ */
+async function coletarLancamentosOfx(prisma, opts = {}) {
+  const where = { status: { in: ['PAGO', 'ESTORNADO'] } };
+
+  if (opts.de || opts.ate) {
+    where.atualizadoEm = {};
+    if (opts.de) where.atualizadoEm.gte = new Date(opts.de);
+    if (opts.ate) where.atualizadoEm.lte = new Date(opts.ate);
+  }
+
+  const pagamentos = await prisma.pagamento.findMany({
+    where,
+    orderBy: { atualizadoEm: 'asc' },
+    include: {
+      matricula: {
+        include: {
+          aluno: { select: { nome: true } },
+          turma: { include: { curso: { select: { nome: true } } } },
+        },
+      },
+    },
+  });
+
+  return pagamentos.map((p) => {
+    const ehEstorno = p.status === 'ESTORNADO';
+    const aluno = p.matricula?.aluno?.nome || 'Aluno nao identificado';
+    const curso = p.matricula?.turma?.curso?.nome || 'Curso nao identificado';
+    const tipo = p.tipo === 'TAXA' ? 'Taxa de inscricao' : 'Curso';
+
+    return {
+      // FITID = identificador único da transação. É o que o importador usa
+      // pra NÃO duplicar lançamento quando o mesmo arquivo é importado duas
+      // vezes. O id do Pagamento é perfeito: único, estável, nunca reusado.
+      fitid: String(p.id).replace(/-/g, '').slice(0, 32).toUpperCase(),
+      // Data do lançamento: quando o status virou. criadoEm seria a data em
+      // que a cobrança foi gerada, não quando o dinheiro entrou.
+      data: p.atualizadoEm || p.criadoEm,
+      // OFX manda valor negativo em débito.
+      valor: (ehEstorno ? -1 : 1) * Number(p.valor || 0),
+      tipoTrn: ehEstorno ? 'DEBIT' : 'CREDIT',
+      // MEMO tem limite de 255; o importador mostra isto na conciliação.
+      memo: asciiOfx(`${ehEstorno ? 'ESTORNO ' : ''}${tipo} - ${aluno} - ${curso} (${p.metodo || '-'})`).slice(0, 255),
+      // NAME é o campo curto; alguns importadores mostram só ele.
+      name: asciiOfx(aluno).slice(0, 32),
+    };
+  });
+}
+
+/**
+ * Monta o arquivo OFX como string.
+ * @returns {string} conteúdo pronto pra escrever no response
+ */
+function gerarOfx(lancamentos) {
+  const agora = new Date();
+
+  // Período do extrato: do primeiro ao último lançamento. Se não houver
+  // nenhum, usa o dia de hoje — arquivo vazio mas válido, que o importador
+  // aceita sem erro (melhor que arquivo malformado).
+  const datas = lancamentos.map((l) => new Date(l.data).getTime());
+  const dtStart = datas.length ? new Date(Math.min.apply(null, datas)) : agora;
+  const dtEnd   = datas.length ? new Date(Math.max.apply(null, datas)) : agora;
+
+  // Saldo = soma dos lançamentos do arquivo. NÃO é o saldo bancário real —
+  // é o acumulado do que este extrato contém. Documentado aqui porque o
+  // contador pode estranhar a divergência com o extrato do banco.
+  const saldo = lancamentos.reduce((s, l) => s + l.valor, 0);
+
+  const transacoes = lancamentos.map((l) => [
+    '<STMTTRN>',
+    `<TRNTYPE>${l.tipoTrn}`,
+    `<DTPOSTED>${dataOfx(l.data)}`,
+    `<TRNAMT>${l.valor.toFixed(2)}`,
+    `<FITID>${l.fitid}`,
+    `<NAME>${l.name}`,
+    `<MEMO>${l.memo}`,
+    '</STMTTRN>',
+  ].join('\n')).join('\n');
+
+  // Cabeçalho SGML do OFX 1.0.2. As linhas soltas antes do <OFX> fazem
+  // parte do formato — não são comentário nem enfeite.
+  return [
+    'OFXHEADER:100',
+    'DATA:OFXSGML',
+    'VERSION:102',
+    'SECURITY:NONE',
+    'ENCODING:USASCII',
+    'CHARSET:1252',
+    'COMPRESSION:NONE',
+    'OLDFILEUID:NONE',
+    'NEWFILEUID:NONE',
+    '',
+    '<OFX>',
+    '<SIGNONMSGSRSV1>',
+    '<SONRS>',
+    '<STATUS>',
+    '<CODE>0',
+    '<SEVERITY>INFO',
+    '</STATUS>',
+    `<DTSERVER>${dataOfx(agora, true)}`,
+    '<LANGUAGE>POR',
+    '<FI>',
+    `<ORG>${asciiOfx(OFX_ORG)}`,
+    `<FID>${asciiOfx(OFX_BANKID)}`,
+    '</FI>',
+    '</SONRS>',
+    '</SIGNONMSGSRSV1>',
+    '<BANKMSGSRSV1>',
+    '<STMTTRNRS>',
+    '<TRNUID>1',
+    '<STATUS>',
+    '<CODE>0',
+    '<SEVERITY>INFO',
+    '</STATUS>',
+    '<STMTRS>',
+    '<CURDEF>BRL',
+    '<BANKACCTFROM>',
+    `<BANKID>${asciiOfx(OFX_BANKID)}`,
+    `<ACCTID>${asciiOfx(OFX_ACCTID)}`,
+    `<ACCTTYPE>${asciiOfx(OFX_ACCTTYPE)}`,
+    '</BANKACCTFROM>',
+    '<BANKTRANLIST>',
+    `<DTSTART>${dataOfx(dtStart)}`,
+    `<DTEND>${dataOfx(dtEnd)}`,
+    transacoes,
+    '</BANKTRANLIST>',
+    '<LEDGERBAL>',
+    `<BALAMT>${saldo.toFixed(2)}`,
+    `<DTASOF>${dataOfx(agora)}`,
+    '</LEDGERBAL>',
+    '</STMTRS>',
+    '</STMTTRNRS>',
+    '</BANKMSGSRSV1>',
+    '</OFX>',
+    '',
+  ].join('\n');
+}
+
+module.exports = {
+  coletarDadosRelatorio,
+  gerarExcel,
+  gerarPdf,
+  coletarLancamentosOfx,
+  gerarOfx,
+};

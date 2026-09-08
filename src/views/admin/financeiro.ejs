@@ -8,11 +8,21 @@ function dataBR(d) {
   return new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 const LIMITE_GRUPO = 3;
+
+// 💡 PERMISSÕES — esta tela agora distingue três níveis, e não mais um só:
+//
+//   financeiro:leitura      entra aqui e vê tudo (Coordenador, Financeiro, Dev)
+//   relatorio:baixar        baixa Excel/PDF/CSV (Coordenador, Financeiro, Dev)
+//   financeiro:reembolsar   estorna e marca reembolso concluído (Financeiro, Dev)
+//
+// Antes as três coisas dependiam de financeiro:aprovar, o que amarrava
+// "baixar relatório" a "poder estornar". O Coordenador precisa da primeira
+// sem a segunda — daí a separação.
 %>
 
 <div class="adm-h1-row">
   <h1 class="adm-h1">Financeiro</h1>
-  <% if (pode('financeiro:aprovar')) { %>
+  <% if (pode('relatorio:baixar')) { %>
     <div class="adm-acoes-topo">
       <a href="/relatorios/completo.xlsx" class="adm-btn-out xls">
         <i class="fa-solid fa-file-excel"></i> Baixar Excel
@@ -22,6 +32,14 @@ const LIMITE_GRUPO = 3;
       </a>
       <a href="/relatorios/completo.csv" class="adm-btn-out csv">
         <i class="fa-solid fa-file-csv"></i> Baixar CSV
+      </a>
+      <%
+        // 💡 NOVO — OFX: extrato pro contador importar no sistema contábil.
+        // Diferente dos outros três, este não é um relatório de leitura — é
+        // um arquivo de conciliação, lido por máquina.
+      %>
+      <a href="/relatorios/completo.ofx" class="adm-btn-out ofx">
+        <i class="fa-solid fa-file-invoice-dollar"></i> Baixar OFX
       </a>
     </div>
   <% } %>
@@ -156,7 +174,11 @@ const LIMITE_GRUPO = 3;
           <td><%= dataBR(m.confirmadaEm) %></td>
           <td><%= formatBRL(Number(m.valorCurso)) %></td>
           <td>
-            <% if (pode('financeiro:aprovar')) { %>
+            <%
+              // Estorno devolve dinheiro e é irreversível: só Financeiro e Dev.
+              // O Coordenador vê a tela e a linha, mas não a ação.
+            %>
+            <% if (pode('financeiro:reembolsar')) { %>
               <% if (m.forma === 'PIX') { %>
                 <span class="adm-aviso-cel"
                       title="Reembolsos de PIX precisam ser feitos manualmente pelo painel da Únicopag">
@@ -249,7 +271,7 @@ const LIMITE_GRUPO = 3;
           <td><%= m.turma.curso.nome %></td>
           <td><strong><%= formatBRL(Math.abs(Number(m.diferencaTransferencia))) %></strong></td>
           <td>
-            <% if (pode('financeiro:aprovar')) { %>
+            <% if (pode('financeiro:reembolsar')) { %>
               <form method="POST" action="/inscricoes/<%= m.id %>/reembolso-concluido"
                     onsubmit="return confirm('Confirmar que o reembolso foi realizado?')">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -258,7 +280,7 @@ const LIMITE_GRUPO = 3;
                 </button>
               </form>
             <% } else { %>
-              <span class="adm-mut">Aguardando confirmação</span>
+              <span class="adm-mut">Aguardando o financeiro</span>
             <% } %>
           </td>
         </tr>

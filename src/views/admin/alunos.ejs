@@ -2,113 +2,158 @@
 <%- include('header', { ativo: 'alunos' }) %>
 
 <div class="adm-h1-row">
-<h1 class="adm-h1">Alunos</h1>
-<span class="adm-mut">Total: <strong><%= total %></strong></span>
+  <h1 class="adm-h1">Alunos</h1>
+  <span class="adm-mut">Total: <strong><%= total %></strong></span>
 </div>
 
 <% if (ok) { %>
-<div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div>
+  <div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div>
+<% } %>
+
+<% if (typeof erro !== 'undefined' && erro) { %>
+  <div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div>
 <% } %>
 
 <form method="GET" action="/alunos" class="adm-filtros">
-<label class="adm-campo cresce">
-<span>Buscar</span>
-<input type="text" name="q" value="<%= busca %>" placeholder="Nome, e-mail ou CPF">
-</label>
+  <label class="adm-campo cresce">
+    <span>Buscar</span>
+    <input type="text" name="q" value="<%= busca %>" placeholder="Nome, e-mail ou CPF">
+  </label>
 
-<label class="adm-campo">
-<span>Inscrição</span>
-<select name="inscricao">
-<option value=""    <%= inscricao === ''    ? 'selected' : '' %>>Todos</option>
-<option value="com" <%= inscricao === 'com' ? 'selected' : '' %>>Com inscrição</option>
-<option value="sem" <%= inscricao === 'sem' ? 'selected' : '' %>>Sem inscrição</option>
-</select>
-</label>
+  <label class="adm-campo">
+    <span>Inscrição</span>
+    <select name="inscricao">
+      <option value=""    <%= inscricao === ''    ? 'selected' : '' %>>Todos</option>
+      <option value="com" <%= inscricao === 'com' ? 'selected' : '' %>>Com inscrição</option>
+      <option value="sem" <%= inscricao === 'sem' ? 'selected' : '' %>>Sem inscrição</option>
+    </select>
+  </label>
 
-<label class="adm-campo cresce">
-<span>Turma</span>
-<select name="turma">
-<option value="">Todas as turmas</option>
-<% turmas.forEach(function (t) { %>
-<option value="<%= t.id %>" <%= turmaId === t.id ? 'selected' : '' %>>
-<%= t.curso.nome %> — <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %>
-</option>
-<% }) %>
-</select>
-</label>
+  <label class="adm-campo cresce">
+    <span>Turma</span>
+    <select name="turma">
+      <option value="">Todas as turmas</option>
+      <% turmas.forEach(function (t) { %>
+        <option value="<%= t.id %>" <%= turmaId === t.id ? 'selected' : '' %>>
+          <%= t.curso.nome %> — <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %>
+        </option>
+      <% }) %>
+    </select>
+  </label>
 
-<button type="submit" class="adm-btn-neutro">
-<i class="fa-solid fa-filter"></i> Filtrar
-</button>
+  <button type="submit" class="adm-btn-neutro">
+    <i class="fa-solid fa-filter"></i> Filtrar
+  </button>
 </form>
 
+<%
+  // 💡 NOVO — Prospecção por WhatsApp.
+  //
+  // O botão só aparece em quem tem ZERO inscrições. Nesses casos a rota
+  // /alunos já monta o link (m.linkProspeccao) com o texto pronto, citando
+  // as turmas abertas de verdade.
+  //
+  // É um FORM, não um link: abordagem fria precisa de rastro. O POST grava
+  // CONTATO_PROSPECCAO no LogAuditoria e só então redireciona pro wa.me.
+  // target="_blank" faz o WhatsApp abrir em aba nova, mantendo a listagem.
+  function dataHoraBR(d) {
+    return d ? new Date(d).toLocaleDateString('pt-BR') : null;
+  }
+%>
+
 <div class="adm-box">
-<% if (!alunos.length) { %>
-<div class="adm-vazio">
-<%= turmaId ? 'Nenhum aluno inscrito nesta turma.'
+  <% if (!alunos.length) { %>
+    <div class="adm-vazio">
+      <%= turmaId ? 'Nenhum aluno inscrito nesta turma.'
                   : (busca ? 'Nenhum aluno encontrado para essa busca.'
                            : 'Nenhum aluno cadastrado ainda.') %>
-</div>
-<% } else { %>
-<table class="adm-table">
-<thead>
-<tr>
-<th>Aluno</th>
-<th>CPF/CNPJ</th>
-<th>Escolaridade</th>
-<th>Inscrições</th>
-<th>Ações</th>
-</tr>
-</thead>
-<tbody>
-<% alunos.forEach(function (a) { %>
-<tr>
-<td>
-<strong><%= a.nome %></strong>
-<% if (a.bloqueioTotal) { %>
-<span class="badge canc">Banido</span>
-<% } %>
-<br><small class="adm-mut"><%= a.email %></small>
-</td>
-<td><%= a.cpfCnpj ? a.cpfCnpj : a.passaporte ? a.passaporte : '—' %></td>
-<td>
-<%= a.escolaridade
+    </div>
+  <% } else { %>
+    <table class="adm-table">
+      <thead>
+        <tr>
+          <th>Aluno</th>
+          <th>CPF/CNPJ</th>
+          <th>Escolaridade</th>
+          <th>Inscrições</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% alunos.forEach(function (a) { %>
+          <tr>
+            <td>
+              <strong><%= a.nome %></strong>
+              <% if (a.bloqueioTotal) { %>
+                <span class="badge canc">Banido</span>
+              <% } %>
+              <br><small class="adm-mut"><%= a.email %></small>
+            </td>
+            <td><%= a.cpfCnpj ? a.cpfCnpj : a.passaporte ? a.passaporte : '—' %></td>
+            <td>
+              <%= a.escolaridade
                 ? (a.escolaridade + (a.escolaridadeSituacao ? ' (' + a.escolaridadeSituacao + ')' : ''))
                 : '—' %>
-</td>
-<td>
-<% if (a._count.matriculas > 0) { %>
-<a href="/alunos/<%= a.id %>/matriculas" class="adm-link-aluno">
-<%= a._count.matriculas %> inscri<%= a._count.matriculas === 1 ? 'ção' : 'ções' %>
-</a>
-<% } else { %>
-<span class="adm-mut">0 inscrições</span>
-<% } %>
-</td>
-<td class="adm-acoes">
-<div class="adm-acoes-wrap">
-<a href="/alunos/<%= a.id %>/matriculas" class="adm-mini" title="Ver matrículas">
-<i class="fa-solid fa-list-check"></i>
-</a>
-<% if (pode('aluno:gerenciar')) { %>
-<a href="/alunos/<%= a.id %>/editar" class="adm-mini" title="Editar dados">
-<i class="fa-solid fa-pen-to-square"></i>
-</a>
-<% } %>
-</div>
-</td>
-</tr>
-<% }) %>
-</tbody>
-</table>
-<% } %>
+            </td>
+            <td>
+              <% if (a._count.matriculas > 0) { %>
+                <a href="/alunos/<%= a.id %>/matriculas" class="adm-link-aluno">
+                  <%= a._count.matriculas %> inscri<%= a._count.matriculas === 1 ? 'ção' : 'ções' %>
+                </a>
+              <% } else { %>
+                <span class="adm-mut">0 inscrições</span>
+                <% if (a.prospeccaoEm) { %>
+                  <br><small class="adm-mut">
+                    <i class="fa-brands fa-whatsapp"></i> contato em <%= dataHoraBR(a.prospeccaoEm) %>
+                  </small>
+                <% } %>
+              <% } %>
+            </td>
+            <td class="adm-acoes">
+              <div class="adm-acoes-wrap">
+
+                <%
+                  // Só para quem nunca se inscreveu. Quem já é aluno não
+                  // recebe convite pra se inscrever — seria estranho.
+                %>
+                <% if (a._count.matriculas === 0 && !a.bloqueioTotal && pode('aluno:gerenciar')) { %>
+                  <% if (a.linkProspeccao) { %>
+                    <form method="POST" action="/alunos/<%= a.id %>/prospeccao" target="_blank"
+                          onsubmit="return confirm('Abrir o WhatsApp para convidar <%= a.nome.split(' ')[0] %>?<%= a.prospeccaoEm ? '\n\nAtenção: esta pessoa já foi contatada em ' + dataHoraBR(a.prospeccaoEm) + '.' : '' %>')">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <button class="adm-mini ok" title="Convidar por WhatsApp">
+                        <i class="fa-brands fa-whatsapp"></i>
+                      </button>
+                    </form>
+                  <% } else { %>
+                    <span class="adm-mini" style="opacity:.35" title="Celular não cadastrado ou inválido">
+                      <i class="fa-brands fa-whatsapp"></i>
+                    </span>
+                  <% } %>
+                <% } %>
+
+                <a href="/alunos/<%= a.id %>/matriculas" class="adm-mini" title="Ver matrículas">
+                  <i class="fa-solid fa-list-check"></i>
+                </a>
+                <% if (pode('aluno:gerenciar')) { %>
+                  <a href="/alunos/<%= a.id %>/editar" class="adm-mini" title="Editar dados">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                  </a>
+                <% } %>
+              </div>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
 </div>
 
 <% if (alunos.length >= 200) { %>
-<p class="adm-info">
-<i class="fa-solid fa-circle-info"></i>
+  <p class="adm-info">
+    <i class="fa-solid fa-circle-info"></i>
     Mostrando os primeiros 200 resultados. Refine a busca para ver outros.
-</p>
+  </p>
 <% } %>
 
 <%- include('foot') %>

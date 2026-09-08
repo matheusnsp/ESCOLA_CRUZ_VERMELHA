@@ -165,7 +165,11 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
 //  COMPLETAR DADOS (endereço pós-cadastro)
 // ============================================================
 
-const { requireLogin } = require('../middleware/auth');
+// 💡 NOVO — consumirDestino entra aqui junto do requireLogin. Ele devolve a
+// página que o aluno tentou abrir antes de ser mandado pro login (ver
+// middleware/auth.js), e é o que faz o link do lembrete de pagamento
+// funcionar quando a sessão já expirou.
+const { requireLogin, consumirDestino } = require('../middleware/auth');
 
 router.get('/completar-dados', requireLogin, async (req, res) => {
   const usuario = await prisma.usuario.findUnique({ where: { id: req.session.usuarioId } });
@@ -345,7 +349,8 @@ router.post('/reenviar-confirmacao', reenvioLimiter, async (req, res) => {
 
 router.get('/login', (req, res) => {
   if (req.session.usuarioId && req.session.papel === 'ALUNO') {
-    return res.redirect('/minha-conta');
+    // Já logado: se havia um destino guardado, honra ele em vez da conta.
+    return res.redirect(consumirDestino(req, '/minha-conta'));
   }
   const sucesso = req.query.redefinida ? 'Senha redefinida com sucesso. Faca login.' : undefined;
   const info = req.query.banido ? 'Sua conta foi suspensa. Em caso de dúvidas, entre em contato com a secretaria.' : null;
@@ -498,6 +503,14 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
     }
 
+    // 💡 NOVO — Lê o destino ANTES do regenerate.
+    //
+    // req.session.regenerate() cria uma sessão nova e descarta a antiga, e é
+    // nela que o returnTo estava guardado. Se consumirDestino fosse chamado
+    // depois, já não acharia nada e todo mundo cairia em /minha-conta — que
+    // é exatamente o problema que este bloco existe pra resolver.
+    const destino = consumirDestino(req, '/minha-conta');
+
     // Regenera a sessão para evitar session fixation.
     return req.session.regenerate((err) => {
       if (err) {
@@ -521,7 +534,7 @@ router.post('/login', loginLimiter, async (req, res) => {
           });
         }
 
-        return res.redirect('/minha-conta');
+        return res.redirect(destino);
       });
     });
   } catch (err) {

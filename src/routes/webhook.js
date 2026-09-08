@@ -1,5 +1,7 @@
 const express = require('express');
 const prisma = require('../db');
+const { enviarEmailMatriculaConfirmada } = require('../lib/email');
+const { formatBRL } = require('../lib/matricula');
 
 const router = express.Router();
 
@@ -23,6 +25,62 @@ function classificarStatus(status) {
   // 💡 M11: contestação em andamento — exige reação rápida da equipe.
   if (['pre_chargeback', 'pre-chargeback', 'med_analysis', 'med_received'].includes(s)) return 'ALERTA';
   return 'PENDENTE'; // waiting_payment, pending e desconhecidos
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// 💡 NOVO — E-mail de matrícula confirmada.
+//
+// Disparado quando o pagamento do CURSO vira PAGO — o momento em que a
+// matrícula de fato existe. Antes disto o aluno pagava e não recebia nada:
+// só via a tela mudar, sem comprovante nenhum no e-mail.
+//
+// TUDO aqui roda dentro de try/catch e NUNCA propaga erro. Se o e-mail
+// falhar, o webhook precisa responder 200 assim mesmo: o pagamento já foi
+// confirmado no banco, e um não-2xx faria o gateway reenviar o postback
+// indefinidamente por causa de um problema que não é dele.
+// ─────────────────────────────────────────────────────────────────────────
+async function avisarMatriculaConfirmada(matriculaId) {
+  try {
+    const m = await prisma.matricula.findUnique({
+      where: { id: matriculaId },
+      include: {
+        aluno: { select: { nome: true, email: true } },
+        turma: {
+          include: {
+            curso: true,
+            aulas: { orderBy: { data: 'asc' } },
+          },
+        },
+      },
+    });
+
+    if (!m || !m.aluno || !m.aluno.email) {
+      console.warn(`[WEBHOOK] Sem e-mail pra avisar da matrícula ${matriculaId}.`);
+      return;
+    }
+
+    const base = process.env.APP_URL || 'https://escola-cruz-vermelha.onrender.com';
+    const dataBR = (d) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
+    await enviarEmailMatriculaConfirmada(m.aluno.email, String(m.aluno.nome).split(' ')[0], {
+      curso: m.turma.curso.nome,
+      inicioTurma: dataBR(m.turma.inicioPrevisto),
+      // Cronograma completo quando a turma tem aulas cadastradas — evita o
+      // aluno aparecer no dia errado, que é caro pra secretaria resolver.
+      aulas: (m.turma.aulas || []).map((a) => ({
+        data: dataBR(a.data),
+        horario: a.horario || '',
+      })),
+      valorPago: formatBRL(Number(m.valorCurso)),
+      plano: m.plano,
+      parcelas: Number(m.turma.curso.parcelas) || 1,
+      // O 1kg de alimento só é pedido em turma que registra a entrega.
+      alimento: m.alimentoEntregue === false || m.alimentoEntregue === true,
+      link: `${base.replace(/\/+$/, '')}/minha-conta?sec=inscricoes`,
+    });
+  } catch (e) {
+    console.error('[WEBHOOK] Falha ao enviar e-mail de matrícula confirmada:', e.message);
+  }
 }
 
 // SEM requireLogin — quem chama é o gateway, não o aluno.
@@ -193,6 +251,15 @@ router.post('/webhook/unicopag', express.json(), async (req, res) => {
           data: dadosMatricula,
         });
         console.log(`[WEBHOOK] ✅ CURSO pago. Matrícula ${pagamento.matriculaId} → ${novoStatusMatricula}.`);
+
+        // 💡 NOVO — Comprovante por e-mail: matrícula confirmada, com data,
+        // local e o que levar. Vem DEPOIS do update e dentro da própria
+        // função protegida por try/catch: nada aqui pode derrubar o webhook.
+        //
+        // Fica atrás da trava atômica acima de propósito — só o postback que
+        // conseguiu virar o status chega até aqui, então dois postbacks
+        // concorrentes não geram dois e-mails.
+        await avisarMatriculaConfirmada(pagamento.matriculaId);
       }
     } else if (novoStatus === 'ESTORNADO') {
       if (pagamento.tipo === 'CURSO') {

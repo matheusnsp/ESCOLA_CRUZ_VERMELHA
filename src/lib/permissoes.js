@@ -8,64 +8,73 @@
 const PERMISSOES = {
 
   // ---- SECRETARIA -------------------------------------------------
-  // Acesso operacional do dia a dia. NÃO enxerga nem acessa /financeiro
-  // (nenhuma das permissões abaixo é financeiro:leitura/aprovar).
+  // Acesso operacional completo do dia a dia. NÃO enxerga a aba
+  // /financeiro (não tem financeiro:leitura) e não mexe em dinheiro que
+  // volta: cancelar, estornar e reembolsar ficam fora.
   SECRETARIA: [
-    'cursos:gerenciar',    // CRUD completo de cursos (criar/editar/excluir/ativar/FAQs)
-    'turmas:gerenciar',    // editar turma existente, mudar status, lançar notas, excluir
-                            // NOTA: NÃO inclui 'turmas:criar' — Secretaria não cria turma nova
+    'cursos:gerenciar',    // CRUD de cursos (editar/excluir/ativar/FAQs)
+    'cursos:criar',        // criar curso
+    'turmas:gerenciar',    // criar/editar turma, mudar status, lançar notas, excluir
     'doacao:confirmar',    // marcar/desmarcar alimento entregue
     'aluno:mover_turma',   // transferir aluno entre turmas
-    'aluno:gerenciar',     // editar dados cadastrais do aluno
+    'aluno:gerenciar',     // editar dados cadastrais do aluno, convidar por WhatsApp
     'taxa:aprovar',        // confirmar pagamento da TAXA de inscrição
-    // 💡 CORRIGIDO (A1): 'financeiro:aprovar' REMOVIDO daqui. Ele dava à Secretaria
-    // acesso a cancelar e estornar — que, por desenho, são exclusivos de
-    // Financeiro/Dev. A Secretaria continua podendo CONFIRMAR o pagamento do
-    // curso via 'pagamento:confirmar' abaixo (só confirmar, não desfazer).
     'pagamento:confirmar', // confirmar pagamento do CURSO (só confirmar —
-                            // cancelar e estornar continuam exclusivos do Financeiro/Dev)
+                            // cancelar/estornar continuam do Financeiro/Dev)
+    'pendentes:gerenciar', // ver /pendentes e enviar lembrete de pagamento.
+                            // Antes dependia de financeiro:leitura, o que
+                            // amarrava a tela de cobrança à aba de tesouraria
+                            // — são coisas diferentes: cobrar é trabalho de
+                            // secretaria, ver o caixa não.
+    // 💡 REMOVIDO: 'turmas:criar'. Ela estava aqui mas NENHUMA rota a exigia
+    // — quem cria turma é POST /turmas, que pede 'turmas:gerenciar'. Uma
+    // permissão que não controla nada só engana quem lê a lista depois.
   ],
 
   // ---- COORDENADOR --------------------------------------------------
-  // "Acesso total do site" = tudo que Secretaria tem + pode criar turma
-  // + financeiro em modo leitura (sem poder aprovar/cancelar/estornar).
+  // Tudo da Secretaria + vê a aba /financeiro. Só isso: não baixa
+  // relatório, não cancela inscrição, não estorna, não marca reembolso.
+  // No financeiro ele é observador puro.
   COORDENADOR: [], // montado logo abaixo, por spread
 
   // ---- FINANCEIRO ----------------------------------------------------
-  // ANTES: bypass total (via temPermissao). AGORA: controle total só
-  // sobre financeiro; no resto do site, só enxerga (sem editar nada).
+  // Controle total sobre dinheiro; no resto do site, só enxerga.
   FINANCEIRO: [
-    'painel:leitura',      // ver cursos/turmas/alunos/inscrições/notas — SEM nenhum botão de ação
-    'financeiro:leitura',  // ver o painel /financeiro
-    'financeiro:aprovar',  // confirmar/cancelar/estornar pagamento do curso
+    'painel:leitura',       // ver cursos/turmas/alunos/inscrições/notas — sem botões
+    'financeiro:leitura',   // ver a aba /financeiro
+    'financeiro:aprovar',   // cancelar inscrição
+    'financeiro:reembolsar',// estornar e marcar reembolso concluído.
+                            // Separado de financeiro:aprovar porque estorno
+                            // devolve dinheiro ao aluno e é irreversível —
+                            // não pode viajar junto com "cancelar", que é
+                            // operação corriqueira.
+    'relatorio:baixar',     // downloads Excel/PDF/CSV/OFX. Exclusivo daqui:
+                            // relatório carrega a movimentação financeira
+                            // inteira num arquivo que sai do sistema.
+    'pendentes:gerenciar',  // ver /pendentes e enviar lembrete
   ],
 
   // ---- CONSULTA -------------------------------------------------------
-  // Perfil novo: só enxerga o site (nenhuma ação, nenhum botão),
-  // e /financeiro fica totalmente fora do alcance — nem o link aparece.
+  // Só enxerga o site (nenhuma ação, nenhum botão), e /financeiro fica
+  // totalmente fora do alcance — nem o link aparece.
   CONSULTA: [
-    'painel:leitura',      // mesmo "modo espectador" que o Financeiro tem no resto do site
-                            // mas sem NENHUMA das permissões de financeiro — por isso o
-                            // link some do header e /financeiro devolve 403
+    'painel:leitura',
   ],
 };
 
-// Coordenador = tudo da Secretaria + pode criar turma/curso + financeiro completo
+// Coordenador = tudo da Secretaria + ver a aba /financeiro.
+// 💡 REMOVIDO: 'relatorio:baixar'. Baixar relatório passou a ser exclusivo
+// do Financeiro e do Dev — é o arquivo que tira a movimentação inteira de
+// dentro do sistema. O Coordenador continua vendo os números na tela.
 PERMISSOES.COORDENADOR = [
   ...PERMISSOES.SECRETARIA,
-  'turmas:criar',       // criar turma nova
-  // 💡 CORRIGIDO (A1): 'cursos:criar' ADICIONADO. A rota /cursos/novo exige essa
-  // permissão e ela não era concedida a ninguém — só o DEV (bypass) criava curso,
-  // contrariando o desenho ("Coordenador tem acesso total do site").
-  'cursos:criar',       // criar curso novo
-  'financeiro:leitura', // vê o painel /financeiro
-  'financeiro:aprovar', // confirmar/cancelar/estornar pagamento do curso (nível Coordenador)
+  'financeiro:leitura', // vê a aba /financeiro — seu único diferencial
 ];
 
 // Papéis que conseguem logar no painel admin (independente do que cada um pode FAZER lá dentro)
 const PAPEIS_ADMIN = ['SECRETARIA', 'COORDENADOR', 'FINANCEIRO', 'CONSULTA', 'DEV'];
 
-// DEV é o ÚNICO bypass total agora — acesso de manutenção/emergência.
+// DEV é o ÚNICO bypass total — acesso de manutenção/emergência.
 // Todo o resto (inclusive FINANCEIRO) passa pela lista normal de permissões.
 function temPermissao(papel, perm) {
   if (papel === 'DEV') return true;

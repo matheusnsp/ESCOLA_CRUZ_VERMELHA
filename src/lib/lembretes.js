@@ -38,8 +38,8 @@ const {
 } = require('./email');
 
 // ── Ajustes de comportamento ─────────────────────────────────────────────
-const CARENCIA_MIN = 30;        // minutos após a taxa antes do 1º lembrete
-const JANELA_VESPERA_H = 36;    // manda o 2º quando a turma começa em até X h
+const CARENCIA_MIN = 60;        // minutos após a taxa antes do 1º lembrete
+const JANELA_VESPERA_H = 24;    // manda o 2º quando a turma começa em até X h
 const LIMITE_POR_PASSADA = 100; // teto de e-mails por execução
 
 function formatarData(d) {
@@ -407,10 +407,71 @@ async function enviarLembreteAvulso(matriculaId) {
   return { ok: true, email: m.aluno.email, tipo: usarVespera ? 'vespera' : 'imediato' };
 }
 
+// ═════════════════════════════════════════════════════════════════════════
+// PROSPECÇÃO (tela /alunos, filtro "sem inscrição")
+//
+// Natureza diferente de tudo acima: aqui a pessoa criou conta e nunca se
+// inscreveu em nada. Não há pendência, não há dinheiro em jogo, não há
+// relação em curso — é abordagem fria.
+//
+// Por isso o texto:
+//   • não cita preço nem link de pagamento (seria propaganda);
+//   • termina em PERGUNTA, convidando resposta em vez de empurrar. Conversa
+//     converte melhor que anúncio e reduz a chance de o número ser marcado
+//     como spam — o que derrubaria o canal usado com os pendentes, onde o
+//     dinheiro de fato está;
+//   • cita turmas ABERTAS de verdade, puxadas do banco na hora, pra nunca
+//     oferecer curso que já lotou ou encerrou.
+//
+// ⚠️ LGPD: o consentimento que o aluno aceitou no cadastro cobre a execução
+// do serviço. Comunicação promocional costuma exigir base legal própria.
+// Vale conferir o texto aceito antes de usar isto em escala.
+// ═════════════════════════════════════════════════════════════════════════
+
+/**
+ * Monta o texto de prospecção, citando até 3 turmas abertas.
+ * @param {object} aluno              { nome }
+ * @param {Array}  turmasAbertas      turmas com .curso.nome, já filtradas
+ */
+function montarTextoProspeccao(aluno, turmasAbertas = []) {
+  const nome = String(aluno?.nome || '').split(' ')[0];
+  const cabecalho = `Olá, ${nome}! Aqui é da Escola de Educação e Saúde da Cruz Vermelha RJ.`;
+
+  // Nomes únicos: a mesma disciplina pode ter mais de uma turma aberta.
+  const nomes = [...new Set(turmasAbertas.map((t) => t.curso.nome))].slice(0, 3);
+
+  let oferta;
+  if (nomes.length === 0) {
+    oferta = 'Estamos com turmas abrindo para os próximos meses.';
+  } else if (nomes.length === 1) {
+    oferta = `Estamos com turma aberta de ${nomes[0]}.`;
+  } else {
+    const ultimo = nomes.pop();
+    oferta = `Estamos com turmas abertas de ${nomes.join(', ')} e ${ultimo}.`;
+  }
+
+  return `${cabecalho}\n\n`
+    + `Vi que você criou uma conta no nosso site, mas ainda não se inscreveu em nenhum curso. `
+    + `${oferta}\n\n`
+    + `Quer que eu te conte sobre alguma?`;
+}
+
+/**
+ * Link wa.me de prospecção. Assume Brasil (DDI 55).
+ * Retorna null se o celular cadastrado não tiver 10 ou 11 dígitos.
+ */
+function montarLinkProspeccao(aluno, turmasAbertas = []) {
+  const digitos = String(aluno?.celular || '').replace(/\D/g, '');
+  if (digitos.length !== 10 && digitos.length !== 11) return null;
+  const texto = montarTextoProspeccao(aluno, turmasAbertas);
+  return `https://wa.me/55${digitos}?text=${encodeURIComponent(texto)}`;
+}
+
 module.exports = {
   processarLembretes,
   agendarLembretes,
   enviarLembreteAvulso,
   montarPendencia,
   montarLinkWhats,
+  montarLinkProspeccao,
 };

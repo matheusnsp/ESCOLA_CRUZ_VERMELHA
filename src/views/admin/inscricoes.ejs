@@ -245,7 +245,23 @@
 
               <div class="adm-acoes-wrap">
 
-                <% if (pode('turmas:gerenciar') || pode('secretaria:leitura')) { %>
+                <%
+                  // 💡 PERMISSÕES — cada ação tem a sua, e não mais um guard
+                  // único envolvendo todas. As quatro pertencem a papéis
+                  // diferentes agora:
+                  //
+                  //   nota / transferir  →  turmas:gerenciar / aluno:mover_turma
+                  //   confirmar          →  pagamento:confirmar    (Secretaria+)
+                  //   reativar           →  pagamento:confirmar    (Secretaria+)
+                  //   cancelar           →  financeiro:aprovar     (Financeiro, Dev)
+                  //   estornar           →  financeiro:reembolsar  (Financeiro, Dev)
+                  //
+                  // Antes tudo isso vivia dentro de um pode('financeiro:aprovar'),
+                  // o que dava ao Coordenador o botão de estorno — e, no modelo
+                  // novo, tiraria da Secretaria até o botão de confirmar.
+                %>
+
+                <% if (pode('turmas:gerenciar') || pode('painel:leitura')) { %>
 
                   <a
                     href="/inscricoes/<%= m.id %>/nota"
@@ -271,11 +287,12 @@
                 <% } %>
 
 
-                <% if (pode('financeiro:aprovar')) { %>
+                <% if (m.statusPagamento === 'PENDENTE') { %>
 
-                  <% if (m.statusPagamento === 'PENDENTE') { %>
+                  <!-- CONFIRMAR PAGAMENTO — operação de balcão ("recebi em
+                       dinheiro"), liberada pra quem atende o aluno. -->
 
-                    <!-- CONFIRMAR PAGAMENTO -->
+                  <% if (pode('pagamento:confirmar')) { %>
 
                     <form
                       method="POST"
@@ -321,8 +338,12 @@
 
                     </form>
 
+                  <% } %>
 
-                    <!-- CANCELAR -->
+
+                  <!-- CANCELAR — tira a vaga do aluno; Financeiro e Dev. -->
+
+                  <% if (pode('financeiro:aprovar')) { %>
 
                     <form
                       method="POST"
@@ -369,10 +390,15 @@
 
                     </form>
 
+                  <% } %>
 
-                  <% } else if (m.statusPagamento === 'PAGO') { %>
 
-                    <!-- ESTORNAR -->
+                <% } else if (m.statusPagamento === 'PAGO') { %>
+
+                  <!-- ESTORNAR — devolve dinheiro ao aluno e é irreversível;
+                       só Financeiro e Dev. -->
+
+                  <% if (pode('financeiro:reembolsar')) { %>
 
                     <form
                       method="POST"
@@ -419,10 +445,14 @@
 
                     </form>
 
+                  <% } %>
 
-                  <% } else { %>
 
-                    <!-- REATIVAR -->
+                <% } else { %>
+
+                  <!-- REATIVAR como pago — mesma natureza de confirmar. -->
+
+                  <% if (pode('pagamento:confirmar')) { %>
 
                     <form
                       method="POST"

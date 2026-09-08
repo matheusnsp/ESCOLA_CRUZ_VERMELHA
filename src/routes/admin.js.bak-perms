@@ -16,7 +16,7 @@ const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
 const { formatBRL, calcularValores } = require('../lib/matricula');
 const { estornarTransacao } = require('../lib/unicopag'); // 💡 A3 — refund real no gateway
 const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarLinkProspeccao } = require('../lib/lembretes');
-const { coletarDadosRelatorio, gerarExcel, gerarPdf, coletarLancamentosOfx, gerarOfx } = require('../lib/relatorio'); // relatórios Excel/PDF
+const { coletarDadosRelatorio, gerarExcel, gerarPdf } = require('../lib/relatorio'); // relatórios Excel/PDF
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 const { temPermissao, PAPEIS_ADMIN, listarPermissoes } = require('../lib/permissoes');
 
@@ -36,8 +36,8 @@ const asyncHandler = require('../lib/asyncHandler');
 
 // ---------- Helpers ----------
 
-// Tempo maximo de inatividade no painel antes de deslogar (60 min).
-const IDLE_MS = 60 * 60 * 1000;
+// Tempo maximo de inatividade no painel antes de deslogar (15 min).
+const IDLE_MS = 15 * 60 * 1000;
 
 function whereAlunoOnline() {
   const cincoMinAtras = new Date(Date.now() - 5 * 60 * 1000);
@@ -1350,7 +1350,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
 
 // ---------- Relatórios (Excel + PDF + Csv) ----------
 
-router.get('/relatorios/completo.xlsx', requirePermissao('relatorio:baixar'), async (req, res) => {
+router.get('/relatorios/completo.xlsx', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const dados = await coletarDadosRelatorio(prisma);
   const buffer = await gerarExcel(dados);
   await auditar(req, 'BAIXOU_RELATORIO', 'Relatorio', null, { formato: 'xlsx' });
@@ -1360,7 +1360,7 @@ router.get('/relatorios/completo.xlsx', requirePermissao('relatorio:baixar'), as
   res.send(Buffer.from(buffer));
 });
 
-router.get('/relatorios/completo.pdf', requirePermissao('relatorio:baixar'), async (req, res) => {
+router.get('/relatorios/completo.pdf', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const dados = await coletarDadosRelatorio(prisma);
   await auditar(req, 'BAIXOU_RELATORIO', 'Relatorio', null, { formato: 'pdf' });
   const nome = `relatorio-cvbrj-${new Date().toISOString().slice(0, 10)}.pdf`;
@@ -1369,7 +1369,7 @@ router.get('/relatorios/completo.pdf', requirePermissao('relatorio:baixar'), asy
   gerarPdf(dados, res);
 });
 
-router.get('/relatorios/completo.csv', requirePermissao('relatorio:baixar'), async (req, res) => {
+router.get('/relatorios/completo.csv', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const dados = await coletarDadosRelatorio(prisma);
   await auditar(req, 'BAIXOU_RELATORIO', 'Relatorio', null, { formato: 'csv' });
 
@@ -1403,51 +1403,8 @@ router.get('/relatorios/completo.csv', requirePermissao('relatorio:baixar'), asy
 });
 
 
-router.get('/relatorios/completo.ofx', requirePermissao('relatorio:baixar'), async (req, res) => {
-  try {
-    const de = req.query.de ? new Date(req.query.de) : null;
-    const ate = req.query.ate ? new Date(req.query.ate) : null;
- 
-    // Data inválida na query viraria um filtro silenciosamente vazio.
-    if ((de && isNaN(de)) || (ate && isNaN(ate))) {
-      return res.status(400).render('admin/erro', {
-        mensagem: 'Período inválido. Use o formato AAAA-MM-DD.',
-      });
-    }
- 
-    // O "ate" da query é um dia; sem isto, um pagamento das 15h do dia 30
-    // ficaria de fora de um filtro que termina em 30/09 00:00.
-    if (ate) ate.setHours(23, 59, 59, 999);
- 
-    const lancamentos = await coletarLancamentosOfx(prisma, { de, ate });
-    const conteudo = gerarOfx(lancamentos);
- 
-    const sufixo = de || ate
-      ? `-${(req.query.de || 'inicio')}_a_${(req.query.ate || 'hoje')}`
-      : '';
-    const nome = `extrato-cvbrj${sufixo}.ofx`;
- 
-    await auditar(req, 'BAIXOU_RELATORIO_OFX', 'Sistema', 'relatorio', {
-      lancamentos: lancamentos.length,
-      de: req.query.de || null,
-      ate: req.query.ate || null,
-    });
- 
-    res.setHeader('Content-Type', 'application/x-ofx; charset=windows-1252');
-    res.setHeader('Content-Disposition', `attachment; filename="${nome}"`);
-    return res.send(conteudo);
-  } catch (err) {
-    console.error('Erro ao gerar OFX:', err);
-    return res.status(500).render('admin/erro', {
-      mensagem: 'Não foi possível gerar o arquivo OFX.',
-    });
-  }
-});
- 
 
-
-
-router.post('/inscricoes/:id/reembolso-concluido', requirePermissao('financeiro:reembolsar'), async (req, res) => {
+router.post('/inscricoes/:id/reembolso-concluido', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({
     where: { id: req.params.id },
   });
@@ -1487,7 +1444,7 @@ router.post('/inscricoes/:id/reembolso-concluido', requirePermissao('financeiro:
   res.redirect(back(req, 'Reembolso marcado como concluido.'));
 });
 
-router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:reembolsar'), async (req, res) => {
+router.post('/inscricoes/:id/reembolso-concluido', requirePermissao('financeiro:reembolsar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
 
@@ -2036,7 +1993,7 @@ router.post('/alunos/:id/matriculas/:matriculaId/confirmar-taxa', requirePermiss
 
 const STATUS_TURMA_ATIVA = ['ABERTA', 'CONFIRMADA'];
 
-router.get('/pendentes', requirePermissao('pendentes:gerenciar'), async (req, res) => {
+router.get('/pendentes', requirePermissao('financeiro:aprovar', 'financeiro:leitura'), async (req, res) => {
   const [comTaxa, semTaxa] = await Promise.all([
     prisma.matricula.findMany({
       where: {
@@ -2091,7 +2048,7 @@ router.get('/pendentes', requirePermissao('pendentes:gerenciar'), async (req, re
   });
 });
 
-router.post('/pendentes/:id/lembrar', requirePermissao('pendentes:gerenciar'), async (req, res) => {
+router.post('/pendentes/:id/lembrar', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const voltar = (chave, msg) => res.redirect(`/pendentes?${chave}=` + encodeURIComponent(msg));
 
   let resultado;
