@@ -161,6 +161,24 @@
                     <% } %>
                   </div>
 
+                  <%
+                    // 💡 NOVO — Retomada do pagamento. `m.retomada` vem do
+                    // painel.js (função calcularRetomada) e é null quando não
+                    // há nada a retomar. As telas que renderizam esta view sem
+                    // o campo caem no falsy e simplesmente não mostram o bloco.
+                  %>
+                  <% if (m.retomada) { %>
+                  <div class="ct-retomar">
+                    <p class="ct-retomar-txt">
+                      <i class="fa-solid fa-circle-half-stroke"></i>
+                      Falta concluir o pagamento para efetivar sua matrícula.
+                    </p>
+                    <a href="<%= m.retomada.url %>" class="ct-btn-retomar">
+                      <%= m.retomada.rotulo %> <i class="fa-solid fa-arrow-right"></i>
+                    </a>
+                  </div>
+                  <% } %>
+
                   <div class="ct-insc-pe">
                     <span class="ct-insc-plano">
                       <%= labelPlano %><% if (m.plano !== 'PRESENCIAL') { %> · <%= m.forma %><% } %>

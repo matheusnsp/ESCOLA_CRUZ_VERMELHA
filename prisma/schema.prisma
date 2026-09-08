@@ -123,6 +123,8 @@ model Matricula {
   // no momento em que a taxa é confirmada. Null enquanto a taxa não foi
   // paga, ou se o plano não for PARCELADO (único que separa taxa/curso).
   prazoPagamentoCurso DateTime?
+  lembreteImediatoEm  DateTime?
+  lembreteVesperaEm   DateTime?
   nota                Float?
   situacao            SituacaoAcademica?
   confirmadaPor       String?

@@ -1532,3 +1532,44 @@ button:focus-visible {
 }
 
 
+/* ── Retomada de pagamento (Minha conta → Inscrições) ─────────────────── */
+/* O .card-link-overlay cobre o card inteiro e engoliria o clique do botão. */
+/* position + z-index tiram o botão de baixo dele.                          */
+.ct-retomar {
+    position: relative;
+    z-index: 2;
+    margin: 12px 0 4px;
+    padding: 12px;
+    border: 1px solid #f0d48a;
+    border-radius: 10px;
+    background: #fffaf0;
+  }
+  
+  .ct-retomar-txt {
+    margin: 0 0 10px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #7a5b12;
+  }
+  
+  .ct-retomar-txt i {
+    margin-right: 6px;
+  }
+  
+  .ct-btn-retomar {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    background: #c8102e;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background .2s;
+  }
+  
+  .ct-btn-retomar:hover {
+    background: #a50d26;
+  }

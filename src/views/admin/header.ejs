@@ -11,6 +11,16 @@
     <a href="/cursos" class="<%= secaoAtiva === 'cursos' ? 'on' : '' %>"><i class="fa-solid fa-book"></i> Cursos</a>
     <a href="/turmas" class="<%= secaoAtiva === 'turmas' ? 'on' : '' %>"><i class="fa-solid fa-calendar-days"></i> Turmas</a>
     <a href="/inscricoes" class="<%= secaoAtiva === 'inscricoes' ? 'on' : '' %>"><i class="fa-solid fa-users"></i> Matriculas</a>
+    <%
+      // 💡 NOVO — Pagamentos pendentes. A condição espelha a permissão da
+      // rota /pendentes em admin.js: requirePermissao('financeiro:aprovar',
+      // 'financeiro:leitura'). Testar as duas evita o caso de alguém com
+      // "aprovar" mas sem "leitura" ver um menu que não abre (ou, pior, não
+      // ver um menu que abriria).
+    %>
+    <% if (pode('financeiro:leitura') || pode('financeiro:aprovar')) { %>
+      <a href="/pendentes" class="<%= secaoAtiva === 'pendentes' ? 'on' : '' %>"><i class="fa-solid fa-hourglass-half"></i> Pendentes</a>
+    <% } %>
     <a href="/alunos" class="<%= secaoAtiva === 'alunos' ? 'on' : '' %>"><i class="fa-solid fa-user-graduate"></i> Alunos</a>
     <% if (pode('financeiro:leitura')) { %>
       <a href="/financeiro" class="<%= secaoAtiva === 'financeiro' ? 'on' : '' %>"><i class="fa-solid fa-sack-dollar"></i> Financeiro</a>

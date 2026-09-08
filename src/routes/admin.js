@@ -15,6 +15,7 @@ const { ESCOLARIDADES: ESCOLARIDADES_ALUNO, SITUACOES_ESCOLARIDADE, GENEROS, UFS
 const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
 const { formatBRL, calcularValores } = require('../lib/matricula');
 const { estornarTransacao } = require('../lib/unicopag'); // 💡 A3 — refund real no gateway
+const { enviarLembreteAvulso, montarPendencia, montarLinkWhats } = require('../lib/lembretes');
 const { coletarDadosRelatorio, gerarExcel, gerarPdf } = require('../lib/relatorio'); // relatórios Excel/PDF
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 const { temPermissao, PAPEIS_ADMIN, listarPermissoes } = require('../lib/permissoes');
@@ -1887,6 +1888,111 @@ router.post('/alunos/:id/matriculas/:matriculaId/confirmar-taxa', requirePermiss
   await auditar(req, 'CONFIRMOU_TAXA_INSCRICAO', 'Matricula', m.id, null);
   res.redirect(`/alunos/${req.params.id}/matriculas?ok=` + encodeURIComponent('Taxa de inscricao confirmada. Aluno adicionado a turma como pendente.'));
 });
+
+
+
+
+// ---------- Pagamentos pendentes ----------
+//
+// Tela de trabalho, não relatório: lista quem está com matrícula em aberto e
+// deixa a secretária disparar o lembrete de pagamento na hora.
+//
+// Duas listas, com naturezas diferentes:
+//
+//   1. TAXA PAGA, CURSO PENDENTE — o caso que motivou tudo isto. O dinheiro
+//      da taxa já entrou, a vaga está ocupada e a matrícula nunca se
+//      efetivou. Tem link pra mandar: /inscrever/:turmaId/pagar-curso.
+//
+//   2. NUNCA PAGOU NADA — se inscreveu, aceitou o contrato e sumiu antes de
+//      qualquer cobrança. A vaga NÃO está reservada. Também tem contato: o
+//      link leva pra etapa da taxa (ou pro início, no A_VISTA), e o texto
+//      diz que a vaga ainda não está garantida — nunca o contrário.
+//
+// Ordenação da lista 1 é por início da turma, mais próxima primeiro: quem
+// está mais perto de perder o curso aparece no topo.
+
+const STATUS_TURMA_ATIVA = ['ABERTA', 'CONFIRMADA'];
+
+router.get('/pendentes', requirePermissao('financeiro:aprovar', 'financeiro:leitura'), async (req, res) => {
+  const [comTaxa, semTaxa] = await Promise.all([
+    prisma.matricula.findMany({
+      where: {
+        statusPagamento: 'PENDENTE',
+        taxaConfirmada: true,
+        turma: { status: { in: STATUS_TURMA_ATIVA } },
+      },
+      orderBy: { turma: { inicioPrevisto: 'asc' } },
+      include: { aluno: true, turma: { include: { curso: true } } },
+    }),
+
+    prisma.matricula.findMany({
+      where: {
+        statusPagamento: 'PENDENTE',
+        taxaConfirmada: false,
+        turma: { status: { in: STATUS_TURMA_ATIVA } },
+      },
+      orderBy: { criadoEm: 'desc' },
+      include: { aluno: true, turma: { include: { curso: true } } },
+    }),
+  ]);
+
+  // Cada linha ganha a sua pendência (que etapa falta, se dá pra mandar
+  // e-mail) e o link de WhatsApp com o texto já montado. Fica tudo no
+  // servidor porque o texto depende do plano e do que já foi pago — regra de
+  // negócio, não de apresentação. Ver montarPendencia() em lib/lembretes.js.
+  const enriquecer = (lista) => lista.map((m) => ({
+    ...m,
+    pendencia: montarPendencia(m),
+    linkWhats: montarLinkWhats(m),
+  }));
+
+  // Quanto ainda falta receber de quem já pagou a taxa. É o valor que está
+  // parado por falta de um clique — o número que justifica esta tela.
+  //
+  // ⚠️ NÃO subtrair valorTaxaMatricula daqui. O valorCurso gravado JÁ inclui
+  // a taxa de inscrição, mas o campo valorTaxaMatricula está zerado em vários
+  // registros da base onde a taxa foi de fato cobrada (conferido em produção:
+  // Punção Venosa a R$150 + taxa 100 = valorCurso 250, com valorTaxaMatricula
+  // ora 100, ora 0,00). Subtrair um campo não confiável fazia o mesmo curso
+  // aparecer com valores diferentes de um aluno pro outro.
+  const totalEmAberto = comTaxa.reduce((s, m) => s + Number(m.valorCurso), 0);
+
+  res.render('admin/pendentes', {
+    comTaxa: enriquecer(comTaxa),
+    semTaxa: enriquecer(semTaxa),
+    totalEmAberto,
+    formatBRL,
+    aba: req.query.aba === 'sem-taxa' ? 'sem-taxa' : 'com-taxa',
+    flash: req.query.ok || null,
+    erro: req.query.erro || null,
+  });
+});
+
+router.post('/pendentes/:id/lembrar', requirePermissao('financeiro:aprovar'), async (req, res) => {
+  const voltar = (chave, msg) => res.redirect(`/pendentes?${chave}=` + encodeURIComponent(msg));
+
+  let resultado;
+  try {
+    resultado = await enviarLembreteAvulso(req.params.id);
+  } catch (e) {
+    console.error('[PENDENTES] Falha ao enviar lembrete:', e.message);
+    return voltar('erro', 'Não foi possível enviar o e-mail agora. Tente de novo em instantes.');
+  }
+
+  if (!resultado.ok) {
+    return voltar('erro', resultado.motivo);
+  }
+
+  // Fica registrado quem mandou e quando — serve quando o aluno liga
+  // dizendo que ninguém avisou.
+  await auditar(req, 'ENVIOU_LEMBRETE_PAGAMENTO', 'Matricula', req.params.id, {
+    email: resultado.email,
+    tipo: resultado.tipo,
+  });
+
+  return voltar('ok', `Lembrete enviado para ${resultado.email}.`);
+});
+
 
 // ---------- Painel do Dev ----------
 

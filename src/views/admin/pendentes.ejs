@@ -1,0 +1,338 @@
+<%- include('head', { titulo: 'Pagamentos pendentes' }) %>
+<%- include('header', { ativo: 'pendentes' }) %>
+
+<%
+  // ═══════════════════════════════════════════════════════════════════════
+  // PAGAMENTOS PENDENTES
+  //
+  // Tela de trabalho: a secretária abre, vê quem está parado, dispara e
+  // fecha. Duas abas com naturezas diferentes — ver comentário na rota
+  // /pendentes em admin.js.
+  //
+  // Classes reaproveitadas do painel (adm-*), então não precisa de CSS novo.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function diasDesde(data) {
+    if (!data) return null;
+    return Math.floor((Date.now() - new Date(data).getTime()) / 86400000);
+  }
+
+  function diasAte(data) {
+    if (!data) return null;
+    return Math.ceil((new Date(data).getTime() - Date.now()) / 86400000);
+  }
+
+  function dataBR(d) {
+    return d ? new Date(d).toLocaleDateString('pt-BR') : '—';
+  }
+
+  function dataHoraBR(d) {
+    return d ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : null;
+  }
+
+  // Formata celular guardado só com dígitos.
+  function telBR(c) {
+    const d = String(c || '').replace(/\D/g, '');
+    if (d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+    if (d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+    return c || null;
+  }
+
+  const ultimoLembrete = (m) => m.lembreteVesperaEm || m.lembreteImediatoEm || null;
+%>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Pagamentos pendentes</h1>
+  <span class="adm-mut">
+    Total em aberto: <strong><%= formatBRL(totalEmAberto) %></strong>
+  </span>
+</div>
+
+<% if (flash) { %>
+  <div class="adm-ok">
+    <i class="fa-solid fa-circle-check"></i> <%= flash %>
+  </div>
+<% } %>
+
+<% if (erro) { %>
+  <div class="adm-erro">
+    <i class="fa-solid fa-circle-exclamation"></i> <%= erro %>
+  </div>
+<% } %>
+
+<!-- ══ Abas ═══════════════════════════════════════════════════════════════ -->
+<form method="GET" action="/pendentes" class="adm-filtros">
+  <label class="adm-campo cresce">
+    <span>Mostrar</span>
+    <select name="aba" onchange="this.form.submit()">
+      <option value="com-taxa" <%= aba === 'com-taxa' ? 'selected' : '' %>>
+        Taxa paga, curso pendente (<%= comTaxa.length %>)
+      </option>
+      <option value="sem-taxa" <%= aba === 'sem-taxa' ? 'selected' : '' %>>
+        Nunca pagaram nada (<%= semTaxa.length %>)
+      </option>
+    </select>
+  </label>
+  <button type="submit" class="adm-btn-neutro">
+    <i class="fa-solid fa-filter"></i> Ver
+  </button>
+</form>
+
+<% if (aba === 'com-taxa') { %>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     ABA 1 — pagou a taxa e sumiu
+     ══════════════════════════════════════════════════════════════════════ -->
+<div class="adm-box">
+
+  <p class="adm-mut" style="padding:12px 14px 0;margin:0;">
+    Estes alunos pagaram a taxa de inscrição, mas não concluíram o pagamento
+    do curso. A vaga está reservada e o valor abaixo ainda não entrou.
+  </p>
+
+  <% if (!comTaxa.length) { %>
+
+    <p class="adm-vazio">Nenhum pagamento pendente. Tudo em dia.</p>
+
+  <% } else { %>
+
+    <table class="adm-table">
+      <thead>
+        <tr>
+          <th>Aluno</th>
+          <th>Curso / Turma</th>
+          <th>Parado há</th>
+          <th>Valor da matrícula</th>
+          <th>Último lembrete</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% comTaxa.forEach(function (m) { %>
+        <%
+          const paradoHa   = diasDesde(m.taxaConfirmadaEm || m.criadoEm);
+          const faltamDias = diasAte(m.turma.inicioPrevisto);
+          const enviado    = ultimoLembrete(m);
+        %>
+        <tr>
+
+          <!-- ALUNO — e-mail e telefone à mão: se o e-mail não resolver,
+               a secretária liga. -->
+          <td>
+            <a href="/alunos/<%= m.aluno.id %>/matriculas" class="adm-link-aluno">
+              <strong><%= m.aluno.nome %></strong>
+            </a>
+            <br>
+            <small class="adm-mut"><%= m.aluno.email %></small>
+            <% if (telBR(m.aluno.celular)) { %>
+              <br><small class="adm-mut"><i class="fa-solid fa-phone"></i> <%= telBR(m.aluno.celular) %></small>
+            <% } %>
+          </td>
+
+          <!-- CURSO / TURMA — quantos dias faltam pro início é o que dá
+               urgência de verdade. -->
+          <td>
+            <%= m.turma.curso.nome %>
+            <br>
+            <small class="adm-mut">
+              início <%= dataBR(m.turma.inicioPrevisto) %>
+              <% if (faltamDias !== null && faltamDias >= 0) { %>
+                · faltam <%= faltamDias %> dia<%= faltamDias === 1 ? '' : 's' %>
+              <% } %>
+            </small>
+          </td>
+
+          <!-- PARADO HÁ -->
+          <td>
+            <% if (paradoHa === null) { %>
+              —
+            <% } else if (paradoHa === 0) { %>
+              hoje
+            <% } else { %>
+              <%= paradoHa %> dia<%= paradoHa === 1 ? '' : 's' %>
+            <% } %>
+            <br>
+            <small class="adm-mut">taxa em <%= dataBR(m.taxaConfirmadaEm) %></small>
+          </td>
+
+          <!-- VALOR DA MATRÍCULA -->
+          <%
+            // Mostra o valorCurso gravado, sem contas. Ele já inclui a taxa
+            // de inscrição — e o campo valorTaxaMatricula está zerado em
+            // parte da base, então qualquer subtração aqui produziria
+            // números diferentes pro mesmo curso, dependendo do aluno.
+          %>
+          <td>
+            <strong><%= formatBRL(Number(m.valorCurso)) %></strong>
+            <br>
+            <small class="adm-mut">taxa de inscrição inclusa</small>
+          </td>
+
+          <!-- ÚLTIMO LEMBRETE — evita a secretária disparar três vezes
+               seguidas sem saber. -->
+          <td>
+            <% if (enviado) { %>
+              <small><%= dataHoraBR(enviado) %></small>
+            <% } else { %>
+              <small class="adm-mut">nunca</small>
+            <% } %>
+          </td>
+
+          <!-- AÇÃO — e-mail e WhatsApp -->
+          <td class="adm-acoes">
+            <div class="adm-acoes-wrap">
+
+              <%
+                // O WhatsApp abre no número de quem clicou, com o texto já
+                // preenchido. É link, não formulário — nada é gravado, então
+                // não aparece na coluna "último lembrete".
+              %>
+              <% if (m.linkWhats) { %>
+                <a href="<%= m.linkWhats %>" target="_blank" rel="noopener"
+                   class="adm-mini ok" title="Abrir conversa no WhatsApp com o texto pronto">
+                  <i class="fa-brands fa-whatsapp"></i>
+                </a>
+              <% } else { %>
+                <span class="adm-mini" style="opacity:.35" title="Celular não cadastrado ou inválido">
+                  <i class="fa-brands fa-whatsapp"></i>
+                </span>
+              <% } %>
+
+              <% if (pode('financeiro:aprovar') && m.pendencia.podeEmail) { %>
+                <form method="POST" action="/pendentes/<%= m.id %>/lembrar"
+                      onsubmit="return confirm('Enviar o lembrete por e-mail para <%= m.aluno.nome.split(' ')[0] %>?')">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="adm-mini" title="Enviar lembrete por e-mail">
+                    <i class="fa-solid fa-envelope"></i>
+                  </button>
+                </form>
+              <% } else { %>
+                <span class="adm-mini" style="opacity:.35"
+                      title="Sem pagamento online neste plano — use o WhatsApp ou telefone">
+                  <i class="fa-solid fa-envelope"></i>
+                </span>
+              <% } %>
+
+            </div>
+          </td>
+
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+
+  <% } %>
+
+</div>
+
+<% } else { %>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     ABA 2 — nunca pagaram nada
+     Sem botão de envio: não há taxa paga, então não existe link de curso
+     pra mandar. Serve pra ligar.
+     ══════════════════════════════════════════════════════════════════════ -->
+<div class="adm-box">
+
+  <p class="adm-mut" style="padding:12px 14px 0;margin:0;">
+    Estes alunos aceitaram o contrato e escolheram um plano, mas não chegaram
+    a pagar nem a taxa de inscrição. A vaga <strong>não</strong> está
+    reservada — e o texto enviado diz isso, nunca o contrário.
+  </p>
+
+  <% if (!semTaxa.length) { %>
+
+    <p class="adm-vazio">Nenhuma inscrição abandonada.</p>
+
+  <% } else { %>
+
+    <table class="adm-table">
+      <thead>
+        <tr>
+          <th>Aluno</th>
+          <th>Contato</th>
+          <th>Curso / Turma</th>
+          <th>Plano</th>
+          <th>Inscreveu-se há</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% semTaxa.forEach(function (m) { %>
+        <% const desdeInscricao = diasDesde(m.criadoEm); %>
+        <tr>
+
+          <td>
+            <a href="/alunos/<%= m.aluno.id %>/matriculas" class="adm-link-aluno">
+              <strong><%= m.aluno.nome %></strong>
+            </a>
+          </td>
+
+          <td>
+            <% if (telBR(m.aluno.celular)) { %>
+              <strong><%= telBR(m.aluno.celular) %></strong><br>
+            <% } %>
+            <small class="adm-mut"><%= m.aluno.email %></small>
+          </td>
+
+          <td>
+            <%= m.turma.curso.nome %>
+            <br>
+            <small class="adm-mut">início <%= dataBR(m.turma.inicioPrevisto) %></small>
+          </td>
+
+          <td>
+            <%= m.plano === 'A_VISTA' ? 'À vista' : m.plano === 'PRESENCIAL' ? 'Presencial' : 'Parcelado' %>
+          </td>
+
+          <td>
+            <% if (desdeInscricao === 0) { %>
+              hoje
+            <% } else { %>
+              <%= desdeInscricao %> dia<%= desdeInscricao === 1 ? '' : 's' %>
+            <% } %>
+            <br>
+            <small class="adm-mut"><%= dataBR(m.criadoEm) %></small>
+          </td>
+
+          <!-- AÇÃO — mesmos dois canais da aba 1. O link aqui aponta pra
+               etapa da taxa (ou pro início, no A_VISTA), não pro curso. -->
+          <td class="adm-acoes">
+            <div class="adm-acoes-wrap">
+
+              <% if (m.linkWhats) { %>
+                <a href="<%= m.linkWhats %>" target="_blank" rel="noopener"
+                   class="adm-mini ok" title="Abrir conversa no WhatsApp com o texto pronto">
+                  <i class="fa-brands fa-whatsapp"></i>
+                </a>
+              <% } else { %>
+                <span class="adm-mini" style="opacity:.35" title="Celular não cadastrado ou inválido">
+                  <i class="fa-brands fa-whatsapp"></i>
+                </span>
+              <% } %>
+
+              <% if (pode('financeiro:aprovar') && m.pendencia.podeEmail) { %>
+                <form method="POST" action="/pendentes/<%= m.id %>/lembrar"
+                      onsubmit="return confirm('Enviar o e-mail de inscrição não concluída para <%= m.aluno.nome.split(' ')[0] %>?')">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="adm-mini" title="Enviar e-mail de inscrição não concluída">
+                    <i class="fa-solid fa-envelope"></i>
+                  </button>
+                </form>
+              <% } %>
+
+            </div>
+          </td>
+
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+
+  <% } %>
+
+</div>
+
+<% } %>
+
+<%- include('foot') %>

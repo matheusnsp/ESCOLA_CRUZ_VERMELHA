@@ -18,6 +18,15 @@
 //   • Sem campos de cartão, sem máscaras: os botões levam para a tela de
 //     pagamento em vez de cobrar no clique — e os textos dizem isso.
 //
+// O que mudou agora (etapa 3, parcelado):
+//   • O resumo separa CURSO SEM JUROS + JUROS + TOTAL, em vez de mostrar
+//     "Valor do curso" e "Total com juros" como se fossem concorrentes.
+//   • A PARCELA saiu da tabela e virou bloco próprio, em destaque: é o
+//     número que o aluno realmente desembolsa por mês.
+//   • A taxa já paga vira uma nota com check verde, fora da tabela, pra não
+//     parecer mais uma linha da cobrança (vem de valorTaxaPaga, do cursos.js).
+//   • Classes novas: .chk-parcela e .chk-pago, no fim do inscrever.css.
+//
 // etapaAtual: 'escolha' | 'pagar-taxa' | 'pagar-curso'
 //
 // 💡 PLANO PRESENCIAL DESATIVADO: blocos preservados sob condição sempre
@@ -54,9 +63,9 @@ const _trilha = _totalPassos === 2
           <i class="fa-solid fa-arrow-left"></i>
         </a>
         <% } else { %>
-        <a href="/inscrever/<%= turma.id %>" class="chk-voltar" aria-label="Voltar">
-          <i class="fa-solid fa-arrow-left"></i>
-        </a>
+          <a href="/minha-conta?sec=inscricoes" class="chk-voltar" aria-label="Voltar para minhas inscrições">
+            <i class="fa-solid fa-arrow-left"></i>
+          </a>
         <% } %>
         <div class="chk-topo-txt">
           <strong><%= curso.nome %></strong>
@@ -586,28 +595,62 @@ const _trilha = _totalPassos === 2
         <p>Parcelado no cartão de crédito, em <%= numParcelas %> vezes.</p>
       </div>
 
+      <%
+        // ══════════════════════════════════════════════════════════════════
+        // RESUMO DA ETAPA 3 — reformulado.
+        //
+        // Antes mostrava "Valor do curso" e "Total com juros" lado a lado, o
+        // que fazia os dois parecerem concorrentes ("afinal, pago 5,00 ou
+        // 5,18?"). Agora o juro ganha linha própria, então a conta fecha na
+        // vertical: curso + juros = total.
+        //
+        // A tabela guarda só a CONTA. O que o aluno realmente desembolsa por
+        // mês (a parcela) sai dela e ganha destaque próprio logo abaixo — era
+        // o número mais importante da tela e estava em cinza pequeno.
+        //
+        // A taxa de inscrição já foi paga na etapa 2 e NÃO entra nesta
+        // cobrança; a nota no fim deixa isso explícito, também fora da tabela
+        // pra não parecer mais uma linha da cobrança. `valorTaxaPaga` vem do
+        // cursos.js; o typeof protege o ramo PRESENCIAL, que renderiza esta
+        // mesma view sem essa variável.
+        // ══════════════════════════════════════════════════════════════════
+        const _jurosEmReais = parceladoComJuros
+          ? (parceladoComJuros.total - Number(valorCurso))
+          : 0;
+      %>
+
       <div class="chk-resumo anima" style="--d:2">
         <div class="chk-linha">
-          <span>Valor do curso</span><strong class="num"><%= formatBRL(valorCurso) %></strong>
+          <span>Curso, sem juros</span><strong class="num"><%= formatBRL(valorCurso) %></strong>
         </div>
-        <% if (parceladoComJuros) { %>
+        <% if (parceladoComJuros && parceladoComJuros.taxaJuros > 0) { %>
         <div class="chk-linha">
-          <span><%= numParcelas %>× de</span><strong class="num"><%= formatBRL(parceladoComJuros.valorParcela) %></strong>
-        </div>
-        <div class="chk-linha chk-linha-total">
-          <span>Total com juros</span><strong class="num"><%= formatBRL(parceladoComJuros.total) %></strong>
-        </div>
-        <% if (parceladoComJuros.taxaJuros > 0) { %>
-        <p class="chk-nota">Juros de <%= parceladoComJuros.taxaJuros %>% incluídos.</p>
-        <% } %>
-        <% } else { %>
-        <div class="chk-linha chk-linha-total">
-          <span>Total</span><strong class="num"><%= formatBRL(valorCurso) %></strong>
+          <span>Juros do parcelamento (<%= parceladoComJuros.taxaJuros %>%)</span>
+          <strong class="num">+ <%= formatBRL(_jurosEmReais) %></strong>
         </div>
         <% } %>
+        <div class="chk-linha chk-linha-total">
+          <span>Total</span>
+          <strong class="num"><%= formatBRL(parceladoComJuros ? parceladoComJuros.total : valorCurso) %></strong>
+        </div>
       </div>
 
-      <form method="POST" action="/inscrever/<%= turma.id %>/pagar-curso" novalidate class="anima" style="--d:3">
+      <% if (parceladoComJuros) { %>
+      <div class="chk-parcela anima" style="--d:3">
+        <span class="chk-parcela-rot">Você paga</span>
+        <strong class="chk-parcela-v num"><%= numParcelas %>× <%= formatBRL(parceladoComJuros.valorParcela) %></strong>
+        <span class="chk-parcela-sub">no cartão de crédito</span>
+      </div>
+      <% } %>
+
+      <% if (typeof valorTaxaPaga !== 'undefined' && Number(valorTaxaPaga) > 0) { %>
+      <p class="chk-pago anima" style="--d:3">
+        <i class="fa-solid fa-circle-check"></i>
+        Taxa de inscrição de <strong><%= formatBRL(valorTaxaPaga) %></strong> já paga — não entra nesta cobrança.
+      </p>
+      <% } %>
+
+      <form method="POST" action="/inscrever/<%= turma.id %>/pagar-curso" novalidate class="anima" style="--d:4">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input type="hidden" name="forma" value="CREDITO">
         <input type="hidden" name="parcelas" value="<%= numParcelas %>">

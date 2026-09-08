@@ -247,8 +247,25 @@ router.get('/inscrever/:turmaId', requireLogin, async (req, res) => {
   // 💡 matrícula fantasma (nunca pagou nada): não bloqueia. A pessoa vê a tela
   // normal de novo (contrato + escolha de plano) e, ao reenviar o formulário,
   // criarOuRetomarMatricula reaproveita este mesmo registro.
-  if (jaInscrito && !ehMatriculaFantasma(jaInscrito))
+  //
+  // 💡 NOVO — Matrícula NÃO-fantasma mas com pagamento ainda pendente: em vez
+  // de barrar com "você já está inscrito", manda o aluno pro ponto exato onde
+  // ele parou. Isso cobre quem abandonou o fluxo e voltou pela navegação
+  // normal (página do curso → inscrever-se), não só por "Minha conta" — e de
+  // quebra tira o beco sem saída da seta de voltar das etapas 2 e 3.
+  //
+  // A_VISTA fica de fora: lá taxa e curso são uma transação só, então não há
+  // "meio do caminho" — nesse plano a matrícula pendente é sempre fantasma e
+  // a pessoa refaz o fluxo daqui mesmo. (As rotas /pagar-taxa e /pagar-curso
+  // só aceitam PARCELADO/PRESENCIAL; um A_VISTA cairia num 404.)
+  if (jaInscrito && !ehMatriculaFantasma(jaInscrito)) {
+    if (jaInscrito.statusPagamento === 'PENDENTE' && jaInscrito.plano !== 'A_VISTA') {
+      return res.redirect(jaInscrito.taxaConfirmada
+        ? `/inscrever/${turma.id}/pagar-curso`
+        : `/inscrever/${turma.id}/pagar-taxa`);
+    }
     return res.render('erro', { mensagem: 'Você já está inscrito nesta turma. Veja em "Minha conta".' });
+  }
 
   const aluno = await prisma.usuario.findUnique({
     where: { id: req.session.usuarioId },
@@ -293,7 +310,16 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const jaInscrito = await prisma.matricula.findUnique({
     where: { alunoId_turmaId: { alunoId: req.session.usuarioId, turmaId: turma.id } },
   });
-  if (jaInscrito && !ehMatriculaFantasma(jaInscrito)) return res.redirect('/minha-conta?jaInscrito=1');
+  // Mesma lógica de retomada do GET acima: pendente segue pro ponto onde
+  // parou; só o resto (pago, cancelado, estornado) cai no aviso genérico.
+  if (jaInscrito && !ehMatriculaFantasma(jaInscrito)) {
+    if (jaInscrito.statusPagamento === 'PENDENTE' && jaInscrito.plano !== 'A_VISTA') {
+      return res.redirect(jaInscrito.taxaConfirmada
+        ? `/inscrever/${turma.id}/pagar-curso`
+        : `/inscrever/${turma.id}/pagar-taxa`);
+    }
+    return res.redirect('/minha-conta?jaInscrito=1');
+  }
 
   const aluno = await prisma.usuario.findUnique({
     where: { id: req.session.usuarioId },
@@ -694,6 +720,10 @@ router.get('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) => 
     turma: matricula.turma, curso: matricula.turma.curso, formatBRL,
     valorCurso: Number(valores.valorCurso), numParcelas, parceladoComJuros,
     plano: matricula.plano,
+    // 💡 NOVO — a taxa já foi paga na etapa 2 e NÃO entra nesta cobrança.
+    // A view usa isso só pra deixar explícito na tela, evitando que o aluno
+    // ache que o total exibido aqui é tudo o que ele desembolsou.
+    valorTaxaPaga: Number(valores.valorTaxaMatricula),
     etapaAtual: 'pagar-curso', erro: erroQuery,
   });
 });
@@ -999,4 +1029,4 @@ router.get('/inscricao/status/:matriculaId', requireLogin, async (req, res) => {
   res.json({ ok: true, ...m });
 });
 
-module.exports = router;  
+module.exports = router;

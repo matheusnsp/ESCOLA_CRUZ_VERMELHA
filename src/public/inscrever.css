@@ -953,3 +953,26 @@
       animation: none !important; transition-duration: .01ms !important;
     }
   }
+
+  /* ── Etapa 3: destaque da parcela ───────────────────────────────────────
+     O total é a conta; a parcela é o que sai do bolso. Por isso ela sai da
+     tabela e ganha bloco próprio. O verde ecoa o .chk-aviso-ok do topo. */
+     .chk-parcela {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      margin: 14px 0 0; padding: 16px 12px;
+      border: 1px solid #d8e4d8; border-radius: var(--r); background: var(--ok-bg);
+      text-align: center;
+    }
+    .chk-parcela-rot { font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--ok); }
+    .chk-parcela-v { font-family: 'Bricolage Grotesque', 'Manrope', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -.04em; line-height: 1.15; color: #0a5c43; }
+    .chk-parcela-sub { font-size: 12px; font-weight: 500; color: var(--tinta-40); }
+  
+    /* ── Etapa 3: nota do que já foi pago ───────────────────────────────────
+       Fora da tabela de propósito: dentro dela parecia mais uma linha da
+       cobrança, quando é o oposto — algo que NÃO será cobrado. */
+    .chk-pago {
+      display: flex; align-items: flex-start; gap: 9px;
+      margin: 12px 0 0; font-size: 13px; line-height: 1.5; color: var(--tinta-60);
+    }
+    .chk-pago i { color: var(--ok); margin-top: 2px; font-size: 13px; }
+    .chk-pago strong { color: var(--tinta); font-weight: 700; }

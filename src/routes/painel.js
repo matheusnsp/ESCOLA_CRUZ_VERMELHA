@@ -40,6 +40,37 @@ const FILTRO_MATRICULA_FANTASMA = {
   NOT: { statusPagamento: 'PENDENTE', taxaConfirmada: false },
 };
 
+// ─────────────────────────────────────────────────────────────────────────
+// 💡 NOVO — Ponto de retomada do pagamento.
+//
+// Problema que resolve: o aluno pagava a taxa de inscrição, fechava a aba, e
+// não tinha por onde voltar para pagar o curso. As rotas /pagar-taxa e
+// /pagar-curso (em cursos.js) JÁ aceitavam esse estado — só faltava um link
+// até elas a partir de "Minha conta".
+//
+// Retorna null quando não há o que retomar (já pago, cancelado, estornado).
+//
+// Nota: hoje o FILTRO_MATRICULA_FANTASMA acima esconde tudo que é
+// PENDENTE + taxaConfirmada:false, então na prática só o ramo do curso
+// dispara. Os outros ramos ficam aqui pra não quebrar se o filtro mudar.
+// ─────────────────────────────────────────────────────────────────────────
+function calcularRetomada(m) {
+  if (m.statusPagamento !== 'PENDENTE') return null;
+
+  if (!m.taxaConfirmada) {
+    // A_VISTA cobra taxa e curso na MESMA transação, então não há etapa
+    // intermediária: refaz o fluxo desde a escolha do plano.
+    return m.plano === 'A_VISTA'
+      ? { url: `/inscrever/${m.turmaId}`, rotulo: 'Retomar pagamento' }
+      : { url: `/inscrever/${m.turmaId}/pagar-taxa`, rotulo: 'Pagar a taxa de inscrição' };
+  }
+
+  // taxaConfirmada + A_VISTA = transação única já paga; nada a retomar.
+  if (m.plano === 'A_VISTA') return null;
+
+  return { url: `/inscrever/${m.turmaId}/pagar-curso`, rotulo: 'Continuar — pagar o curso' };
+}
+
 // Área do aluno — painel único com seções (inscricoes | dados | seguranca | excluir).
 router.get('/minha-conta', requireLogin, async (req, res) => {
   const secValidas = ['inscricoes', 'dados', 'seguranca', 'excluir'];
@@ -63,10 +94,13 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
     precisaTrocarSenha(usuario.id),
   ]);
 
+  // 💡 NOVO — anexa o ponto de retomada em cada matrícula (null quando não há).
+  const matriculasComRetomada = matriculas.map((m) => ({ ...m, retomada: calcularRetomada(m) }));
+
   res.render('minha-conta', {
     usuario,
     sec,
-    matriculas,
+    matriculas: matriculasComRetomada,
     matriculasAtivas,
     docMascarado: usuario.cpfCnpj ? mascarar(usuario.cpfCnpj) : usuario.passaporte ? usuario.passaporte : '—',
     formatBRL,
@@ -99,11 +133,14 @@ router.post('/conta/dados', requireLogin, async (req, res) => {
       prisma.matricula.count({ where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' }, ...FILTRO_MATRICULA_FANTASMA } }),
       precisaTrocarSenha(usuario.id),
     ]);
+    // Tela de erro de validação: o botão de retomada não é o foco aqui, mas
+    // anexamos mesmo assim pra manter a lista consistente entre as telas.
+    const matriculasComRetomada = matriculas.map((m) => ({ ...m, retomada: calcularRetomada(m) }));
     return res.status(400).render('minha-conta', {
       usuario: { ...usuario, escolaridade: req.body.escolaridade || '', escolaridadeSituacao: req.body.escolaridadeSituacao || '', genero: req.body.genero || '',
         cep: req.body.cep || '', logradouro: req.body.logradouro || '', numero: req.body.numero || '',
         complemento: req.body.complemento || '', bairro: req.body.bairro || '', cidade: req.body.cidade || '', uf: req.body.uf || '' },
-      sec: 'dados', matriculas, matriculasAtivas,
+      sec: 'dados', matriculas: matriculasComRetomada, matriculasAtivas,
       docMascarado: usuario.cpfCnpj ? mascarar(usuario.cpfCnpj) : usuario.passaporte ? usuario.passaporte : '—',
       formatBRL, inscrito: false, escolaridades: ESCOLARIDADES, situacoes: SITUACOES_ESCOLARIDADE, generos: GENEROS, ufs: UFS, salvo: false,
       erro: null, erroDados: resultado.error.issues.map((i) => i.message).join(' '),
@@ -149,10 +186,11 @@ router.post('/conta/excluir', requireLogin, async (req, res) => {
       }),
       precisaTrocarSenha(usuario.id),
     ]);
+    const matriculasComRetomada = matriculas.map((m) => ({ ...m, retomada: calcularRetomada(m) }));
     return res.status(400).render('minha-conta', {
       usuario,
       sec: 'excluir',
-      matriculas,
+      matriculas: matriculasComRetomada,
       matriculasAtivas,
       docMascarado: usuario.cpfCnpj ? mascarar(usuario.cpfCnpj) : usuario.passaporte ? usuario.passaporte : '—',
       formatBRL,
