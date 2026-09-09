@@ -60,7 +60,24 @@ async function avisarMatriculaConfirmada(matriculaId) {
     }
 
     const base = process.env.APP_URL || 'https://escola-cruz-vermelha.onrender.com';
-    const dataBR = (d) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
+    // ── Duas formatações de data, e a diferença importa ──────────────────
+    //
+    // Turma.inicioPrevisto é um TIMESTAMP (gravado ao meio-dia). Representa
+    // um instante, então converter pro fuso de Brasília é o certo.
+    const dataBR = (d) =>
+      new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
+    // AulaData.data é uma coluna DATE — sem hora nenhuma. O Prisma a
+    // devolve como meia-noite UTC, e aplicar timeZone ali subtrai 3 horas,
+    // jogando a data pro DIA ANTERIOR: uma aula do dia 24 chegava no e-mail
+    // como 23. Data pura não é um instante, é um dia do calendário — então
+    // lemos os componentes em UTC, sem conversão nenhuma.
+    const p2 = (n) => String(n).padStart(2, '0');
+    const dataPuraBR = (d) => {
+      const dt = new Date(d);
+      return `${p2(dt.getUTCDate())}/${p2(dt.getUTCMonth() + 1)}/${dt.getUTCFullYear()}`;
+    };
 
     await enviarEmailMatriculaConfirmada(m.aluno.email, String(m.aluno.nome).split(' ')[0], {
       curso: m.turma.curso.nome,
@@ -68,7 +85,7 @@ async function avisarMatriculaConfirmada(matriculaId) {
       // Cronograma completo quando a turma tem aulas cadastradas — evita o
       // aluno aparecer no dia errado, que é caro pra secretaria resolver.
       aulas: (m.turma.aulas || []).map((a) => ({
-        data: dataBR(a.data),
+        data: dataPuraBR(a.data),   // coluna DATE — sem conversão de fuso
         horario: a.horario || '',
       })),
       valorPago: formatBRL(Number(m.valorCurso)),
