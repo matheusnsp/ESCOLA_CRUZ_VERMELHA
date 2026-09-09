@@ -935,14 +935,18 @@ router.post('/inscricao/cartao/:matriculaId', requireLogin, async (req, res) => 
     },
   });
 
-  // No parcelado, a matrícula guarda o total COM juros só pra exibição em
-  // "Minha conta" (curso c/ juros + taxa à vista). Pagamento.valor segue base.
-  if (etapa === 'curso' && matricula.plano === 'PARCELADO') {
-    await prisma.matricula.update({
-      where: { id: matricula.id },
-      data: { valorCurso: cobranca.valorCobranca + Number(cobranca.taxa || 0) },
-    });
-  }
+  // 💡 CORRIGIDO — aqui havia um update gravando valorCurso com o total COM
+  // JUROS, ANTES de saber se a cobrança seria aprovada. Consequência real,
+  // vista em produção: um aluno teve três tentativas recusadas pelo emissor
+  // do cartão e ficou com R$ 255,52 gravado quando devia R$ 250 — juros de
+  // um parcelamento que nunca aconteceu. Pior: se ele fosse pagar em
+  // dinheiro, a secretaria cobraria o valor inflado da tela.
+  //
+  // O campo alimenta a tela de matrículas, o total do financeiro e o
+  // relatório do contador, então o erro não ficava só na visão do aluno.
+  //
+  // Agora o valorCurso só é atualizado quando o pagamento é CONFIRMADO —
+  // no webhook, junto com a virada de status. Ver routes/webhook.js.
 
   try {
     const resultadoGateway = await criarTransacao({

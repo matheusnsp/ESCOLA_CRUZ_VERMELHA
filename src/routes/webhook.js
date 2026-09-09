@@ -263,6 +263,26 @@ router.post('/webhook/unicopag', express.json(), async (req, res) => {
           dadosMatricula.taxaConfirmadaEm = new Date();
         }
 
+        // 💡 NOVO — PARCELADO: só AGORA o valorCurso recebe o total com juros.
+        //
+        // Isto ficava em cursos.js, no momento de ENVIAR o cartão pro gateway
+        // — ou seja, antes de saber se seria aprovado. Um aluno com três
+        // recusas do emissor ficava com juros gravados de um parcelamento que
+        // nunca existiu, e a secretaria cobraria esse valor se ele fosse pagar
+        // em dinheiro.
+        //
+        // Aqui estamos depois da trava atômica de idempotência: a cobrança foi
+        // confirmada de fato, e só um postback chega até esta linha.
+        //
+        // amount_total do postback já vem com juros; se não vier, cai no valor
+        // base + taxa, que é o pior caso aceitável (nunca infla).
+        if (m?.plano === 'PARCELADO') {
+          const totalComJuros = Number(tx.amount_total ?? payload.amount_total ?? 0) / 100;
+          const base = Number(pagamento.valor || 0);
+          const taxa = Number(m.valorTaxaMatricula || 0);
+          dadosMatricula.valorCurso = (totalComJuros > 0 ? totalComJuros : base) + taxa;
+        }
+
         await prisma.matricula.update({
           where: { id: pagamento.matriculaId },
           data: dadosMatricula,
