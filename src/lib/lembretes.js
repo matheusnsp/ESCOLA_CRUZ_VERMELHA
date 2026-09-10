@@ -278,7 +278,7 @@ function montarPendencia(m) {
 /**
  * Texto pronto do WhatsApp, por situação.
  *
- * Sai do número de quem clicou (o wa.me abre a conversa no WhatsApp da
+ * Sai do número de quem clicou (o link abre a conversa no WhatsApp da
  * pessoa logada no computador), então o texto se apresenta como "aqui é da
  * Escola" — a aluna não necessariamente tem o número salvo.
  */
@@ -308,8 +308,31 @@ function montarTextoWhats(m, pendencia) {
     + `A turma começa em ${inicio}. Você pode retomar por aqui:\n${pendencia.link}`;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Monta a URL do WhatsApp com o texto já preenchido.
+//
+// 💡 web.whatsapp.com/send, NÃO wa.me.
+//
+// O wa.me tenta abrir o aplicativo desktop primeiro. Em máquina sem o
+// WhatsApp instalado ele não tem pra onde ir e o resultado é uma aba em
+// branco — aconteceu com uma pessoa da secretaria, e o link ficava parado
+// na URL do próprio POST.
+//
+// Não dá pra detectar se o app existe: o navegador não expõe essa
+// informação, nem pro servidor nem pro JavaScript da página. Então em vez
+// de escolher entre dois caminhos, usamos o que atende os dois casos —
+// quem tem o app instalado recebe do próprio WhatsApp Web a oferta de
+// abrir nele, e quem não tem segue no navegador.
+//
+// Assume Brasil (DDI 55). Retorna null se o celular não tiver 10 ou 11
+// dígitos, pra não gerar link quebrado.
+// ─────────────────────────────────────────────────────────────────────────
+function urlWhatsApp(digitos, texto) {
+  return `https://web.whatsapp.com/send?phone=55${digitos}&text=${encodeURIComponent(texto)}`;
+}
+
 /**
- * Link wa.me com o texto já preenchido. Assume Brasil (DDI 55).
+ * Link do WhatsApp com o texto da pendência já preenchido.
  * Retorna null se o celular cadastrado não tiver 10 ou 11 dígitos.
  */
 function montarLinkWhats(m) {
@@ -317,7 +340,7 @@ function montarLinkWhats(m) {
   if (digitos.length !== 10 && digitos.length !== 11) return null;
   const pendencia = montarPendencia(m);
   const texto = montarTextoWhats(m, pendencia);
-  return `https://wa.me/55${digitos}?text=${encodeURIComponent(texto)}`;
+  return urlWhatsApp(digitos, texto);
 }
 
 /**
@@ -457,14 +480,14 @@ function montarTextoProspeccao(aluno, turmasAbertas = []) {
 }
 
 /**
- * Link wa.me de prospecção. Assume Brasil (DDI 55).
+ * Link do WhatsApp para prospecção. Ver urlWhatsApp() acima.
  * Retorna null se o celular cadastrado não tiver 10 ou 11 dígitos.
  */
 function montarLinkProspeccao(aluno, turmasAbertas = []) {
   const digitos = String(aluno?.celular || '').replace(/\D/g, '');
   if (digitos.length !== 10 && digitos.length !== 11) return null;
   const texto = montarTextoProspeccao(aluno, turmasAbertas);
-  return `https://wa.me/55${digitos}?text=${encodeURIComponent(texto)}`;
+  return urlWhatsApp(digitos, texto);
 }
 
 module.exports = {
