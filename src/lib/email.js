@@ -30,26 +30,26 @@ const REMETENTE = process.env.EMAIL_REMETENTE || 'Cruz Vermelha <no-reply@cruzve
 // Outlook pede permissão), então o texto alternativo é o que essas pessoas
 // vão ler no lugar da logo — por isso ele diz o nome por extenso.
 // ─────────────────────────────────────────────────────────────────────────
-// O ?v=2 no fim NÃO é enfeite. O express.static serve com cache de 7 dias e
-// o Gmail ainda guarda uma cópia no proxy dele — trocando só o arquivo, sem
-// mexer na URL, parte das pessoas continuaria vendo a logo antiga por dias.
-// Query string diferente = URL diferente = cache furado, sem precisar
-// renomear o arquivo. Se trocar a arte de novo, suba pra v=3.
-const LOGO_URL = process.env.EMAIL_LOGO_URL
-  || 'https://escola.cursoscruzvermelha.org/img/logo-email.png?v=2';
-
-// A logo traz o nome e a filial na própria arte, então não há texto ao lado
-// — seria repetição. Largura maior que antes porque a imagem é horizontal,
-// não mais o símbolo quadrado.
+// ─────────────────────────────────────────────────────────────────────────
+// Cabeçalho de todos os e-mails.
 //
-// O `alt` continua importando: vários clientes bloqueiam imagem por padrão
-// (o Outlook pede permissão), e é ele que essas pessoas leem no lugar da
-// logo. Por isso diz o nome por extenso, não "logo".
+// Só texto, sem imagem — de propósito. Logo em e-mail depende de o cliente
+// carregar recurso externo, e vários bloqueiam por padrão (o Outlook pede
+// permissão). Com texto, o nome da instituição aparece sempre, para todo
+// mundo, sem depender de nada.
+//
+// Numa constante só porque o HTML se repetia em oito funções — mudar o
+// cabeçalho exigia caçar cada uma.
+// ─────────────────────────────────────────────────────────────────────────
 const CABECALHO = `
-      <img src="${LOGO_URL}"
-           alt="Cruz Vermelha Brasileira - Rio de Janeiro"
-           width="240"
-           style="width:240px;max-width:75%;height:auto;display:block;margin-bottom:22px;border:0;">`;
+      <div style="margin-bottom:22px;">
+        <div style="font-family:Inter,Arial,sans-serif;font-size:19px;font-weight:800;color:#cc0000;line-height:1.2;">
+          Cruz Vermelha Brasileira
+        </div>
+        <div style="font-family:Inter,Arial,sans-serif;font-size:13px;font-weight:600;color:#718096;line-height:1.4;margin-top:2px;">
+          Escola de Educação e Saúde &middot; Rio de Janeiro
+        </div>
+      </div>`;
 
 // ─────────────────────────────────────────────────────────────────────────
 // 💡 NOVO — Espelho no terminal.

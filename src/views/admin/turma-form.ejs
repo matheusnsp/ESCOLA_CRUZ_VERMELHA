@@ -4,12 +4,33 @@
 var t = turma || {};
 var novo = !t.id;
 
+// Converte a data do banco para o formato que o <input type="date"> entende
+// (AAAA-MM-DD).
+//
+// 💡 CORRIGIDO — usa os getters UTC, não os locais.
+//
+// AulaData.data é uma coluna DATE, sem hora nenhuma. O Prisma a devolve como
+// meia-noite UTC, e getDate() responde "que dia era, no fuso do SERVIDOR,
+// naquele instante". Em servidor UTC (o Render) coincide e dá certo — foi por
+// isso que o formulário sempre pareceu correto em produção. Mas rodando
+// local, com o Mac em Brasília, meia-noite UTC ainda é 21h do dia anterior:
+// uma aula do dia 24 aparecia como 23.
+//
+// O perigo não era só visual. A secretaria abriria a turma pra mudar
+// qualquer coisa, o campo já viria com o dia errado, ela salvaria sem notar,
+// e a data errada iria pro banco — cada edição empurrando a aula um dia
+// pra trás.
+//
+// Data pura não é um instante: "24 de setembro" é 24 de setembro em qualquer
+// fuso. Ler em UTC devolve exatamente o número que foi gravado, em qualquer
+// máquina. E o inicioPrevisto (timestamp ao meio-dia) continua correto aqui
+// também — meio-dia UTC é o mesmo dia em qualquer leitura.
 function formatarDataInput(data) {
   if (!data) return '';
   const d = new Date(data);
-  const ano = d.getFullYear();
-  const mes = String(d.getMonth() + 1).padStart(2, '0');
-  const dia = String(d.getDate()).padStart(2, '0');
+  const ano = d.getUTCFullYear();
+  const mes = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dia = String(d.getUTCDate()).padStart(2, '0');
   return `${ano}-${mes}-${dia}`;
 }
 %>
