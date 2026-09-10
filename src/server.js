@@ -79,6 +79,22 @@ app.use(express.json());
 // vive em ./routes/webhook.js.
 app.use(require('./routes/webhook'));
 
+// Libera as imagens de /img para uso fora do site.
+//
+// O helmet marca todo recurso como cross-origin-resource-policy: same-origin,
+// o que faz o navegador RECUSAR a imagem quando ela vem de outra origem.
+// E-mail é sempre outra origem (mail.google.com, outlook.com, app do
+// celular) — então a logo dos e-mails aparecia como texto alternativo.
+//
+// Só /img: são assets públicos, não há nada sensível ali. O resto do site
+// continua com o padrão restritivo do helmet.
+//
+// ⚠️ Precisa vir ANTES do express.static — depois dele a resposta já saiu.
+app.use('/img', (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+});
+
 // Arquivos estaticos (CSS, JS, imagens). index:false para a home ser a rota '/'.
 app.use(express.static(path.join(__dirname, 'public'), { index: false, maxAge: '7d' }));
 

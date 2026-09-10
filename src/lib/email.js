@@ -13,6 +13,53 @@ if (TEM_RESEND) {
 const REMETENTE = process.env.EMAIL_REMETENTE || 'Cruz Vermelha <no-reply@cruzvermelha-rj.org.br>';
 
 // ─────────────────────────────────────────────────────────────────────────
+// Cabeçalho visual de todos os e-mails.
+//
+// Numa constante só porque o HTML estava repetido em oito funções — trocar
+// a logo exigia caçar cada uma.
+//
+// A imagem precisa estar numa URL PÚBLICA: cliente de e-mail não carrega
+// arquivo local nem anexo embutido de forma confiável. Ela mora no próprio
+// site (src/public/img/), servida pelo express.static — versionada junto do
+// código, sem depender de outro serviço.
+//
+// PNG, não WebP: Outlook desktop e alguns webmails não renderizam WebP, e o
+// aluno veria um quadrado vazio.
+//
+// O `alt` não é enfeite. Vários clientes bloqueiam imagem por padrão (o
+// Outlook pede permissão), então o texto alternativo é o que essas pessoas
+// vão ler no lugar da logo — por isso ele diz o nome por extenso.
+// ─────────────────────────────────────────────────────────────────────────
+const LOGO_URL = process.env.EMAIL_LOGO_URL
+  || 'https://escola.cursoscruzvermelha.org/img/logo-email.png';
+
+// Layout em TABELA, não flex: cliente de e-mail (Outlook em especial) ignora
+// display:flex. Tabela de uma linha é o jeito que funciona em todos.
+//
+// A logo é só o símbolo da cruz, sem lettering — por isso o nome vem ao lado,
+// em texto. Também é o que salva quem tem imagem bloqueada: mesmo sem
+// carregar nada, a pessoa lê de quem é o e-mail.
+const CABECALHO = `
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
+        <tr>
+          <td style="padding-right:12px;vertical-align:middle;">
+            <img src="${LOGO_URL}"
+                 alt="Cruz Vermelha"
+                 width="44"
+                 style="width:44px;height:auto;display:block;border:0;">
+          </td>
+          <td style="vertical-align:middle;">
+            <div style="font-family:Inter,Arial,sans-serif;font-size:17px;font-weight:800;color:#cc0000;line-height:1.2;">
+              Cruz Vermelha Brasileira
+            </div>
+            <div style="font-family:Inter,Arial,sans-serif;font-size:13px;font-weight:600;color:#718096;line-height:1.3;">
+              Escola de Educação e Saúde &middot; Rio de Janeiro
+            </div>
+          </td>
+        </tr>
+      </table>`;
+
+// ─────────────────────────────────────────────────────────────────────────
 // 💡 NOVO — Espelho no terminal.
 //
 // Antes, o link/código só aparecia no console quando o Resend NÃO estava
@@ -86,7 +133,7 @@ async function enviar(email, subject, html, descricaoDev, link) {
 function moldura(titulo, nome, texto, botaoLabel, link, rodape) {
   return `
     <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;">
-      <h2 style="color:#cc0000;margin-bottom:8px;">Cruz Vermelha</h2>
+      ${CABECALHO}
       <h3 style="margin-bottom:16px;">${titulo}</h3>
       <p>Olá, <strong>${nome}</strong>!</p>
       <p>${texto}</p>
@@ -126,7 +173,7 @@ async function enviarEmailResetSenha(email, nome, link) {
 async function enviarEmailConfirmacao(email, nome, link) {
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;">
-      <h2 style="color:#cc0000;margin-bottom:8px;">Cruz Vermelha</h2>
+      ${CABECALHO}
       <h3 style="margin-bottom:16px;">Bem-vindo à Escola de Educação e Saúde</h3>
       <p>Olá, <strong>${nome}</strong>!</p>
       <p>Sua conta foi criada. A partir de agora você pode se inscrever nos
@@ -170,7 +217,7 @@ async function enviarEmailConfirmacao(email, nome, link) {
 async function enviarCodigo2fa(email, nome, codigo) {
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;">
-      <h2 style="color:#cc0000;margin-bottom:8px;">Cruz Vermelha</h2>
+      ${CABECALHO}
       <h3 style="margin-bottom:16px;">Código de acesso à secretaria</h3>
       <p>Olá, <strong>${nome}</strong>!</p>
       <p>Use o código abaixo para concluir o login no painel da secretaria:</p>
@@ -183,7 +230,7 @@ async function enviarCodigo2fa(email, nome, codigo) {
 async function enviarAlertaLoginSecretaria(email, nome, quando, ip) {
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;">
-      <h2 style="color:#cc0000;margin-bottom:8px;">Cruz Vermelha</h2>
+      ${CABECALHO}
       <h3 style="margin-bottom:16px;">Novo acesso ao painel da secretaria</h3>
       <p>Olá, <strong>${nome}</strong>!</p>
       <p>Registramos um login no painel da secretaria:</p>
@@ -248,7 +295,7 @@ async function enviarLembretePagamentoPendente(email, nome, dados) {
   const { curso, inicioTurma, link } = dados;
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;">
-      <h2 style="color:#cc0000;margin-bottom:8px;">Cruz Vermelha</h2>
+      ${CABECALHO}
       <h3 style="margin-bottom:16px;">Sua vaga está reservada</h3>
       <p>Olá, <strong>${nome}</strong>!</p>
       <p>Recebemos o pagamento da sua taxa de inscrição em <strong>${curso}</strong>
@@ -282,7 +329,7 @@ async function enviarLembreteVespera(email, nome, dados) {
   const { curso, inicioTurma, link } = dados;
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;">
-      <h2 style="color:#cc0000;margin-bottom:8px;">Cruz Vermelha</h2>
+      ${CABECALHO}
       <h3 style="margin-bottom:16px;">Seu curso começa amanhã</h3>
       <p>Olá, <strong>${nome}</strong>!</p>
       <p>O curso <strong>${curso}</strong> começa em <strong>${inicioTurma}</strong>
@@ -319,7 +366,7 @@ async function enviarLembreteInscricaoIncompleta(email, nome, dados) {
   const { curso, inicioTurma, link, valorTaxa } = dados;
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;">
-      <h2 style="color:#cc0000;margin-bottom:8px;">Cruz Vermelha</h2>
+      ${CABECALHO}
       <h3 style="margin-bottom:16px;">Sua inscrição ficou pela metade</h3>
       <p>Olá, <strong>${nome}</strong>!</p>
       <p>Você começou a inscrição no curso <strong>${curso}</strong>, mas o
@@ -400,7 +447,7 @@ async function enviarEmailMatriculaConfirmada(email, nome, dados) {
 
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;">
-      <h2 style="color:#cc0000;margin-bottom:8px;">Cruz Vermelha</h2>
+      ${CABECALHO}
       <h3 style="margin-bottom:16px;">Matrícula confirmada</h3>
       <p>Olá, <strong>${nome}</strong>!</p>
       <p>Sua matrícula em <strong>${curso}</strong> está confirmada.
