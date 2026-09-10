@@ -421,6 +421,28 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
     }
 
     // ----- PIX: transação criada agora, QR Code na tela de retorno -----
+    //
+    // 💡 NOVO — Mesma proteção da taxa: reaproveita o QR recente em vez de
+    // gerar outro. Ver a explicação completa em /pagar-taxa, mais abaixo.
+    // Cada clique gerava uma cobrança nova, e cada cobrança é pagável.
+    const JANELA_PIX_MS = 30 * 60 * 1000;
+    const pixRecente = await prisma.pagamento.findFirst({
+      where: {
+        matriculaId: matricula.id,
+        tipo: 'CURSO',
+        status: 'PENDENTE',
+        metodo: 'PIX',
+        pixQrCode: { not: null },
+        criadoEm: { gt: new Date(Date.now() - JANELA_PIX_MS) },
+      },
+      orderBy: { criadoEm: 'desc' },
+    });
+
+    if (pixRecente) {
+      console.log(`[PIX] Reaproveitando QR existente (${pixRecente.id}) da matrícula ${matricula.id}.`);
+      return res.redirect(urlRetorno(matricula.id, { pix: true, etapa: 'curso' }));
+    }
+
     const pagamentoPendente = await prisma.pagamento.create({
       data: {
         matriculaId: matricula.id,
@@ -610,6 +632,39 @@ router.post('/inscrever/:turmaId/pagar-taxa', requireLogin, async (req, res) => 
   }
 
   // ----- PIX -----
+  //
+  // 💡 NOVO — Reaproveita o QR recente em vez de gerar outro.
+  //
+  // Antes, cada clique em "Gerar QR Code" criava uma cobrança nova. Em
+  // produção isso rendeu uma matrícula com 17 PIX abertos, e várias com 2 a
+  // 6 — gente clicando de novo por achar que não funcionou. Cada QR é uma
+  // cobrança válida: se a pessoa abrir dois no banco, paga duas vezes.
+  //
+  // Se existe um QR gerado há menos de 30 minutos, devolvemos ELE. A pessoa
+  // vê o mesmo código, e não há uma segunda cobrança pra pagar por engano.
+  //
+  // Por que 30 minutos e não "qualquer QR pendente": cobrança PIX expira do
+  // lado da Woovi. Reaproveitar um QR de ontem mostraria um código vencido,
+  // que é pior do que gerar outro — a pessoa tentaria pagar e falharia sem
+  // entender.
+  const JANELA_PIX_MS = 30 * 60 * 1000;
+  const pixRecente = await prisma.pagamento.findFirst({
+    where: {
+      matriculaId: matricula.id,
+      tipo: 'TAXA',
+      status: 'PENDENTE',
+      metodo: 'PIX',
+      pixQrCode: { not: null },   // só serve se o QR de fato existe
+      criadoEm: { gt: new Date(Date.now() - JANELA_PIX_MS) },
+    },
+    orderBy: { criadoEm: 'desc' },
+  });
+
+  if (pixRecente) {
+    console.log(`[PIX] Reaproveitando QR existente (${pixRecente.id}) da matrícula ${matricula.id}.`);
+    return res.redirect(urlRetorno(matricula.id, { pix: true, etapa: 'taxa' }));
+  }
+
   const pagamentoPendente = await prisma.pagamento.create({
     data: {
       matriculaId: matricula.id,
@@ -899,6 +954,47 @@ router.post('/inscricao/cartao/:matriculaId', requireLogin, async (req, res) => 
     return res.json({ ok: true, status: 'PAGO' });
   if (etapa === 'curso' && !matricula.taxaConfirmada && matricula.plano === 'PARCELADO')
     return res.status(400).json({ ok: false, mensagem: 'A taxa de inscrição ainda não foi confirmada.' });
+
+  // ── 💡 NOVO — Trava contra cobrança duplicada ──────────────────────────
+  //
+  // Caso real, visto em produção: um aluno preencheu o cartão, a tela ficou
+  // "processando" (o polling esperando o webhook), ele achou que não tinha
+  // dado certo e enviou de novo. As duas cobranças passaram — pagou a taxa
+  // de inscrição DUAS vezes, R$ 200 em vez de R$ 100.
+  //
+  // A janela do problema são os segundos entre ENVIAR o cartão e o webhook
+  // CONFIRMAR. Naquele caso foram 42 segundos: a segunda tentativa entrou 4
+  // segundos ANTES de a primeira ser confirmada — então os guards de
+  // taxaConfirmada/statusPagamento logo acima não tinham como pegar, porque
+  // a matrícula ainda não tinha mudado de estado.
+  //
+  // Aqui olhamos o Pagamento, não a Matrícula: se já existe uma cobrança do
+  // mesmo tipo em andamento (PENDENTE, já enviada ao gateway) criada há
+  // pouco, esta segunda é recusada.
+  //
+  // Por que 3 minutos: é folga suficiente pro webhook chegar, e curto o
+  // bastante pra não travar quem teve o cartão recusado e quer tentar outro.
+  // Cobrança recusada vira CANCELADO (ver o catch mais abaixo), então nem
+  // entra nesta contagem.
+  const JANELA_DUPLICIDADE_MS = 3 * 60 * 1000;
+  const emAndamento = await prisma.pagamento.findFirst({
+    where: {
+      matriculaId: matricula.id,
+      tipo: etapa === 'taxa' ? 'TAXA' : 'CURSO',
+      status: 'PENDENTE',
+      gatewayRef: { not: null },  // já foi ao gateway; rascunho local não conta
+      criadoEm: { gt: new Date(Date.now() - JANELA_DUPLICIDADE_MS) },
+    },
+    orderBy: { criadoEm: 'desc' },
+  });
+
+  if (emAndamento) {
+    console.warn(`[CARTÃO] Cobrança duplicada barrada. Matrícula ${matricula.id}, etapa ${etapa}, pagamento em andamento ${emAndamento.id}.`);
+    return res.status(409).json({
+      ok: false,
+      mensagem: 'Já existe uma cobrança em andamento para esta etapa. Aguarde alguns instantes — se o banco aprovar, a página avança sozinha.',
+    });
+  }
 
   const cobranca = await calcularCobrancaCartao(matricula, etapa, req.session.usuarioId);
 

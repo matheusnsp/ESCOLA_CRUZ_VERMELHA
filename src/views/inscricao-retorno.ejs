@@ -513,7 +513,22 @@ const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
       iniciarPolling();
 
     } catch (e) {
-      voltarAoFormulario('A conexão caiu no meio do envio. Confira suas inscrições antes de tentar de novo.');
+      // A conexão caiu — mas isso NÃO quer dizer que a cobrança não foi feita.
+      // O request pode ter chegado, sido processado e aprovado; o que se
+      // perdeu foi a resposta voltando.
+      //
+      // Reabilitar o botão aqui foi o que causou um pagamento duplicado em
+      // produção: o aluno redigitou o cartão e enviou de novo enquanto a
+      // primeira cobrança estava sendo confirmada.
+      //
+      // Então vamos ao polling em vez de oferecer retentar. Se a cobrança
+      // passou, a tela conclui sozinha. Se não passou, o polling estoura o
+      // tempo e aí sim o formulário volta.
+      set('envio', 'feito', 'Enviado');
+      set('banco', 'atual', 'Verificando');
+      erroTx.textContent = 'A conexão oscilou. Estamos verificando se o pagamento foi processado — não feche esta janela.';
+      erro.classList.add('visivel');
+      iniciarPolling();
     }
   });
 })();
