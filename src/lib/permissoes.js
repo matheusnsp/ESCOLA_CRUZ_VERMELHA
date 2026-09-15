@@ -21,11 +21,10 @@ const PERMISSOES = {
     'taxa:aprovar',        // confirmar pagamento da TAXA de inscrição
     'pagamento:confirmar', // confirmar pagamento do CURSO (só confirmar —
                             // cancelar/estornar continuam do Financeiro/Dev)
-    'pendentes:gerenciar', // ver /pendentes e enviar lembrete de pagamento.
-                            // Antes dependia de financeiro:leitura, o que
-                            // amarrava a tela de cobrança à aba de tesouraria
-                            // — são coisas diferentes: cobrar é trabalho de
-                            // secretaria, ver o caixa não.
+    'pendentes:gerenciar', // ver /pendentes, enviar lembrete, registrar contato
+                        // por WhatsApp e REMOVER matrícula fantasma (só as
+                        // que nunca tiveram dinheiro: PENDENTE +
+                        // taxaConfirmada:false + zero gatewayRef).
     // 💡 REMOVIDO: 'turmas:criar'. Ela estava aqui mas NENHUMA rota a exigia
     // — quem cria turma é POST /turmas, que pede 'turmas:gerenciar'. Uma
     // permissão que não controla nada só engana quem lê a lista depois.
