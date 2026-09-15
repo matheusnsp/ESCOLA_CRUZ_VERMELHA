@@ -930,3 +930,34 @@ body.dark .adm-permissao {
   background: #2a2a2a;
   color: #f1f1f1;
 }
+
+/* ── Abas da tela de pendentes ─────────────────────────────────────────── */
+.pend-abas { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 18px; }
+
+.pend-aba {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 9px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  background: rgba(127,127,127,.12);
+  color: inherit;
+}
+.pend-aba:hover { background: rgba(127,127,127,.20); }
+.pend-aba.on { background: #c8102e; color: #fff; }
+
+.pend-num {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 20px;
+  background: rgba(0,0,0,.22);
+}
+.pend-aba.on .pend-num { background: rgba(255,255,255,.25); }
+
+.pend-intro { padding: 12px 14px 0; margin: 0; line-height: 1.55; }
+.pend-alerta { color: #d69e2e; font-weight: 600; }
+.pend-velha { opacity: .72; }
