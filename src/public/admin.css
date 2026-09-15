@@ -13,6 +13,9 @@
     --vermelho-bg:  #fff4f6;
     --vermelho-txt: #c8102e;   /* vermelho usado em TEXTO (precisa de contraste) */
     --foco:         rgba(200, 16, 46, .12);
+    --whats:        #25d366;
+    --whats-esc:    #1fbf5c;
+    --whats-tx:     #0a2e1a;
     --azul:         #1d4ed8;
     --azul-bg:      #dbeafe;
   
@@ -55,6 +58,9 @@
     --vermelho-bg:  #2a1a1e;
     --vermelho-txt: #ff8093;   /* 7.5:1 no card escuro */
     --foco:         rgba(216, 27, 60, .22);
+    --whats:        #25d366;
+    --whats-esc:    #1fbf5c;
+    --whats-tx:     #0a2e1a;
     --azul:         #93b8f8;
     --azul-bg:      #16233d;
   
@@ -963,14 +969,29 @@ body.dark .adm-permissao {
 }
 .adm-aba.on .adm-aba-num { background: rgba(255,255,255,.22); color: #fff; }
 
-/* ===== Texto de abertura dentro de uma caixa ============= */
+/* substitui o .adm-box-intro que o patch criou */
 .adm-box-intro {
   margin: 0; padding: 16px 20px;
   border-bottom: 1px solid var(--linha2);
   font-size: 13px; line-height: 1.6; color: var(--mut);
+  max-width: 78ch;              /* medida de leitura */
+  display: flex; gap: 9px; align-items: flex-start;
 }
+.adm-box-intro > i { margin-top: 3px; flex: none; color: var(--mut); }
 .adm-box-intro strong { color: var(--tinta-60); font-weight: 700; }
 .adm-box-intro em { font-style: normal; color: var(--tinta-60); font-weight: 600; }
+
+/* ===== Pré-visualização de mensagem (contato-whatsapp) ===== */
+.adm-msg-previa {
+  white-space: pre-line;        /* respeita os \n do lembretes.js */
+  background: var(--bg);
+  border: 1px solid var(--linha);
+  border-left: 3px solid var(--ok-tx);
+  border-radius: var(--r-s);
+  padding: 16px 18px;
+  font-size: 14px; line-height: 1.65; color: var(--tinta-60);
+  max-width: 62ch;              /* largura de bolha de mensagem */
+}
 
 /* ===== Enfase e des-enfase em texto de tabela ============ */
 .adm-txt-alerta { color: var(--alerta-tx); font-weight: 700; }
@@ -987,3 +1008,49 @@ body.dark .adm-permissao {
   background: transparent; border-style: dashed;
   color: var(--mut); cursor: not-allowed; opacity: 1;
 }
+
+/* ===== Pagina de contato por WhatsApp ====================
+   Estava como <style> inline em contato-whatsapp.ejs, com
+   var(--adm-mut) (token inexistente) e branco sobre #25d366
+   a 1.98:1. Texto escuro sobre o verde da marca da 7.46:1.  */
+.wpp-box { max-width: 560px; padding: 24px; }
+
+.wpp-alvo { margin: 0 0 18px; font-size: 15px; line-height: 1.5; }
+.wpp-alvo span { display: block; font-size: 13px; margin-top: 2px; }
+
+.wpp-btn {
+  display: inline-flex; align-items: center; gap: 9px;
+  background: var(--whats); color: var(--whats-tx);
+  padding: 13px 24px; border-radius: var(--r-s);
+  text-decoration: none; font-weight: 700; font-size: 15px;
+  transition: background .12s, transform .15s;
+}
+.wpp-btn:hover { background: var(--whats-esc); color: var(--whats-tx); }
+.wpp-btn:active { transform: scale(.98); }
+.wpp-btn i { font-size: 18px; }
+
+.wpp-nota { margin: 14px 0 0; font-size: 13px; color: var(--mut); }
+
+.wpp-texto { margin: 22px 0 0; font-size: 13px; }
+.wpp-texto summary { cursor: pointer; color: var(--mut); font-weight: 600; }
+.wpp-texto summary:hover { color: var(--tinta-60); }
+
+/* pre-wrap: preserva os \n\n que montarTextoWhats() monta */
+.wpp-texto pre {
+  white-space: pre-wrap; font-family: inherit;
+  font-size: 13px; line-height: 1.6; color: var(--tinta-60);
+  background: var(--bg); border: 1px solid var(--linha);
+  border-left: 3px solid var(--whats);
+  border-radius: var(--r-s); padding: 14px 16px; margin: 10px 0 0;
+  max-width: 62ch;
+}
+
+.wpp-aviso {
+  margin: 22px 0 0; padding-top: 16px;
+  border-top: 1px solid var(--linha2);
+  font-size: 13px; line-height: 1.55; color: var(--mut);
+  display: flex; gap: 8px; align-items: flex-start;
+  max-width: 62ch;
+}
+.wpp-aviso i { margin-top: 3px; flex: none; color: var(--alerta-tx); }
+.wpp-aviso strong { color: var(--tinta-60); font-weight: 700; }
