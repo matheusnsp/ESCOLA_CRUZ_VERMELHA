@@ -971,14 +971,20 @@ body.dark .adm-permissao {
 
 /* substitui o .adm-box-intro que o patch criou */
 .adm-box-intro {
-  margin: 0; padding: 16px 20px;
+  position: relative;
+  margin: 0; padding: 18px 24px;
   border-bottom: 1px solid var(--linha2);
-  font-size: 13px; line-height: 1.6; color: var(--mut);
-  max-width: 78ch;              /* medida de leitura */
-  display: flex; gap: 9px; align-items: flex-start;
+  font-size: 14.5px; line-height: 1.7; color: var(--mut);
+  max-width: 102ch;             /* medida de leitura, mais generosa */
 }
-.adm-box-intro > i { margin-top: 3px; flex: none; color: var(--mut); }
-.adm-box-intro strong { color: var(--tinta-60); font-weight: 700; }
+/* icone opcional posicionado por absolute, NAO por flex:
+   flex quebraria <strong>/<em>/<br> em colunas separadas. */
+.adm-box-intro:has(> i) { padding-left: 52px; }
+.adm-box-intro > i {
+  position: absolute; left: 24px; top: 22px;
+  font-size: 15px; color: var(--mut);
+}
+.adm-box-intro strong { color: var(--tinta); font-weight: 700; }
 .adm-box-intro em { font-style: normal; color: var(--tinta-60); font-weight: 600; }
 
 /* ===== Pré-visualização de mensagem (contato-whatsapp) ===== */
