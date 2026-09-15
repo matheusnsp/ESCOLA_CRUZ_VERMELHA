@@ -8,10 +8,13 @@
    Contraste conferido contra o fundo em que cada cor é usada,
    mirando o mínimo de 4.5:1 da WCAG AA para texto normal. */
    :root {
-    --vermelho:     #cc0000;
-    --vermelho-esc: #990000;
-    --vermelho-bg:  #fff5f5;
-    --vermelho-txt: #cc0000;   /* vermelho usado em TEXTO (precisa de contraste) */
+    --vermelho:     #c8102e;
+    --vermelho-esc: #a00d24;
+    --vermelho-bg:  #fff4f6;
+    --vermelho-txt: #c8102e;   /* vermelho usado em TEXTO (precisa de contraste) */
+    --foco:         rgba(200, 16, 46, .12);
+    --azul:         #1d4ed8;
+    --azul-bg:      #dbeafe;
   
     --tinta:        #16191d;   /* 15.8:1 no card  */
     --tinta-60:     #454d57;   /* 8.9:1  — corpo de texto e células de tabela */
@@ -44,13 +47,16 @@
   /* ── TEMA ESCURO ──────────────────────────────────────────
      Fundo cinza-azulado escuro (não preto puro: preto absoluto
      com texto branco cansa a vista em telas grandes). O vermelho
-     institucional é clareado — #cc0000 sobre fundo escuro dá só
-     3.1:1 e fica ilegível em texto. */
+     institucional é clareado — #c8102e sobre fundo escuro dá só
+     3.06:1 e fica ilegível em texto. */
   html[data-tema="escuro"] {
-    --vermelho:     #e23b3b;
-    --vermelho-esc: #c22c2c;
-    --vermelho-bg:  #2a1a1c;
-    --vermelho-txt: #ff8080;   /* 7.4:1 no card escuro */
+    --vermelho:     #d81b3c;
+    --vermelho-esc: #b8142f;
+    --vermelho-bg:  #2a1a1e;
+    --vermelho-txt: #ff8093;   /* 7.5:1 no card escuro */
+    --foco:         rgba(216, 27, 60, .22);
+    --azul:         #93b8f8;
+    --azul-bg:      #16233d;
   
     --tinta:        #f2f4f6;
     --tinta-60:     #c2c8d0;
@@ -255,7 +261,7 @@
     font: inherit; font-size: 12.5px;
   }
   .adm-estorno-form input[type=text]:focus {
-    outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px rgba(204,0,0,.12);
+    outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px var(--foco);
   }
   .adm-estorno-form label {
     display: flex; align-items: center; gap: 7px;
@@ -301,7 +307,7 @@
   }
   .adm-sub-form input[type=text]:focus,
   .adm-sub-form textarea:focus {
-    outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px rgba(204,0,0,.12);
+    outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px var(--foco);
   }
   
   /* cabeçalho de bloco secundário */
@@ -344,7 +350,7 @@
   }
   .adm-campo-largo select:focus,
   .adm-campo-largo input:focus {
-    outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px rgba(204,0,0,.12);
+    outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px var(--foco);
   }
   
   /* aviso calculado pelo JS ao escolher a turma de destino.
@@ -410,7 +416,7 @@
     padding: 8px 10px; font: inherit; font-size: 14px; color: var(--tinta);
   }
   .adm-nota-input:focus {
-    outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px rgba(204,0,0,.12);
+    outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px var(--foco);
   }
   
   /* tabela e botão dentro de um formulário em caixa */
@@ -429,7 +435,7 @@
   .aula-linha input[type=date] { flex: 0 0 170px; }
   .aula-linha input[type=text] { flex: 1; min-width: 0; }
   .aula-linha input:focus {
-    outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px rgba(204,0,0,.12);
+    outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px var(--foco);
   }
   .aula-linha .adm-mini { flex: none; }
   @media (max-width: 560px) {
@@ -605,7 +611,7 @@
   }
   .adm-campo select { padding-right: 38px; min-width: 150px; }
   .adm-campo input:focus, .adm-campo select:focus {
-    outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px rgba(204,0,0,.12);
+    outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px var(--foco);
   }
   .adm-filtros .adm-btn,
   .adm-filtros .adm-btn-neutro { height: 44px; padding: 0 22px; }
@@ -637,7 +643,7 @@
   }
   .adm-form select { padding-right: 40px; }
   .adm-form input:focus, .adm-form select:focus, .adm-form textarea:focus {
-    outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px rgba(204,0,0,.12);
+    outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px var(--foco);
   }
   .adm-form .check input { width: 18px; height: 18px; accent-color: var(--vermelho); }
   .adm-form input[type=file] { padding: 10px; background: var(--bg); border: 1px dashed #cfcbc3; cursor: pointer; }
@@ -665,7 +671,7 @@
     font: inherit; font-size: 14px; background: var(--campo); color: var(--tinta);
     resize: vertical; min-height: 76px;
   }
-  .adm-textarea:focus { outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px rgba(204,0,0,.12); }
+  .adm-textarea:focus { outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px var(--foco); }
   
   .adm-nota {
     display: flex; gap: 9px; align-items: flex-start;
@@ -728,7 +734,7 @@
   .adm-login-card form { display: flex; flex-direction: column; gap: 14px; }
   .adm-login-card label { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--tinta-60); }
   .adm-login-card input { border: 1px solid var(--linha); border-radius: var(--r-s); padding: 12px; font: inherit; }
-  .adm-login-card input:focus { outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px rgba(204,0,0,.12); }
+  .adm-login-card input:focus { outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px var(--foco); }
   .adm-login-card button {
     background: var(--vermelho); color: #fff; border: none; border-radius: var(--r-s);
     padding: 13px; font-family: var(--fonte-t); font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 4px;
@@ -931,33 +937,53 @@ body.dark .adm-permissao {
   color: #f1f1f1;
 }
 
-/* ── Abas da tela de pendentes ─────────────────────────────────────────── */
-.pend-abas { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 18px; }
+/* ===== Abas de listagem ==================================
+   Barra de abas com contador. Generica: pendentes, inscricoes,
+   alunos, turmas. Usa os tokens do tema - nada hard-coded.    */
+.adm-abas { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 18px; }
 
-.pend-aba {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 16px;
-  border-radius: 9px;
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 600;
-  background: rgba(127,127,127,.12);
-  color: inherit;
+.adm-aba {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px; border-radius: var(--r-s);
+  border: 1px solid var(--linha); background: var(--campo);
+  color: var(--tinta-60); text-decoration: none;
+  font-size: 14px; font-weight: 600; white-space: nowrap;
+  transition: border-color .12s, color .12s, background .12s;
 }
-.pend-aba:hover { background: rgba(127,127,127,.20); }
-.pend-aba.on { background: #c8102e; color: #fff; }
+.adm-aba:hover { border-color: var(--vermelho); color: var(--vermelho); background: var(--vermelho-bg); }
+.adm-aba.on { background: var(--vermelho); border-color: var(--vermelho); color: #fff; }
+.adm-aba.on:hover { background: var(--vermelho-esc); border-color: var(--vermelho-esc); color: #fff; }
 
-.pend-num {
-  font-size: 12px;
-  font-weight: 700;
-  padding: 1px 7px;
-  border-radius: 20px;
-  background: rgba(0,0,0,.22);
+/* contador: fundo solido do tema, nao preto translucido */
+.adm-aba-num {
+  font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums;
+  min-width: 22px; text-align: center;
+  padding: 1px 7px; border-radius: 999px;
+  background: var(--linha2); color: var(--mut);
 }
-.pend-aba.on .pend-num { background: rgba(255,255,255,.25); }
+.adm-aba.on .adm-aba-num { background: rgba(255,255,255,.22); color: #fff; }
 
-.pend-intro { padding: 12px 14px 0; margin: 0; line-height: 1.55; }
-.pend-alerta { color: #d69e2e; font-weight: 600; }
-.pend-velha { opacity: .72; }
+/* ===== Texto de abertura dentro de uma caixa ============= */
+.adm-box-intro {
+  margin: 0; padding: 16px 20px;
+  border-bottom: 1px solid var(--linha2);
+  font-size: 13px; line-height: 1.6; color: var(--mut);
+}
+.adm-box-intro strong { color: var(--tinta-60); font-weight: 700; }
+.adm-box-intro em { font-style: normal; color: var(--tinta-60); font-weight: 600; }
+
+/* ===== Enfase e des-enfase em texto de tabela ============ */
+.adm-txt-alerta { color: var(--alerta-tx); font-weight: 700; }
+
+/* Linha secundaria: esmaece o TEXTO, nao a linha inteira -
+   os botoes de acao continuam com contraste cheio.          */
+.adm-tr-fraca { background: var(--bg); }
+.adm-tr-fraca > td { color: var(--mut); }
+.adm-tr-fraca > td strong { color: var(--tinta-60); font-weight: 600; }
+.adm-tr-fraca > td.adm-acoes { color: var(--tinta-60); }
+
+/* ===== Acao indisponivel ================================= */
+.adm-mini.off {
+  background: transparent; border-style: dashed;
+  color: var(--mut); cursor: not-allowed; opacity: 1;
+}
