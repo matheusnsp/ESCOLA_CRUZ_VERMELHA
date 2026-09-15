@@ -496,5 +496,8 @@ module.exports = {
   enviarLembreteAvulso,
   montarPendencia,
   montarLinkWhats,
+  montarTextoWhats,   // 💡 NOVO — a página de contato mostra o texto na tela,
+                      // pra secretaria conferir antes de mandar
   montarLinkProspeccao,
+  montarTextoProspeccao,
 };

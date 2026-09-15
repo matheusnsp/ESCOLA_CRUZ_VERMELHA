@@ -1,0 +1,102 @@
+<%- include('head', { titulo: 'Abrindo o WhatsApp' }) %>
+<%- include('header', { ativo: 'pendentes' }) %>
+
+<%
+  // ═══════════════════════════════════════════════════════════════════════
+  // PÁGINA INTERMEDIÁRIA — entre o clique e o WhatsApp.
+  //
+  // Existe por dois motivos concretos, os dois vistos em produção:
+  //
+  //   1. Em uma das máquinas da secretaria o navegador não seguia o redirect
+  //      automático pro WhatsApp. A aba ficava branca, parada na URL do POST.
+  //      Aqui o link é um <a> que a pessoa clica — e clique de usuário passa
+  //      onde redirect automático é bloqueado.
+  //
+  //   2. O contato era registrado antes do redirect. Quando o redirect
+  //      falhava, a pessoa ficava marcada como contatada sem nenhuma
+  //      mensagem ter saído. A tela mostrava "contato em 10/09" pra gente
+  //      que nunca recebeu nada.
+  //
+  // Agora o registro é explícito na tela: quem abrir e não mandar sabe que
+  // ficou registrado, e pode avisar.
+  //
+  // O script tenta abrir sozinho depois de um instante. Em quem não tem
+  // bloqueio, esta página passa quase sem ser notada.
+  // ═══════════════════════════════════════════════════════════════════════
+%>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Abrindo o WhatsApp</h1>
+  <a href="<%= voltarPara %>" class="adm-link">← Voltar</a>
+</div>
+
+<div class="adm-box wpp-box">
+
+  <p class="wpp-alvo">
+    Conversa com <strong><%= aluno.nome %></strong>
+    <span class="adm-mut"><%= aluno.celular %> · <%= curso %></span>
+  </p>
+
+  <a href="<%= link %>" target="_blank" rel="noopener" id="linkWpp" class="wpp-btn">
+    <i class="fa-brands fa-whatsapp"></i> Abrir a conversa
+  </a>
+
+  <p class="wpp-nota" id="nota">
+    Se não abrir sozinho em alguns segundos, clique no botão acima.
+  </p>
+
+  <details class="wpp-texto">
+    <summary>Ver a mensagem que vai ser enviada</summary>
+    <pre><%= texto %></pre>
+  </details>
+
+  <p class="wpp-aviso">
+    <i class="fa-solid fa-circle-info"></i>
+    Este contato <strong>já foi registrado</strong> no sistema. Se você não
+    mandar a mensagem, avise — senão a pessoa fica marcada como contatada
+    sem ter recebido nada.
+  </p>
+
+</div>
+
+<style>
+  .wpp-box { max-width: 560px; padding: 24px; }
+  .wpp-alvo { margin: 0 0 18px; font-size: 15px; line-height: 1.5; }
+  .wpp-alvo span { display: block; font-size: 13px; margin-top: 2px; }
+  .wpp-btn {
+    display: inline-flex; align-items: center; gap: 9px;
+    background: #25d366; color: #fff; padding: 13px 24px;
+    border-radius: 9px; text-decoration: none; font-weight: 700; font-size: 15px;
+  }
+  .wpp-btn:hover { background: #1da851; }
+  .wpp-nota { margin: 14px 0 0; font-size: 13px; color: var(--adm-mut, #718096); }
+  .wpp-texto { margin: 22px 0 0; font-size: 13px; }
+  .wpp-texto summary { cursor: pointer; color: var(--adm-mut, #718096); }
+  .wpp-texto pre {
+    white-space: pre-wrap; font-family: inherit; font-size: 13px; line-height: 1.55;
+    background: rgba(127,127,127,.08); border-radius: 10px; padding: 14px 16px;
+    margin: 10px 0 0;
+  }
+  .wpp-aviso {
+    margin: 22px 0 0; padding-top: 16px; border-top: 1px solid rgba(127,127,127,.18);
+    font-size: 13px; line-height: 1.5; color: var(--adm-mut, #718096);
+  }
+  .wpp-aviso i { margin-right: 6px; }
+</style>
+
+<script>
+  // Tenta abrir sozinho. Se o navegador bloquear, o botão continua ali —
+  // é justamente esse o caso que esta página existe pra cobrir.
+  setTimeout(function () {
+    var a = document.getElementById('linkWpp');
+    try {
+      var w = window.open(a.href, '_blank');
+      if (w) {
+        document.getElementById('nota').textContent =
+          'Abrimos numa aba nova. Se não apareceu, clique no botão acima.';
+      }
+    } catch (e) { /* bloqueado — o botão resolve */ }
+  }, 600);
+</script>
+
+<%- include('foot') %>

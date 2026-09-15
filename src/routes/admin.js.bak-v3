@@ -15,7 +15,7 @@ const { ESCOLARIDADES: ESCOLARIDADES_ALUNO, SITUACOES_ESCOLARIDADE, GENEROS, UFS
 const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
 const { formatBRL, calcularValores } = require('../lib/matricula');
 const { estornarTransacao } = require('../lib/unicopag'); // 💡 A3 — refund real no gateway
-const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarTextoWhats, montarLinkProspeccao } = require('../lib/lembretes');
+const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarLinkProspeccao } = require('../lib/lembretes');
 const { coletarDadosRelatorio, gerarExcel, gerarPdf, coletarLancamentosOfx, gerarOfx } = require('../lib/relatorio'); // relatórios Excel/PDF
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 const { temPermissao, PAPEIS_ADMIN, listarPermissoes } = require('../lib/permissoes');
@@ -2018,201 +2018,76 @@ router.post('/alunos/:id/matriculas/:matriculaId/confirmar-taxa', requirePermiss
 // ---------- Pagamentos pendentes ----------
 //
 // Tela de trabalho, não relatório: lista quem está com matrícula em aberto e
-// deixa a secretaria agir na hora.
+// deixa a secretária disparar o lembrete de pagamento na hora.
 //
-// 💡 REORGANIZADO em três abas, e o motivo é prático: as duas abas antigas
-// misturavam gente que valia contatar com gente que não valia, e a secretaria
-// descobriu isso na prática — testou uma lista larga e 4 de 5 já tinham
-// conversado com ela.
+// Duas listas, com naturezas diferentes:
 //
-//   1. TAXA PAGA, CURSO PENDENTE
-//      O dinheiro da taxa entrou, a vaga está ocupada, a matrícula nunca se
-//      efetivou. É a lista com dinheiro em jogo.
+//   1. TAXA PAGA, CURSO PENDENTE — o caso que motivou tudo isto. O dinheiro
+//      da taxa já entrou, a vaga está ocupada e a matrícula nunca se
+//      efetivou. Tem link pra mandar: /inscrever/:turmaId/pagar-curso.
 //
-//   2. NADA PAGO, DÁ TEMPO
-//      Escolheu curso, aceitou contrato, escolheu como pagar, parou antes de
-//      pagar. Turma aberta e que ainda não começou — então há o que oferecer.
+//   2. NUNCA PAGOU NADA — se inscreveu, aceitou o contrato e sumiu antes de
+//      qualquer cobrança. A vaga NÃO está reservada. Também tem contato: o
+//      link leva pra etapa da taxa (ou pro início, no A_VISTA), e o texto
+//      diz que a vaga ainda não está garantida — nunca o contrário.
 //
-//   3. FORA DE PRAZO
-//      Turma encerrada ou que já começou. Antes essas linhas simplesmente
-//      desapareciam da tela (o filtro de status as excluía), o que escondia
-//      da secretaria gente que ficou pelo caminho. Agora aparecem, mas
-//      separadas e com aviso: contatar só pra oferecer OUTRA turma.
-//
-// Quem chegou a gerar cobrança no gateway CONTINUA na lista, ao contrário de
-// uma versão anterior que os excluía. Motivo: são as pessoas que chegaram
-// mais perto de pagar, e tirá-las escondia os casos mais promissores. Mas a
-// linha é marcada, porque pode haver pagamento em andamento ou webhook
-// perdido — abordar como "você não pagou" seria constrangedor se tiver pago.
+// Ordenação da lista 1 é por início da turma, mais próxima primeiro: quem
+// está mais perto de perder o curso aparece no topo.
 
 const STATUS_TURMA_ATIVA = ['ABERTA', 'CONFIRMADA'];
 
 router.get('/pendentes', requirePermissao('pendentes:gerenciar'), async (req, res) => {
-  const agora = new Date();
-
-  // Turma que ainda dá pra aproveitar: aberta e com início no futuro.
-  // O status sozinho não bastava — turma marcada ABERTA com data vencida
-  // aparecia como se desse tempo. (O fechamento automático só roda quando
-  // alguém acessa o site do aluno, então pode atrasar.)
-  const TURMA_VALE = { status: 'ABERTA', inicioPrevisto: { gt: agora } };
-
-  const [comTaxa, semTaxa, foraDePrazo] = await Promise.all([
-    // ── 1. Taxa paga, curso pendente ──────────────────────────────────────
+  const [comTaxa, semTaxa] = await Promise.all([
     prisma.matricula.findMany({
       where: {
         statusPagamento: 'PENDENTE',
         taxaConfirmada: true,
-        turma: TURMA_VALE,
+        turma: { status: { in: STATUS_TURMA_ATIVA } },
       },
       orderBy: { turma: { inicioPrevisto: 'asc' } },
-      include: { aluno: true, turma: { include: { curso: true } }, pagamentos: true },
+      include: { aluno: true, turma: { include: { curso: true } } },
     }),
 
-    // ── 2. Nada pago, ainda dá tempo ──────────────────────────────────────
     prisma.matricula.findMany({
       where: {
         statusPagamento: 'PENDENTE',
         taxaConfirmada: false,
-        turma: TURMA_VALE,
+        turma: { status: { in: STATUS_TURMA_ATIVA } },
       },
-      orderBy: { turma: { inicioPrevisto: 'asc' } },
-      include: { aluno: true, turma: { include: { curso: true } }, pagamentos: true },
-    }),
-
-    // ── 3. Fora de prazo ──────────────────────────────────────────────────
-    // Pendente, mas a turma encerrou ou já começou. Não desaparece mais da
-    // tela: é gente que ficou pelo caminho e a secretaria pode querer chamar
-    // pra outra turma.
-    prisma.matricula.findMany({
-      where: {
-        statusPagamento: 'PENDENTE',
-        OR: [
-          { turma: { status: { notIn: STATUS_TURMA_ATIVA } } },
-          { turma: { inicioPrevisto: { lte: agora } } },
-        ],
-      },
-      orderBy: { turma: { inicioPrevisto: 'desc' } },
-      include: { aluno: true, turma: { include: { curso: true } }, pagamentos: true },
+      orderBy: { criadoEm: 'desc' },
+      include: { aluno: true, turma: { include: { curso: true } } },
     }),
   ]);
 
-  // Último contato registrado de cada aluno. Serve pra secretaria não
-  // insistir com quem acabou de receber mensagem.
-  const idsAlunos = [...new Set(
-    [...comTaxa, ...semTaxa, ...foraDePrazo].map((m) => m.alunoId)
-  )];
-  const logs = idsAlunos.length
-    ? await prisma.logAuditoria.findMany({
-        where: {
-          alvoId: { in: idsAlunos },
-          acao: { in: ['CONTATO_WHATSAPP', 'CONTATO_PROSPECCAO', 'ENVIOU_LEMBRETE_PAGAMENTO'] },
-        },
-        orderBy: { criadoEm: 'desc' },
-      })
-    : [];
-
-  const ultimoContato = {};
-  for (const l of logs) {
-    if (!ultimoContato[l.alvoId]) {
-      ultimoContato[l.alvoId] = { quando: l.criadoEm, como: l.acao };
-    }
-  }
-
-  // Cada linha ganha a pendência (que etapa falta, se dá pra mandar e-mail),
-  // o link de WhatsApp com o texto montado, o último contato e se houve
-  // tentativa real de cobrança. Fica no servidor porque depende do plano e
-  // do que já foi pago — regra de negócio, não de apresentação.
+  // Cada linha ganha a sua pendência (que etapa falta, se dá pra mandar
+  // e-mail) e o link de WhatsApp com o texto já montado. Fica tudo no
+  // servidor porque o texto depende do plano e do que já foi pago — regra de
+  // negócio, não de apresentação. Ver montarPendencia() em lib/lembretes.js.
   const enriquecer = (lista) => lista.map((m) => ({
     ...m,
     pendencia: montarPendencia(m),
     linkWhats: montarLinkWhats(m),
-    contato: ultimoContato[m.alunoId] || null,
-    // Cobrança que chegou ao gateway: pode ter pagamento em andamento.
-    tentouPagar: (m.pagamentos || []).some((p) => p.gatewayRef),
   }));
 
-  // Quanto ainda falta receber de quem já pagou a taxa. É o valor parado por
-  // falta de um clique — o número que justifica esta tela.
+  // Quanto ainda falta receber de quem já pagou a taxa. É o valor que está
+  // parado por falta de um clique — o número que justifica esta tela.
   //
   // ⚠️ NÃO subtrair valorTaxaMatricula daqui. O valorCurso gravado JÁ inclui
-  // a taxa, mas o campo valorTaxaMatricula está zerado em vários registros
-  // onde a taxa foi de fato cobrada (conferido em produção). Subtrair um
-  // campo não confiável fazia o mesmo curso aparecer com valores diferentes
-  // de um aluno pro outro.
+  // a taxa de inscrição, mas o campo valorTaxaMatricula está zerado em vários
+  // registros da base onde a taxa foi de fato cobrada (conferido em produção:
+  // Punção Venosa a R$150 + taxa 100 = valorCurso 250, com valorTaxaMatricula
+  // ora 100, ora 0,00). Subtrair um campo não confiável fazia o mesmo curso
+  // aparecer com valores diferentes de um aluno pro outro.
   const totalEmAberto = comTaxa.reduce((s, m) => s + Number(m.valorCurso), 0);
-
-  const abasValidas = ['com-taxa', 'sem-taxa', 'fora-prazo'];
-  const aba = abasValidas.includes(req.query.aba) ? req.query.aba : 'com-taxa';
 
   res.render('admin/pendentes', {
     comTaxa: enriquecer(comTaxa),
     semTaxa: enriquecer(semTaxa),
-    foraDePrazo: enriquecer(foraDePrazo),
     totalEmAberto,
     formatBRL,
-    aba,
+    aba: req.query.aba === 'sem-taxa' ? 'sem-taxa' : 'com-taxa',
     flash: req.query.ok || null,
     erro: req.query.erro || null,
-  });
-});
-
-
-// ---------- Contato por WhatsApp, registrado ----------
-//
-// 💡 NOVO — antes o botão de WhatsApp era um <a href> direto pro
-// web.whatsapp.com. Funcionava, mas o clique NÃO passava pelo servidor, então
-// o sistema não sabia que a secretaria tinha falado com a pessoa — e a
-// próxima lista trazia todo mundo de volta.
-//
-// Agora é POST: grava o contato, e só então mostra uma página com o link.
-//
-// POR QUE UMA PÁGINA, E NÃO REDIRECT DIRETO:
-// a rota de prospecção em /alunos faz redirect, e isso deu dois problemas em
-// produção. Primeiro, em uma das máquinas da secretaria o navegador não
-// seguia o redirect pro WhatsApp — a aba ficava branca, parada na URL do
-// POST. Segundo, e pior: o log era gravado ANTES do redirect, então cada
-// clique que falhava marcava a pessoa como contatada sem nenhuma mensagem
-// ter saído. A tela passou a mostrar "contato em 10/09" pra gente que nunca
-// recebeu nada.
-//
-// A página intermediária resolve os dois: o link é um <a> que a pessoa
-// clica (clique de usuário passa onde redirect automático é bloqueado), e o
-// registro fica explícito na tela — quem abrir e não mandar sabe que ficou
-// registrado, e pode avisar.
-router.post('/pendentes/:id/whatsapp', requirePermissao('pendentes:gerenciar'), async (req, res) => {
-  const m = await prisma.matricula.findUnique({
-    where: { id: req.params.id },
-    include: {
-      aluno: true,
-      turma: { include: { curso: true } },
-      pagamentos: true,
-    },
-  });
-
-  if (!m) {
-    return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
-  }
-
-  const link = montarLinkWhats(m);
-  if (!link) {
-    return res.redirect('/pendentes?erro=' +
-      encodeURIComponent(`${String(m.aluno.nome).split(' ')[0]} não tem celular válido cadastrado.`));
-  }
-
-  const pendencia = montarPendencia(m);
-
-  await auditar(req, 'CONTATO_WHATSAPP', 'Usuario', m.alunoId, {
-    matriculaId: m.id,
-    curso: m.turma?.curso?.nome || null,
-    etapa: pendencia.etapa,
-  });
-
-  return res.render('admin/contato-whatsapp', {
-    aluno: m.aluno,
-    curso: m.turma?.curso?.nome || '—',
-    link,
-    texto: montarTextoWhats(m, pendencia),
-    voltarPara: req.body.voltar || '/pendentes',
   });
 });
 
@@ -2239,72 +2114,6 @@ router.post('/pendentes/:id/lembrar', requirePermissao('pendentes:gerenciar'), a
   });
 
   return voltar('ok', `Lembrete enviado para ${resultado.email}.`);
-});
-
-// Remove uma matrícula "fantasma": criada no banco mas onde NADA foi pago.
-//
-// Por que apagar em vez de marcar CANCELADO: matrícula sem nenhum pagamento
-// não é um fato de negócio, é lixo de formulário abandonado. O LogAuditoria
-// guarda quem apagou, de quem era e de qual turma — o rastro fica.
-//
-// ⚠️ A trava mais importante está no gatewayRef. Uma matrícula pode estar com
-// taxaConfirmada=false e mesmo assim ter dinheiro dentro: é o caso do webhook
-// que nunca chegou. Se existir QUALQUER Pagamento com gatewayRef, a rota
-// recusa — apagar seria apagar dinheiro que talvez tenha entrado.
-router.post('/pendentes/:id/remover', requirePermissao('pendentes:gerenciar'), async (req, res) => {
-  const voltar = (chave, msg) =>
-    res.redirect(`/pendentes?aba=sem-taxa&${chave}=` + encodeURIComponent(msg));
-
-  const m = await prisma.matricula.findUnique({
-    where: { id: req.params.id },
-    include: {
-      aluno: { select: { nome: true, email: true } },
-      turma: { include: { curso: { select: { nome: true } } } },
-      pagamentos: true,
-    },
-  });
-
-  if (!m) return voltar('erro', 'Inscrição não encontrada.');
-
-  if (m.statusPagamento !== 'PENDENTE') {
-    return voltar('erro', `Esta inscrição está ${m.statusPagamento} — só removemos as que nunca saíram do lugar.`);
-  }
-  if (m.taxaConfirmada) {
-    return voltar('erro', 'A taxa desta inscrição foi confirmada. Para cancelar, use a tela de matrículas.');
-  }
-
-  const comGateway = m.pagamentos.filter((p) => p.gatewayRef);
-  if (comGateway.length) {
-    return voltar('erro',
-      `${m.aluno.nome.split(' ')[0]} chegou a gerar cobrança no gateway. ` +
-      'Confira na Únicopag antes de remover — pode ser um pagamento cuja confirmação não chegou.');
-  }
-
-  // Snapshot pro log: depois de apagar, não dá mais pra saber de quem era.
-  const detalhe = {
-    aluno: m.aluno.nome,
-    email: m.aluno.email,
-    curso: m.turma?.curso?.nome || null,
-    turmaId: m.turmaId,
-    plano: m.plano,
-    criadoEm: m.criadoEm,
-    pagamentosRemovidos: m.pagamentos.length,
-  };
-
-  try {
-    // Pagamento tem FK pra Matricula, então os filhos saem primeiro.
-    await prisma.$transaction([
-      prisma.pagamento.deleteMany({ where: { matriculaId: m.id } }),
-      prisma.matricula.delete({ where: { id: m.id } }),
-    ]);
-  } catch (err) {
-    console.error('[PENDENTES] Erro ao remover matrícula fantasma:', err.message);
-    return voltar('erro', 'Não foi possível remover agora. Tente novamente.');
-  }
-
-  await auditar(req, 'REMOVEU_MATRICULA_FANTASMA', 'Matricula', m.id, detalhe);
-
-  return voltar('ok', `Inscrição de ${m.aluno.nome.split(' ')[0]} removida. A vaga foi liberada.`);
 });
 
 
