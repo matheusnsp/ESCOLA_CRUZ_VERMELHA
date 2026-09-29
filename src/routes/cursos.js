@@ -9,6 +9,7 @@ const {
   totalExibicao,
 } = require('../lib/matricula');
 const { criarTransacao, obterOpcaoParcelamento } = require('../lib/unicopag');
+const cacheRapido = require('../lib/cache-rapido');
 
 const router = express.Router();
 
@@ -35,10 +36,29 @@ async function fecharTurmasVencidas() {
   }
 }
 
+// Antes rodava (e esperava) a cada request, inclusive em /sobre: um UPDATE no banco antes de
+// qualquer página pública. Agora:
+//   - em GET roda no fundo, no máximo uma vez por minuto, sem segurar a página. As listagens
+//     filtram também pela data (turmasAbertas()), então uma turma que já começou não aparece
+//     mesmo no minuto antes do fechamento;
+//   - em POST (inscrição, pagamento) continua rodando e esperando, sempre, como antes.
+const INTERVALO_FECHAR_MS = 60 * 1000;
+let ultimoFechamento = 0;
 router.use(async (req, res, next) => {
-  await fecharTurmasVencidas();
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    await fecharTurmasVencidas();
+    ultimoFechamento = Date.now();
+  } else if (Date.now() - ultimoFechamento > INTERVALO_FECHAR_MS) {
+    ultimoFechamento = Date.now();
+    fecharTurmasVencidas(); // sem await: já trata o próprio erro
+  }
   next();
 });
+
+// Turmas que aparecem como abertas no site: status ABERTA e início ainda no futuro.
+function turmasAbertas() {
+  return { status: 'ABERTA', inicioPrevisto: { gt: new Date() } };
+}
 
 // 💡 NOVO — Uma matrícula "fantasma" é aquela criada no banco (necessária pro
 // Pagamento da taxa se vincular, no caso Parcelado/Presencial) mas onde a
@@ -139,19 +159,28 @@ async function montarParceladoComJuros(parcelado, numParcelas) {
   };
 }
 
+// Catálogo público: guardado por 60 s (lib/cache-rapido.js) para quem não é DEV. Qualquer ação
+// da secretaria no painel limpa o cache, então curso e turma novos aparecem na hora.
+function catalogo(res, chave, carregar) {
+  if (res.locals.usuario?.papel === 'DEV') return carregar(); // DEV vê cursos inativos: sem cache
+  return cacheRapido.doCatalogo(chave, carregar);
+}
+
 router.get('/', async (req, res) => {
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
-  const [cursos, cfgMap, total] = await Promise.all([
-    prisma.curso.findMany({
-      where: filtro,
-      orderBy: { nome: 'asc' },
-      take: 9, // o carrossel precisa de mais que as 3 colunas visíveis pra ter o que rodar
-      include: {
-        turmas: { where: { status: 'ABERTA' }, orderBy: { inicioPrevisto: 'asc' }, take: 1 },
-      },
-    }),
+  const [[cursos, total], cfgMap] = await Promise.all([
+    catalogo(res, 'home', () => Promise.all([
+      prisma.curso.findMany({
+        where: filtro,
+        orderBy: { nome: 'asc' },
+        take: 9, // o carrossel precisa de mais que as 3 colunas visíveis pra ter o que rodar
+        include: {
+          turmas: { where: turmasAbertas(), orderBy: { inicioPrevisto: 'asc' }, take: 1 },
+        },
+      }),
+      prisma.curso.count({ where: filtro }),
+    ])),
     lerConfigMatricula(),
-    prisma.curso.count({ where: filtro }),
   ]);
   res.render('home', { cursos, cfgMap, temMais: total > cursos.length, formatBRL, totalExibicao });
 });
@@ -162,32 +191,42 @@ router.get('/duvidas', (req, res) => res.render('duvidas'));
 router.get('/cursos', async (req, res) => {
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
   const [cursos, cfgMap] = await Promise.all([
-    prisma.curso.findMany({
+    catalogo(res, 'cursos', () => prisma.curso.findMany({
       where: filtro,
       orderBy: { nome: 'asc' },
       include: {
-        turmas: { where: { status: 'ABERTA' }, orderBy: { inicioPrevisto: 'asc' }, take: 1 },
+        turmas: { where: turmasAbertas(), orderBy: { inicioPrevisto: 'asc' }, take: 1 },
       },
-    }),
+    })),
     lerConfigMatricula(),
   ]);
   res.render('cursos', { cursos, cfgMap, formatBRL, totalExibicao });
 });
 
 router.get('/cursos/:cursoId', async (req, res) => {
-  const [curso, cfgMap] = await Promise.all([
-    prisma.curso.findUnique({
+  const filtro = filtroVisibilidadeCurso(res.locals.usuario);
+  // As três consultas saem juntas: "outros cursos" não depende do curso carregado.
+  const [curso, cfgMap, outros] = await Promise.all([
+    catalogo(res, `curso:${req.params.cursoId}`, () => prisma.curso.findUnique({
       where: { id: req.params.cursoId },
       include: {
         turmas: {
-          where: { status: 'ABERTA' },
+          where: turmasAbertas(),
           orderBy: { inicioPrevisto: 'asc' },
           include: { aulas: { orderBy: { data: 'asc' }, take: 1 } },
         },
         faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] },
       },
-    }),
+    })),
     lerConfigMatricula(),
+    catalogo(res, `outros:${req.params.cursoId}`, () => prisma.curso.findMany({
+      where: { ...filtro, id: { not: req.params.cursoId } },
+      orderBy: { nome: 'asc' },
+      take: 3,
+      include: {
+        turmas: { where: turmasAbertas(), orderBy: { inicioPrevisto: 'asc' }, take: 1 },
+      },
+    })),
   ]);
 
   // Curso inativo só é visível para o papel DEV (permite testar antes de publicar).
@@ -195,14 +234,6 @@ router.get('/cursos/:cursoId', async (req, res) => {
   if (!podeVer)
     return res.status(404).render('erro', { mensagem: 'Curso não encontrado.' });
 
-  const outros = await prisma.curso.findMany({
-    where: { ...filtroVisibilidadeCurso(res.locals.usuario), id: { not: curso.id } },
-    orderBy: { nome: 'asc' },
-    take: 3,
-    include: {
-      turmas: { where: { status: 'ABERTA' }, orderBy: { inicioPrevisto: 'asc' }, take: 1 },
-    },
-  });
   res.render('curso-detalhe', {
     curso,
     outros,

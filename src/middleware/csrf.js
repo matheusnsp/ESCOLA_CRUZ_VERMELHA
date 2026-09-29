@@ -21,7 +21,11 @@ function tokensIguais(a, b) {
 
 function csrfProtection(req, res, next) {
   // Disponibiliza o token para todas as views (usado no <input hidden>).
-  res.locals.csrfToken = obterToken(req);
+  // Preguiçoso: o token só é criado quando a página o imprime (<%= csrfToken %> chama
+  // toString). Assim, quem só navega pelas páginas públicas (home, cursos, sobre) não ganha
+  // sessão nem cookie, e a página não espera gravar a sessão no banco. Páginas com formulário
+  // imprimem o token e criam a sessão como antes.
+  res.locals.csrfToken = { toString: () => obterToken(req) };
 
   // Métodos que não alteram estado não precisam de verificação.
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {

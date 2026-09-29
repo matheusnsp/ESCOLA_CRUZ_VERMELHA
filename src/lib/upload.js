@@ -36,8 +36,10 @@ function uploadFoto(req, res, next) {
 async function comprimirImagem(file) {
   if (file.mimetype === 'image/gif') return { buffer: file.buffer, mimetype: 'image/gif' };
   const buffer = await sharp(file.buffer)
-    .resize({ width: 1200, withoutEnlargement: true }) // não amplia imagens pequenas
-    .webp({ quality: 82 })
+    // 1000 px cobre o maior uso (topo da página do curso) em tela de alta densidade. Com
+    // quality 75, uma foto real de 1200 px caiu de 242 KB para 112 KB sem diferença visível.
+    .resize({ width: 1000, withoutEnlargement: true }) // não amplia imagens pequenas
+    .webp({ quality: 75, effort: 5 })
     .toBuffer();
   return { buffer, mimetype: 'image/webp' };
 }

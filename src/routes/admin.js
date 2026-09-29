@@ -20,6 +20,7 @@ const { coletarDadosRelatorio, gerarExcel, gerarPdf, coletarLancamentosOfx, gera
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 const { temPermissao, PAPEIS_ADMIN, listarPermissoes } = require('../lib/permissoes');
 const horariosSite = require('../lib/horarios-site'); // questionário de dias e horários (lido do site)
+const cacheRapido = require('../lib/cache-rapido');
 
 const router = express.Router();
 
@@ -531,6 +532,13 @@ router.use((req, res, next) => {
 });
 
 router.use(requireAdmin);
+
+// Qualquer ação da secretaria (POST) pode mudar o catálogo público ou banir alguém: limpa o
+// cache curto do site (lib/cache-rapido.js) quando a resposta sai, para aparecer na hora.
+router.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') res.on('finish', cacheRapido.limparTudo);
+  next();
+});
 
 // ---------- Dashboard ----------
 
