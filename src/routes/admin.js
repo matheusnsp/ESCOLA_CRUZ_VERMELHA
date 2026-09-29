@@ -52,7 +52,12 @@ function requireAdmin(req, res, next) {
     if (req.session.adminLastSeen && agora - req.session.adminLastSeen > IDLE_MS) {
       return req.session.destroy(() => res.redirect('/login?expirado=1'));
     }
-    req.session.adminLastSeen = agora;
+    // Grava o último acesso no máximo 1x por minuto: mudar a sessão a cada clique fazia o
+    // express-session regravá-la no banco em toda tela. Para o limite de 60 min, 1 min de
+    // precisão basta.
+    if (!req.session.adminLastSeen || agora - req.session.adminLastSeen > 60 * 1000) {
+      req.session.adminLastSeen = agora;
+    }
     return next();
   }
   return res.redirect('/login');
@@ -572,7 +577,8 @@ router.get('/', async (req, res) => {
     pagas,
     alunosOnline,
     alunosHoje,
-    alunosHojeLista
+    alunosHojeLista,
+    ultimas,
   ] = await Promise.all([
 
     prisma.curso.count(),
@@ -654,28 +660,18 @@ router.get('/', async (req, res) => {
       take: 200,
     }),
 
-  ]);
-
-  const ultimas = await prisma.matricula.findMany({
-
-    where: FILTRO_MATRICULA_FANTASMA,
-
-    orderBy: {
-      criadoEm: 'desc',
-    },
-
-    take: 8,
-
-    include: {
-      aluno: true,
-      turma: {
-        include: {
-          curso: true,
-        },
+    // Últimas inscrições: no mesmo lote das contagens (antes esperava todas terminarem).
+    prisma.matricula.findMany({
+      where: FILTRO_MATRICULA_FANTASMA,
+      orderBy: { criadoEm: 'desc' },
+      take: 8,
+      include: {
+        aluno: true,
+        turma: { include: { curso: true } },
       },
-    },
+    }),
 
-  });
+  ]);
 
   res.render('admin/dashboard', {
 

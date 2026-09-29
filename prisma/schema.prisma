@@ -1,5 +1,9 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // Carrega as relações (include) numa consulta só, com JOIN, em vez de uma consulta por
+  // relação. Cada ida ao Supabase custa caro a partir do Render: telas com include ficaram
+  // várias vezes mais rápidas. Não muda o banco nem as migrações, só o SQL gerado.
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
