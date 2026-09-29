@@ -2,8 +2,9 @@
 //
 // Dias e horários dos alunos, respondidos no site (cruzvermelhariodejaneiro.org) depois de pagar
 // a inscrição. As respostas moram no banco do site; a aba "Horários" do painel lê de lá, servidor
-// a servidor, pelo endereço api/escola-horarios.php do site, com a chave SITE_HORARIOS_TOKEN
-// (a mesma que o site tem em ESCOLA_HORARIOS_TOKEN). Nada disso grava no banco da escola.
+// a servidor, pelo endereço api/escola-horarios.php do site, com a chave ESCOLA_HORARIOS_TOKEN
+// (o mesmo nome e o mesmo valor do api/config-escola.php do site; SITE_HORARIOS_TOKEN, o nome
+// antigo, ainda vale). Nada disso grava no banco da escola.
 //
 // O site nunca manda CPF. Cada resposta traz o curso pelo id da escola (curso_id = Curso.id),
 // o que deixa cruzar com as turmas daqui.
@@ -26,8 +27,20 @@ const ROTULOS_PADRAO = {
   turma: { sim: 'Sim, a data funciona', nao: 'Não, preciso de outra data' },
 };
 
+// A chave, sem aspas nem espaços colados sem querer no painel do Render.
+function chave() {
+  const bruta = process.env.ESCOLA_HORARIOS_TOKEN || process.env.SITE_HORARIOS_TOKEN || '';
+  return String(bruta).trim().replace(/^(['"])(.*)\1$/, '$2').trim();
+}
+
 function configurado() {
-  return String(process.env.SITE_HORARIOS_TOKEN || '').length >= 32;
+  return chave().length >= 32;
+}
+
+// Os 4 últimos caracteres da chave, para a tela de erro: dá para comparar com a do site sem mostrá-la.
+function finalDaChave() {
+  const c = chave();
+  return c.length >= 32 ? c.slice(-4) : null;
 }
 
 let cache = null; // { em, dados }
@@ -45,7 +58,7 @@ async function buscar({ forcar = false } = {}) {
   const timer = setTimeout(() => controle.abort(), TEMPO_LIMITE_MS);
   try {
     const resp = await fetch(process.env.SITE_HORARIOS_URL || URL_PADRAO, {
-      headers: { Authorization: `Bearer ${process.env.SITE_HORARIOS_TOKEN}`, Accept: 'application/json' },
+      headers: { Authorization: `Bearer ${chave()}`, Accept: 'application/json' },
       signal: controle.signal,
     });
     if (!resp.ok) {
@@ -195,7 +208,7 @@ function telefoneBonito(dig) {
 }
 
 module.exports = {
-  buscar, configurado, normalizar, cursos, doCurso, mapa, csv, celula,
+  buscar, configurado, finalDaChave, normalizar, cursos, doCurso, mapa, csv, celula,
   slotTexto, horariosTexto, dataBr, dataHoraBrt, telefoneBonito,
   DIAS, PERIODOS, SLOTS, ROTULOS_PADRAO,
   _limparCache: () => { cache = null; },
