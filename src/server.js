@@ -95,6 +95,14 @@ app.use('/img', (req, res, next) => {
   next();
 });
 
+// Service Worker: nunca pode ficar preso no cache HTTP (maxAge 7d abaixo),
+// senão uma versão nova do sw.js demoraria dias para chegar aos alunos.
+app.get('/sw.js', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.sendFile(path.join(__dirname, 'public', 'sw.js'));
+});
+
 // Arquivos estaticos (CSS, JS, imagens). index:false para a home ser a rota '/'.
 app.use(express.static(path.join(__dirname, 'public'), { index: false, maxAge: '7d' }));
 
