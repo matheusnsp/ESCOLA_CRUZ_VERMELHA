@@ -55,7 +55,27 @@ app.use(
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
         imgSrc: ["'self'", 'data:', 'https:'],
         // 💡 CORRIGIDO: Libera a execução do script que mostra/esconde os inputs do cartão na tela inscrever.ejs
-        scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com'],
+        // googletagmanager (GA4) e connect.facebook.net (Meta Pixel): sem eles o CSP barrava
+        // os dois scripts e nada era medido.
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          'https://cdnjs.cloudflare.com',
+          'https://www.googletagmanager.com',
+          'https://connect.facebook.net',
+        ],
+        // Para onde GA4 e Pixel enviam os eventos.
+        connectSrc: [
+          "'self'",
+          'https://*.google-analytics.com',
+          'https://analytics.google.com',
+          'https://*.analytics.google.com',
+          'https://*.googletagmanager.com',
+          'https://*.g.doubleclick.net',
+          'https://www.google.com',
+          'https://www.facebook.com',
+          'https://connect.facebook.net',
+        ],
         // Em desenvolvimento (http://localhost) NAO forcar upgrade para https,
         // senao o Safari tenta carregar os assets in https e eles falham.
         ...(isProd ? {} : { upgradeInsecureRequests: null }),
