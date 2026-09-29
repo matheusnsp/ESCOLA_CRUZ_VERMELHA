@@ -1055,7 +1055,7 @@ async function carregarHorarios(req) {
 router.get('/horarios', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
   const h = await carregarHorarios(req);
   if (h.erro) {
-    return res.render('admin/horarios', { erro: h.erro, ativo: 'horarios' });
+    return res.render('admin/horarios', { erro: h.erro, ativo: 'horarios', finalDaChave: horariosSite.finalDaChave() });
   }
 
   // Cruza com a escola: a conta de cada aluno (pelo e-mail) e as proximas turmas do curso escolhido.

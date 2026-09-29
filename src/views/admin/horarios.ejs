@@ -22,11 +22,12 @@
   <div class="adm-erro">
     <i class="fa-solid fa-circle-exclamation"></i>
     <% if (erro === 'nao_configurado') { %>
-      A leitura dos horários ainda não foi ligada. Falta configurar a chave <code>SITE_HORARIOS_TOKEN</code> no servidor
-      da escola (a mesma de <code>ESCOLA_HORARIOS_TOKEN</code> no site).
+      A leitura dos horários ainda não foi ligada. Falta configurar a variável <code>ESCOLA_HORARIOS_TOKEN</code> no Render,
+      com o mesmo valor de <code>ESCOLA_HORARIOS_TOKEN</code> no <code>api/config-escola.php</code> do site.
     <% } else if (erro === 'chave') { %>
-      O site recusou a chave de acesso. Confira se <code>SITE_HORARIOS_TOKEN</code> (escola) e
-      <code>ESCOLA_HORARIOS_TOKEN</code> (site) são iguais.
+      O site recusou a chave de acesso. A variável <code>ESCOLA_HORARIOS_TOKEN</code> precisa ter o mesmo valor aqui
+      (Render) e no <code>api/config-escola.php</code> do site.
+      <% if (typeof finalDaChave !== 'undefined' && finalDaChave) { %>A chave em uso aqui termina em <code>…<%= finalDaChave %></code>.<% } %>
     <% } else { %>
       Não foi possível ler os horários no site agora. Tente de novo em alguns minutos.
     <% } %>
