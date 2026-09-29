@@ -39,7 +39,7 @@ services:
         sync: false             # cole sua chave da Resend (envio de e-mails)
       - key: EMAIL_REMETENTE
         sync: false
-      - key: ESCOLA_HORARIOS_TOKEN
+      - key: SITE_HORARIOS_TOKEN
         sync: false             # aba Horários: mesmo nome e mesmo valor do api/config-escola.php do site (32+ caracteres)
       - key: SEED_ADMIN_NOME
         value: Secretaria

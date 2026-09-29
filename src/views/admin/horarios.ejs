@@ -23,10 +23,10 @@
     <i class="fa-solid fa-circle-exclamation"></i>
     <span><%# um só bloco de texto: a caixa é flex e separaria cada <code> numa coluna %>
     <% if (erro === 'nao_configurado') { %>
-      A leitura dos horários ainda não foi ligada. Falta configurar a variável <code>ESCOLA_HORARIOS_TOKEN</code> no Render,
-      com o mesmo valor de <code>ESCOLA_HORARIOS_TOKEN</code> no <code>api/config-escola.php</code> do site.
+      A leitura dos horários ainda não foi ligada. Falta configurar a variável <code>SITE_HORARIOS_TOKEN</code> no Render,
+      com o mesmo valor de <code>SITE_HORARIOS_TOKEN</code> no <code>api/config-escola.php</code> do site.
     <% } else if (erro === 'chave') { %>
-      O site recusou a chave de acesso. A variável <code>ESCOLA_HORARIOS_TOKEN</code> precisa ter o mesmo valor aqui
+      O site recusou a chave de acesso. A variável <code>SITE_HORARIOS_TOKEN</code> precisa ter o mesmo valor aqui
       (Render) e no <code>api/config-escola.php</code> do site.
       <% if (typeof finalDaChave !== 'undefined' && finalDaChave) { %>A chave em uso aqui termina em <code>…<%= finalDaChave %></code>.<% } %>
     <% } else { %>
