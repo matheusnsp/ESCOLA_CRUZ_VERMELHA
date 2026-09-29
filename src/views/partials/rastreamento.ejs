@@ -3,33 +3,87 @@
 // para a jornada site → escola cair numa propriedade só.
 // O linker aceita o parâmetro _gl que o site principal põe nos links para a escola
 // (e decora os links de volta), assim a sessão continua em vez de virar "referral".
-// O painel da secretaria não é medido.
+//
+// Medição só com consentimento (LGPD; Guia de Cookies da ANPD), igual ao site principal:
+// estatística e marketing negados até a pessoa escolher no aviso de cookies
+// (/js/consentimento.js). Sem escolha, ou com "não", nem o gtag.js nem o fbevents.js são
+// baixados; as chamadas gtag()/fbq() só ficam na fila.
+//
+// O painel da secretaria não é medido nem mostra o aviso.
 if (typeof isAdmin === 'undefined' || !isAdmin) {
 %>
+<link rel="stylesheet" href="/consentimento.css">
 <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-HDYZZ5JZHF"></script>
 <script>
+  // Lê a escolha já gravada ANTES do 'consent default': quem já aceitou começa liberado e
+  // o primeiro page_view sai com o identificador do visitante (e não como hit anônimo).
+  function cvrjLerConsentimento() {
+    var m = document.cookie.match(/(?:^|;\s*)cvrj_consentimento=([^;]+)/);
+    if (!m) return null;
+    var p = {};
+    try { decodeURIComponent(m[1]).split('&').forEach(function (par) { var i = par.indexOf('='); if (i > 0) p[par.slice(0, i)] = par.slice(i + 1); }); } catch (e) { return null; }
+    return p.v === '1' ? { estatistica: p.e === '1', marketing: p.m === '1' } : null;
+  }
+  var cvrjEscolha = cvrjLerConsentimento() || {};
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
+  gtag('consent', 'default', {
+    analytics_storage: cvrjEscolha.estatistica ? 'granted' : 'denied',
+    ad_storage: cvrjEscolha.marketing ? 'granted' : 'denied',
+    ad_user_data: cvrjEscolha.marketing ? 'granted' : 'denied',
+    ad_personalization: cvrjEscolha.marketing ? 'granted' : 'denied'
+  });
   gtag('js', new Date());
   gtag('config', 'G-HDYZZ5JZHF', { linker: { domains: ['cruzvermelhariodejaneiro.org'] } });
 </script>
-
-<!-- Meta Pixel Code -->
+<!-- Meta Pixel Code (só a fila; o fbevents.js é baixado pelo bloco abaixo) -->
 <script>
 !function(f,b,e,v,n,t,s)
 {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
 n.callMethod.apply(n,arguments):n.queue.push(arguments)};
 if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];
-s.parentNode.insertBefore(t,s)}(window, document,'script',
+n.queue=[]}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
+fbq('consent', 'revoke');
 fbq('init', '2224500131617302');
 fbq('track', 'PageView');
 </script>
-<noscript><img height="1" width="1" style="display:none"
-src="https://www.facebook.com/tr?id=2224500131617302&ev=PageView&noscript=1"
-/></noscript>
+<script>
+  // A escolha fica no cookie cvrj_consentimento, gravado pelo aviso de cookies. Com "sim",
+  // os scripts entram depois de a página carregar (load + ocioso), e a fila sai nessa hora.
+  (function () {
+    var GTAG = 'https://www.googletagmanager.com/gtag/js?id=G-HDYZZ5JZHF';
+    var PIXEL = 'https://connect.facebook.net/en_US/fbevents.js';
+    var baixados = {};
+    var ler = cvrjLerConsentimento;
+    function baixar(src) {
+      if (baixados[src]) return;
+      baixados[src] = 1;
+      var s = document.createElement('script'); s.async = true; s.src = src; document.head.appendChild(s);
+    }
+    function aplicar(c) {
+      c = c || ler();
+      if (!c) return;
+      window['ga-disable-G-HDYZZ5JZHF'] = !c.estatistica;
+      gtag('consent', 'update', {
+        analytics_storage: c.estatistica ? 'granted' : 'denied',
+        ad_storage: c.marketing ? 'granted' : 'denied',
+        ad_user_data: c.marketing ? 'granted' : 'denied',
+        ad_personalization: c.marketing ? 'granted' : 'denied'
+      });
+      fbq('consent', c.marketing ? 'grant' : 'revoke');
+      if (c.estatistica) baixar(GTAG);
+      if (c.marketing) baixar(PIXEL);
+    }
+    window.cvrjMedicao = { ler: ler, aplicar: aplicar };
+    function agendar() {
+      if (!ler()) return;
+      if ('requestIdleCallback' in window) requestIdleCallback(function () { aplicar(); }, { timeout: 2500 });
+      else setTimeout(function () { aplicar(); }, 800);
+    }
+    if (document.readyState === 'complete') agendar(); else window.addEventListener('load', agendar);
+  })();
+</script>
+<script src="/js/consentimento.js" defer></script>
 <!-- End Meta Pixel Code -->
 <% } %>
