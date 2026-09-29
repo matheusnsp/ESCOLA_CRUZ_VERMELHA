@@ -53,3 +53,10 @@
   });
   window.addEventListener('resize', function () { if (window.innerWidth > 1024) fechar(); });
 })();
+
+/* Service Worker: guarda CSS/JS/imagens no navegador para acelerar a navegação */
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js').catch(function () {});
+    });
+}
