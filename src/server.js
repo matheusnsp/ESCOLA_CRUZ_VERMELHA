@@ -158,20 +158,24 @@ app.use(
 app.use(csrfProtection);
 app.use(exposeUser);
 
-// Protecao CSRF (depois da sessao) e usuario disponivel nas views.
-app.use(csrfProtection);
-app.use(exposeUser);
-
 // Bloqueia alunos banidos em qualquer request — derruba a sessão na hora.
 const prisma = require('./db');
+const cacheRapido = require('./lib/cache-rapido');
 app.use(async (req, res, next) => {
   if (!req.session?.usuarioId) return next();
   try {
-    const usuario = await prisma.usuario.findUnique({
-      where: { id: req.session.usuarioId },
-      select: { bloqueioTotal: true },
-    });
-    if (!usuario || usuario.bloqueioTotal) {
+    // Guardado por 30 s (lib/cache-rapido.js): antes era uma consulta ao banco em toda página
+    // de quem está logado. Banir alguém no painel limpa o cache na hora.
+    let achado = cacheRapido.banGuardado(req.session.usuarioId);
+    if (!achado) {
+      const usuario = await prisma.usuario.findUnique({
+        where: { id: req.session.usuarioId },
+        select: { bloqueioTotal: true },
+      });
+      achado = { bloqueado: !usuario || usuario.bloqueioTotal };
+      cacheRapido.guardarBan(req.session.usuarioId, achado.bloqueado);
+    }
+    if (achado.bloqueado) {
       return req.session.destroy(() => {
         const ehAdmin = isAdminReq(req);
         return res.redirect(ehAdmin ? '/login' : '/login?banido=1');

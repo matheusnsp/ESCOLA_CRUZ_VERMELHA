@@ -20,6 +20,9 @@ async function enviarImagem(buffer, contentType, nome) {
       Authorization: `Bearer ${SERVICE_KEY}`,
       'Content-Type': contentType,
       'x-upsert': 'true',
+      // Sem isto o Supabase serve a foto com "no-cache" e o navegador a confere a cada visita.
+      // O nome do arquivo leva a data do envio e nunca é reaproveitado: pode ficar 1 ano em cache.
+      'cache-control': 'max-age=31536000',
     },
     body: buffer,
   });
