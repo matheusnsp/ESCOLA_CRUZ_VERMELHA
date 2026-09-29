@@ -39,6 +39,8 @@ services:
         sync: false             # cole sua chave da Resend (envio de e-mails)
       - key: EMAIL_REMETENTE
         sync: false
+      - key: SITE_HORARIOS_TOKEN
+        sync: false             # aba Horários: a mesma chave de ESCOLA_HORARIOS_TOKEN no site (32+ caracteres)
       - key: SEED_ADMIN_NOME
         value: Secretaria
       - key: SEED_ADMIN_EMAIL

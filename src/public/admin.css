@@ -1060,3 +1060,53 @@ body.dark .adm-permissao {
 }
 .wpp-aviso i { margin-top: 3px; flex: none; color: var(--alerta-tx); }
 .wpp-aviso strong { color: var(--tinta-60); font-weight: 700; }
+
+/* ===== Dias e horários dos alunos (/horarios) ============== */
+.adm-hz-intro { margin: -6px 0 18px; max-width: 72ch; color: var(--mut); font-size: 14px; line-height: 1.55; }
+.adm-hz-corpo { padding: 16px 20px 18px; }
+.adm-hz-nota { padding: 0 20px; }
+.adm-hz-faltam summary { padding: 16px 20px; }
+.adm-hz-cursos { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+.adm-hz-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 36px; padding: 6px 14px; border-radius: 999px;
+  border: 1px solid var(--linha); background: var(--card); color: var(--tinta);
+  font-size: 13px; font-weight: 700; text-decoration: none;
+}
+.adm-hz-chip small { color: var(--mut); font-weight: 700; }
+.adm-hz-chip:hover { border-color: var(--vermelho); }
+.adm-hz-chip.on { background: var(--vermelho); border-color: var(--vermelho); color: #fff; }
+.adm-hz-chip.on small { color: rgba(255,255,255,.85); }
+.adm-hz-chip:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+
+.adm-hz-rolagem { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.adm-hz-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.adm-hz-grade { border-collapse: separate; border-spacing: 6px; width: 100%; max-width: 760px; min-width: 520px; margin: 0 -6px; }
+.adm-hz-grade caption { caption-side: bottom; text-align: left; font-size: 12px; padding: 6px 6px 0; }
+.adm-hz-grade thead th { font-size: 12px; font-weight: 800; color: var(--mut); text-align: center; padding: 0 0 2px; }
+.adm-hz-grade tbody th { text-align: left; font-weight: 800; font-size: 14px; color: var(--tinta); padding-right: 8px; white-space: nowrap; }
+.adm-hz-grade tbody th small { display: block; font-weight: 600; font-size: 11px; color: var(--mut); }
+.adm-hz-grade td {
+  width: 14%; height: 52px; border-radius: var(--r-s); text-align: center;
+  font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums;
+  /* --n vai de 0 a 1 (alunos no horário ÷ o horário mais pedido) */
+  background: color-mix(in srgb, var(--vermelho) calc(12% + var(--n) * 78%), var(--card));
+  color: #fff;
+}
+.adm-hz-grade td.zero { background: var(--bg); color: var(--mut); font-weight: 600; border: 1px dashed var(--linha); }
+.adm-hz-grade td.max { box-shadow: 0 0 0 2px var(--tinta) inset; }
+.adm-hz-top { margin: 14px 0 0; font-size: 14px; }
+.adm-hz-resumo { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--mut); }
+.adm-hz-resumo b { color: var(--tinta); }
+.adm-hz-contato { display: block; margin-top: 2px; font-weight: 500; }
+.adm-hz-faltam summary { cursor: pointer; font-weight: 800; }
+.adm-hz-faltam summary i { color: var(--alerta-tx); margin-right: 4px; }
+.adm-hz-faltam[open] summary { border-bottom: 1px solid var(--linha); margin-bottom: 12px; }
+.adm-hz-fonte { font-size: 12px; margin: 18px 0 0; }
+@media (max-width: 620px) {
+  .adm-hz-grade { min-width: 0; border-spacing: 4px; margin: 0 -4px; }
+  .adm-hz-grade td { height: 44px; font-size: 16px; }
+  .adm-hz-grade tbody th { font-size: 13px; padding-right: 4px; }
+  .adm-hz-corpo { padding: 14px 14px 16px; }
+}
