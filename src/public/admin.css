@@ -1138,7 +1138,8 @@ body.dark .adm-permissao {
   .adm-nav a { padding: 10px 12px; font-size: 14.5px; }
   .adm-nav a i { width: 18px; text-align: center; font-size: 14px; }
   .adm-top-pe {
-    display: flex; align-items: center; gap: 10px;
+    display: flex !important; /* vence o display:contents do style do header.ejs */
+    align-items: center; gap: 10px;
     padding: 14px 4px 0; border-top: 1px solid var(--linha);
   }
   .adm-sair { flex: 1; min-width: 0; justify-content: space-between; gap: 8px; }

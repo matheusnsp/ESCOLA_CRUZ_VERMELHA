@@ -35,8 +35,10 @@
     <% } %>
   </nav>
 
-  <!-- Rodapé da barra lateral (no celular, os itens voltam a ficar na linha do topo). -->
-  <div class="adm-top-pe">
+  <!-- Rodapé da barra lateral (no celular, os itens voltam a ficar na linha do topo).
+       O display:contents no style é de propósito: com um admin.css antigo ainda no cache do
+       navegador, o topo continua igual ao de antes em vez de empilhar tema e Sair. -->
+  <div class="adm-top-pe" style="display: contents">
   <!-- Fora do <form> de logout de propósito: dentro dele, qualquer
        clique no botão enviaria o formulário e deslogaria o usuário. -->
 
