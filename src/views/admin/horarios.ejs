@@ -21,6 +21,7 @@
 <% if (erro) { %>
   <div class="adm-erro">
     <i class="fa-solid fa-circle-exclamation"></i>
+    <span><%# um só bloco de texto: a caixa é flex e separaria cada <code> numa coluna %>
     <% if (erro === 'nao_configurado') { %>
       A leitura dos horários ainda não foi ligada. Falta configurar a variável <code>ESCOLA_HORARIOS_TOKEN</code> no Render,
       com o mesmo valor de <code>ESCOLA_HORARIOS_TOKEN</code> no <code>api/config-escola.php</code> do site.
@@ -31,6 +32,7 @@
     <% } else { %>
       Não foi possível ler os horários no site agora. Tente de novo em alguns minutos.
     <% } %>
+    </span>
   </div>
 <% } else { %>
   <%
