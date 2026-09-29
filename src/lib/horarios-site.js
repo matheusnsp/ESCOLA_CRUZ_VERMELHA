@@ -2,9 +2,9 @@
 //
 // Dias e horários dos alunos, respondidos no site (cruzvermelhariodejaneiro.org) depois de pagar
 // a inscrição. As respostas moram no banco do site; a aba "Horários" do painel lê de lá, servidor
-// a servidor, pelo endereço api/escola-horarios.php do site, com a chave ESCOLA_HORARIOS_TOKEN
-// (o mesmo nome e o mesmo valor do api/config-escola.php do site; SITE_HORARIOS_TOKEN, o nome
-// antigo, ainda vale). Nada disso grava no banco da escola.
+// a servidor, pelo endereço api/escola-horarios.php do site, com a chave SITE_HORARIOS_TOKEN
+// (o mesmo nome e o mesmo valor do api/config-escola.php do site; ESCOLA_HORARIOS_TOKEN ainda
+// vale, se a outra não existir). Nada disso grava no banco da escola.
 //
 // O site nunca manda CPF. Cada resposta traz o curso pelo id da escola (curso_id = Curso.id),
 // o que deixa cruzar com as turmas daqui.
@@ -29,7 +29,7 @@ const ROTULOS_PADRAO = {
 
 // A chave, sem aspas nem espaços colados sem querer no painel do Render.
 function chave() {
-  const bruta = process.env.ESCOLA_HORARIOS_TOKEN || process.env.SITE_HORARIOS_TOKEN || '';
+  const bruta = process.env.SITE_HORARIOS_TOKEN || process.env.ESCOLA_HORARIOS_TOKEN || '';
   return String(bruta).trim().replace(/^(['"])(.*)\1$/, '$2').trim();
 }
 
