@@ -774,7 +774,10 @@
     .adm-form.contato, .adm-form.endereco, .adm-form.cidade-uf { grid-template-columns: 1fr; }
     .adm-top { flex-wrap: wrap; height: auto; padding: 12px 16px; gap: 12px; }
     .adm-brand-txt { display: none; }
-    .adm-nav { order: 3; width: 100%; overflow-x: auto; padding-bottom: 2px; }
+    /* flex: 1 1 100% (e não só width): o flex: 1 da regra geral zerava a base e o menu ficava
+       espremido ao lado do logo em vez de descer para a linha de baixo. */
+    .adm-nav { order: 3; width: 100%; flex: 1 1 100%; overflow-x: auto; padding-bottom: 2px; }
+    .adm-sair { margin-left: auto; }
     .adm-nav a { white-space: nowrap; }
     .transf-resumo { grid-template-columns: 1fr 1fr; }
   }
@@ -1109,4 +1112,36 @@ body.dark .adm-permissao {
   .adm-hz-grade td { height: 44px; font-size: 16px; }
   .adm-hz-grade tbody th { font-size: 13px; padding-right: 4px; }
   .adm-hz-corpo { padding: 14px 14px 16px; }
+}
+
+/* ===== Menu lateral (computador) =========================
+   No computador o menu da secretaria fica numa barra fixa à esquerda: marca no alto, os itens
+   um embaixo do outro e, no pé da barra, tema, nome e Sair. Abaixo de 1025 px continua a barra
+   do topo de sempre (regras de 1024 px acima); .adm-top-pe some da árvore (display: contents). */
+.adm-top-pe { display: contents; }
+@media (min-width: 1025px) {
+  :root { --lado: 248px; }
+  body.adm { padding-left: var(--lado); }
+  .adm-top {
+    position: fixed; top: 0; bottom: 0; left: 0;
+    width: var(--lado); height: auto;
+    flex-direction: column; align-items: stretch; gap: 22px;
+    padding: 22px 14px 16px;
+    border-bottom: 0; border-right: 1px solid var(--linha);
+    box-shadow: none;
+    overflow-y: auto; overscroll-behavior: contain;
+  }
+  .adm-brand { flex-direction: column; align-items: flex-start; gap: 10px; padding: 0 8px; }
+  .adm-logo { height: 40px; }
+  .adm-brand-txt { padding-left: 0; border-left: 0; }
+  .adm-nav { flex-direction: column; gap: 2px; margin: 0; flex: 1; }
+  .adm-nav a { padding: 10px 12px; font-size: 14.5px; }
+  .adm-nav a i { width: 18px; text-align: center; font-size: 14px; }
+  .adm-top-pe {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 4px 0; border-top: 1px solid var(--linha);
+  }
+  .adm-sair { flex: 1; min-width: 0; justify-content: space-between; gap: 8px; }
+  .adm-sair span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .adm-sair button { padding: 8px 12px; }
 }

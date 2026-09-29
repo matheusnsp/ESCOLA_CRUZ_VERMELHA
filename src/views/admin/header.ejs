@@ -35,6 +35,8 @@
     <% } %>
   </nav>
 
+  <!-- Rodapé da barra lateral (no celular, os itens voltam a ficar na linha do topo). -->
+  <div class="adm-top-pe">
   <!-- Fora do <form> de logout de propósito: dentro dele, qualquer
        clique no botão enviaria o formulário e deslogaria o usuário. -->
 
@@ -43,14 +45,13 @@
     <i class="fa-solid fa-moon ic-escuro"></i>
     <i class="fa-solid fa-sun ic-claro"></i>
   </button>
-       
-       
 
   <form method="POST" action="/logout" class="adm-sair">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <span><%= usuario?.nome?.trim().split(/\s+/)[0] || '' %></span>
     <button type="submit"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair</button>
   </form>
+  </div>
 </header>
 
 <script>

@@ -140,7 +140,10 @@ const sessionPool = new Pool({
 });
 app.use(
   session({
-    store: new PgSession({ pool: sessionPool, createTableIfMissing: true }),
+    // disableTouch: sem ele, toda página regravava a validade da sessão no banco. Com rolling
+    // desligado (padrão), o cookie do navegador vence na data fixada no login de qualquer jeito,
+    // então essa gravação não servia para nada.
+    store: new PgSession({ pool: sessionPool, createTableIfMissing: true, disableTouch: true }),
     name: 'escola.sid',
     secret: process.env.SESSION_SECRET,
     resave: false,
