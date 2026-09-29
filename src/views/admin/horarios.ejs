@@ -1,0 +1,220 @@
+<%- include('head', { titulo: 'Horários dos alunos' }) %>
+<%- include('header', { ativo: 'horarios' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Dias e horários dos alunos</h1>
+  <% if (!erro) { %>
+    <div class="adm-acoes">
+      <a href="/horarios?<%= h.cursoSel ? 'curso=' + encodeURIComponent(h.cursoSel) + '&' : '' %>atualizar=1" class="adm-btn adm-btn-neutro"><i class="fa-solid fa-rotate"></i> Atualizar</a>
+      <% if (h.respostas.length) { %>
+        <a href="/horarios.csv<%= h.cursoSel ? '?curso=' + encodeURIComponent(h.cursoSel) : '' %>" class="adm-btn"><i class="fa-solid fa-file-arrow-down"></i> Baixar planilha</a>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+
+<p class="adm-hz-intro">
+  Depois de pagar a inscrição no site, o aluno marca os dias e períodos em que consegue vir, a partir de quando pode
+  começar e, se já tem turma, se a data serve. Use o mapa para abrir ou remarcar turmas.
+</p>
+
+<% if (erro) { %>
+  <div class="adm-erro">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    <% if (erro === 'nao_configurado') { %>
+      A leitura dos horários ainda não foi ligada. Falta configurar a chave <code>SITE_HORARIOS_TOKEN</code> no servidor
+      da escola (a mesma de <code>ESCOLA_HORARIOS_TOKEN</code> no site).
+    <% } else if (erro === 'chave') { %>
+      O site recusou a chave de acesso. Confira se <code>SITE_HORARIOS_TOKEN</code> (escola) e
+      <code>ESCOLA_HORARIOS_TOKEN</code> (site) são iguais.
+    <% } else { %>
+      Não foi possível ler os horários no site agora. Tente de novo em alguns minutos.
+    <% } %>
+  </div>
+<% } else { %>
+  <%
+    const R = h.dados.rotulos;
+    const totalFaltam = h.semResposta.length;
+    const cursoAtual = h.cursos.find(c => c.chave === h.cursoSel);
+    const link = (chave) => '/horarios' + (chave ? '?curso=' + encodeURIComponent(chave) : '');
+  %>
+
+  <% if (h.cursos.length) { %>
+    <nav class="adm-hz-cursos" aria-label="Filtrar por curso">
+      <a href="<%= link('') %>" class="adm-hz-chip <%= !h.cursoSel ? 'on' : '' %>">Todos os cursos</a>
+      <% h.cursos.forEach(function (c) { %>
+        <a href="<%= link(c.chave) %>" class="adm-hz-chip <%= h.cursoSel === c.chave ? 'on' : '' %>"><%= c.nome %> <small><%= c.respostas %></small></a>
+      <% }) %>
+    </nav>
+  <% } %>
+
+  <div class="adm-cards">
+    <div class="adm-stat ok">
+      <span><%= mapa.total %></span>
+      <small><i class="fa-solid fa-clipboard-check"></i> Responderam</small>
+    </div>
+    <div class="adm-stat <%= totalFaltam ? 'warn' : '' %>">
+      <span><%= totalFaltam %></span>
+      <small><i class="fa-solid fa-hourglass-half"></i> Pagaram e ainda não responderam</small>
+    </div>
+    <div class="adm-stat">
+      <span><%= mapa.inicio.proxima %></span>
+      <small><i class="fa-solid fa-play"></i> Podem começar já na próxima turma</small>
+    </div>
+    <div class="adm-stat <%= mapa.turma.nao ? 'warn' : '' %>">
+      <span><%= mapa.turma.nao %></span>
+      <small><i class="fa-solid fa-calendar-xmark"></i> Precisam de outra data de turma</small>
+    </div>
+  </div>
+
+  <% if (!mapa.total) { %>
+    <div class="adm-box"><p class="adm-vazio">Ninguém respondeu <%= cursoAtual ? 'neste curso' : '' %> ainda.</p></div>
+  <% } else { %>
+    <div class="adm-box adm-espaco">
+      <div class="adm-box-head">
+        <h2 class="adm-h2"><i class="fa-solid fa-table-cells"></i> Quantos podem em cada horário <%= cursoAtual ? '· ' + cursoAtual.nome : '' %></h2>
+      </div>
+      <div class="adm-hz-corpo">
+      <div class="adm-hz-rolagem">
+        <table class="adm-hz-grade">
+          <caption class="adm-mut">Número de alunos que marcaram cada dia e período. Quanto mais forte a cor, mais alunos.</caption>
+          <thead>
+            <tr>
+              <th scope="col"><span class="adm-hz-sr">Período</span></th>
+              <% hs.DIAS.forEach(function (d) { %><th scope="col"><%= R.dias_curtos[d] %></th><% }) %>
+            </tr>
+          </thead>
+          <tbody>
+            <% hs.PERIODOS.forEach(function (p) { %>
+              <tr>
+                <th scope="row"><%= R.periodos[p] %><small><%= R.horas[p] %></small></th>
+                <% hs.DIAS.forEach(function (d) {
+                     const n = mapa.grade[p][d];
+                     const forca = mapa.maximo ? (n / mapa.maximo).toFixed(2) : 0; %>
+                  <td class="<%= n ? '' : 'zero' %> <%= n && n === mapa.maximo ? 'max' : '' %>" style="--n:<%= forca %>"
+                      title="<%= R.dias[d] %> <%= String(R.periodos[p]).toLowerCase() %>: <%= n %> aluno(s)"><%= n %></td>
+                <% }) %>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <% if (mapa.top.length) { %>
+        <p class="adm-hz-top"><b>Mais pedidos:</b>
+          <%= mapa.top.map(t => hs.slotTexto(t.slot, R) + ' (' + t.n + ')').join(' · ') %></p>
+      <% } %>
+      <ul class="adm-hz-resumo">
+        <% Object.keys(R.inicio).forEach(function (k) { %>
+          <li><%= R.inicio[k] %>: <b><%= mapa.inicio[k] || 0 %></b></li>
+        <% }) %>
+        <% if (mapa.turma.sim || mapa.turma.nao) { %>
+          <li>Data da turma serve: <b><%= mapa.turma.sim %></b> sim · <b><%= mapa.turma.nao %></b> não</li>
+        <% } %>
+      </ul>
+      </div>
+    </div>
+  <% } %>
+
+  <% if (h.cursoSel) { %>
+    <div class="adm-box adm-espaco">
+      <div class="adm-box-head">
+        <h2 class="adm-h2"><i class="fa-solid fa-calendar-days"></i> Próximas turmas deste curso na escola</h2>
+      </div>
+      <% if (!cursoAtual || !cursoAtual.cursoId) { %>
+        <p class="adm-vazio adm-hz-nota">Este curso do site não está ligado a um curso da escola.</p>
+      <% } else if (!turmas.length) { %>
+        <p class="adm-vazio adm-hz-nota">Nenhuma turma aberta ou confirmada a partir de hoje.
+          <% if (pode('turmas:gerenciar')) { %><a href="/turmas/nova">Criar turma</a>.<% } %></p>
+      <% } else { %>
+        <div class="adm-hz-rolagem">
+        <table class="adm-table">
+          <thead><tr><th>Início</th><th>Aulas</th><th>Inscritos / vagas</th><th>Situação</th></tr></thead>
+          <tbody>
+            <% turmas.forEach(function (t) {
+                 const horariosAula = [...new Set(t.aulas.map(a => a.horario))]; %>
+              <tr>
+                <td><%= t.inicioPrevisto.toLocaleDateString('pt-BR', { timeZone: 'UTC' }) %></td>
+                <td>
+                  <%= t.aulas.length %> aula(s)<% if (t.aulas.length) { %>:
+                  <%= [...new Set(t.aulas.map(a => ['dom','seg','ter','qua','qui','sex','sáb'][new Date(a.data).getUTCDay()]))].join(', ') %>
+                  · <%= horariosAula.join(', ') %><% } %>
+                </td>
+                <td><%= t._count.matriculas %>/<%= t.vagas %></td>
+                <td><span class="badge st-<%= t.status.toLowerCase() %>"><%= t.status === 'CONFIRMADA' ? 'Confirmada' : 'Aberta' %></span></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+
+  <% if (totalFaltam) { %>
+    <details class="adm-box adm-espaco adm-hz-faltam">
+      <summary><i class="fa-solid fa-hourglass-half"></i> <%= totalFaltam %> aluno(s) pagaram e ainda não disseram os horários</summary>
+      <p class="adm-mut adm-hz-nota">O site já manda até dois lembretes por e-mail (24 h e 72 h depois do pagamento).</p>
+      <div class="adm-hz-rolagem">
+      <table class="adm-table">
+        <thead><tr><th>Aluno</th><th>Curso</th><th>Pagou em</th><th>Contato</th></tr></thead>
+        <tbody>
+          <% h.semResposta.forEach(function (l) { const alunoId = alunoPorEmail[l.email.toLowerCase()]; %>
+            <tr>
+              <td><% if (alunoId) { %><a href="/alunos/<%= alunoId %>/matriculas" class="adm-link-aluno"><%= l.nome %></a><% } else { %><%= l.nome %><% } %></td>
+              <td><%= l.cursoNome %></td>
+              <td><%= hs.dataHoraBrt(l.pagoEm) %></td>
+              <td>
+                <% if (l.telefone) { %><a href="https://wa.me/55<%= l.telefone %>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> <%= hs.telefoneBonito(l.telefone) %></a><br><% } %>
+                <a href="mailto:<%= l.email %>"><%= l.email %></a>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      </div>
+    </details>
+  <% } %>
+
+  <% if (h.respostas.length) { %>
+    <div class="adm-box adm-espaco">
+      <div class="adm-box-head">
+        <h2 class="adm-h2"><i class="fa-solid fa-list"></i> Respostas (<%= h.respostas.length %>)</h2>
+      </div>
+      <div class="adm-hz-rolagem">
+      <table class="adm-table">
+        <thead>
+          <tr><th>Aluno</th><th>Curso</th><th>Horários</th><th>Começo</th><th>Turma</th><th>Recado</th><th>Respondeu</th></tr>
+        </thead>
+        <tbody>
+          <% h.respostas.forEach(function (l) { const alunoId = alunoPorEmail[l.email.toLowerCase()]; %>
+            <tr>
+              <td>
+                <% if (alunoId) { %><a href="/alunos/<%= alunoId %>/matriculas" class="adm-link-aluno"><%= l.nome %></a><% } else { %><%= l.nome %><% } %>
+                <small class="adm-mut adm-hz-contato">
+                  <% if (l.telefone) { %><a href="https://wa.me/55<%= l.telefone %>" target="_blank" rel="noopener"><%= hs.telefoneBonito(l.telefone) %></a> · <% } %>
+                  <a href="mailto:<%= l.email %>"><%= l.email %></a>
+                </small>
+              </td>
+              <td><%= l.cursoNome %></td>
+              <td><%= hs.horariosTexto(l.horarios, R) %></td>
+              <td><%= R.inicio[l.inicio] || '—' %></td>
+              <td>
+                <% if (l.turmaInicio) { %>
+                  <%= hs.dataBr(l.turmaInicio) %>
+                  <% if (l.turmaServe === 'nao') { %><span class="badge canc">precisa de outra data</span><% } else if (l.turmaServe === 'sim') { %><span class="badge ok">data serve</span><% } %>
+                <% } else { %><span class="adm-mut">sem turma ainda</span><% } %>
+              </td>
+              <td><%= l.observacao || '' %></td>
+              <td><%= hs.dataHoraBrt(l.respondidoEm) %><% if (l.vezes > 1) { %> <small class="adm-mut">(mudou <%= l.vezes - 1 %>×)</small><% } %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  <% } %>
+
+  <p class="adm-mut adm-hz-fonte">Dados do questionário no site<% if (h.dados.geradoEm) { %>, lidos em <%= hs.dataHoraBrt(h.dados.geradoEm) %><% } %>. CPF não é enviado.</p>
+<% } %>
+
+<%- include('foot') %>

@@ -19,6 +19,7 @@ const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarTextoWhats
 const { coletarDadosRelatorio, gerarExcel, gerarPdf, coletarLancamentosOfx, gerarOfx } = require('../lib/relatorio'); // relatórios Excel/PDF
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 const { temPermissao, PAPEIS_ADMIN, listarPermissoes } = require('../lib/permissoes');
+const horariosSite = require('../lib/horarios-site'); // questionário de dias e horários (lido do site)
 
 const router = express.Router();
 
@@ -1032,6 +1033,73 @@ router.post('/turmas/:id/excluir', requirePermissao('turmas:gerenciar'), async (
   await prisma.turma.delete({ where: { id: turma.id } });
   await auditar(req, 'EXCLUIU_TURMA', 'Turma', turma.id, { cursoId: turma.cursoId, curso: turma.curso.nome });
   res.redirect('/turmas?ok=Turma excluida.');
+});
+
+// ---------- Dias e horarios dos alunos (questionario do site) ----------
+//
+// O aluno responde no site (cruzvermelhariodejaneiro.org) depois de pagar a inscricao; a
+// secretaria ve aqui o mapa por curso, quem falta responder e a planilha. Os dados sao lidos
+// do site a cada minuto no maximo (lib/horarios-site.js); nada e gravado no banco da escola.
+
+async function carregarHorarios(req) {
+  const r = await horariosSite.buscar({ forcar: req.query.atualizar === '1' });
+  if (!r.ok) return { erro: r.erro };
+  const dados = r.dados;
+  const cursos = horariosSite.cursos(dados);
+  const cursoSel = cursos.some((c) => c.chave === req.query.curso) ? req.query.curso : '';
+  const respostas = dados.respostas.filter(horariosSite.doCurso(cursoSel));
+  const semResposta = dados.semResposta.filter(horariosSite.doCurso(cursoSel));
+  return { dados, cursos, cursoSel, respostas, semResposta };
+}
+
+router.get('/horarios', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
+  const h = await carregarHorarios(req);
+  if (h.erro) {
+    return res.render('admin/horarios', { erro: h.erro, ativo: 'horarios' });
+  }
+
+  // Cruza com a escola: a conta de cada aluno (pelo e-mail) e as proximas turmas do curso escolhido.
+  const emails = [...new Set([...h.respostas, ...h.semResposta].map((l) => l.email.toLowerCase()).filter(Boolean))];
+  const contas = emails.length
+    ? await prisma.usuario.findMany({ where: { email: { in: emails }, papel: 'ALUNO' }, select: { id: true, email: true } })
+    : [];
+  const alunoPorEmail = Object.fromEntries(contas.map((u) => [u.email.toLowerCase(), u.id]));
+
+  const cursoEscola = h.cursoSel ? h.cursos.find((c) => c.chave === h.cursoSel)?.cursoId : null;
+  const hoje = new Date(); hoje.setUTCHours(0, 0, 0, 0);
+  const turmas = cursoEscola
+    ? await prisma.turma.findMany({
+        where: { cursoId: cursoEscola, status: { in: ['ABERTA', 'CONFIRMADA'] }, inicioPrevisto: { gte: hoje } },
+        orderBy: { inicioPrevisto: 'asc' },
+        take: 5,
+        include: {
+          aulas: { orderBy: { data: 'asc' } },
+          _count: { select: { matriculas: { where: { taxaConfirmada: true, statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] } } } } },
+        },
+      })
+    : [];
+
+  res.render('admin/horarios', {
+    ativo: 'horarios',
+    erro: null,
+    h,
+    mapa: horariosSite.mapa(h.respostas),
+    alunoPorEmail,
+    turmas,
+    hs: horariosSite,
+  });
+});
+
+router.get('/horarios.csv', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
+  const h = await carregarHorarios(req);
+  if (h.erro) return res.redirect('/horarios');
+  const curso = h.cursos.find((c) => c.chave === h.cursoSel);
+  const nome = (curso ? curso.nome : 'todos-os-cursos').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
+  await auditar(req, 'BAIXOU_PLANILHA_HORARIOS', 'Curso', curso?.cursoId || null, { curso: curso?.nome || 'todos', linhas: h.respostas.length });
+  res.set('Content-Type', 'text/csv; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="horarios-${nome}.csv"`);
+  res.set('Cache-Control', 'no-store');
+  res.send(horariosSite.csv(h.respostas, h.dados.rotulos));
 });
 
 // ---------- Inscricoes / Pagamentos ----------

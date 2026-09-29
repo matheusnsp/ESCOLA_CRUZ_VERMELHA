@@ -67,6 +67,8 @@ Plataformas de servidor persistente são o encaixe natural. Abaixo, os dois cami
 | `ADMIN_HOST`        | `secretaria` (subdomínio do painel)                                       |
 | `RESEND_API_KEY`    | sua chave da Resend (sem ela, o link de confirmação só aparece no log)    |
 | `EMAIL_REMETENTE`   | e-mail remetente verificado na Resend                                     |
+| `SITE_HORARIOS_TOKEN` | aba **Horários** do painel: chave para ler o questionário de dias e horários no site. A mesma de `ESCOLA_HORARIOS_TOKEN` no `api/config-escola.php` do site (32 caracteres ou mais). Sem ela, a aba avisa que falta configurar |
+| `SITE_HORARIOS_URL` | opcional; padrão `https://cruzvermelhariodejaneiro.org/matricula-cursos-presenciais/api/escola-horarios.php` |
 | `SEED_ADMIN_EMAIL`  | e-mail do primeiro acesso da secretaria                                   |
 | `SEED_ADMIN_SENHA`  | senha forte do primeiro acesso (troque depois)                            |
 

@@ -10,6 +10,9 @@
     <a href="/" class="<%= secaoAtiva === 'home' ? 'on' : '' %>"><i class="fa-solid fa-gauge"></i> Painel</a>
     <a href="/cursos" class="<%= secaoAtiva === 'cursos' ? 'on' : '' %>"><i class="fa-solid fa-book"></i> Cursos</a>
     <a href="/turmas" class="<%= secaoAtiva === 'turmas' ? 'on' : '' %>"><i class="fa-solid fa-calendar-days"></i> Turmas</a>
+    <% if (pode('turmas:gerenciar') || pode('painel:leitura')) { %>
+      <a href="/horarios" class="<%= secaoAtiva === 'horarios' ? 'on' : '' %>"><i class="fa-solid fa-clock"></i> Horários</a>
+    <% } %>
     <a href="/inscricoes" class="<%= secaoAtiva === 'inscricoes' ? 'on' : '' %>"><i class="fa-solid fa-users"></i> Matriculas</a>
     <%
       // 💡 Pagamentos pendentes. A condição espelha a permissão da rota
