@@ -6,9 +6,9 @@
 <title><%= typeof titulo !== 'undefined' ? titulo : 'Escola de Educação e Saúde CVB-RJ' %> | Cruz Vermelha</title>
 <link rel="icon" type="image/png" href="/img/logo-cvb-rj.webp">
 
-<link rel="stylesheet" href="/style.css">
-<link rel="stylesheet" href="/site-extra.css">
-<link rel="stylesheet" href="/inscrever.css">
+<link rel="stylesheet" href="<%= asset('/style.css') %>">
+<link rel="stylesheet" href="<%= asset('/site-extra.css') %>">
+<link rel="stylesheet" href="<%= asset('/inscrever.css') %>">
 
 <%
 // CSS específico da página. Precisa vir DEPOIS dos globais para poder
@@ -17,7 +17,7 @@
 // Uso: include('partials/site-head', { titulo: 'Inscrição', cssExtra: '/inscrever.css' })
 %>
 <% if (typeof cssExtra !== 'undefined') { %>
-<link rel="stylesheet" href="<%= cssExtra %>">
+<link rel="stylesheet" href="<%= asset(cssExtra) %>">
 <% } %>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">

@@ -41,6 +41,10 @@ app.locals.statusBadge = function (s) {
   return `<span class="badge ${cls}">${txt}</span>`;
 };
 
+// Helper disponível em todas as views: endereço de CSS/JS com a versão do conteúdo
+// (<link href="<%= asset('/admin.css') %>">), para um deploy nunca deixar CSS velho no cache.
+app.locals.asset = require('./lib/assets').asset;
+
 // Cabecalhos de seguranca. A CSP libera apenas os CDNs que o site usa.
 const isProd = process.env.NODE_ENV === 'production';
 app.use(

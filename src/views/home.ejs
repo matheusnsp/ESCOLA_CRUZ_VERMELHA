@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Escola de Educação e Saúde CVB-RJ | Cruz Vermelha</title>
     <link rel="icon" type="image/png" href="/img/logo-cvb-rj.webp">
-    <link rel="stylesheet" href="/style.css">
-    <link rel="stylesheet" href="/site-extra.css">
+    <link rel="stylesheet" href="<%= asset('/style.css') %>">
+    <link rel="stylesheet" href="<%= asset('/site-extra.css') %>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Manrope e Bricolage Grotesque: fontes do bloco .cx, usado da vitrine de cursos pra baixo. -->
@@ -316,7 +316,7 @@
         <i class="fa-brands fa-whatsapp"></i>
     </a>
 
-    <script src="/js/main.js"></script>
+    <script src="<%= asset('/js/main.js') %>"></script>
     <!-- ══ Carrossel da vitrine de cursos ═════════════════════════════ -->
     <script>
     /* ============================================================

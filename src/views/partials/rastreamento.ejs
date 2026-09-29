@@ -12,7 +12,7 @@
 // O painel da secretaria não é medido nem mostra o aviso.
 if (typeof isAdmin === 'undefined' || !isAdmin) {
 %>
-<link rel="stylesheet" href="/consentimento.css">
+<link rel="stylesheet" href="<%= asset('/consentimento.css') %>">
 <!-- Google tag (gtag.js) -->
 <script>
   // Lê a escolha já gravada ANTES do 'consent default': quem já aceitou começa liberado e
@@ -84,6 +84,6 @@ fbq('track', 'PageView');
     if (document.readyState === 'complete') agendar(); else window.addEventListener('load', agendar);
   })();
 </script>
-<script src="/js/consentimento.js" defer></script>
+<script src="<%= asset('/js/consentimento.js') %>" defer></script>
 <!-- End Meta Pixel Code -->
 <% } %>
