@@ -1402,3 +1402,27 @@ a.adm-chip-turma:hover { border-color: var(--vermelho); background: var(--vermel
 @media (min-width: 621px) { .adm-chip-turma, .adm-chip-turma b, .adm-chip-turma span, .adm-valores p { white-space: nowrap; } }
 @media (max-width: 620px) { .adm-chip-turma { flex-wrap: wrap; row-gap: 2px; } .adm-chip-turma b { white-space: nowrap; } }
 .adm-valores small + .adm-valores-parc { margin-top: 6px; }
+
+/* ---------- Horários (repaginação) ---------- */
+a.adm-stat { text-decoration: none; color: inherit; }
+a.adm-stat:hover { border-color: var(--vermelho); }
+.adm-hz-resumo { display: block; font-size: 13px; }
+.adm-hz-turmas { list-style: none; margin: 0; padding: 4px 20px 18px; display: grid; gap: 8px; }
+.adm-hz-turma { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 14px; border: 1px solid var(--linha); border-radius: 12px; background: var(--campo); color: var(--tinta); text-decoration: none; font-size: 13.5px; }
+a.adm-hz-turma:hover { border-color: var(--vermelho); background: var(--vermelho-bg); }
+.adm-hz-turma b { font-weight: 800; white-space: nowrap; }
+.adm-hz-turma span { color: var(--mut); }
+.adm-hz-turma i { font-size: 11px; opacity: .7; }
+.adm-hz-turma em { font-style: normal; margin-left: auto; }
+.adm-hz-per { display: block; font-size: 13.5px; line-height: 1.5; }
+.adm-hz-per b { display: inline-block; min-width: 52px; font-weight: 800; color: var(--tinta); }
+.adm-hz-curso { display: block; font-size: 12.5px; font-weight: 700; color: var(--tinta-60); margin-top: 1px; }
+.adm-hz-recado { display: block; font-size: 13.5px; line-height: 1.45; margin-bottom: 2px; }
+.adm-hz-quando { display: block; font-size: 12px; }
+.adm-hz-respostas .badge { display: inline-block; margin-top: 3px; }
+.adm-hz-faltam .adm-table { margin-top: 4px; }
+/* Horários dos alunos: última aba de Turmas, separada das abas de status */
+.adm-aba-sep { margin-left: auto; }
+.adm-aba-sep i { font-size: 12px; margin-right: 2px; }
+@media (max-width: 620px) { .adm-aba-sep { margin-left: 0; } }
+.adm-hz-intro { margin-top: 0; }

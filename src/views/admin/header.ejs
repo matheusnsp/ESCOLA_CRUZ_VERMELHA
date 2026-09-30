@@ -10,9 +10,7 @@
     <a href="/" class="<%= secaoAtiva === 'home' ? 'on' : '' %>"><i class="fa-solid fa-gauge"></i> Painel</a>
     <a href="/cursos" class="<%= secaoAtiva === 'cursos' ? 'on' : '' %>"><i class="fa-solid fa-book"></i> Cursos</a>
     <a href="/turmas" class="<%= secaoAtiva === 'turmas' ? 'on' : '' %>"><i class="fa-solid fa-calendar-days"></i> Turmas</a>
-    <% if (pode('turmas:gerenciar') || pode('painel:leitura')) { %>
-      <a href="/horarios" class="<%= secaoAtiva === 'horarios' ? 'on' : '' %>"><i class="fa-solid fa-clock"></i> Horários</a>
-    <% } %>
+    <% // Horários fica como aba dentro de Turmas (abas-turmas.ejs). %>
     <% // Mesma permissão da rota /inscricoes: sem ela (ex.: Consulta) o link caía numa página de erro. %>
     <% if (pode('doacao:confirmar') || pode('financeiro:aprovar') || pode('financeiro:leitura')) { %>
       <a href="/inscricoes" class="<%= secaoAtiva === 'inscricoes' ? 'on' : '' %>"><i class="fa-solid fa-users"></i> Matrículas</a>
