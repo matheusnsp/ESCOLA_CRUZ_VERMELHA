@@ -1512,3 +1512,24 @@ a.adm-hz-turma:hover { border-color: var(--vermelho); background: var(--vermelho
 .adm-cert-pend { padding: 14px 18px; border: 1px solid var(--alerta-bd, #f5d38a); background: var(--alerta-bg, #fff8e6); color: var(--alerta-tx, #7a4b00); border-radius: 12px; }
 .adm-cert-pend .adm-link { font-size: 13.5px; }
 .adm-hint a, .adm-bv-nota a, .adm-cert-dica a { color: var(--vermelho); font-weight: 700; text-decoration: none; }
+/* Lista de quem assina os certificados (/modelos) */
+.adm-assin-dica { margin: 0 0 10px; }
+.adm-assin-lista { display: grid; gap: 8px; }
+.adm-assin-linha { display: grid; grid-template-columns: 28px 1fr 1fr; gap: 8px; align-items: center; }
+.adm-assin-num { font-weight: 800; color: var(--mut); text-align: center; }
+@media (max-width: 620px) { .adm-assin-linha { grid-template-columns: 22px 1fr; } .adm-assin-linha input:last-child { grid-column: 2; } }
+/* Certificados da turma: assinaturas */
+.adm-cert-assin-corpo { padding: 14px 20px 18px; display: grid; gap: 12px; }
+.adm-cert-assin-corpo > .adm-hint { margin: 0; }
+.adm-cert-assin-opcoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.adm-cert-opcao { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--linha); border-radius: 12px; background: var(--campo); cursor: pointer; }
+.adm-cert-opcao:has(input:checked) { border-color: var(--vermelho); background: var(--vermelho-bg); }
+.adm-cert-opcao input[type="checkbox"] { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--vermelho); flex-shrink: 0; }
+.adm-cert-opcao > span { display: grid; gap: 2px; font-size: 14px; min-width: 0; }
+.adm-cert-opcao small { color: var(--mut); font-size: 12.5px; }
+.adm-cert-opcao-instrutor { grid-column: 1 / -1; }
+.adm-cert-instrutor { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+.adm-cert-instrutor input { font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--linha); border-radius: 8px; background: var(--card); color: var(--tinta); min-width: 0; }
+.adm-cert-assin-rodape { display: flex; align-items: center; gap: 12px; }
+.adm-cert-redacao { margin: 0 0 16px; }
+@media (max-width: 620px) { .adm-cert-instrutor { grid-template-columns: 1fr; } }

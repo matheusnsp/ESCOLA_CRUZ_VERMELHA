@@ -14,6 +14,49 @@
   <a href="/turmas?aba=concluidas" class="adm-link"><i class="fa-solid fa-arrow-left"></i> Turmas</a>
 </div>
 
+<% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
+<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+
+<form method="POST" action="/turmas/<%= turma.id %>/certificados/assinaturas" class="adm-box adm-espaco adm-cert-assin" id="formAssin">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="adm-box-head">
+    <h2 class="adm-h2"><i class="fa-solid fa-signature"></i> Assinaturas deste certificado</h2>
+    <a href="/modelos?voltar=/turmas/<%= turma.id %>/certificados" class="adm-link">Editar a lista de quem assina</a>
+  </div>
+  <div class="adm-cert-assin-corpo">
+    <p class="adm-hint">Marque quem assina (até <%= maxNoCertificado %>). A ordem é a da lista.</p>
+    <div class="adm-cert-assin-opcoes">
+      <% ajustes.assinantes.forEach(function (a, i) { %>
+        <label class="adm-cert-opcao">
+          <input type="checkbox" name="assinatura" value="a<%= i %>" <%= escolha.includes('a' + i) ? 'checked' : '' %>>
+          <span><b><%= a.nome %></b><small><%= a.cargo %></small></span>
+        </label>
+      <% }) %>
+      <label class="adm-cert-opcao adm-cert-opcao-instrutor">
+        <input type="checkbox" name="assinatura" value="instrutor" <%= escolha.includes('instrutor') ? 'checked' : '' %>>
+        <span><b>Instrutor(a) da turma</b>
+          <span class="adm-cert-instrutor">
+            <input type="text" name="instrutorNome" maxlength="80" value="<%= turma.instrutorNome || '' %>" placeholder="Nome do(a) instrutor(a)" aria-label="Nome do instrutor">
+            <input type="text" name="instrutorRegistro" maxlength="60" value="<%= turma.instrutorRegistro || '' %>" placeholder="Registro (ex.: COREN 477198-RJ)" aria-label="Registro do instrutor">
+          </span>
+        </span>
+      </label>
+    </div>
+    <div class="adm-cert-assin-rodape">
+      <button class="adm-pend-btn"><i class="fa-solid fa-floppy-disk"></i> Salvar assinaturas</button>
+      <small class="adm-mut" id="assinConta"></small>
+    </div>
+  </div>
+</form>
+
+<p class="adm-hint adm-cert-redacao">
+  <% if (redacaoLigada) { %>
+    <i class="fa-solid fa-qrcode"></i> Cada certificado é registrado na Redação na primeira impressão: sai com o código de verificação e o QR code, e entra na trilha de auditoria.
+  <% } else { %>
+    <i class="fa-solid fa-circle-info"></i> O registro na Redação (código de verificação e QR code) ainda não está ligado: os certificados saem sem QR.
+  <% } %>
+</p>
+
 <% if (pendencias.length) { %>
   <div class="adm-aviso adm-cert-pend">
     <p><i class="fa-solid fa-triangle-exclamation"></i> <b>Antes de imprimir:</b></p>
@@ -69,6 +112,16 @@
 <% } %>
 
 <script>
+  (function () {
+    var caixas = document.querySelectorAll('#formAssin input[name="assinatura"]'), conta = document.getElementById('assinConta');
+    function atualizar() {
+      var n = 0; caixas.forEach(function (c) { if (c.checked) n++; });
+      caixas.forEach(function (c) { c.disabled = !c.checked && n >= <%= maxNoCertificado %>; });
+      conta.textContent = n + ' de <%= maxNoCertificado %> marcadas';
+    }
+    caixas.forEach(function (c) { c.addEventListener('change', atualizar); });
+    atualizar();
+  })();
   (function () {
     var todos = document.getElementById('certTodos'); if (!todos) return;
     var caixas = document.querySelectorAll('#formCert input[name="m"]');

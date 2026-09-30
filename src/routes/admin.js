@@ -24,6 +24,8 @@ const permissoes = require('../lib/permissoes');
 const boasVindas = require('../lib/boas-vindas');
 const certificado = require('../lib/certificado');
 const extras = require('../lib/extras');
+const redacao = require('../lib/redacao');
+const QRCode = require('qrcode');
 const { temPermissao, PAPEIS_ADMIN, listarPermissoes } = permissoes;
 const horariosSite = require('../lib/horarios-site'); // questionário de dias e horários (lido do site)
 const cacheRapido = require('../lib/cache-rapido');
@@ -1366,7 +1368,7 @@ router.get('/modelos', requirePermissao('turmas:gerenciar'), async (req, res) =>
 
 router.post('/modelos', requirePermissao('turmas:gerenciar'), async (req, res) => {
   await boasVindas.salvarModelo({ texto: req.body.texto, doacao: req.body.doacao, local: req.body.local });
-  await certificado.salvarAjustes({ coordNome: req.body.coordNome, coordCargo: req.body.coordCargo, livro: req.body.livro });
+  await certificado.salvarAjustes({ assinantes: Object.values(req.body.assinantes || {}), livro: req.body.livro });
   await auditar(req, 'EDITOU_MODELOS', 'Configuracao', null, null);
   const voltar = VOLTAR_MODELOS.test(String(req.body.voltar || '')) ? req.body.voltar : '';
   res.redirect('/modelos?ok=' + encodeURIComponent('Modelos salvos.') + (voltar ? '&voltar=' + encodeURIComponent(voltar) : ''));
@@ -1401,7 +1403,29 @@ router.get('/turmas/:id/certificados', requirePermissao('turmas:gerenciar'), asy
     outros: turma.matriculas.filter((m) => m.situacao === 'REPROVADO'),
     pendencias: certificado.pendencias(turma, aprovados),
     ajustes: await certificado.lerAjustes(),
+    escolha: certificado.escolhaDaTurma(turma),
+    maxNoCertificado: certificado.MAX_NO_CERTIFICADO,
+    redacaoLigada: redacao.configurado(),
+    ok: req.query.ok || null,
+    erro: req.query.erro || null,
   });
+});
+
+// Assinaturas que saem no certificado desta turma e o nome/registro do instrutor.
+router.post('/turmas/:id/certificados/assinaturas', requirePermissao('turmas:gerenciar'), async (req, res) => {
+  const turma = await prisma.turma.findUnique({ where: { id: req.params.id } });
+  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
+  const escolha = [].concat(req.body.assinatura || []).map(String).filter((x) => /^a\d$|^instrutor$/.test(x));
+  const volta = (tipo, msg) => res.redirect(`/turmas/${turma.id}/certificados?${tipo}=` + encodeURIComponent(msg));
+  if (!escolha.length) return volta('erro', 'Marque pelo menos uma assinatura.');
+  if (escolha.length > certificado.MAX_NO_CERTIFICADO) return volta('erro', `O certificado leva no máximo ${certificado.MAX_NO_CERTIFICADO} assinaturas.`);
+  await extras.salvarExtra('turma', turma.id, {
+    certAssinaturas: escolha,
+    instrutorNome: String(req.body.instrutorNome || '').trim().slice(0, 80) || null,
+    instrutorRegistro: String(req.body.instrutorRegistro || '').trim().slice(0, 60) || null,
+  });
+  await auditar(req, 'EDITOU_ASSINATURAS_CERTIFICADO', 'Turma', turma.id, { escolha });
+  volta('ok', 'Assinaturas salvas.');
 });
 
 router.get('/turmas/:id/certificados/imprimir', requirePermissao('turmas:gerenciar'), async (req, res) => {
@@ -1415,8 +1439,21 @@ router.get('/turmas/:id/certificados/imprimir', requirePermissao('turmas:gerenci
   await auditar(req, 'IMPRIMIU_CERTIFICADOS', 'Turma', turma.id, { alunos: escolhidos.length });
   await certificado.anexarCertificados(escolhidos); // com Livro/Registro recém-gerados
   const ajustes = await certificado.lerAjustes();
-  const lista = escolhidos.map((m) => certificado.dadosDoCertificado({ ...m, turma }, ajustes, req.app.locals.documentoAluno));
-  res.render('admin/certificado-imprimir', { lista, turma });
+  const lista = escolhidos.map((m) => ({ id: m.id, ...certificado.dadosDoCertificado({ ...m, turma }, ajustes, req.app.locals.documentoAluno) }));
+
+  // Registro na Redação (código de verificação + QR). Falhar aqui não impede a impressão.
+  const reg = await redacao.registrarCertificados(lista.map((c, i) => ({
+    matriculaId: c.id, turmaId: turma.id, nome: c.nome, curso: c.curso,
+    cargaHoraria: turma.curso.cargaHoraria, emitidoEm: escolhidos[i].certEmitidoEm,
+  })), req.session.usuarioId).catch((e) => ({ codigos: {}, falhas: lista.length, erro: e.message }));
+  for (const c of lista) {
+    const r = reg.codigos[c.id];
+    if (r) {
+      c.verificacao = { codigo: r.codigo, url: r.url, qr: await QRCode.toString(r.url, { type: 'svg', margin: 0, errorCorrectionLevel: 'M', color: { dark: '#111111', light: '#ffffff00' } }) };
+    }
+  }
+  if (reg.falhas && reg.erro !== 'nao_configurado') await auditar(req, 'CERTIFICADO_REDACAO_FALHOU', 'Turma', turma.id, { falhas: reg.falhas, erro: reg.erro });
+  res.render('admin/certificado-imprimir', { lista, turma, avisoRedacao: reg.falhas ? (reg.erro === 'nao_configurado' ? 'nao_configurado' : reg.erro) : null });
 });
 
 // ---------- Inscricoes / Pagamentos ----------

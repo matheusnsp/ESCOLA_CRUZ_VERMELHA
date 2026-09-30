@@ -16,6 +16,11 @@
     <div>
       <b><%= lista.length %> <%= lista.length === 1 ? 'certificado' : 'certificados' %></b> · <%= lista.length * 2 %> páginas (frente e verso)
       <small>Na impressora: papel A4 deitado, margens "Nenhuma", frente e verso virando pela <b>borda curta</b>.</small>
+      <% if (typeof avisoRedacao !== 'undefined' && avisoRedacao) { %>
+        <small class="cert-aviso"><%= avisoRedacao === 'nao_configurado'
+          ? 'Sem QR code: o registro na Redação ainda não está ligado (REDACAO_URL e REDACAO_ESCOLA_TOKEN).'
+          : 'Alguns certificados saíram sem QR code (' + avisoRedacao + '). Imprima de novo daqui a pouco para registrar na Redação.' %></small>
+      <% } %>
     </div>
     <button type="button" id="certImprimir">Imprimir</button>
   </header>
@@ -35,20 +40,23 @@
         carga horária de <%= c.cargaHoraria %> <%= c.periodo.frase %>.
       </p>
       <p class="cert-local"><%= c.emitidoEm %></p>
-      <div class="cert-assinaturas">
-        <div>
-          <span class="cert-linha"></span>
-          <b><%= c.coordNome %></b>
-          <span><%= c.coordCargo %></span>
-          <small>Cruz Vermelha Brasileira - Rio de Janeiro</small>
-        </div>
-        <div>
-          <span class="cert-linha"></span>
-          <b><%= c.instrutorNome || ' ' %></b>
-          <span>Instrutor<%= c.instrutorRegistro ? ' ' + c.instrutorRegistro : '' %></span>
-          <small>Cruz Vermelha Brasileira Rio de Janeiro</small>
-        </div>
+      <div class="cert-assinaturas n<%= c.assinaturas.length %>">
+        <% c.assinaturas.forEach(function (a) { %>
+          <div>
+            <span class="cert-linha"></span>
+            <b><%= a.nome || '\u00a0' %></b>
+            <span><%= a.cargo %></span>
+            <small>Cruz Vermelha Brasileira - Rio de Janeiro</small>
+          </div>
+        <% }) %>
       </div>
+      <% if (c.verificacao) { %>
+        <%# Como no certificado da Redação: código à esquerda, QR à direita, dentro da moldura. %>
+        <div class="cert-verificacao">
+          <p><b>Código de verificação: <%= c.verificacao.codigo %></b><br>Confira a autenticidade em <%= c.verificacao.url %></p>
+        </div>
+        <div class="cert-qr"><%- c.verificacao.qr %></div>
+      <% } %>
     </section>
 
     <section class="cert-pagina cert-verso">
@@ -72,6 +80,7 @@
           <p><b>Instrutor</b><br><%= c.instrutorNome || '—' %></p>
           <p>Certificado Registrado no<br><b>Livro</b> Nº <%= c.livro %><br><b>Registro:</b> Nº <%= c.registro %></p>
           <% if (c.validade) { %><p><b><%= c.validade %></b></p><% } %>
+          <% if (c.verificacao) { %><p>Código de verificação<br><b><%= c.verificacao.codigo %></b></p><% } %>
         </div>
         <div class="cert-verso-conteudo">
           <% if (c.conteudo.length) { %>
