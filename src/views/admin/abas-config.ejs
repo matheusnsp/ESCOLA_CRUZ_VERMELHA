@@ -1,8 +1,9 @@
 <%
 // Abas de Configurações (só DEV): os antigos itens "Admin" e "Ban" do menu.
-// Uso: include('abas-config', { aba: 'usuarios' | 'banidos' })
+// Uso: include('abas-config', { aba: 'usuarios' | 'permissoes' | 'banidos' })
 %>
 <nav class="adm-abas" aria-label="Configurações">
   <a href="/dev/usuarios" class="adm-aba <%= aba === 'usuarios' ? 'on' : '' %>"><i class="fa-solid fa-user-shield"></i> Usuários do painel</a>
+  <a href="/dev/permissoes" class="adm-aba <%= aba === 'permissoes' ? 'on' : '' %>"><i class="fa-solid fa-key"></i> Permissões</a>
   <a href="/banimentos" class="adm-aba <%= aba === 'banidos' ? 'on' : '' %>"><i class="fa-solid fa-ban"></i> Alunos banidos</a>
 </nav>

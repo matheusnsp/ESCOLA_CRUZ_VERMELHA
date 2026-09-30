@@ -1,6 +1,7 @@
 // lib/permissoes.js
 //
 // Modelo de permissões: cada papel tem uma lista de "strings de permissão".
+// A lista abaixo é o PADRÃO; o DEV pode mudar em Configurações → Permissões (ver carregar/salvar).
 // requirePermissao(...) nas rotas libera se o papel tiver AO MENOS UMA das
 // strings passadas (OR). Ver comentário em cada bloco abaixo pra saber
 // o que cada permissão nova faz e por que existe.
@@ -73,16 +74,98 @@ PERMISSOES.COORDENADOR = [
 // Papéis que conseguem logar no painel admin (independente do que cada um pode FAZER lá dentro)
 const PAPEIS_ADMIN = ['SECRETARIA', 'COORDENADOR', 'FINANCEIRO', 'CONSULTA', 'DEV'];
 
+// Papéis cujas permissões dá para mudar em Configurações → Permissões (DEV fica de fora: é o bypass).
+const PAPEIS_EDITAVEIS = ['SECRETARIA', 'COORDENADOR', 'FINANCEIRO', 'CONSULTA'];
+
+// O que cada permissão libera, em português, para a tela de Permissões. Toda string usada em
+// requirePermissao/pode() precisa estar aqui para poder ser dada ou tirada pela tela.
+const CATALOGO = [
+  { grupo: 'Cursos e turmas', id: 'cursos:criar',          nome: 'Criar cursos' },
+  { grupo: 'Cursos e turmas', id: 'cursos:gerenciar',      nome: 'Editar, ocultar e excluir cursos', desc: 'Inclui fotos, valores e dúvidas frequentes.' },
+  { grupo: 'Cursos e turmas', id: 'turmas:gerenciar',      nome: 'Criar e editar turmas', desc: 'Datas, aulas, status, notas e a aba Horários dos alunos.' },
+  { grupo: 'Alunos e matrículas', id: 'aluno:gerenciar',   nome: 'Editar dados dos alunos', desc: 'Cadastro, convite por WhatsApp.' },
+  { grupo: 'Alunos e matrículas', id: 'aluno:mover_turma', nome: 'Transferir aluno de turma' },
+  { grupo: 'Alunos e matrículas', id: 'doacao:confirmar',  nome: 'Marcar alimento entregue', desc: 'Também abre a tela de Matrículas.' },
+  { grupo: 'Alunos e matrículas', id: 'taxa:aprovar',      nome: 'Confirmar a taxa de inscrição' },
+  { grupo: 'Alunos e matrículas', id: 'pagamento:confirmar', nome: 'Confirmar o pagamento do curso', desc: 'Só confirmar; cancelar e estornar ficam no Financeiro.' },
+  { grupo: 'Alunos e matrículas', id: 'pendentes:gerenciar', nome: 'Tela Pendentes', desc: 'Cobrar por WhatsApp e remover inscrição que nunca pagou.' },
+  { grupo: 'Financeiro', id: 'financeiro:leitura',    nome: 'Ver a tela Financeiro', desc: 'E os valores recebidos no Painel.' },
+  { grupo: 'Financeiro', id: 'financeiro:aprovar',    nome: 'Cancelar inscrição' },
+  { grupo: 'Financeiro', id: 'financeiro:reembolsar', nome: 'Estornar pagamento e marcar reembolso', desc: 'Devolve dinheiro ao aluno; não dá para desfazer.' },
+  { grupo: 'Financeiro', id: 'relatorio:baixar',      nome: 'Baixar relatórios', desc: 'Excel, PDF, CSV e OFX com a movimentação.' },
+  { grupo: 'Só visualizar', id: 'painel:leitura',     nome: 'Ver cursos, turmas, alunos e horários', desc: 'Sem botões de ação.' },
+];
+const IDS = new Set(CATALOGO.map((c) => c.id));
+
+// O padrão acima (PERMISSOES) vale até alguém mudar pela tela; aí a lista de cada papel fica
+// gravada em Configuracao 'permissoes_papeis' (JSON). Guardada em memória e relida do banco a cada
+// 30 s no máximo: a secretaria roda em mais de um serviço, e a mudança chega em todos.
+const CHAVE = 'permissoes_papeis';
+const RELER_MS = 30 * 1000;
+const PADRAO = Object.fromEntries(PAPEIS_EDITAVEIS.map((p) => [p, [...PERMISSOES[p]]]));
+let atual = PADRAO;
+let lidoEm = 0;
+let lendo = null;
+
+function limpar(mapa) {
+  const certo = {};
+  for (const papel of PAPEIS_EDITAVEIS) {
+    const lista = mapa && Array.isArray(mapa[papel]) ? mapa[papel] : PADRAO[papel];
+    certo[papel] = CATALOGO.map((c) => c.id).filter((id) => lista.includes(id)); // só ids conhecidos, na ordem do catálogo
+  }
+  return certo;
+}
+
+// Relê do banco se passou do prazo. Falha de banco não derruba a tela: fica com o que já tinha.
+async function carregar({ forcar = false } = {}) {
+  if (!forcar && Date.now() - lidoEm < RELER_MS) return;
+  if (lendo) return lendo;
+  lendo = (async () => {
+    try {
+      const prisma = require('../db');
+      const cfg = await prisma.configuracao.findUnique({ where: { chave: CHAVE } });
+      atual = cfg ? limpar(JSON.parse(cfg.valor)) : PADRAO;
+      lidoEm = Date.now();
+    } catch (err) {
+      console.error('[permissoes] não consegui ler do banco:', err.message);
+    } finally {
+      lendo = null;
+    }
+  })();
+  return lendo;
+}
+
+// Grava a lista de todos os papéis editáveis (ou volta ao padrão, com null).
+async function salvar(mapa) {
+  const prisma = require('../db');
+  if (mapa === null) {
+    await prisma.configuracao.deleteMany({ where: { chave: CHAVE } });
+    atual = PADRAO;
+  } else {
+    const certo = limpar(mapa);
+    await prisma.configuracao.upsert({ where: { chave: CHAVE }, update: { valor: JSON.stringify(certo) }, create: { chave: CHAVE, valor: JSON.stringify(certo) } });
+    atual = certo;
+  }
+  lidoEm = Date.now();
+  return atual;
+}
+
 // DEV é o ÚNICO bypass total — acesso de manutenção/emergência.
 // Todo o resto (inclusive FINANCEIRO) passa pela lista normal de permissões.
 function temPermissao(papel, perm) {
   if (papel === 'DEV') return true;
-  return (PERMISSOES[papel] || []).includes(perm);
+  return (atual[papel] || []).includes(perm);
 }
 
 function listarPermissoes(papel) {
   if (papel === 'DEV') return ['(acesso total — bypass, ignora a lista de permissões)'];
-  return PERMISSOES[papel] || [];
+  return atual[papel] || [];
 }
 
-module.exports = { temPermissao, PAPEIS_ADMIN, listarPermissoes };
+const permissoesAtuais = () => atual;
+const permissoesPadrao = () => PADRAO;
+
+module.exports = {
+  temPermissao, PAPEIS_ADMIN, PAPEIS_EDITAVEIS, CATALOGO, IDS, listarPermissoes,
+  carregar, salvar, permissoesAtuais, permissoesPadrao,
+};
