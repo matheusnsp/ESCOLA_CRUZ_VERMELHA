@@ -1401,3 +1401,4 @@ a.adm-chip-turma:hover { border-color: var(--vermelho); background: var(--vermel
 /* Chips de turma e valores sem quebrar no meio (a data e "no cartão" caíam para a linha de baixo) */
 @media (min-width: 621px) { .adm-chip-turma, .adm-chip-turma b, .adm-chip-turma span, .adm-valores p { white-space: nowrap; } }
 @media (max-width: 620px) { .adm-chip-turma { flex-wrap: wrap; row-gap: 2px; } .adm-chip-turma b { white-space: nowrap; } }
+.adm-valores small + .adm-valores-parc { margin-top: 6px; }
