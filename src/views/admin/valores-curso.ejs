@@ -16,6 +16,7 @@ const _f = (n) => formatBRL(n);
     <p title="<%= _dicaAv %>"><b class="num"><%= _f(v.aVista.total) %></b> <span>à vista</span></p>
     <% if (v.parcelado) { %>
       <p title="<%= _dicaPa %>"><b class="num"><%= _f(v.parcelado.total) %></b> <span>parcelado</span></p>
+      <small class="num" title="<%= _dicaPa %>"><%= v.parcelado.numParcelas %>× <%= _f(v.parcelado.valorParcela) %><%= v.parcelado.taxa ? ' + ' + _f(v.parcelado.taxa) : '' %></small>
       <% if (!v.parcelado.juros) { %><small class="adm-txt-alerta" title="Não foi possível consultar os juros na Únicopag agora">sem juros: gateway fora do ar</small><% } %>
     <% } %>
   </div>
