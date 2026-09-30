@@ -30,6 +30,29 @@ function urlDoPrisma(bruta) {
   return url.toString();
 }
 
+// URL das sessões de login (connect-pg-simple, em server.js).
+//
+// O pooler do Supabase em modo "sessão" (porta 5432) aceita no máximo pool_size clientes (15)
+// somando TODOS os serviços que usam o banco. Com os três serviços do Render (secretaria e as
+// duas escolas), cada um com o Prisma + o pool das sessões, a soma passava de 15 e o banco
+// recusava conexões (EMAXCONNSESSION), sobretudo durante um deploy, quando o serviço velho e o
+// novo ficam no ar juntos. As sessões fazem consultas simples, que funcionam no modo
+// "transação" (porta 6543, com limite próprio e bem maior), então elas vão para lá; o Prisma
+// continua no 5432, onde cada consulta é mais rápida.
+function urlDasSessoes(bruta) {
+  if (!bruta) return bruta;
+  let url;
+  try {
+    url = new URL(bruta);
+  } catch (e) {
+    return bruta;
+  }
+  if (/\.pooler\.supabase\.com$/.test(url.hostname) && url.port === '5432') url.port = '6543';
+  // parâmetros que só o Prisma entende
+  ['connection_limit', 'pgbouncer', 'pool_timeout', 'connect_timeout', 'schema'].forEach((p) => url.searchParams.delete(p));
+  return url.toString();
+}
+
 const prisma = new PrismaClient({
   datasources: {
     db: {
@@ -40,3 +63,4 @@ const prisma = new PrismaClient({
 
 module.exports = prisma;
 module.exports.urlDoPrisma = urlDoPrisma;
+module.exports.urlDasSessoes = urlDasSessoes;

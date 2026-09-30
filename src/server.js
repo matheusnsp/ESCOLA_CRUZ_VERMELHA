@@ -141,8 +141,9 @@ const { uploadsDir } = require('./lib/upload');
 app.use('/uploads', express.static(uploadsDir));
 
 // Sessao guardada no PostgreSQL (nao no MemoryStore padrao).
+// Pelo pooler em modo transação quando o banco é o Supabase: ver urlDasSessoes em db.js.
 const sessionPool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: require('./db').urlDasSessoes(process.env.DATABASE_URL),
   max: 2,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
