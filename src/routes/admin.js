@@ -588,6 +588,24 @@ const FILTRO_MATRICULA_FANTASMA = {
   },
 };
 
+// Quem ocupa vaga na turma: pagou ao menos a taxa de matrícula e não foi cancelado/estornado.
+// PENDENTE aqui = matrícula paga, curso ainda não; PAGO/PARCELADO = pagou tudo.
+const FILTRO_VAGA = { taxaConfirmada: true, statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] } };
+
+// { turmaId: { matricula: N (pagaram a matrícula), tudo: N (pagaram tudo) } }
+async function pagamentosPorTurma(turmaIds) {
+  if (!turmaIds.length) return {};
+  const grupos = await prisma.matricula.groupBy({
+    by: ['turmaId', 'statusPagamento'], where: { turmaId: { in: turmaIds }, ...FILTRO_VAGA }, _count: true,
+  });
+  const r = Object.fromEntries(turmaIds.map((id) => [id, { matricula: 0, tudo: 0 }]));
+  for (const g of grupos) {
+    r[g.turmaId].matricula += g._count;
+    if (g.statusPagamento !== 'PENDENTE') r[g.turmaId].tudo += g._count;
+  }
+  return r;
+}
+
 router.get('/', async (req, res) => {
 
   const inicioHoje = inicioDoDiaSP();
@@ -733,10 +751,12 @@ router.get('/', async (req, res) => {
       include: {
         curso: { select: { nome: true } },
         aulas: { orderBy: { data: 'asc' }, take: 1 },
-        _count: { select: { matriculas: { where: { statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] }, ...FILTRO_MATRICULA_FANTASMA } } } },
+        _count: { select: { matriculas: { where: FILTRO_VAGA } } },
       },
     }),
   ]);
+  const pagProximas = await pagamentosPorTurma(proximasTurmas.map((t) => t.id));
+  proximasTurmas.forEach((t) => { t.pag = pagProximas[t.id]; });
   const recebidoMes = cursoPagoMes.reduce((t, m) => t + Number(m.valorCurso), 0)
     + taxaSoMes.reduce((t, m) => t + (Number(m.valorTaxaMatricula) || 100), 0);
 
@@ -1009,6 +1029,8 @@ router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), as
     'canceladas': turmas.filter((t) => t.status === 'CANCELADA').reverse(),
   };
   const aba = abas[req.query.aba] ? req.query.aba : 'por-comecar';
+  const pagTurmas = await pagamentosPorTurma(abas[aba].map((t) => t.id));
+  abas[aba].forEach((t) => { t.pag = pagTurmas[t.id]; });
   res.render('admin/turmas', { turmas, abas, aba, statusTurma: STATUS_TURMA, flash: req.query.ok || null, erro: req.query.erro || null });
 });
 
@@ -1983,7 +2005,8 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), asy
   }
 
   if (turmaId) {
-    where.matriculas = { some: { turmaId } };
+    // Só quem pagou ao menos a taxa de matrícula (quem só começou a inscrição não é aluno da turma).
+    where.matriculas = { some: { turmaId, ...FILTRO_VAGA } };
   } else if (inscricao === 'com') {
     where.matriculas = { some: {} };
   } else if (inscricao === 'sem') {
@@ -1996,7 +2019,10 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), asy
         where,
         orderBy: { nome: 'asc' },
         take: 200,
-        include: { _count: { select: { matriculas: true } } }
+        include: {
+          _count: { select: { matriculas: true } },
+          ...(turmaId ? { matriculas: { where: { turmaId, ...FILTRO_VAGA }, select: { statusPagamento: true } } } : {}),
+        }
       }),
       prisma.usuario.count({ where }),
       prisma.turma.findMany({ orderBy: { criadoEm: 'desc' }, include: { curso: true } }),
@@ -2043,6 +2069,7 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), asy
       inscricao,
       turmas,
       turmaId,
+      pagTurma: turmaId ? (await pagamentosPorTurma([turmaId]))[turmaId] : null,
       ok: req.query.ok || null,
       erro: req.query.erro || null,
       mascarar 

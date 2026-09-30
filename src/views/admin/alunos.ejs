@@ -61,10 +61,18 @@
   }
 %>
 
+<% if (turmaId && pagTurma) { %>
+  <div class="adm-cards c3">
+    <div class="adm-stat"><span><%= pagTurma.matricula %></span><small><i class="fa-solid fa-user-check"></i> Pagaram a matrícula</small></div>
+    <div class="adm-stat ok"><span><%= pagTurma.tudo %></span><small><i class="fa-solid fa-circle-check"></i> Pagaram tudo</small></div>
+    <div class="adm-stat <%= pagTurma.matricula - pagTurma.tudo ? 'warn' : '' %>"><span><%= pagTurma.matricula - pagTurma.tudo %></span><small><i class="fa-solid fa-hourglass-half"></i> Falta pagar o curso</small></div>
+  </div>
+<% } %>
+
 <div class="adm-box">
   <% if (!alunos.length) { %>
     <div class="adm-vazio">
-      <%= turmaId ? 'Nenhum aluno inscrito nesta turma.'
+      <%= turmaId ? 'Nenhum aluno com a matrícula paga nesta turma.'
                   : (busca ? 'Nenhum aluno encontrado para essa busca.'
                            : 'Nenhum aluno cadastrado ainda.') %>
     </div>
@@ -74,7 +82,7 @@
         <tr>
           <th>Aluno</th>
           <th>Documento</th>
-          <th>Matrículas</th>
+          <th><%= turmaId ? 'Pagamento nesta turma' : 'Matrículas' %></th>
           <th>Ações</th>
         </tr>
       </thead>
@@ -91,7 +99,9 @@
             </td>
             <td><% const _doc = documentoAluno(a); %><% if (_doc) { %><small class="adm-mut"><%= _doc.tipo %></small><br><%= _doc.numero %><% } else { %><span class="adm-mut">—</span><% } %></td>
             <td>
-              <% if (a._count.matriculas > 0) { %>
+              <% if (turmaId && a.matriculas && a.matriculas[0]) { const _tudo = a.matriculas[0].statusPagamento !== 'PENDENTE'; %>
+                <span class="badge <%= _tudo ? 'ok' : 'pend' %>"><%= _tudo ? 'Tudo pago' : 'Só a matrícula' %></span>
+              <% } else if (a._count.matriculas > 0) { %>
                 <a href="/alunos/<%= a.id %>/matriculas" class="adm-link-aluno">
                   <%= a._count.matriculas %> matrícula<%= a._count.matriculas === 1 ? '' : 's' %>
                 </a>

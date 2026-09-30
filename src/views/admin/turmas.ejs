@@ -71,6 +71,7 @@
           <td class="adm-vagas-cel">
             <b class="num"><%= insc %>/<%= t.vagas %></b>
             <div class="adm-barra"><span class="<%= abaixoMin ? 'baixa' : '' %>" style="width: <%= pct %>%"></span></div>
+            <% if (t.pag && t.pag.matricula) { %><small class="adm-pag-divisao" title="Pagaram tudo · pagaram só a matrícula"><b><%= t.pag.tudo %></b> tudo pago · <b><%= t.pag.matricula - t.pag.tudo %></b> só matrícula</small><% } %>
             <% if (t.minimoAlunos) { %><small class="<%= abaixoMin ? 'adm-txt-alerta' : 'adm-mut' %>">mínimo <%= t.minimoAlunos %></small><% } %>
           </td>
           <td><span class="badge st-<%= t.status.toLowerCase() %>"><%= rotuloTurma(t.status) %></span></td>
