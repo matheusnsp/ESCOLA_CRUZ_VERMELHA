@@ -71,6 +71,31 @@ function calcularRetomada(m) {
   return { url: `/inscrever/${m.turmaId}/pagar-curso`, rotulo: 'Continuar — pagar o curso' };
 }
 
+// Boas-vindas liberadas pela secretaria (lib/boas-vindas.js): o mesmo texto do e-mail aparece aqui
+// para quem está com o pagamento em dia, até a turma terminar.
+async function avisosDeBoasVindas(matriculas) {
+  // Nunca derruba "Minha conta": se algo falhar aqui, a tela abre sem o aviso.
+  try {
+    const boasVindas = require('../lib/boas-vindas');
+    const extras = require('../lib/extras');
+    const pagas = matriculas.filter((m) => m.taxaConfirmada && ['PAGO', 'PARCELADO'].includes(m.statusPagamento));
+    if (!pagas.length) return [];
+    const liberadas = await extras.lerExtras('turma', pagas.map((m) => m.turmaId));
+    const ids = Object.keys(liberadas).filter((id) => liberadas[id].boasVindasEnviadaEm);
+    if (!ids.length) return [];
+    const turmas = await prisma.turma.findMany({ where: { id: { in: ids } }, include: { curso: true, aulas: true } });
+    await extras.anexar('turma', turmas);
+    const modelo = await boasVindas.lerModelo();
+    return turmas.filter(boasVindas.turmaEmCurso).map((t) => ({
+      curso: t.curso.nome,
+      html: boasVindas.textoParaHtml(boasVindas.montarTexto(t, modelo)),
+    }));
+  } catch (e) {
+    console.error('[BOAS-VINDAS] aviso em Minha conta:', e.message);
+    return [];
+  }
+}
+
 // Área do aluno — painel único com seções (inscricoes | dados | seguranca | excluir).
 router.get('/minha-conta', requireLogin, async (req, res) => {
   const secValidas = ['inscricoes', 'dados', 'seguranca', 'excluir'];
@@ -101,6 +126,7 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
     usuario,
     sec,
     matriculas: matriculasComRetomada,
+    avisosTurma: await avisosDeBoasVindas(matriculas),
     matriculasAtivas,
     docMascarado: usuario.cpfCnpj ? mascarar(usuario.cpfCnpj) : usuario.passaporte ? usuario.passaporte : '—',
     formatBRL,

@@ -494,7 +494,25 @@ async function enviarEmailMatriculaConfirmada(email, nome, dados) {
   );
 }
 
+// Boas-vindas da turma (texto montado em lib/boas-vindas.js; *negrito* do WhatsApp vira <strong>).
+async function enviarBoasVindasTurma(email, nome, { assunto, texto }) {
+  const { textoParaHtml } = require('./boas-vindas');
+  const base = process.env.APP_URL || 'https://escola-cruz-vermelha.onrender.com';
+  const link = `${base}/minha-conta`;
+  const html = `
+    <div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;line-height:1.55;color:#1a202c;">
+      ${CABECALHO}
+      <p>Olá, <strong>${String(nome).replace(/[<>&"]/g, '')}</strong>!</p>
+      ${textoParaHtml(texto, 'margin:0 0 14px;')}
+      <a href="${link}" style="display:inline-block;margin:10px 0 24px;background:#cc0000;color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:700;">
+        Ver na minha conta
+      </a>
+    </div>`;
+  await enviar(email, assunto, html, `Boas-vindas da turma (${assunto})`, link);
+}
+
 module.exports = {
+  enviarBoasVindasTurma,
   enviarEmailResetSenha,
   enviarEmailConfirmacao,
   enviarCodigo2fa,
