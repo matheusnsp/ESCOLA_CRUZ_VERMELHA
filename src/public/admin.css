@@ -1344,3 +1344,5 @@ a.adm-pend-btn { text-decoration: none; }
 .adm-legenda dt { flex: none; min-width: 170px; }
 .adm-legenda dd { margin: 0; color: var(--tinta-60); line-height: 1.45; }
 @media (max-width: 620px) { .adm-legenda dl > div { flex-direction: column; gap: 4px; } .adm-legenda dt { min-width: 0; } }
+.adm-cards.c1 { grid-template-columns: 1fr; }
+.adm-painel-grade.so-turmas { grid-template-columns: 1fr; }
