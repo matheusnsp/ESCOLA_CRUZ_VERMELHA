@@ -49,3 +49,19 @@ body { background: #e9e6e1; font-family: Arimo, Arial, Helvetica, sans-serif; co
   .cert-barra { display: none; }
   .cert-pagina { margin: 0; box-shadow: none; }
 }
+
+/* Assinaturas: de 1 a 4, lado a lado */
+.cert-assinaturas { left: 22mm; right: 22mm; gap: 8mm; justify-content: center; }
+.cert-assinaturas.n1 > div, .cert-assinaturas.n2 > div { max-width: 105mm; }
+.cert-assinaturas.n3 .cert-linha { width: 70mm; }
+.cert-assinaturas.n4 .cert-linha { width: 54mm; }
+.cert-assinaturas.n4 > div { font-size: 3.4mm; }
+.cert-assinaturas.n4 b { font-size: 3.6mm; }
+
+/* Verificação (código + QR), como no certificado da Redação */
+.cert-frente .cert-assinaturas { bottom: 38mm; }
+.cert-verificacao { position: absolute; left: 27mm; bottom: 17mm; text-align: left; font-size: 2.8mm; line-height: 1.4; color: #333; max-width: 150mm; }
+.cert-verificacao b { font-size: 3.2mm; color: #111; }
+.cert-qr { position: absolute; right: 27mm; bottom: 16mm; width: 18mm; height: 18mm; }
+.cert-qr svg { width: 100%; height: 100%; display: block; }
+.cert-aviso { color: #b45309 !important; font-weight: 700; }

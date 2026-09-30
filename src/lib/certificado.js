@@ -10,27 +10,63 @@
 
 const prisma = require('../db');
 
-const CHAVES = { coordNome: 'cert_coordenador_nome', coordCargo: 'cert_coordenador_cargo', livro: 'cert_livro_atual' };
-const PADROES = { coordNome: 'AMANDA FERRARI PENZA', coordCargo: 'Coordenadora de Cursos Livres', livro: '1' };
+// Quem assina: uma lista da filial (até 6 pessoas: coordenação, presidência, voluntariado…),
+// editada em /modelos. Em cada turma a secretaria marca quais aparecem (até 4, junto com o
+// instrutor, se marcado). Guardado em Configuracao: 'cert_assinantes' (JSON) e 'cert_livro_atual'.
+// Antes existia uma só assinatura ('cert_coordenador_nome'/'cert_coordenador_cargo'): ela vira
+// a primeira da lista enquanto a lista não for salva.
+const MAX_ASSINANTES = 6;
+const MAX_NO_CERTIFICADO = 4;
+const PADRAO_ASSINANTE = { nome: 'AMANDA FERRARI PENZA', cargo: 'Coordenadora de Cursos Livres' };
+const PADROES = { livro: '1' };
 
 async function lerAjustes() {
-  const cfgs = await prisma.configuracao.findMany({ where: { chave: { in: Object.values(CHAVES) } } });
-  const mapa = Object.fromEntries(cfgs.map((c) => [c.chave, c.valor]));
-  const a = Object.fromEntries(Object.entries(CHAVES).map(([k, chave]) => [k, (mapa[chave] || '').trim() || PADROES[k]]));
-  a.livro = Math.max(1, parseInt(a.livro, 10) || 1);
-  return a;
+  const cfgs = await prisma.configuracao.findMany({ where: { chave: { in: ['cert_assinantes', 'cert_livro_atual', 'cert_coordenador_nome', 'cert_coordenador_cargo'] } } });
+  const m = Object.fromEntries(cfgs.map((c) => [c.chave, c.valor]));
+  let assinantes = [];
+  try { assinantes = JSON.parse(m.cert_assinantes || '[]'); } catch (e) { assinantes = []; }
+  assinantes = (Array.isArray(assinantes) ? assinantes : [])
+    .map((a) => ({ nome: String(a && a.nome || '').trim().slice(0, 80), cargo: String(a && a.cargo || '').trim().slice(0, 80) }))
+    .filter((a) => a.nome).slice(0, MAX_ASSINANTES);
+  if (!assinantes.length) {
+    assinantes = [{ nome: (m.cert_coordenador_nome || '').trim() || PADRAO_ASSINANTE.nome, cargo: (m.cert_coordenador_cargo || '').trim() || PADRAO_ASSINANTE.cargo }];
+  }
+  return { assinantes, livro: Math.max(1, parseInt(m.cert_livro_atual, 10) || 1) };
 }
 
+// v.assinantes: [{ nome, cargo }] (linhas sem nome são descartadas).
 async function salvarAjustes(v) {
-  const valores = {
-    coordNome: String(v.coordNome || '').trim().slice(0, 80),
-    coordCargo: String(v.coordCargo || '').trim().slice(0, 80),
-    livro: String(Math.max(1, parseInt(v.livro, 10) || 1)),
-  };
-  for (const [k, chave] of Object.entries(CHAVES)) {
-    if (!valores[k] || valores[k] === PADROES[k]) await prisma.configuracao.deleteMany({ where: { chave } });
-    else await prisma.configuracao.upsert({ where: { chave }, update: { valor: valores[k] }, create: { chave, valor: valores[k] } });
+  const assinantes = (v.assinantes || [])
+    .map((a) => ({ nome: String(a.nome || '').trim().slice(0, 80), cargo: String(a.cargo || '').trim().slice(0, 80) }))
+    .filter((a) => a.nome).slice(0, MAX_ASSINANTES);
+  const salvar = async (chave, valor) => valor
+    ? prisma.configuracao.upsert({ where: { chave }, update: { valor }, create: { chave, valor } })
+    : prisma.configuracao.deleteMany({ where: { chave } });
+  await salvar('cert_assinantes', assinantes.length ? JSON.stringify(assinantes) : null);
+  const livro = String(Math.max(1, parseInt(v.livro, 10) || 1));
+  await salvar('cert_livro_atual', livro === PADROES.livro ? null : livro);
+  await prisma.configuracao.deleteMany({ where: { chave: { in: ['cert_coordenador_nome', 'cert_coordenador_cargo'] } } });
+}
+
+// Quais assinaturas saem no certificado da turma. turma.certAssinaturas (extra da turma) guarda a
+// escolha: ['a0', 'a2', 'instrutor']. Sem escolha: a primeira da lista e o instrutor.
+function escolhaDaTurma(turma) {
+  const e = Array.isArray(turma.certAssinaturas) ? turma.certAssinaturas.filter((x) => /^a\d$|^instrutor$/.test(x)) : null;
+  return e && e.length ? e : ['a0', 'instrutor'];
+}
+
+function assinaturasDaTurma(turma, ajustes) {
+  const lista = [];
+  for (const chave of escolhaDaTurma(turma)) {
+    if (chave === 'instrutor') {
+      const reg = (turma.instrutorRegistro || '').trim();
+      lista.push({ nome: (turma.instrutorNome || '').trim(), cargo: 'Instrutor' + (reg ? ' ' + reg : ''), instrutor: true });
+    } else {
+      const a = ajustes.assinantes[Number(chave.slice(1))];
+      if (a) lista.push({ nome: a.nome, cargo: a.cargo });
+    }
   }
+  return lista.slice(0, MAX_NO_CERTIFICADO);
 }
 
 // Livro/Registro ficam no LogAuditoria (sem colunas novas no banco):
@@ -126,8 +162,7 @@ function dadosDoCertificado(m, ajustes, documentoAluno) {
     cargaHoraria: `${horas} ${curso.cargaHoraria === 1 ? 'hora' : 'horas'}`,
     periodo: periodo(turma),
     emitidoEm: emitidoEm(m.certEmitidoEm || new Date()),
-    coordNome: ajustes.coordNome,
-    coordCargo: ajustes.coordCargo,
+    assinaturas: assinaturasDaTurma(turma, ajustes),
     instrutorNome: (turma.instrutorNome || '').trim(),
     instrutorRegistro: (turma.instrutorRegistro || '').trim(),
     livro: m.certLivro,
@@ -140,11 +175,14 @@ function dadosDoCertificado(m, ajustes, documentoAluno) {
 // O que falta para o certificado sair completo (mostrado antes de imprimir).
 function pendencias(turma, alunos = []) {
   const p = [];
-  if (!turma.instrutorNome) p.push({ texto: 'Instrutor da turma não informado (vai em branco na assinatura).', link: `/turmas/${turma.id}/editar#certificado` });
+  if (escolhaDaTurma(turma).includes('instrutor') && !turma.instrutorNome) p.push({ texto: 'Nome do instrutor em branco (a assinatura sai sem nome). Preencha em "Assinaturas", abaixo.' });
   if (!turma.curso.conteudoProgramatico) p.push({ texto: 'Conteúdo programático do curso vazio (verso sem a lista).', link: `/cursos/${turma.curso.id}/editar#certificado` });
   const semDoc = alunos.filter((m) => !m.aluno.cpfCnpj && !m.aluno.passaporte);
   if (semDoc.length) p.push({ texto: `${semDoc.length} aluno(s) sem CPF ou passaporte no cadastro.` });
   return p;
 }
 
-module.exports = { lerAjustes, salvarAjustes, numerar, anexarCertificados, dadosDoCertificado, pendencias, PADROES };
+module.exports = {
+  lerAjustes, salvarAjustes, numerar, anexarCertificados, dadosDoCertificado, pendencias, PADROES,
+  escolhaDaTurma, assinaturasDaTurma, MAX_ASSINANTES, MAX_NO_CERTIFICADO,
+};

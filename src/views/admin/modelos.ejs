@@ -30,8 +30,18 @@
   </label>
 
   <h2 class="adm-form-secao full"><i class="fa-solid fa-award"></i> Certificado</h2>
-  <label>Quem assina pela coordenação<input type="text" name="coordNome" maxlength="80" value="<%= ajustes.coordNome %>"></label>
-  <label>Cargo<input type="text" name="coordCargo" maxlength="80" value="<%= ajustes.coordCargo %>"></label>
+  <div class="full">
+    <p class="adm-hint adm-assin-dica">Quem pode assinar os certificados (até 6). Em cada turma, na tela de Certificados, a secretaria marca quais aparecem (até 4, junto com o instrutor). Deixe o nome em branco para tirar alguém da lista.</p>
+    <div class="adm-assin-lista">
+      <% for (var i = 0; i < 6; i++) { var a = ajustes.assinantes[i] || {}; %>
+        <div class="adm-assin-linha">
+          <span class="adm-assin-num"><%= i + 1 %></span>
+          <input type="text" name="assinantes[<%= i %>][nome]" maxlength="80" value="<%= a.nome || '' %>" placeholder="<%= i === 0 ? 'Ex.: AMANDA FERRARI PENZA' : i === 1 ? 'Ex.: nome do(a) Presidente' : 'Nome' %>" aria-label="Nome <%= i + 1 %>">
+          <input type="text" name="assinantes[<%= i %>][cargo]" maxlength="80" value="<%= a.cargo || '' %>" placeholder="<%= i === 0 ? 'Coordenadora de Cursos Livres' : i === 1 ? 'Presidente' : i === 2 ? 'Coordenação do Voluntariado' : 'Cargo' %>" aria-label="Cargo <%= i + 1 %>">
+        </div>
+      <% } %>
+    </div>
+  </div>
   <label>Livro em uso
     <input type="number" name="livro" min="1" value="<%= ajustes.livro %>">
     <small class="adm-hint">Certificados novos recebem este livro e o próximo registro da sequência dele. Os já emitidos mantêm o número.</small>
