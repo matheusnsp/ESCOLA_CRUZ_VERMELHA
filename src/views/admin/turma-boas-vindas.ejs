@@ -1,0 +1,100 @@
+<%- include('head', { titulo: 'Boas-vindas' }) %>
+<%- include('header', { ativo: 'turmas' }) %>
+<%
+  const dia = (d) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+  const pagou = (m) => m.statusPagamento === 'PAGO' || m.statusPagamento === 'PARCELADO';
+  const recebem = turma.matriculas.filter(pagou);
+  const faltam = recebem.filter((m) => !m.boasVindasEm);
+  const aguardando = turma.matriculas.filter((m) => !pagou(m));
+  const doacaoTurma = (turma.boasVindasDoacao || '').trim();
+%>
+
+<div class="adm-h1-row">
+  <div>
+    <h1 class="adm-h1">Boas-vindas</h1>
+    <p class="adm-mut adm-bv-sub"><%= turma.curso.nome %> · início <%= dia(turma.aulas[0] ? turma.aulas[0].data : turma.inicioPrevisto) %> · <%= rotuloTurma(turma.status) %></p>
+  </div>
+  <a href="/turmas" class="adm-link"><i class="fa-solid fa-arrow-left"></i> Turmas</a>
+</div>
+
+<% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
+
+<div class="adm-bv-grade">
+  <section class="adm-box adm-bv-previa">
+    <div class="adm-box-head">
+      <h2 class="adm-h2"><i class="fa-solid fa-envelope"></i> Como o aluno recebe</h2>
+      <button type="button" class="adm-pend-btn" id="bvCopiar" data-texto="<%= texto %>"><i class="fa-brands fa-whatsapp"></i> Copiar para WhatsApp</button>
+    </div>
+    <div class="adm-bv-email">
+      <p class="adm-bv-assunto"><small>Assunto</small> <%= assunto %></p>
+      <div class="adm-bv-corpo"><%- html %></div>
+    </div>
+    <p class="adm-hint adm-bv-nota">Vai por e-mail e aparece em "Minha conta" do aluno até a turma terminar.
+      Data, hora e local saem das aulas da turma. <a href="/modelos?voltar=/turmas/<%= turma.id %>/boas-vindas">Editar o texto padrão</a>.</p>
+  </section>
+
+  <div class="adm-bv-lado">
+    <section class="adm-box">
+      <div class="adm-box-head"><h2 class="adm-h2"><i class="fa-solid fa-paper-plane"></i> Envio</h2></div>
+      <div class="adm-bv-envio">
+        <% if (!emCurso) { %>
+          <p class="adm-mut">Esta turma já terminou ou foi cancelada; não há envio.</p>
+        <% } else { %>
+          <p><b><%= recebem.length - faltam.length %></b> de <b><%= recebem.length %></b> <%= recebem.length === 1 ? 'aluno com pagamento ok já recebeu' : 'alunos com pagamento ok já receberam' %>.</p>
+          <% if (turma.boasVindasEnviadaEm) { %>
+            <p class="adm-mut">Liberado em <%= new Date(turma.boasVindasEnviadaEm).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }) %>. Quem pagar depois recebe sozinho.</p>
+          <% } %>
+          <form method="POST" action="/turmas/<%= turma.id %>/boas-vindas/enviar"
+                data-confirmar="Enviar as boas-vindas por e-mail para <%= faltam.length %> <%= faltam.length === 1 ? 'aluno' : 'alunos' %>? Quem pagar depois recebe sozinho."
+                data-botao="Enviar">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="adm-btn" <%= faltam.length ? '' : 'disabled' %>><i class="fa-solid fa-paper-plane"></i>
+              <%= faltam.length ? 'Enviar para ' + faltam.length + (faltam.length === 1 ? ' aluno' : ' alunos') : (turma.boasVindasEnviadaEm ? 'Todos já receberam' : 'Nenhum aluno com pagamento ok') %></button>
+          </form>
+          <% if (!turma.boasVindasEnviadaEm && !faltam.length) { %>
+            <form method="POST" action="/turmas/<%= turma.id %>/boas-vindas/enviar" class="adm-bv-liberar">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="adm-link"><i class="fa-solid fa-unlock"></i> Liberar mesmo assim (quem pagar recebe sozinho)</button>
+            </form>
+          <% } %>
+        <% } %>
+      </div>
+    </section>
+
+    <section class="adm-box">
+      <div class="adm-box-head"><h2 class="adm-h2"><i class="fa-solid fa-hand-holding-heart"></i> Doação desta turma</h2></div>
+      <form method="POST" action="/turmas/<%= turma.id %>/boas-vindas/doacao" class="adm-bv-doacao">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <textarea name="doacao" rows="6"><%= doacaoTurma || modelo.doacao %></textarea>
+        <small class="adm-hint"><%= doacaoTurma ? 'Texto próprio desta turma.' : 'Usando o texto padrão.' %> Use *asteriscos* para negrito. Apague tudo e salve para voltar ao padrão.</small>
+        <button class="adm-pend-btn"><i class="fa-solid fa-floppy-disk"></i> Salvar doação</button>
+      </form>
+    </section>
+
+    <section class="adm-box">
+      <div class="adm-box-head"><h2 class="adm-h2"><i class="fa-solid fa-users"></i> Alunos</h2></div>
+      <ul class="adm-bv-alunos">
+        <% recebem.forEach(function (m) { %>
+          <li><span><%= m.aluno.nome %></span>
+            <% if (m.boasVindasEm) { %><em class="badge ok" title="<%= new Date(m.boasVindasEm).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) %>">recebeu</em><% } else { %><em class="badge">a enviar</em><% } %></li>
+        <% }) %>
+        <% aguardando.forEach(function (m) { %>
+          <li class="fraco"><span><%= m.aluno.nome %></span><em class="badge" title="Recebe sozinho quando o pagamento do curso for confirmado">aguarda pagamento</em></li>
+        <% }) %>
+        <% if (!turma.matriculas.length) { %><li class="adm-mut">Nenhum aluno inscrito ainda.</li><% } %>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<script>
+  document.getElementById('bvCopiar').addEventListener('click', function () {
+    var b = this;
+    navigator.clipboard.writeText(b.dataset.texto).then(function () {
+      var antes = b.innerHTML; b.innerHTML = '<i class="fa-solid fa-check"></i> Copiado';
+      setTimeout(function () { b.innerHTML = antes; }, 1800);
+    });
+  });
+</script>
+
+<%- include('foot') %>
