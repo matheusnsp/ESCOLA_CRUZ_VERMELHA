@@ -13,7 +13,10 @@
     <% if (pode('turmas:gerenciar') || pode('painel:leitura')) { %>
       <a href="/horarios" class="<%= secaoAtiva === 'horarios' ? 'on' : '' %>"><i class="fa-solid fa-clock"></i> Horários</a>
     <% } %>
-    <a href="/inscricoes" class="<%= secaoAtiva === 'inscricoes' ? 'on' : '' %>"><i class="fa-solid fa-users"></i> Matrículas</a>
+    <% // Mesma permissão da rota /inscricoes: sem ela (ex.: Consulta) o link caía numa página de erro. %>
+    <% if (pode('doacao:confirmar') || pode('financeiro:aprovar') || pode('financeiro:leitura')) { %>
+      <a href="/inscricoes" class="<%= secaoAtiva === 'inscricoes' ? 'on' : '' %>"><i class="fa-solid fa-users"></i> Matrículas</a>
+    <% } %>
     <%
       // 💡 Pagamentos pendentes. A condição espelha a permissão da rota
       // /pendentes: requirePermissao('pendentes:gerenciar').
