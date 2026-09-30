@@ -1331,3 +1331,16 @@ a.adm-pend-btn { text-decoration: none; }
 @media (max-width: 620px) { .adm-cards:not(.c2):not(.c3) { grid-template-columns: 1fr; } .adm-cards.c2 { grid-template-columns: 1fr; } }
 .adm-h2-sub { font-family: inherit; font-size: 12.5px; font-weight: 600; letter-spacing: 0; margin-left: 6px; }
 @media (max-width: 620px) { .adm-h2-sub { display: none; } }
+
+/* ===== Legenda dos status de matrícula ================== */
+.adm-legenda { margin: 0 0 14px; font-size: 13.5px; }
+.adm-legenda > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 7px; color: var(--tinta-60); font-weight: 600; }
+.adm-legenda > summary::-webkit-details-marker { display: none; }
+.adm-legenda > summary:hover { color: var(--vermelho); }
+.adm-legenda-caixa { margin: 10px 0 0; padding: 14px 16px; background: var(--card); border: 1px solid var(--linha); border-radius: var(--r-s); }
+.adm-legenda-fechar { margin-top: 12px; }
+.adm-legenda dl { margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px 20px; }
+.adm-legenda dl > div { display: flex; gap: 10px; align-items: flex-start; }
+.adm-legenda dt { flex: none; min-width: 170px; }
+.adm-legenda dd { margin: 0; color: var(--tinta-60); line-height: 1.45; }
+@media (max-width: 620px) { .adm-legenda dl > div { flex-direction: column; gap: 4px; } .adm-legenda dt { min-width: 0; } }

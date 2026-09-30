@@ -46,10 +46,10 @@ function filtros() { %>
     <% } %>
   <% } else if (m.statusPagamento !== 'PAGO' && pode('pagamento:confirmar')) { %>
     <form method="POST" action="/inscricoes/<%= m.id %>/confirmar"
-          data-confirmar="<%= m.statusPagamento === 'PARCELADO' ? 'Marcar o parcelamento de ' + _quem + ' como quitado?' : 'Reativar a matrícula de ' + _quem + ' como paga?' %>"
-          data-botao="<%= m.statusPagamento === 'PARCELADO' ? 'Marcar como quitado' : 'Reativar' %>">
+          data-confirmar="<%= m.statusPagamento === 'PARCELADO' ? 'Confirmar que todas as parcelas de ' + _quem + ' foram pagas? A matrícula passa a aparecer como parcelas quitadas.' : 'Reativar a matrícula de ' + _quem + ' como paga?' %>"
+          data-botao="<%= m.statusPagamento === 'PARCELADO' ? 'Parcelas quitadas' : 'Reativar' %>">
       <% filtros() %>
-      <button class="adm-pend-btn"><i class="fa-solid fa-arrow-rotate-right"></i> <%= m.statusPagamento === 'PARCELADO' ? 'Marcar quitado' : 'Reativar' %></button>
+      <button class="adm-pend-btn"><i class="fa-solid fa-arrow-rotate-right"></i> <%= m.statusPagamento === 'PARCELADO' ? 'Parcelas quitadas' : 'Reativar' %></button>
     </form>
   <% } %>
 

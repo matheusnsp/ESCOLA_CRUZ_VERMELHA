@@ -69,6 +69,8 @@
 
 </form>
 
+<%- include('legenda-status') %>
+
 <div class="adm-box">
 
   <% if (!inscricoes.length) { %>
@@ -228,15 +230,7 @@
             <!-- STATUS -->
             <td>
 
-              <% if (m.statusPagamento === 'PAGO' && m.plano === 'PARCELADO') { %>
-
-                <span class="badge parc">Parcelado</span>
-
-              <% } else { %>
-
-                <%- statusBadge(m.statusPagamento) %>
-
-              <% } %>
+              <%- statusMatricula(m) %>
 
             </td>
 

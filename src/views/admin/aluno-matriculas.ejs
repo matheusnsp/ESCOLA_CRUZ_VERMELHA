@@ -51,6 +51,8 @@
 </div>
 
 <!-- MATRÍCULAS -->
+<%- include('legenda-status') %>
+
 <div class="adm-box">
 
   <% if (!matriculas.length) { %>
@@ -184,18 +186,9 @@
                   Taxa pendente
                 </span>
 
-              <% } else if (
-                m.statusPagamento === 'PAGO' &&
-                m.plano === 'PARCELADO'
-              ) { %>
-
-                <span class="badge parc">
-                  Parcelado
-                </span>
-
               <% } else { %>
 
-                <%- statusBadge(m.statusPagamento) %>
+                <%- statusMatricula(m) %>
 
               <% } %>
 
