@@ -1245,3 +1245,24 @@ a.adm-stat-link:hover { border-color: #d97706; box-shadow: var(--sombra); }
 .adm-pend-btn.whats:hover { border-color: var(--ok-tx); }
 .adm-pend-btn.perigo:hover { border-color: var(--vermelho); color: var(--vermelho); background: var(--vermelho-bg); }
 .adm-box-intro { max-width: none; }
+
+/* ===== Ficha do aluno (página de matrículas do aluno) === */
+.adm-ficha { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0; }
+.adm-ficha-item { padding: 16px 20px; border-right: 1px solid var(--linha2); border-bottom: 1px solid var(--linha2); min-width: 0; }
+.adm-ficha-item small { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--mut); margin-bottom: 4px; }
+.adm-ficha-item span { font-size: 14.5px; color: var(--tinta); overflow-wrap: anywhere; }
+.adm-ficha-acao { padding: 16px 20px; display: flex; align-items: center; border-bottom: 1px solid var(--linha2); }
+a.adm-pend-btn { text-decoration: none; }
+
+/* Matrículas: coluna de ações com nome precisa de espaço (antes 114px, só para ícones) */
+.adm-table-insc col:nth-child(1) { width: 19%; }
+.adm-table-insc col:nth-child(2) { width: 18%; }
+.adm-table-insc col:nth-child(3) { width: 10%; }
+.adm-table-insc col:nth-child(4) { width: 12%; }
+.adm-table-insc col:nth-child(5) { width: 8%; }
+.adm-table-insc col:nth-child(6) { width: 10%; }
+.adm-table-insc col:nth-child(7) { width: 23%; }
+/* botões de ação iguais, sejam link ou botão (o vermelho dos links da tabela vencia) */
+.adm-pend-acoes a.adm-pend-btn { color: var(--tinta-60); }
+.adm-pend-acoes a.adm-pend-btn:hover { color: var(--tinta); }
+.adm-h1-row .adm-pend-acoes a.adm-pend-btn { color: var(--tinta-60); } .adm-h1-row .adm-pend-acoes { gap: 14px; }
