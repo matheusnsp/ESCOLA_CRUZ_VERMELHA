@@ -786,6 +786,12 @@ router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), as
             turmas: true,
           },
         },
+        // Turmas ainda por começar (abertas ou confirmadas): a lista mostra quantas e a próxima.
+        turmas: {
+          where: turmaEmAberto(),
+          orderBy: { inicioPrevisto: 'asc' },
+          select: { id: true, inicioPrevisto: true },
+        },
       },
     }),
 
@@ -826,10 +832,15 @@ function lerCursoDoForm(body) {
     precoAvista: parseDecimal(body.precoAvista),
     precoCheio: parseDecimal(body.precoCheio),
     parcelas: parseInteiro(body.parcelas, { min: 1 }),
-    valorParcela: parseDecimal(body.valorParcela),
+    // O valor da parcela não é pedido no formulário (o site calcula as parcelas na hora, com os
+    // juros do cartão); o campo do banco fica com parcelado ÷ parcelas, só como referência.
+    valorParcela: body.valorParcela ? parseDecimal(body.valorParcela) : NaN,
     taxaMatricula: parseDecimal(body.taxaMatricula, { opcional: true }),
     ativo: body.ativo === 'on' || body.ativo === 'true',
   };
+  if (Number.isNaN(dados.valorParcela) && !Number.isNaN(dados.precoCheio) && dados.parcelas > 0) {
+    dados.valorParcela = Math.round((Number(dados.precoCheio) / dados.parcelas) * 100) / 100;
+  }
   let erro = null;
   if (!dados.nome) erro = 'Informe o nome do curso.';
   else if (Number.isNaN(dados.cargaHoraria)) erro = 'Carga horaria invalida.';
@@ -886,6 +897,7 @@ router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, asy
   if (req.uploadErro) return res.status(400).render('admin/curso-form', { curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro: req.uploadErro });
   const { dados, erro } = lerCursoDoForm(req.body);
   if (erro) return res.status(400).render('admin/curso-form', { curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro });
+  if (!req.body.valorParcela) delete dados.valorParcela; // não está mais no formulário: na edição, mantém o gravado
   if (req.file) {
     dados.imagemUrl = await salvarFotoCurso(req.file);
     await removerFotoCurso(existe.imagemUrl); 
@@ -932,14 +944,25 @@ router.post('/cursos/:id/ativar', requirePermissao('cursos:gerenciar'), async (r
 router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
   await concluirTurmasPassadas(); // a lista já abre com as turmas de ontem como CONCLUÍDA
   const turmas = await prisma.turma.findMany({
-    orderBy: { criadoEm: 'desc' },
+    orderBy: { inicioPrevisto: 'asc' },
     include: {
       curso: true,
-      aulas: { orderBy: { data: 'asc' }, take: 1 },
+      aulas: { orderBy: { data: 'asc' } },
       _count: { select: { matriculas: { where: { taxaConfirmada: true, statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] } } } } },
     },
   });
-  res.render('admin/turmas', { turmas, statusTurma: STATUS_TURMA, flash: req.query.ok || null, erro: req.query.erro || null });
+  // Abas: por começar (aberta/confirmada com início no futuro), em andamento (aberta/confirmada
+  // que já começou e ainda não foi concluída), concluídas e canceladas.
+  const agora = new Date();
+  const ativa = (t) => ['ABERTA', 'CONFIRMADA'].includes(t.status);
+  const abas = {
+    'por-comecar': turmas.filter((t) => ativa(t) && new Date(t.inicioPrevisto) > agora),
+    'andamento': turmas.filter((t) => ativa(t) && new Date(t.inicioPrevisto) <= agora),
+    'concluidas': turmas.filter((t) => t.status === 'ENCERRADA').reverse(),
+    'canceladas': turmas.filter((t) => t.status === 'CANCELADA').reverse(),
+  };
+  const aba = abas[req.query.aba] ? req.query.aba : 'por-comecar';
+  res.render('admin/turmas', { turmas, abas, aba, statusTurma: STATUS_TURMA, flash: req.query.ok || null, erro: req.query.erro || null });
 });
 
 router.get('/turmas/nova', requirePermissao('turmas:gerenciar'), async (req, res) => {

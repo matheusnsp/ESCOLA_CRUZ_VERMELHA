@@ -12,148 +12,105 @@
 <% if (erro)  { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
 
 <%
-  const LIMITE_GRUPO = 5;
-
-  const GRUPOS = [
-    { chave: 'aberta',     label: 'Abertas',     icone: 'fa-lock-open',   badge: 'ok'   },
-    { chave: 'confirmada', label: 'Confirmadas', icone: 'fa-circle-check', badge: 'ok'  },
-    { chave: 'cancelada',  label: 'Canceladas',  icone: 'fa-ban',          badge: 'canc' },
-    { chave: 'encerrada',  label: 'Concluídas',  icone: 'fa-box-archive', badge: 'mut'  },
+  // Abas no lugar dos 6 cartões e das seções por status (que repetiam as mesmas contagens).
+  const ROTULOS = [
+    { id: 'por-comecar', rot: 'Por começar' },
+    { id: 'andamento',   rot: 'Em andamento' },
+    { id: 'concluidas',  rot: 'Concluídas' },
+    { id: 'canceladas',  rot: 'Canceladas' },
   ];
-
-  const porStatus = {};
-  GRUPOS.forEach(g => porStatus[g.chave] = []);
-  turmas.forEach(function(t) {
-    const s = t.status.toLowerCase();
-    if (porStatus[s] !== undefined) porStatus[s].push(t);
-    else { if (!porStatus[s]) porStatus[s] = []; porStatus[s].push(t); }
-  });
-
-  // Só turmas ainda ativas (abertas/confirmadas) entram no resumo de vagas —
-  // canceladas e encerradas ficam de fora pra não inflar o total.
-  const turmasAtivas = turmas.filter(t => ['aberta', 'confirmada'].includes(t.status.toLowerCase()));
-  const totalInscritos = turmasAtivas.reduce((soma, t) => soma + (t._count?.matriculas || 0), 0);
-  const totalVagas     = turmasAtivas.reduce((soma, t) => soma + (t.vagas || 0), 0);
+  const lista = abas[aba];
+  const dia = d => { const x = new Date(d); const p = n => String(n).padStart(2, '0'); return p(x.getUTCDate()) + '/' + p(x.getUTCMonth() + 1); };
+  const ocupadas = lista.reduce((t, x) => t + x._count.matriculas, 0);
+  const vagas = lista.reduce((t, x) => t + (x.vagas || 0), 0);
+  const podeAlunos = pode('aluno:gerenciar') || pode('painel:leitura');
 %>
 
-<!-- ===== Resumo ===== -->
-<div class="adm-cards">
-  <div class="adm-stat">
-    <span><%= turmas.length %></span>
-    <small><i class="fa-solid fa-layer-group"></i> Turmas no total</small>
-  </div>
-  <div class="adm-stat ok">
-    <span><%= porStatus.aberta.length %></span>
-    <small><i class="fa-solid fa-lock-open"></i> Abertas</small>
-  </div>
-  <div class="adm-stat">
-    <span><%= porStatus.confirmada.length %></span>
-    <small><i class="fa-solid fa-circle-check"></i> Confirmadas</small>
-  </div>
-  <div class="adm-stat warn">
-    <span><%= porStatus.cancelada.length + porStatus.encerrada.length %></span>
-    <small><i class="fa-solid fa-box-archive"></i> Canceladas + Concluídas</small>
-  </div>
+<div class="adm-abas">
+  <% ROTULOS.forEach(function (a) { %>
+    <a href="/turmas?aba=<%= a.id %>" class="adm-aba <%= aba === a.id ? 'on' : '' %>">
+      <%= a.rot %> <span class="adm-aba-num"><%= abas[a.id].length %></span>
+    </a>
+  <% }) %>
 </div>
 
-<div class="adm-cards c2">
-  <div class="adm-stat">
-    <span><%= totalInscritos %>/<%= totalVagas %></span>
-    <small><i class="fa-solid fa-user-group"></i> Inscritos / vagas (todas as turmas)</small>
-  </div>
-  <div class="adm-stat">
-    <span><%= totalVagas ? Math.round((totalInscritos / totalVagas) * 100) : 0 %>%</span>
-    <small><i class="fa-solid fa-chart-simple"></i> Ocupação média</small>
-  </div>
-</div>
+<div class="adm-box">
+  <% if (lista.length && (aba === 'por-comecar' || aba === 'andamento')) { %>
+    <p class="adm-box-intro"><i class="fa-solid fa-user-group"></i>
+      <strong><%= ocupadas %> de <%= vagas %> vagas</strong> ocupadas nestas turmas (<%= vagas ? Math.round(ocupadas / vagas * 100) : 0 %>%).
+      Contam as matrículas com a taxa paga.
+    </p>
+  <% } %>
 
-<% if (!turmas.length) { %>
-  <div class="adm-box">
-    <p class="adm-vazio">Nenhuma turma. <% if (pode('turmas:gerenciar')) { %><a href="/turmas/nova">Criar a primeira</a>.<% } %></p>
-  </div>
-<% } %>
-
-<% GRUPOS.forEach(function(g) { %>
-  <% const lista = porStatus[g.chave] || []; %>
-  <% if (!lista.length) { return; } %>
-
-  <div class="adm-box adm-espaco" id="grupo-<%= g.chave %>">
-    <div class="adm-box-head">
-      <h2><i class="fa-solid <%= g.icone %>"></i> <%= g.label %></h2>
-      <span class="badge <%= g.badge %>"><%= lista.length %> turma(s)</span>
-    </div>
-
-    <table class="adm-table adm-table-turmas">
-      <colgroup>
-        <col>
-        <col>
-        <col>
-        <col>
-        <col>
-        <col>
-      </colgroup>
+  <% if (!lista.length) { %>
+    <p class="adm-vazio">
+      <%= aba === 'por-comecar' ? 'Nenhuma turma por começar.' : aba === 'andamento' ? 'Nenhuma turma em andamento.' : aba === 'concluidas' ? 'Nenhuma turma concluída.' : 'Nenhuma turma cancelada.' %>
+      <% if (aba === 'por-comecar' && pode('turmas:gerenciar')) { %><a href="/turmas/nova">Criar uma turma</a>.<% } %>
+    </p>
+  <% } else { %>
+    <table class="adm-table adm-table-cards">
       <thead>
         <tr>
           <th>Curso</th>
           <th>Início</th>
-          <th>Dias / Horário</th>
-          <th>Inscritos</th>
+          <th>Aulas</th>
+          <th>Vagas</th>
           <th>Status</th>
-          <th class="centro">Ações</th>
+          <th>Ações</th>
         </tr>
       </thead>
       <tbody>
-        <% lista.forEach(function(t, i) { %>
-        <tr<% if (i >= LIMITE_GRUPO) { %> class="adm-extra"<% } %>>
+        <% lista.forEach(function (t) {
+             const insc = t._count.matriculas;
+             const pct = t.vagas ? Math.min(100, Math.round(insc / t.vagas * 100)) : 0;
+             const abaixoMin = t.minimoAlunos && insc < t.minimoAlunos && (aba === 'por-comecar' || aba === 'andamento');
+             const faltam = Math.ceil((new Date(t.inicioPrevisto) - Date.now()) / 86400000);
+             const aulas = t.aulas || []; %>
+        <tr>
           <td><strong><%= t.curso.nome %></strong></td>
-          <td><%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %></td>
           <td>
-            <% if (t.aulas && t.aulas.length) { %>
-              <%= t.aulas[0].horario %>
+            <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) %>
+            <% if (aba === 'por-comecar') { %><br><small class="adm-mut">em <%= faltam %> <%= faltam === 1 ? 'dia' : 'dias' %></small><% } %>
+          </td>
+          <td>
+            <% if (aulas.length) { %>
+              <%= aulas.length %> <%= aulas.length === 1 ? 'aula' : 'aulas' %> · <%= aulas[0].horario %>
+              <br><small class="adm-mut"><%= aulas.map(a => dia(a.data)).join(', ') %></small>
             <% } else { %>
-              <span class="adm-mut">—</span>
+              <span class="adm-mut">sem aulas cadastradas</span>
             <% } %>
           </td>
-          <td><a href="/inscricoes?turma=<%= t.id %>"><%= t._count.matriculas %>/<%= t.vagas %></a></td>
+          <td class="adm-vagas-cel">
+            <b class="num"><%= insc %>/<%= t.vagas %></b>
+            <div class="adm-barra"><span class="<%= abaixoMin ? 'baixa' : '' %>" style="width: <%= pct %>%"></span></div>
+            <% if (t.minimoAlunos) { %><small class="<%= abaixoMin ? 'adm-txt-alerta' : 'adm-mut' %>">mínimo <%= t.minimoAlunos %></small><% } %>
+          </td>
           <td><span class="badge st-<%= t.status.toLowerCase() %>"><%= rotuloTurma(t.status) %></span></td>
           <td class="adm-acoes">
-            <div class="adm-acoes-wrap linha">
-            <% if (pode('turmas:gerenciar') || pode('secretaria:leitura')) { %>
-              <a href="/turmas/<%= t.id %>/notas" class="adm-mini" title="Lançar notas da turma"><i class="fa-solid fa-list-check"></i></a>
-            <% } %>
-            <% if (pode('turmas:gerenciar')) { %>
-              <a href="/turmas/<%= t.id %>/editar" class="adm-mini" title="Editar"><i class="fa-solid fa-pen"></i></a>
-              <form method="POST" action="/turmas/<%= t.id %>/excluir"
-                    data-confirmar="Excluir esta turma? Só é possível se não houver alunos matriculados.">
-                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <button class="adm-mini danger" title="Excluir turma"><i class="fa-solid fa-trash"></i></button>
-              </form>
-            <% } %>
+            <div class="adm-pend-acoes">
+              <% if (podeAlunos) { %>
+                <a href="/alunos?turma=<%= t.id %>" class="adm-pend-btn"><i class="fa-solid fa-user-graduate"></i> Alunos</a>
+              <% } %>
+              <% if (pode('turmas:gerenciar') || pode('secretaria:leitura')) { %>
+                <a href="/turmas/<%= t.id %>/notas" class="adm-pend-btn"><i class="fa-solid fa-star-half-stroke"></i> Notas</a>
+              <% } %>
+              <% if (pode('turmas:gerenciar')) { %>
+                <a href="/turmas/<%= t.id %>/editar" class="adm-pend-btn"><i class="fa-solid fa-pen"></i> Editar</a>
+                <% if (!insc) { %>
+                  <form method="POST" action="/turmas/<%= t.id %>/excluir"
+                        data-confirmar="Excluir a turma de <%= t.curso.nome %> (<%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) %>)? Só é possível se ninguém se inscreveu." data-botao="Excluir">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button class="adm-pend-btn perigo"><i class="fa-solid fa-trash"></i> Excluir</button>
+                  </form>
+                <% } %>
+              <% } %>
             </div>
           </td>
         </tr>
         <% }) %>
       </tbody>
     </table>
-
-    <% if (lista.length > LIMITE_GRUPO) { %>
-      <button type="button" class="adm-vermais" data-grupo="grupo-<%= g.chave %>" data-extra="<%= lista.length - LIMITE_GRUPO %>">
-        Ver mais <%= lista.length - LIMITE_GRUPO %>
-      </button>
-    <% } %>
-  </div>
-<% }) %>
-
-<script>
-  document.querySelectorAll('.adm-vermais').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var box = document.getElementById(btn.dataset.grupo);
-      var extra = btn.dataset.extra;
-      var abrindo = !box.classList.contains('aberto');
-      box.classList.toggle('aberto');
-      btn.textContent = abrindo ? 'Ver menos' : ('Ver mais ' + extra);
-    });
-  });
-</script>
+  <% } %>
+</div>
 
 <%- include('foot') %>

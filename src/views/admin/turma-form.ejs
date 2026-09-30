@@ -47,6 +47,8 @@ function formatarDataInput(data) {
 <form method="POST" action="<%= novo ? '/turmas' : '/turmas/' + t.id %>" class="adm-form adm-box">
 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
+<h2 class="adm-form-secao full"><i class="fa-solid fa-calendar-days"></i> Turma</h2>
+
 <label class="full">
 Curso
 <select name="cursoId" required>
@@ -72,10 +74,12 @@ Início previsto
 <option value="<%= s %>" <%= (t.status||'ABERTA')===s ? 'selected' : '' %>><%= rotuloTurma(s) %></option>
 <% }) %>
 </select>
+<small class="adm-hint">Aberta: aceita inscrições. Confirmada: atingiu o mínimo e vai acontecer. A turma confirmada vira Concluída sozinha no dia seguinte à última aula.</small>
 </label>
 
+<h2 class="adm-form-secao full"><i class="fa-solid fa-clock"></i> Aulas</h2>
 <div class="full">
-<div class="adm-label">Aulas (opcional)</div>
+<p class="adm-hint adm-aulas-dica">Uma linha por dia de aula, com o horário. As datas aparecem para o aluno na página do curso. Ao adicionar, o horário da última linha é repetido.</p>
 
 <div id="aulas-lista">
 <% (aulas || []).forEach(function(a, i){ %>
@@ -92,8 +96,9 @@ Início previsto
 </button>
 </div>
 
-<div class="full">
-<button type="submit" class="adm-btn"><%= novo ? 'Criar turma' : 'Salvar alterações' %></button>
+<div class="full adm-form-rodape">
+<button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> <%= novo ? 'Criar turma' : 'Salvar alterações' %></button>
+<a href="/turmas" class="adm-link">Cancelar</a>
 </div>
 </form>
 
@@ -103,6 +108,9 @@ document.addEventListener('DOMContentLoaded', function () {
   const lista = document.getElementById('aulas-lista');
 
   function criarLinhaAula() {
+    // Repete o horário da última linha: quase sempre é o mesmo em todas as aulas.
+    const ultimas = lista.querySelectorAll('.aula-linha input[type=text]');
+    const horario = ultimas.length ? ultimas[ultimas.length - 1].value : '';
     const div = document.createElement('div');
     div.className = 'aula-linha';
     div.dataset.idx = idx;
@@ -111,7 +119,9 @@ document.addEventListener('DOMContentLoaded', function () {
       <input type="text" name="aulas[${idx}][horario]" placeholder="18:00 – 22:00">
       <button type="button" class="adm-mini danger btn-remover-aula"><i class="fa-solid fa-trash"></i></button>
     `;
+    div.querySelector('input[type=text]').value = horario;
     lista.appendChild(div);
+    div.querySelector('input[type=date]').focus();
     idx++;
   }
 
