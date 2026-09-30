@@ -1264,6 +1264,24 @@ function codigoMatricula(m) {
   return `MAT-${m.id.slice(0, 8).toUpperCase()}`;
 }
 
+// "Em aberto": quem pagou a taxa, não concluiu o curso e ainda tem turma aberta e por começar.
+// O mesmo critério e a mesma conta no cartão "A receber" do Financeiro e no topo de Pendentes;
+// antes cada tela contava de um jeito e os números não batiam.
+//
+// Valor: o valorCurso gravado JÁ inclui a taxa (não subtrair valorTaxaMatricula, que está zerado
+// em vários registros onde a taxa foi cobrada). Em transferência com diferença a pagar, vale a
+// diferença.
+//
+// Turma "em aberto" = ABERTA ou CONFIRMADA, com início no futuro. Antes só ABERTA contava, e
+// quem estava numa turma CONFIRMADA que ainda não começou não aparecia em nenhuma aba de
+// Pendentes (a aba "fora de prazo" só pega turma encerrada/cancelada ou já começada).
+function turmaEmAberto(agora = new Date()) {
+  return { status: { in: ['ABERTA', 'CONFIRMADA'] }, inicioPrevisto: { gt: agora } };
+}
+function valorEmAberto(m) {
+  return m.diferencaTransferencia != null ? Number(m.diferencaTransferencia) : Number(m.valorCurso);
+}
+
 router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:leitura'), async (req, res) => {
   const [
     taxaPagaLista,
@@ -1295,6 +1313,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
       where: {
         taxaConfirmada: true,
         statusPagamento: 'PENDENTE',
+        turma: turmaEmAberto(),
       },
       orderBy: { criadoEm: 'desc' },
       include: { aluno: true, turma: { include: { curso: true } } },
@@ -1383,14 +1402,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     matriculaGeradaLista.reduce((s, m) => s + Number(m.valorCurso), 0) +
     totalTaxaSemMatricula;
 
-  const totalPendente = cursoPendenteLista.reduce(
-    (s, m) =>
-      s +
-      (m.diferencaTransferencia != null
-        ? Number(m.diferencaTransferencia)
-        : Number(m.valorCurso)),
-    0
-  );
+  const totalPendente = cursoPendenteLista.reduce((s, m) => s + valorEmAberto(m), 0);
 
   const totalEstornado = estornos.reduce(
     (s, m) => s + Number(m.valorCurso),
@@ -2150,7 +2162,7 @@ router.get('/pendentes', requirePermissao('pendentes:gerenciar'), async (req, re
   // O status sozinho não bastava — turma marcada ABERTA com data vencida
   // aparecia como se desse tempo. (O fechamento automático só roda quando
   // alguém acessa o site do aluno, então pode atrasar.)
-  const TURMA_VALE = { status: 'ABERTA', inicioPrevisto: { gt: agora } };
+  const TURMA_VALE = turmaEmAberto(agora);
 
   const [comTaxa, semTaxa, foraDePrazo] = await Promise.all([
     // ── 1. Taxa paga, curso pendente ──────────────────────────────────────
@@ -2235,7 +2247,7 @@ router.get('/pendentes', requirePermissao('pendentes:gerenciar'), async (req, re
   // onde a taxa foi de fato cobrada (conferido em produção). Subtrair um
   // campo não confiável fazia o mesmo curso aparecer com valores diferentes
   // de um aluno pro outro.
-  const totalEmAberto = comTaxa.reduce((s, m) => s + Number(m.valorCurso), 0);
+  const totalEmAberto = comTaxa.reduce((s, m) => s + valorEmAberto(m), 0);
 
   const abasValidas = ['com-taxa', 'sem-taxa', 'fora-prazo'];
   const aba = abasValidas.includes(req.query.aba) ? req.query.aba : 'com-taxa';
@@ -2245,6 +2257,7 @@ router.get('/pendentes', requirePermissao('pendentes:gerenciar'), async (req, re
     semTaxa: enriquecer(semTaxa),
     foraDePrazo: enriquecer(foraDePrazo),
     totalEmAberto,
+    valorEmAberto,
     formatBRL,
     aba,
     flash: req.query.ok || null,

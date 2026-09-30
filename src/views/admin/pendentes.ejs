@@ -1,4 +1,4 @@
-<%- include('head', { titulo: 'Pagamentos pendentes' }) %>
+<%- include('head', { titulo: 'Pendentes' }) %>
 <%- include('header', { ativo: 'pendentes' }) %>
 
 <%
@@ -74,7 +74,7 @@
 %>
 
 <div class="adm-h1-row">
-  <h1 class="adm-h1">Pagamentos pendentes</h1>
+  <h1 class="adm-h1">Pendentes</h1>
   <span class="adm-mut">
     Em aberto: <strong><%= formatBRL(totalEmAberto) %></strong>
   </span>
@@ -98,65 +98,59 @@
 </div>
 
 <%
-  // Bloco de ações, igual nas três abas. Em função pra não repetir markup —
-  // e porque as regras de quando cada botão aparece são as mesmas.
+  // Uma frase por aba, dizendo quem está ali e como abordar.
+  const intro = {
+    'com-taxa':   'Pagaram a taxa, a vaga está reservada e falta pagar o curso. É onde tem dinheiro parado.',
+    'sem-taxa':   'Escolheram o curso e pararam antes de pagar. A vaga não está reservada e a turma ainda não começou.',
+    'fora-prazo': 'A turma já começou ou foi encerrada. Não mande o texto de retomar a inscrição: chame para uma turma nova do mesmo curso.',
+  };
+  const atual = abas.find(a => a.id === aba);
 %>
+
 <%
+// Ações: só aparecem as que dá para usar (antes ficavam ícones apagados na linha).
+// WhatsApp é POST: o servidor registra o contato e mostra a página com o link.
 function acoesHtml(m) { %>
   <td class="adm-acoes">
-    <div class="adm-acoes-wrap">
-
-      <%
-        // WhatsApp é POST, não link direto. O servidor registra o contato e
-        // então mostra a página com o link. Antes era <a href> puro: abria
-        // o WhatsApp mas o sistema não sabia que a secretaria tinha falado
-        // com a pessoa, e a próxima lista trazia todo mundo de volta.
-      %>
+    <div class="adm-pend-acoes">
       <% if (m.linkWhats) { %>
         <form method="POST" action="/pendentes/<%= m.id %>/whatsapp" target="_blank">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <input type="hidden" name="voltar" value="/pendentes?aba=<%= aba %>">
-          <button class="adm-mini ok" title="Abrir WhatsApp e registrar o contato">
-            <i class="fa-brands fa-whatsapp"></i>
+          <button class="adm-pend-btn whats" title="Abrir o WhatsApp e registrar o contato">
+            <i class="fa-brands fa-whatsapp"></i> WhatsApp
           </button>
         </form>
-      <% } else { %>
-        <span class="adm-mini off" title="Celular não cadastrado ou inválido">
-          <i class="fa-brands fa-whatsapp"></i>
-        </span>
       <% } %>
 
       <% if (pode('pendentes:gerenciar') && m.pendencia.podeEmail) { %>
         <form method="POST" action="/pendentes/<%= m.id %>/lembrar"
-              data-confirmar="Enviar o lembrete por e-mail para <%= m.aluno.nome.split(' ')[0] %>?">
+              data-confirmar="Enviar o lembrete de pagamento por e-mail para <%= m.aluno.nome %>?" data-botao="Enviar e-mail">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-          <button class="adm-mini" title="Enviar lembrete por e-mail">
-            <i class="fa-solid fa-envelope"></i>
+          <button class="adm-pend-btn" title="Enviar lembrete por e-mail">
+            <i class="fa-solid fa-envelope"></i> E-mail
           </button>
         </form>
-      <% } else { %>
-        <span class="adm-mini off"
-              title="Sem pagamento online nesta etapa — use o WhatsApp">
-          <i class="fa-solid fa-envelope"></i>
-        </span>
       <% } %>
 
       <%
-        // Remover só onde nada foi pago. Onde houve cobrança no gateway a
-        // própria rota recusa — pode haver pagamento cuja confirmação não
-        // chegou, e apagar seria apagar dinheiro.
+        // Remover só onde nada foi pago. Onde houve cobrança no gateway a própria rota recusa:
+        // pode haver pagamento cuja confirmação não chegou, e apagar seria apagar dinheiro.
       %>
       <% if (!m.taxaConfirmada && pode('pendentes:gerenciar')) { %>
         <form method="POST" action="/pendentes/<%= m.id %>/remover"
-              data-confirmar="Remover a inscrição de <%= m.aluno.nome.split(' ')[0] %> em <%= m.turma.curso.nome %>?&#10;&#10;A vaga será liberada e o registro apagado. Não dá pra desfazer."
+              data-confirmar="Remover a inscrição de <%= m.aluno.nome %> em <%= m.turma.curso.nome %>?&#10;&#10;A vaga é liberada e o registro apagado. Não dá para desfazer."
               data-motivo="Motivo da remoção" data-botao="Remover">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-          <button class="adm-mini danger" title="Remover inscrição e liberar a vaga">
-            <i class="fa-solid fa-trash"></i>
+          <button class="adm-pend-btn perigo" title="Remover a inscrição e liberar a vaga">
+            <i class="fa-solid fa-trash"></i> Remover
           </button>
         </form>
       <% } %>
 
+      <% if (!m.linkWhats) { %>
+        <small class="adm-txt-alerta" title="Celular não cadastrado ou inválido">sem WhatsApp</small>
+      <% } %>
     </div>
   </td>
 <% } %>
@@ -164,11 +158,8 @@ function acoesHtml(m) { %>
 <%
 function alunoHtml(m) { %>
   <td>
-    <a href="/alunos/<%= m.aluno.id %>/matriculas">
-      <strong><%= m.aluno.nome %></strong>
-    </a>
-    <br>
-    <small class="adm-mut"><%= m.aluno.email %></small>
+    <a href="/alunos/<%= m.aluno.id %>/matriculas"><strong><%= m.aluno.nome %></strong></a>
+    <br><small class="adm-mut"><%= m.aluno.email %></small>
     <% if (telBR(m.aluno.celular)) { %>
       <br>
       <small class="<%= celularSuspeito(m.aluno.celular) ? 'adm-txt-alerta' : 'adm-mut' %>">
@@ -180,66 +171,77 @@ function alunoHtml(m) { %>
 <% } %>
 
 <%
-function contatoHtml(m) { %>
+function cursoHtml(m) {
+  const faltam = diasAte(m.turma.inicioPrevisto); %>
   <td>
-    <% if (m.contato) { %>
-      <small><%= dataHoraBR(m.contato.quando) %></small>
-      <br><small class="adm-mut"><%= rotuloContato[m.contato.como] || m.contato.como %></small>
+    <%= m.turma.curso.nome %>
+    <br><small class="adm-mut">
+      <% if (aba === 'fora-prazo') { %>
+        turma <%= rotuloTurma(m.turma.status).toLowerCase() %> · <%= dataBR(m.turma.inicioPrevisto) %>
+      <% } else { %>
+        início <%= dataBR(m.turma.inicioPrevisto) %><% if (faltam !== null && faltam >= 0) { %> · faltam <%= faltam %>d<% } %>
+      <% } %>
+    </small>
+  </td>
+<% } %>
+
+<%
+// Situação: o que já foi pago e há quanto tempo está parado, numa coluna só.
+function situacaoHtml(m) {
+  const desde = m.taxaConfirmada ? (m.taxaConfirmadaEm || m.criadoEm) : m.criadoEm;
+  const parado = diasDesde(desde);
+  const plano = m.plano === 'A_VISTA' ? 'à vista' : m.plano === 'PRESENCIAL' ? 'presencial' : 'parcelado'; %>
+  <td>
+    <% if (m.taxaConfirmada) { %>
+      <span class="badge ok">Taxa paga</span>
     <% } else { %>
-      <small class="adm-mut">nunca</small>
+      <span class="badge mut">Nada pago</span>
     <% } %>
+    <br><small class="adm-mut">parado <%= parado === 0 ? 'desde hoje' : 'há ' + parado + 'd' %> · <%= plano %></small>
     <% if (m.tentouPagar) { %>
-      <br><small class="adm-txt-alerta" title="Chegou a gerar cobrança no gateway — pode haver pagamento cuja confirmação não chegou">
+      <br><small class="adm-txt-alerta" title="Chegou a gerar cobrança no gateway: pode haver pagamento cuja confirmação não chegou. Confira na Únicopag antes de abordar como quem não pagou.">
         <i class="fa-solid fa-triangle-exclamation"></i> gerou cobrança
       </small>
     <% } %>
   </td>
 <% } %>
 
+<%
+function contatoHtml(m) { %>
+  <td>
+    <% if (m.contato) { %>
+      <small><%= dataHoraBR(m.contato.quando) %></small>
+      <br><small class="adm-mut">por <%= rotuloContato[m.contato.como] || m.contato.como %></small>
+    <% } else { %>
+      <small class="adm-mut">nunca</small>
+    <% } %>
+  </td>
+<% } %>
 
-<!-- ══════════════════════════════════════════════════════════════════════
-     ABA 1 — taxa paga, curso pendente
-     ══════════════════════════════════════════════════════════════════════ -->
-<% if (aba === 'com-taxa') { %>
 <div class="adm-box">
-  <i class="fa-solid fa-circle-info"></i>
-    Pagaram a taxa de inscrição e não concluíram o pagamento do curso. A vaga
-    está reservada e o valor abaixo ainda não entrou.
-  </p>
+  <p class="adm-box-intro"><i class="fa-solid fa-circle-info"></i> <%= intro[aba] %></p>
 
-  <% if (!comTaxa.length) { %>
-    <p class="adm-vazio">Nenhum pagamento pendente. Tudo em dia.</p>
+  <% if (!atual.lista.length) { %>
+    <p class="adm-vazio">
+      <%= aba === 'com-taxa' ? 'Ninguém com taxa paga e curso pendente. Tudo em dia.'
+        : aba === 'sem-taxa' ? 'Nenhuma inscrição parada com turma em aberto.'
+        : 'Nenhuma pendência fora de prazo.' %>
+    </p>
   <% } else { %>
     <table class="adm-table">
       <thead>
         <tr>
-          <th>Aluno</th><th>Curso / Turma</th><th>Parado há</th>
-          <th>Valor</th><th>Último contato</th><th>Ação</th>
+          <th>Aluno</th><th>Curso</th><th>Situação</th>
+          <th>Valor</th><th>Último contato</th><th>Ações</th>
         </tr>
       </thead>
       <tbody>
-        <% comTaxa.forEach(function (m) { %>
-        <%
-          const paradoHa = diasDesde(m.taxaConfirmadaEm || m.criadoEm);
-          const faltam = diasAte(m.turma.inicioPrevisto);
-        %>
-        <tr>
+        <% atual.lista.forEach(function (m) { %>
+        <tr<%- aba === 'fora-prazo' ? ' class="adm-tr-fraca"' : '' %>>
           <%- alunoHtml(m) %>
-          <td>
-            <%= m.turma.curso.nome %>
-            <br><small class="adm-mut">
-              início <%= dataBR(m.turma.inicioPrevisto) %>
-              <% if (faltam !== null && faltam >= 0) { %>· faltam <%= faltam %>d<% } %>
-            </small>
-          </td>
-          <td>
-            <%= paradoHa === 0 ? 'hoje' : paradoHa + 'd' %>
-            <br><small class="adm-mut">taxa <%= dataBR(m.taxaConfirmadaEm) %></small>
-          </td>
-          <td>
-            <strong><%= formatBRL(Number(m.valorCurso)) %></strong>
-            <br><small class="adm-mut">taxa inclusa</small>
-          </td>
+          <%- cursoHtml(m) %>
+          <%- situacaoHtml(m) %>
+          <td><strong><%= formatBRL(valorEmAberto(m)) %></strong></td>
           <%- contatoHtml(m) %>
           <%- acoesHtml(m) %>
         </tr>
@@ -248,114 +250,5 @@ function contatoHtml(m) { %>
     </table>
   <% } %>
 </div>
-<% } %>
-
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     ABA 2 — nada pago, ainda dá tempo
-     ══════════════════════════════════════════════════════════════════════ -->
-<% if (aba === 'sem-taxa') { %>
-<div class="adm-box">
-  <p class="adm-box-intro">
-    Escolheram um curso, aceitaram o contrato e escolheram como pagar — mas
-    pararam antes de pagar qualquer coisa. A vaga <strong>não</strong> está
-    reservada, e o texto enviado diz isso.
-    <br>
-    Só turmas abertas que ainda não começaram. Quem tem o aviso
-    <em>"gerou cobrança"</em> chegou ao gateway: confira antes de abordar
-    como quem não pagou.
-  </p>
-
-  <% if (!semTaxa.length) { %>
-    <p class="adm-vazio">Nenhuma inscrição parada com turma em aberto.</p>
-  <% } else { %>
-    <table class="adm-table">
-      <thead>
-        <tr>
-          <th>Aluno</th><th>Curso / Turma</th><th>Parado há</th>
-          <th>Plano</th><th>Último contato</th><th>Ação</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% semTaxa.forEach(function (m) { %>
-        <%
-          const paradoHa = diasDesde(m.criadoEm);
-          const faltam = diasAte(m.turma.inicioPrevisto);
-        %>
-        <tr>
-          <%- alunoHtml(m) %>
-          <td>
-            <%= m.turma.curso.nome %>
-            <br><small class="adm-mut">
-              início <%= dataBR(m.turma.inicioPrevisto) %>
-              <% if (faltam !== null && faltam >= 0) { %>· faltam <%= faltam %>d<% } %>
-            </small>
-          </td>
-          <td><%= paradoHa === 0 ? 'hoje' : paradoHa + 'd' %></td>
-          <td>
-            <%= m.plano === 'A_VISTA' ? 'À vista' : m.plano === 'PRESENCIAL' ? 'Presencial' : 'Parcelado' %>
-          </td>
-          <%- contatoHtml(m) %>
-          <%- acoesHtml(m) %>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  <% } %>
-</div>
-<% } %>
-
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     ABA 3 — fora de prazo
-     ══════════════════════════════════════════════════════════════════════ -->
-<% if (aba === 'fora-prazo') { %>
-<div class="adm-box">
-  <p class="adm-box-intro">
-    A turma encerrou ou já começou. O curso que essas pessoas escolheram não
-    está mais disponível — <strong>não</strong> vale mandar o texto padrão,
-    que fala de retomar a inscrição.
-    <br>
-    Ficam aqui pra não desaparecerem da tela: se houver turma nova do mesmo
-    curso, são as primeiras a chamar.
-  </p>
-
-  <% if (!foraDePrazo.length) { %>
-    <p class="adm-vazio">Nenhuma pendência fora de prazo.</p>
-  <% } else { %>
-    <table class="adm-table">
-      <thead>
-        <tr>
-          <th>Aluno</th><th>Curso</th><th>Turma</th>
-          <th>Pagou taxa?</th><th>Último contato</th><th>Ação</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% foraDePrazo.forEach(function (m) { %>
-        <tr class="adm-tr-fraca">
-          <%- alunoHtml(m) %>
-          <td><%= m.turma.curso.nome %></td>
-          <td>
-            <small class="adm-mut">
-              <%= rotuloTurma(m.turma.status) %> · <%= dataBR(m.turma.inicioPrevisto) %>
-            </small>
-          </td>
-          <td>
-            <% if (m.taxaConfirmada) { %>
-              <span class="badge ok">Sim</span>
-              <br><small class="adm-mut"><%= formatBRL(Number(m.valorCurso)) %></small>
-            <% } else { %>
-              <span class="badge mut">Não</span>
-            <% } %>
-          </td>
-          <%- contatoHtml(m) %>
-          <%- acoesHtml(m) %>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  <% } %>
-</div>
-<% } %>
 
 <%- include('foot') %>
