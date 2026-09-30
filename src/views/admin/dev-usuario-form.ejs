@@ -1,6 +1,6 @@
 <%- include('head', { titulo: 'Novo Admin' }) %>
 <%- include('header', { ativo: 'dev-usuarios' }) %>
-<div class="adm-h1-row"><h1 class="adm-h1">Novo Admin</h1><a href="/dev/usuarios" class="adm-link">← Voltar</a></div>
+<div class="adm-h1-row"><h1 class="adm-h1">Novo usuário do painel</h1><a href="/dev/usuarios" class="adm-link">← Voltar</a></div>
 <% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
 <% var v = valores || {}; %>
 <form method="POST" action="/dev/usuarios/novo?_csrf=<%= csrfToken %>" class="adm-form adm-box">
@@ -19,6 +19,6 @@
     <i class="fa-solid fa-circle-info"></i>
     Não é preciso definir senha aqui — enviaremos um e-mail para <strong><%= v.email || 'este endereço' %></strong> com um link para a pessoa criar a própria senha.
   </p>
-  <div class="full"><button type="submit" class="adm-btn">Criar admin</button></div>
+  <div class="full"><button type="submit" class="adm-btn">Criar usuário</button></div>
 </form>
 <%- include('foot') %>

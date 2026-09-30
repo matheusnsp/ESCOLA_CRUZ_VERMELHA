@@ -2,9 +2,9 @@
 <%- include('header', { ativo: 'banimentos' }) %>
 
 <div class="adm-h1-row">
-  <h1 class="adm-h1"><i class="fa-solid fa-ban"></i> Alunos Banidos</h1>
-  <a href="/alunos" class="adm-link">← Voltar para Alunos</a>
+  <h1 class="adm-h1">Configurações</h1>
 </div>
+<%- include('abas-config', { aba: 'banidos' }) %>
 
 <% if (flash) { %>
   <div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div>

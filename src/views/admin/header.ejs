@@ -31,8 +31,8 @@
       <a href="/financeiro" class="<%= secaoAtiva === 'financeiro' ? 'on' : '' %>"><i class="fa-solid fa-sack-dollar"></i> Financeiro</a>
     <% } %>
     <% if (admPapel === 'DEV') { %>
-      <a href="/dev/usuarios" class="<%= secaoAtiva === 'dev-usuarios' ? 'on' : '' %>"><i class="fa-solid fa-user-shield"></i> Admin</a>
-      <a href="/banimentos" class="<%= secaoAtiva === 'banimentos' ? 'on' : '' %>"><i class="fa-solid fa-ban"></i> Ban</a>
+      <%# Admin e Ban viraram abas de Configurações (abas-config.ejs) %>
+      <a href="/dev/usuarios" class="<%= ['dev-usuarios', 'banimentos'].includes(secaoAtiva) ? 'on' : '' %>"><i class="fa-solid fa-gear"></i> Configurações</a>
     <% } %>
   </nav>
 
