@@ -202,7 +202,7 @@
   .adm-h2 { font-family: var(--fonte-t); font-weight: 800; letter-spacing: -.02em; color: var(--tinta); }
   
   .adm-link { color: var(--vermelho); text-decoration: none; font-weight: 700; font-size: 14px; }
-  .adm-link:hover { text-decoration: underline; }
+  .adm-link:hover { opacity: .8; }
   .adm-mut { color: var(--mut); }
   
   .adm-btn {
@@ -262,7 +262,7 @@
     display: inline-flex; align-items: center; gap: 6px;
   }
   .adm-estorno > summary::-webkit-details-marker { display: none; }
-  .adm-estorno > summary:hover { text-decoration: underline; }
+  .adm-estorno > summary:hover { opacity: .8; }
   .adm-estorno-form {
     margin-top: 10px; display: flex; flex-direction: column; gap: 7px;
     min-width: 210px;
@@ -513,7 +513,7 @@
   .adm-table tbody tr { transition: background .1s; }
   .adm-table tbody tr:hover { background: var(--bg); }
   .adm-table a { color: var(--vermelho); text-decoration: none; font-weight: 600; }
-  .adm-table a:hover { text-decoration: underline; }
+  .adm-table a:not([class*="btn"]):not([class*="chip"]):hover { opacity: .8; }
   
   .adm-acoes-wrap { display: grid; grid-template-columns: repeat(2, 36px); gap: 6px; align-items: center; height: 100%; }
   .adm-acoes-wrap form { margin: 0; display: flex; }
@@ -1015,7 +1015,6 @@ body.dark .adm-permissao {
 
 /* Linha secundaria: esmaece o TEXTO, nao a linha inteira -
    os botoes de acao continuam com contraste cheio.          */
-.adm-tr-fraca { background: var(--bg); }
 .adm-tr-fraca > td { color: var(--mut); }
 .adm-tr-fraca > td strong { color: var(--tinta-60); font-weight: 600; }
 .adm-tr-fraca > td.adm-acoes { color: var(--tinta-60); }
@@ -1227,7 +1226,7 @@ a.adm-stat-link:hover { border-color: #d97706; box-shadow: var(--sombra); }
   background: none; border: 0; padding: 4px 0; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 700;
   color: var(--vermelho); display: inline-flex; align-items: center; gap: 6px;
 }
-.adm-link-perigo:hover { text-decoration: underline; }
+.adm-link-perigo:hover { opacity: .8; }
 #admConfirma [hidden] { display: none !important; }
 
 /* ===== Pendentes: ações com nome ======================== */
@@ -1470,3 +1469,6 @@ a.adm-hz-turma:hover { border-color: var(--vermelho); background: var(--vermelho
 @media (max-width: 620px) { .adm-usuario-acoes { text-align: left; width: auto; } }
 .adm-online { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--ok-tx, #15803d); }
 .adm-online i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 20%, transparent); }
+
+/* Sem sublinhado ao passar o mouse em nada do painel (botões e links); o hover é cor/opacidade. */
+.adm-wrap a:hover, .adm-top a:hover, .adm-wrap button:hover, .adm-wrap summary:hover { text-decoration: none; }
