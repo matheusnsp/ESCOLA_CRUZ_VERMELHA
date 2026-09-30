@@ -26,7 +26,7 @@
 
 <!-- ═══ O dia em números ═════════════════════════════════════════════════ -->
 <div class="adm-cards <%= podeDinheiro ? 'c3' : (podePend ? 'c2' : 'c1') %>">
-  <<%= podeMatriculas ? 'a href="/inscricoes"' : 'div' %> class="adm-stat <%= podeMatriculas ? 'adm-stat-clicavel' : '' %>">
+  <<%= podeMatriculas ? 'a' : 'div' %><% if (podeMatriculas) { %> href="/inscricoes"<% } %> class="adm-stat <%= podeMatriculas ? 'adm-stat-clicavel' : '' %>">
     <span><%= hoje.matriculasHoje %></span>
     <small><i class="fa-solid fa-user-plus"></i> Matrículas hoje</small>
     <small class="adm-stat-sub"><%= hoje.matriculasSemana %> nos últimos 7 dias</small>
@@ -65,7 +65,7 @@
              const faltam = Math.ceil((new Date(t.inicioPrevisto) - Date.now()) / 86400000);
              const abaixoMin = t.minimoAlunos && insc < t.minimoAlunos; %>
           <li>
-            <<%= podeAlunos ? 'a href="/alunos?turma=' + t.id + '"' : 'div' %> class="adm-turma-item">
+            <<%= podeAlunos ? 'a' : 'div' %><% if (podeAlunos) { %> href="/alunos?turma=<%= t.id %>"<% } %> class="adm-turma-item">
               <div class="adm-turma-data"><b><%= dataUTC(t.inicioPrevisto).slice(0, 2) %></b><span><%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR', { month: 'short', timeZone: 'UTC' }).replace('.', '') %></span></div>
               <div class="adm-turma-info">
                 <strong><%= t.curso.nome %></strong>
