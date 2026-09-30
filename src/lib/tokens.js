@@ -83,6 +83,16 @@ async function criarCodigo2fa(usuarioId) {
   return codigo;
 }
 
+// Já existe um código válido, ainda não usado, criado há menos de `ms`? (Evita mandar um segundo
+// e-mail quando o formulário de login é enviado duas vezes seguidas.)
+async function codigo2faRecente(usuarioId, ms) {
+  const achado = await prisma.tokenAuth.findFirst({
+    where: { usuarioId, tipo: TIPO_2FA, usadoEm: null, expiraEm: { gt: new Date() }, criadoEm: { gt: new Date(Date.now() - ms) } },
+    select: { id: true },
+  });
+  return !!achado;
+}
+
 // Verifica o código informado para um usuário específico (escopo por usuarioId).
 async function verificarCodigo2fa(usuarioId, codigo) {
   if (!usuarioId || !codigo) return null;
@@ -117,6 +127,7 @@ module.exports = {
   criarTokenVerificacao,
   verificarTokenVerificacao,
   criarCodigo2fa,
+  codigo2faRecente,
   verificarCodigo2fa,
   criarTokenDesbloqueio,
   verificarTokenDesbloqueio,

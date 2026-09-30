@@ -9,7 +9,7 @@ const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 const prisma = require('../db');
 const { verificarSenha, hashSenha } = require('../lib/password');
-const { criarCodigo2fa, verificarCodigo2fa, consumirToken, criarTokenDesbloqueio, verificarTokenDesbloqueio, criarTokenReset, verificarTokenReset } = require('../lib/tokens');
+const { criarCodigo2fa, codigo2faRecente, verificarCodigo2fa, consumirToken, criarTokenDesbloqueio, verificarTokenDesbloqueio, criarTokenReset, verificarTokenReset } = require('../lib/tokens');
 const { enviarCodigo2fa, enviarAlertaLoginSecretaria, enviarLinkDesbloqueio, enviarEmailResetSenha } = require('../lib/email');
 const { ESCOLARIDADES: ESCOLARIDADES_ALUNO, SITUACOES_ESCOLARIDADE, GENEROS, UFS } = require('../lib/validation');
 const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
@@ -266,9 +266,23 @@ function mascararEmail(e) {
   return `${ini}${'*'.repeat(Math.max(1, u.length - ini.length))}@${d}`;
 }
 
-async function dispararCodigo2fa(pend) {
-  const codigo = await criarCodigo2fa(pend.id);
-  await enviarCodigo2fa(pend.email, pend.nome, codigo);
+// Um código por vez. Clique duplo em "Entrar" (ou Enter + clique) mandava dois e-mails, e o segundo
+// código anulava o primeiro: quem digitava o do primeiro e-mail via "código inválido". Agora:
+//   - dois pedidos ao mesmo tempo para a mesma pessoa esperam o mesmo envio (trava em memória);
+//   - se já saiu um código válido há menos de 1 min, não manda outro (devolve false).
+// "Reenviar código" passa forcar: true e sempre manda um novo (tem limite próprio de tentativas).
+const JANELA_2FA_MS = 60 * 1000;
+const enviando2fa = new Map();
+function dispararCodigo2fa(pend, { forcar = false } = {}) {
+  if (enviando2fa.has(pend.id)) return enviando2fa.get(pend.id).then(() => false);
+  const envio = (async () => {
+    if (!forcar && await codigo2faRecente(pend.id, JANELA_2FA_MS)) return false;
+    const codigo = await criarCodigo2fa(pend.id);
+    await enviarCodigo2fa(pend.email, pend.nome, codigo);
+    return true;
+  })().finally(() => enviando2fa.delete(pend.id));
+  enviando2fa.set(pend.id, envio);
+  return envio;
 }
 
 async function logSeguranca(req, acao, usuarioId, detalhe) {
@@ -385,10 +399,10 @@ router.post('/login', loginAdminLimiter, async (req, res) => {
     }
 
     req.session.pendingAdmin2fa = { id: usuario.id, email: usuario.email, nome: usuario.nome, em: Date.now() };
-    await dispararCodigo2fa(req.session.pendingAdmin2fa);
+    const enviou = await dispararCodigo2fa(req.session.pendingAdmin2fa);
     return req.session.save((e) => {
       if (e) { return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar o login.' }); }
-      return res.redirect('/login/2fa');
+      return res.redirect(enviou ? '/login/2fa' : '/login/2fa?jaEnviado=1');
     });
   } catch (err) {
     console.error('Erro no login administrativo:', err);
@@ -399,7 +413,8 @@ router.post('/login', loginAdminLimiter, async (req, res) => {
 router.get('/login/2fa', (req, res) => {
   const pend = req.session.pendingAdmin2fa;
   if (!pend) return res.redirect('/login');
-  const sucesso = req.query.reenviado ? 'Enviamos um novo codigo para o seu e-mail.' : null;
+  const sucesso = req.query.reenviado ? 'Enviamos um novo codigo para o seu e-mail.'
+    : req.query.jaEnviado ? 'Ja enviamos um codigo ha menos de 1 minuto. Use o do ultimo e-mail recebido.' : null;
   res.render('admin/login-2fa', { erro: null, sucesso, emailMasc: mascararEmail(pend.email) });
 });
 
@@ -435,7 +450,7 @@ router.post('/login/2fa/reenviar', reenvioLimiter, async (req, res) => {
   if (!pend) return res.redirect('/login');
   pend.em = Date.now(); 
   try {
-    await dispararCodigo2fa(pend);
+    await dispararCodigo2fa(pend, { forcar: true });
   } catch (e) {
     console.error('Erro ao reenviar codigo 2FA:', e);
   }
