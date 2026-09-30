@@ -1472,3 +1472,7 @@ a.adm-hz-turma:hover { border-color: var(--vermelho); background: var(--vermelho
 
 /* Sem sublinhado ao passar o mouse em nada do painel (botões e links); o hover é cor/opacidade. */
 .adm-wrap a:hover, .adm-top a:hover, .adm-wrap button:hover, .adm-wrap summary:hover { text-decoration: none; }
+/* Divisão de pagamento da turma: pagaram a matrícula x pagaram tudo */
+.adm-pag-divisao { display: block; font-size: 12px; color: var(--mut); margin-top: 3px; }
+.adm-pag-divisao b { color: var(--tinta); }
+.adm-vagas-cel .adm-pag-divisao { white-space: nowrap; }

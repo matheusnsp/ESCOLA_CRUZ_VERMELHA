@@ -74,6 +74,7 @@
                   <% if (t.aulas && t.aulas[0]) { %> · <%= t.aulas[0].horario %><% } %>
                   · <%= rotuloTurma(t.status).toLowerCase() %>
                 </small>
+                <% if (t.pag) { %><small class="adm-pag-divisao"><b><%= t.pag.matricula %></b> pagaram a matrícula · <b><%= t.pag.tudo %></b> pagaram tudo</small><% } %>
                 <div class="adm-barra" title="<%= insc %> de <%= t.vagas %> vagas"><span class="<%= abaixoMin ? 'baixa' : '' %>" style="width: <%= pct %>%"></span></div>
               </div>
               <div class="adm-turma-vagas">
