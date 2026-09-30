@@ -2,8 +2,14 @@
 <%- include('header', { ativo: 'home' }) %>
 
 <%
+  // Cada cartão e link só aparece (ou só vira link) se a pessoa puder abrir o destino, com as
+  // mesmas permissões das rotas: /financeiro, /pendentes, /inscricoes, /turmas.
   const podeDinheiro = pode('financeiro:leitura') || pode('financeiro:aprovar');
   const podePend = pode('pendentes:gerenciar');
+  const podeMatriculas = pode('doacao:confirmar') || pode('financeiro:aprovar') || pode('financeiro:leitura');
+  const podeTurmas = pode('turmas:gerenciar') || pode('painel:leitura');
+  const podeAlunos = pode('aluno:gerenciar') || pode('painel:leitura');
+  const temAgir = podePend || podeDinheiro;
   const hojeTxt = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Sao_Paulo' });
   function dataUTC(d) { const x = new Date(d); const p = n => String(n).padStart(2, '0'); return p(x.getUTCDate()) + '/' + p(x.getUTCMonth() + 1); }
 %>
@@ -19,12 +25,12 @@
 </div>
 
 <!-- ═══ O dia em números ═════════════════════════════════════════════════ -->
-<div class="adm-cards <%= podeDinheiro ? 'c3' : 'c2' %>">
-  <a href="/inscricoes" class="adm-stat adm-stat-clicavel">
+<div class="adm-cards <%= podeDinheiro ? 'c3' : (podePend ? 'c2' : 'c1') %>">
+  <<%= podeMatriculas ? 'a href="/inscricoes"' : 'div' %> class="adm-stat <%= podeMatriculas ? 'adm-stat-clicavel' : '' %>">
     <span><%= hoje.matriculasHoje %></span>
     <small><i class="fa-solid fa-user-plus"></i> Matrículas hoje</small>
     <small class="adm-stat-sub"><%= hoje.matriculasSemana %> nos últimos 7 dias</small>
-  </a>
+  </<%= podeMatriculas ? 'a' : 'div' %>>
   <% if (podeDinheiro) { %>
   <a href="/financeiro" class="adm-stat ok adm-stat-clicavel">
     <span><%= formatBRL(hoje.recebidoMes) %></span>
@@ -33,7 +39,7 @@
   </a>
   <% } %>
   <% if (podeDinheiro || podePend) { %>
-  <a href="/pendentes" class="adm-stat warn adm-stat-clicavel">
+  <a href="<%= podePend ? '/pendentes' : '/financeiro' %>" class="adm-stat warn adm-stat-clicavel">
     <span><%= formatBRL(hoje.emAberto) %></span>
     <small><i class="fa-solid fa-clock"></i> A receber</small>
     <small class="adm-stat-sub"><%= hoje.emAbertoCount %> com taxa paga e curso pendente</small>
@@ -41,13 +47,13 @@
   <% } %>
 </div>
 
-<div class="adm-painel-grade">
+<div class="adm-painel-grade <%= temAgir ? '' : 'so-turmas' %>">
 
   <!-- ═══ Próximas turmas ═══════════════════════════════════════════════ -->
   <div class="adm-box">
     <div class="adm-box-head">
       <h2><i class="fa-solid fa-calendar-days"></i> Próximas turmas <span class="adm-mut adm-h2-sub"><%= stats.cursosAtivos %> de <%= stats.totalCursos %> cursos no site</span></h2>
-      <a href="/turmas" class="adm-link">Ver turmas</a>
+      <% if (podeTurmas) { %><a href="/turmas" class="adm-link">Ver turmas</a><% } %>
     </div>
     <% if (!proximasTurmas.length) { %>
       <p class="adm-vazio">Nenhuma turma aberta com data futura.</p>
@@ -59,7 +65,7 @@
              const faltam = Math.ceil((new Date(t.inicioPrevisto) - Date.now()) / 86400000);
              const abaixoMin = t.minimoAlunos && insc < t.minimoAlunos; %>
           <li>
-            <a href="/alunos?turma=<%= t.id %>" class="adm-turma-item">
+            <<%= podeAlunos ? 'a href="/alunos?turma=' + t.id + '"' : 'div' %> class="adm-turma-item">
               <div class="adm-turma-data"><b><%= dataUTC(t.inicioPrevisto).slice(0, 2) %></b><span><%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR', { month: 'short', timeZone: 'UTC' }).replace('.', '') %></span></div>
               <div class="adm-turma-info">
                 <strong><%= t.curso.nome %></strong>
@@ -74,14 +80,15 @@
                 <b><%= insc %>/<%= t.vagas %></b>
                 <small class="<%= abaixoMin ? 'adm-txt-alerta' : 'adm-mut' %>"><%= abaixoMin ? 'mín. ' + t.minimoAlunos : 'vagas' %></small>
               </div>
-            </a>
+            </<%= podeAlunos ? 'a' : 'div' %>>
           </li>
         <% }) %>
       </ul>
     <% } %>
   </div>
 
-  <!-- ═══ Para agir ═══════════════════════════════════════════════════════ -->
+  <!-- ═══ Para agir (só para quem pode abrir Pendentes ou Financeiro) ═══ -->
+  <% if (temAgir) { %>
   <div class="adm-box">
     <div class="adm-box-head">
       <h2><i class="fa-solid fa-list-check"></i> Para agir</h2>
@@ -105,6 +112,7 @@
       <% } %>
     </ul>
   </div>
+  <% } %>
 
 </div>
 
@@ -299,9 +307,7 @@
   <div class="adm-box-head">
     <h2><i class="fa-solid fa-clock-rotate-left"></i> Últimas matrículas</h2>
 
-    <a href="/inscricoes" class="adm-link">
-      Ver todas
-    </a>
+    <% if (podeMatriculas) { %><a href="/inscricoes" class="adm-link">Ver todas</a><% } %>
   </div>
 
   <% if (!ultimas.length) { %>
