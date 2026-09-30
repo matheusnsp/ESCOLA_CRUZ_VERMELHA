@@ -1468,3 +1468,5 @@ a.adm-hz-turma:hover { border-color: var(--vermelho); background: var(--vermelho
 .adm-papel-form { display: flex; gap: 8px; align-items: center; }
 .adm-papel-form [hidden] { display: none !important; }
 @media (max-width: 620px) { .adm-usuario-acoes { text-align: left; width: auto; } }
+.adm-online { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--ok-tx, #15803d); }
+.adm-online i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 20%, transparent); }

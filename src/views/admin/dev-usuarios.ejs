@@ -15,6 +15,13 @@
     <p class="adm-vazio">Nenhum usuário admin cadastrado.</p>
   <% } else { %>
     <%
+      const haQuanto = (d) => {
+        const min = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+        if (min < 60) return 'há ' + Math.max(min, 1) + ' min';
+        const h = Math.floor(min / 60); if (h < 24) return 'há ' + h + ' h';
+        const dias = Math.floor(h / 24); return dias === 1 ? 'ontem' : 'há ' + dias + ' dias';
+      };
+      const dataHora = (d) => new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' às');
       const NOMES = { SECRETARIA: 'Secretaria', COORDENADOR: 'Coordenador', FINANCEIRO: 'Financeiro', CONSULTA: 'Consulta', DEV: 'Dev' };
     %>
     <table class="adm-table adm-table-cards adm-usuarios">
@@ -23,6 +30,7 @@
           <th>Usuário</th>
           <th>Papel</th>
           <th>Permissões</th>
+          <th>Último acesso</th>
           <th></th>
         </tr>
       </thead>
@@ -51,6 +59,12 @@
             <td>
               <% if (u.papel === 'DEV') { %><span class="adm-mut">todas (acesso total)</span>
               <% } else { %><a href="/dev/permissoes" class="adm-link"><%= u.permissoes.length %> <%= u.permissoes.length === 1 ? 'permissão' : 'permissões' %> <i class="fa-solid fa-arrow-right"></i></a><% } %>
+            </td>
+            <td>
+              <% if (u.online) { %><span class="adm-online"><i></i> Online agora</span>
+              <% } else if (u.visto) { %><span title="<%= dataHora(u.visto) %>">Visto <%= haQuanto(u.visto) %></span>
+              <% } else { %><span class="adm-mut">Nunca entrou</span><% } %>
+              <% if (u.ultimoLogin) { %><small class="adm-mut adm-hz-contato">último login <%= dataHora(u.ultimoLogin) %></small><% } %>
             </td>
             <td class="adm-usuario-acoes">
               <% if (!eu) { %>
