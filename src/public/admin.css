@@ -1533,3 +1533,9 @@ a.adm-hz-turma:hover { border-color: var(--vermelho); background: var(--vermelho
 .adm-cert-assin-rodape { display: flex; align-items: center; gap: 12px; }
 .adm-cert-redacao { margin: 0 0 16px; }
 @media (max-width: 620px) { .adm-cert-instrutor { grid-template-columns: 1fr; } }
+/* Assinaturas no formulário do curso */
+.adm-curso-assin { display: grid; gap: 8px; }
+.adm-curso-assin-linha { display: grid; grid-template-columns: 22px 1fr 1fr; gap: 8px; align-items: center; }
+.adm-curso-assin-linha input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--vermelho); }
+.adm-curso-assin-instrutor { grid-template-columns: 22px 1fr; font-size: 14px; padding: 6px 0; }
+@media (max-width: 620px) { .adm-curso-assin-linha { grid-template-columns: 22px 1fr; } .adm-curso-assin-linha input[type="text"]:last-child { grid-column: 2; } }

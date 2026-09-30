@@ -107,6 +107,46 @@
     <input type="text" name="certificadoValidade" maxlength="120" value="<%= c.certificadoValidade || '' %>" placeholder="Ex.: Validade de 2 anos">
   </label>
 
+  <% if (typeof certAjustes !== 'undefined' && certAjustes) {
+       // Depois de um erro ao salvar, volta o que foi digitado; senão, a lista de Modelos e a escolha do curso.
+       var doForm = c.assin ? [].concat(Object.values(c.assin)) : null;
+       var escolhaCurso = Array.isArray(c.certAssinaturas) && c.certAssinaturas.length ? c.certAssinaturas : ['a0', 'instrutor'];
+       var instrutorMarcado = doForm ? !!c.assinInstrutor : escolhaCurso.includes('instrutor'); %>
+    <div class="full adm-curso-assin" id="assinaturas">
+      <span class="adm-foto-rot">Assinaturas</span>
+      <small class="adm-hint">Marque quem assina o certificado deste curso (até 4). Nomes e cargos valem para todos os cursos. Cada turma segue esta escolha e pode ter a sua em Turma › Certificados.</small>
+      <div class="adm-assin-lista">
+        <% for (var i = 0; i < 6; i++) {
+             var a = doForm ? (doForm[i] || {}) : (certAjustes.assinantes[i] || {});
+             var marcado = doForm ? !!a.marcado : escolhaCurso.includes('a' + i); %>
+          <div class="adm-curso-assin-linha">
+            <input type="checkbox" name="assin[<%= i %>][marcado]" value="1" <%= marcado ? 'checked' : '' %> aria-label="Assina o certificado">
+            <input type="text" name="assin[<%= i %>][nome]" maxlength="80" value="<%= a.nome || '' %>" placeholder="<%= i === 0 ? 'Ex.: AMANDA FERRARI PENZA' : i === 1 ? 'Ex.: nome do(a) Presidente' : 'Nome' %>" aria-label="Nome <%= i + 1 %>">
+            <input type="text" name="assin[<%= i %>][cargo]" maxlength="80" value="<%= a.cargo || '' %>" placeholder="<%= i === 0 ? 'Coordenadora de Cursos Livres' : i === 1 ? 'Presidente' : i === 2 ? 'Coordenação do Voluntariado' : 'Cargo' %>" aria-label="Cargo <%= i + 1 %>">
+          </div>
+        <% } %>
+        <div class="adm-curso-assin-linha adm-curso-assin-instrutor">
+          <input type="checkbox" name="assinInstrutor" id="assinInstrutor" value="1" <%= instrutorMarcado ? 'checked' : '' %>>
+          <span><b>Instrutor(a) da turma</b> · <small class="adm-mut">nome e registro são preenchidos em cada turma</small></span>
+        </div>
+      </div>
+      <small class="adm-mut" id="assinConta"></small>
+    </div>
+    <script>
+      (function () {
+        var caixa = document.getElementById('assinaturas');
+        var conta = document.getElementById('assinConta');
+        function marcadas() { return caixa.querySelectorAll('input[type="checkbox"]:checked').length; }
+        function atualizar(e) {
+          if (e && e.target.checked && marcadas() > 4) { e.target.checked = false; }
+          conta.textContent = marcadas() + ' de 4 marcadas';
+        }
+        caixa.addEventListener('change', atualizar);
+        atualizar();
+      })();
+    </script>
+  <% } %>
+
   <h2 class="adm-form-secao full"><i class="fa-solid fa-globe"></i> Publicação</h2>
 
   <label class="check full">
