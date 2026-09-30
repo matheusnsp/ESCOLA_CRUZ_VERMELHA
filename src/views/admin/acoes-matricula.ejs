@@ -1,0 +1,82 @@
+<%
+// Ações de uma matrícula, iguais em Matrículas e na página do aluno (antes cada tela tinha o seu
+// conjunto de ícones sem nome). Cada ação mantém a sua permissão:
+//
+//   confirmar taxa        taxa:aprovar
+//   lançar nota           turmas:gerenciar / painel:leitura / secretaria:leitura
+//   transferir            aluno:mover_turma
+//   confirmar / reativar  pagamento:confirmar    (Secretaria+)
+//   cancelar              financeiro:aprovar     (Financeiro, Dev)
+//   estornar              financeiro:reembolsar  (Financeiro, Dev)
+//
+// Uso: include('acoes-matricula', { m })  — m com aluno e turma.curso.
+// Os filtros da tela de Matrículas (busca, turmaId, statusFiltro), quando existem, vão junto
+// para o "voltar" cair na mesma lista filtrada.
+const _q = typeof busca !== 'undefined' ? busca : null;
+const _turma = typeof turmaId !== 'undefined' ? turmaId : null;
+const _status = typeof statusFiltro !== 'undefined' ? statusFiltro : null;
+const _quem = m.aluno.nome + ' (' + m.turma.curso.nome + ')';
+function filtros() { %>
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <% if (_q) { %><input type="hidden" name="q" value="<%= _q %>"><% } %>
+  <% if (_turma) { %><input type="hidden" name="turma" value="<%= _turma %>"><% } %>
+  <% if (_status) { %><input type="hidden" name="status" value="<%= _status %>"><% } %>
+<% } %>
+<div class="adm-pend-acoes">
+
+  <% if (!m.taxaConfirmada && pode('taxa:aprovar')) { %>
+    <form method="POST" action="/alunos/<%= m.alunoId %>/matriculas/<%= m.id %>/confirmar-taxa"
+          data-confirmar="Confirmar que a taxa de inscrição de <%= _quem %> foi paga (<%= formatBRL(Number(m.valorTaxaMatricula) || 100) %>)?" data-botao="Confirmar taxa">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="adm-pend-btn whats"><i class="fa-solid fa-money-bill"></i> Confirmar taxa</button>
+    </form>
+  <% } %>
+
+  <% if (m.statusPagamento === 'PENDENTE') { %>
+    <%
+      // Com a taxa ainda por confirmar, o passo é "Confirmar taxa" (acima); os dois botões
+      // juntos confundiam. Quem não pode aprovar taxa continua vendo o de pagamento, como antes.
+    %>
+    <% if (pode('pagamento:confirmar') && (m.taxaConfirmada || !pode('taxa:aprovar'))) { %>
+      <form method="POST" action="/inscricoes/<%= m.id %>/confirmar"
+            data-confirmar="Confirmar que o pagamento de <%= _quem %> foi recebido?" data-botao="Confirmar pagamento">
+        <% filtros() %>
+        <button class="adm-pend-btn whats"><i class="fa-solid fa-check"></i> Confirmar pagamento</button>
+      </form>
+    <% } %>
+  <% } else if (m.statusPagamento !== 'PAGO' && pode('pagamento:confirmar')) { %>
+    <form method="POST" action="/inscricoes/<%= m.id %>/confirmar"
+          data-confirmar="<%= m.statusPagamento === 'PARCELADO' ? 'Marcar o parcelamento de ' + _quem + ' como quitado?' : 'Reativar a matrícula de ' + _quem + ' como paga?' %>"
+          data-botao="<%= m.statusPagamento === 'PARCELADO' ? 'Marcar como quitado' : 'Reativar' %>">
+      <% filtros() %>
+      <button class="adm-pend-btn"><i class="fa-solid fa-arrow-rotate-right"></i> <%= m.statusPagamento === 'PARCELADO' ? 'Marcar quitado' : 'Reativar' %></button>
+    </form>
+  <% } %>
+
+  <% if (pode('turmas:gerenciar') || pode('painel:leitura') || pode('secretaria:leitura')) { %>
+    <a href="/inscricoes/<%= m.id %>/nota" class="adm-pend-btn"><i class="fa-solid fa-star-half-stroke"></i> Nota</a>
+  <% } %>
+
+  <% if (pode('aluno:mover_turma')) { %>
+    <a href="/inscricoes/<%= m.id %>/transferir" class="adm-pend-btn"><i class="fa-solid fa-right-left"></i> Transferir</a>
+  <% } %>
+
+  <% if (m.statusPagamento === 'PENDENTE' && pode('financeiro:aprovar')) { %>
+    <form method="POST" action="/inscricoes/<%= m.id %>/cancelar"
+          data-confirmar="Cancelar a inscrição de <%= _quem %>? A vaga é liberada."
+          data-motivo="Motivo do cancelamento" data-botao="Cancelar inscrição">
+      <% filtros() %>
+      <button class="adm-pend-btn perigo"><i class="fa-solid fa-ban"></i> Cancelar</button>
+    </form>
+  <% } %>
+
+  <% if (m.statusPagamento === 'PAGO' && pode('financeiro:reembolsar')) { %>
+    <form method="POST" action="/inscricoes/<%= m.id %>/estornar"
+          data-confirmar="Estornar o pagamento de <%= _quem %>? O valor volta para o aluno e não dá para desfazer."
+          data-motivo="Motivo do estorno" data-contabil data-botao="Estornar">
+      <% filtros() %>
+      <button class="adm-pend-btn perigo"><i class="fa-solid fa-rotate-left"></i> Estornar</button>
+    </form>
+  <% } %>
+
+</div>

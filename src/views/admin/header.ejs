@@ -13,7 +13,7 @@
     <% if (pode('turmas:gerenciar') || pode('painel:leitura')) { %>
       <a href="/horarios" class="<%= secaoAtiva === 'horarios' ? 'on' : '' %>"><i class="fa-solid fa-clock"></i> Horários</a>
     <% } %>
-    <a href="/inscricoes" class="<%= secaoAtiva === 'inscricoes' ? 'on' : '' %>"><i class="fa-solid fa-users"></i> Matriculas</a>
+    <a href="/inscricoes" class="<%= secaoAtiva === 'inscricoes' ? 'on' : '' %>"><i class="fa-solid fa-users"></i> Matrículas</a>
     <%
       // 💡 Pagamentos pendentes. A condição espelha a permissão da rota
       // /pendentes: requirePermissao('pendentes:gerenciar').
@@ -144,6 +144,18 @@
     caixa.addEventListener('click', function (e) { if (e.target === caixa) fechar(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && atual) fechar(); });
   })();
+
+  // No celular, as tabelas .adm-table-cards viram cartões; cada célula mostra o nome da coluna
+  // (data-label), copiado do cabeçalho para não repetir em cada view.
+  // (Roda depois de a página montar: este script fica no topo, antes das tabelas.)
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('table.adm-table-cards').forEach(function (t) {
+      var nomes = Array.prototype.map.call(t.querySelectorAll('thead th'), function (th) { return th.textContent.trim(); });
+      t.querySelectorAll('tbody tr').forEach(function (tr) {
+        Array.prototype.forEach.call(tr.children, function (td, i) { if (nomes[i]) td.setAttribute('data-label', nomes[i]); });
+      });
+    });
+  });
 
   (function () {
     var grupo = document.getElementById('admTema');

@@ -46,6 +46,23 @@ app.locals.statusBadge = function (s) {
 const ROTULO_TURMA = { ENCERRADA: 'CONCLUÍDA' };
 app.locals.rotuloTurma = (s) => ROTULO_TURMA[s] || s;
 
+// Helper disponível em todas as views: documento do aluno com o tipo que ele usou no cadastro
+// ({ tipo: 'CPF', numero: '123.456.789-00' }), ou null. Sem tipoDocumento gravado (cadastros
+// antigos), deduz pelo tamanho: 11 dígitos CPF, 14 CNPJ.
+app.locals.documentoAluno = function (u) {
+  if (!u) return null;
+  const dig = String(u.cpfCnpj || '').replace(/\D/g, '');
+  const tipo = u.tipoDocumento || (u.passaporte && !dig ? 'PASSAPORTE' : dig.length === 14 ? 'CNPJ' : dig.length === 11 ? 'CPF' : null);
+  if (tipo === 'PASSAPORTE' && u.passaporte) {
+    return { tipo: 'Passaporte' + (u.paisOrigem ? ' · ' + u.paisOrigem : ''), numero: u.passaporte };
+  }
+  if (!dig) return null;
+  if (tipo === 'CNPJ' || dig.length === 14) {
+    return { tipo: 'CNPJ', numero: dig.length === 14 ? dig.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : u.cpfCnpj };
+  }
+  return { tipo: 'CPF', numero: dig.length === 11 ? dig.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : u.cpfCnpj };
+};
+
 // Helper disponível em todas as views: endereço de CSS/JS com a versão do conteúdo
 // (<link href="<%= asset('/admin.css') %>">), para um deploy nunca deixar CSS velho no cache.
 app.locals.asset = require('./lib/assets').asset;

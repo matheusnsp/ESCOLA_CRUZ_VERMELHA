@@ -1,12 +1,15 @@
-<%- include('head', { titulo: 'Matrículas do aluno' }) %>
+<%- include('head', { titulo: aluno.nome }) %>
 <%- include('header', { ativo: 'alunos' }) %>
 
 <div class="adm-h1-row">
   <h1 class="adm-h1">Matrículas de <%= aluno.nome %></h1>
 
-  <a href="/alunos" class="adm-link">
-    <i class="fa-solid fa-arrow-left"></i> Voltar
-  </a>
+  <div class="adm-pend-acoes">
+    <% if (pode('aluno:gerenciar')) { %>
+      <a href="/alunos/<%= aluno.id %>/editar" class="adm-pend-btn"><i class="fa-solid fa-pen-to-square"></i> Editar dados</a>
+    <% } %>
+    <a href="/alunos" class="adm-link"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
+  </div>
 </div>
 
 <% if (ok) { %>
@@ -15,46 +18,36 @@
   </div>
 <% } %>
 
-<!-- DADOS DO ALUNO -->
-<div class="adm-box adm-box-pad adm-espaco">
-
-  <p>
-    <strong>E-mail:</strong>
-    <%= aluno.email %>
-  </p>
-
-  <p>
-    <strong>CPF/CNPJ ou Passaporte:</strong>
-    <%= aluno.cpfCnpj || aluno.passaporte || '—' %>
-  </p>
-
-  <p>
-    <strong>Celular:</strong>
-    <%= aluno.celular || '—' %>
-  </p>
-
-  <p>
-    <strong>Escolaridade:</strong>
-    <%= aluno.escolaridade
-          ? (aluno.escolaridade + (aluno.escolaridadeSituacao
-              ? ' (' + aluno.escolaridadeSituacao + ')'
-              : ''))
-          : '—' %>
-  </p>
-
-  <p>
-    <strong>Cadastrado em:</strong>
-    <%= new Date(aluno.criadoEm).toLocaleDateString('pt-BR', {
-      timeZone: 'America/Sao_Paulo'
-    }) %>
-  </p>
-
-  <% if (aluno.bloqueioTotal) { %>
-    <p>
-      <span class="badge canc">Banido</span>
-    </p>
-  <% } %>
-
+<!-- DADOS DO ALUNO: em grade, campos vazios aparecem como "não informado" -->
+<%
+  const _nd = '<span class="adm-mut">não informado</span>';
+  const _cel = String(aluno.celular || '').replace(/\D/g, '');
+  const _celFmt = _cel.length === 11 ? `(${_cel.slice(0,2)}) ${_cel.slice(2,7)}-${_cel.slice(7)}`
+                : _cel.length === 10 ? `(${_cel.slice(0,2)}) ${_cel.slice(2,6)}-${_cel.slice(6)}` : aluno.celular;
+%>
+<div class="adm-box adm-espaco adm-ficha">
+  <div class="adm-ficha-item">
+    <small>E-mail</small>
+    <span><%= aluno.email %></span>
+  </div>
+  <div class="adm-ficha-item">
+    <small>Celular</small>
+    <span><% if (_celFmt) { %><%= _celFmt %><% } else { %><%- _nd %><% } %></span>
+  </div>
+  <div class="adm-ficha-item">
+    <% const _doc = documentoAluno(aluno); %>
+    <small><%= _doc ? _doc.tipo : 'Documento' %></small>
+    <span><% if (_doc) { %><%= _doc.numero %><% } else { %><%- _nd %><% } %></span>
+  </div>
+  <div class="adm-ficha-item">
+    <small>Escolaridade</small>
+    <span><% if (aluno.escolaridade) { %><%= aluno.escolaridade %><%= aluno.escolaridadeSituacao ? ' (' + aluno.escolaridadeSituacao + ')' : '' %><% } else { %><%- _nd %><% } %></span>
+  </div>
+  <div class="adm-ficha-item">
+    <small>Cadastrado em</small>
+    <span><%= new Date(aluno.criadoEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) %>
+      <% if (aluno.bloqueioTotal) { %> <span class="badge canc">Banido</span><% } %></span>
+  </div>
 </div>
 
 <!-- MATRÍCULAS -->
@@ -68,7 +61,7 @@
 
   <% } else { %>
 
-    <table class="adm-table adm-table-fixa">
+    <table class="adm-table adm-table-cards adm-table-fixa">
 
       <colgroup>
         <col>
@@ -231,103 +224,10 @@
 
             </td>
 
-            <!-- AÇÕES -->
+            <!-- AÇÕES (as mesmas da tela de Matrículas: acoes-matricula.ejs) -->
             <td class="adm-acoes">
-
-              <div class="adm-acoes-wrap">
-
-                <% if (!m.taxaConfirmada) { %>
-
-                  <% if (pode('taxa:aprovar')) { %>
-
-                    <form
-                      method="POST"
-                      action="/alunos/<%= aluno.id %>/matriculas/<%= m.id %>/confirmar-taxa"
-                    >
-
-                      <input
-                        type="hidden"
-                        name="_csrf"
-                        value="<%= csrfToken %>"
-                      >
-
-                      <button
-                        class="adm-mini ok"
-                        title="Confirmar taxa (R$ <%= Number(m.valorTaxaMatricula) || 100 %>)"
-                      >
-                        <i class="fa-solid fa-money-bill"></i>
-                      </button>
-
-                    </form>
-
-                  <% } %>
-
-                <% } else { %>
-
-                  <!-- TAXA CONFIRMADA -->
-
-                  <span
-                    class="adm-selo-ok"
-                    title="Taxa confirmada"
-                  >
-                    <i class="fa-solid fa-check"></i>
-                  </span>
-
-                  <!-- LANÇAR NOTA -->
-
-                  <% if (
-                    pode('turmas:gerenciar') ||
-                    pode('secretaria:leitura')
-                  ) { %>
-
-                    <a
-                      href="/inscricoes/<%= m.id %>/nota"
-                      class="adm-mini"
-                      title="Lançar nota"
-                    >
-                      <i class="fa-solid fa-pen-to-square"></i>
-                    </a>
-
-                  <% } %>
-
-                  <!-- TRANSFERIR TURMA -->
-
-                  <% if (pode('aluno:mover_turma')) { %>
-
-                    <a
-                      href="/inscricoes/<%= m.id %>/transferir"
-                      class="adm-mini"
-                      title="Transferir de turma"
-                    >
-                      <i class="fa-solid fa-right-left"></i>
-                    </a>
-
-                  <% } %>
-
-                  <!-- VER NA LISTAGEM DE INSCRIÇÕES -->
-
-                  <% if (
-                    pode('doacao:confirmar') ||
-                    pode('financeiro:aprovar') ||
-                    pode('financeiro:leitura')
-                  ) { %>
-
-                    <a
-                      href="/inscricoes?q=<%= encodeURIComponent(aluno.email) %>"
-                      class="adm-mini"
-                      title="Ver na listagem de inscrições"
-                    >
-                      <i class="fa-solid fa-magnifying-glass"></i>
-                    </a>
-
-                  <% } %>
-
-                <% } %>
-
-              </div>
-
+              <%- include('acoes-matricula', { m: Object.assign({}, m, { aluno: aluno }) }) %>
             </td>
-
           </tr>
 
         <% }) %>

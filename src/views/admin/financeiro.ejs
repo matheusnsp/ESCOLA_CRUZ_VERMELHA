@@ -69,7 +69,7 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
     <h2><i class="fa-solid fa-money-bill-transfer"></i> Reembolsos a fazer</h2>
     <span class="badge canc"><%= stats.reembolsosCount %> · <%= formatBRL(stats.totalAReembolsar) %></span>
   </div>
-  <table class="adm-table">
+  <table class="adm-table adm-table-cards">
     <thead>
       <tr><th>Aluno</th><th>Curso</th><th>Valor</th><th>Ação</th></tr>
     </thead>
@@ -114,7 +114,7 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
   <% if (!pagamentos.length) { %>
     <p class="adm-vazio">Nenhum pagamento recebido ainda.</p>
   <% } else { %>
-    <table class="adm-table">
+    <table class="adm-table adm-table-cards">
       <thead>
         <tr><th>Aluno</th><th>Curso</th><th>Pagou</th><th>Data</th><th>Valor</th><th>Ação</th></tr>
       </thead>

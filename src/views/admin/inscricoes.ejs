@@ -1,8 +1,8 @@
-<%- include('head', { titulo: 'Inscrições' }) %>
+<%- include('head', { titulo: 'Matrículas' }) %>
 <%- include('header', { ativo: 'inscricoes' }) %>
 
 <div class="adm-h1-row">
-  <h1 class="adm-h1">Inscrições</h1>
+  <h1 class="adm-h1">Matrículas</h1>
   <span class="adm-mut">
     <% if (filtrosAtivos) { %>
       Filtrado: <strong><%= totalFiltrado %></strong> de <%= totalGeral %>
@@ -89,7 +89,7 @@
   
   <% } else { %>
 
-    <table class="adm-table adm-table-fixa adm-table-insc">
+    <table class="adm-table adm-table-cards adm-table-fixa adm-table-insc">
 
       <colgroup>
         <col>
@@ -130,7 +130,7 @@
               <% if (m.aluno._count.matriculas > 1) { %>
                 <br>
                 <a href="/alunos/<%= m.aluno.id %>/matriculas" class="adm-mut adm-link-badge">
-                  <%= m.aluno._count.matriculas %> inscrições
+                  <%= m.aluno._count.matriculas %> matrículas
                 </a>
               <% } %>
             </td>
@@ -240,272 +240,9 @@
 
             </td>
 
-            <!-- AÇÕES -->
+            <!-- AÇÕES (as mesmas da página do aluno: acoes-matricula.ejs) -->
             <td class="adm-acoes">
-
-              <div class="adm-acoes-wrap">
-
-                <%
-                  // 💡 PERMISSÕES — cada ação tem a sua, e não mais um guard
-                  // único envolvendo todas. As quatro pertencem a papéis
-                  // diferentes agora:
-                  //
-                  //   nota / transferir  →  turmas:gerenciar / aluno:mover_turma
-                  //   confirmar          →  pagamento:confirmar    (Secretaria+)
-                  //   reativar           →  pagamento:confirmar    (Secretaria+)
-                  //   cancelar           →  financeiro:aprovar     (Financeiro, Dev)
-                  //   estornar           →  financeiro:reembolsar  (Financeiro, Dev)
-                  //
-                  // Antes tudo isso vivia dentro de um pode('financeiro:aprovar'),
-                  // o que dava ao Coordenador o botão de estorno — e, no modelo
-                  // novo, tiraria da Secretaria até o botão de confirmar.
-                %>
-
-                <% if (pode('turmas:gerenciar') || pode('painel:leitura')) { %>
-
-                  <a
-                    href="/inscricoes/<%= m.id %>/nota"
-                    class="adm-mini"
-                    title="Lançar nota"
-                  >
-                    <i class="fa-solid fa-pen-to-square"></i>
-                  </a>
-
-                <% } %>
-
-
-                <% if (pode('aluno:mover_turma')) { %>
-
-                  <a
-                    href="/inscricoes/<%= m.id %>/transferir"
-                    class="adm-mini"
-                    title="Transferir de turma"
-                  >
-                    <i class="fa-solid fa-right-left"></i>
-                  </a>
-
-                <% } %>
-
-
-                <% if (m.statusPagamento === 'PENDENTE') { %>
-
-                  <!-- CONFIRMAR PAGAMENTO — operação de balcão ("recebi em
-                       dinheiro"), liberada pra quem atende o aluno. -->
-
-                  <% if (pode('pagamento:confirmar')) { %>
-
-                    <form
-                      method="POST"
-                      action="/inscricoes/<%= m.id %>/confirmar"
-                    >
-
-                      <input
-                        type="hidden"
-                        name="_csrf"
-                        value="<%= csrfToken %>"
-                      >
-
-                      <% if (busca) { %>
-                        <input
-                          type="hidden"
-                          name="q"
-                          value="<%= busca %>"
-                        >
-                      <% } %>
-
-                      <% if (turmaId) { %>
-                        <input
-                          type="hidden"
-                          name="turma"
-                          value="<%= turmaId %>"
-                        >
-                      <% } %>
-
-                      <% if (statusFiltro) { %>
-                        <input
-                          type="hidden"
-                          name="status"
-                          value="<%= statusFiltro %>"
-                        >
-                      <% } %>
-
-                      <button
-                        class="adm-mini ok"
-                        title="Confirmar pagamento"
-                      >
-                        <i class="fa-solid fa-check"></i>
-                      </button>
-
-                    </form>
-
-                  <% } %>
-
-
-                  <!-- CANCELAR — tira a vaga do aluno; Financeiro e Dev. -->
-
-                  <% if (pode('financeiro:aprovar')) { %>
-
-                    <form
-                      method="POST"
-                      action="/inscricoes/<%= m.id %>/cancelar"
-                      data-confirmar="Cancelar a inscrição de <%= m.aluno.nome %> em <%= m.turma.curso.nome %>? A vaga é liberada."
-                      data-motivo="Motivo do cancelamento" data-botao="Cancelar inscrição"
-                    >
-
-                      <input
-                        type="hidden"
-                        name="_csrf"
-                        value="<%= csrfToken %>"
-                      >
-
-                      <% if (busca) { %>
-                        <input
-                          type="hidden"
-                          name="q"
-                          value="<%= busca %>"
-                        >
-                      <% } %>
-
-                      <% if (turmaId) { %>
-                        <input
-                          type="hidden"
-                          name="turma"
-                          value="<%= turmaId %>"
-                        >
-                      <% } %>
-
-                      <% if (statusFiltro) { %>
-                        <input
-                          type="hidden"
-                          name="status"
-                          value="<%= statusFiltro %>"
-                        >
-                      <% } %>
-
-                      <button
-                        class="adm-mini danger"
-                        title="Cancelar inscrição"
-                      >
-                        <i class="fa-solid fa-ban"></i>
-                      </button>
-
-                    </form>
-
-                  <% } %>
-
-
-                <% } else if (m.statusPagamento === 'PAGO') { %>
-
-                  <!-- ESTORNAR — devolve dinheiro ao aluno e é irreversível;
-                       só Financeiro e Dev. -->
-
-                  <% if (pode('financeiro:reembolsar')) { %>
-
-                    <form
-                      method="POST"
-                      action="/inscricoes/<%= m.id %>/estornar"
-                      data-confirmar="Estornar o pagamento de <%= m.aluno.nome %> (<%= m.turma.curso.nome %>)? O valor volta para o aluno e não dá para desfazer."
-                      data-motivo="Motivo do estorno" data-contabil data-botao="Estornar"
-                    >
-
-                      <input
-                        type="hidden"
-                        name="_csrf"
-                        value="<%= csrfToken %>"
-                      >
-
-                      <% if (busca) { %>
-                        <input
-                          type="hidden"
-                          name="q"
-                          value="<%= busca %>"
-                        >
-                      <% } %>
-
-                      <% if (turmaId) { %>
-                        <input
-                          type="hidden"
-                          name="turma"
-                          value="<%= turmaId %>"
-                        >
-                      <% } %>
-
-                      <% if (statusFiltro) { %>
-                        <input
-                          type="hidden"
-                          name="status"
-                          value="<%= statusFiltro %>"
-                        >
-                      <% } %>
-
-                      <button
-                        class="adm-mini danger"
-                        title="Estornar"
-                      >
-                        <i class="fa-solid fa-rotate-left"></i>
-                      </button>
-
-                    </form>
-
-                  <% } %>
-
-
-                <% } else { %>
-
-                  <!-- REATIVAR como pago — mesma natureza de confirmar. -->
-
-                  <% if (pode('pagamento:confirmar')) { %>
-
-                    <form
-                      method="POST"
-                      action="/inscricoes/<%= m.id %>/confirmar"
-                    >
-
-                      <input
-                        type="hidden"
-                        name="_csrf"
-                        value="<%= csrfToken %>"
-                      >
-
-                      <% if (busca) { %>
-                        <input
-                          type="hidden"
-                          name="q"
-                          value="<%= busca %>"
-                        >
-                      <% } %>
-
-                      <% if (turmaId) { %>
-                        <input
-                          type="hidden"
-                          name="turma"
-                          value="<%= turmaId %>"
-                        >
-                      <% } %>
-
-                      <% if (statusFiltro) { %>
-                        <input
-                          type="hidden"
-                          name="status"
-                          value="<%= statusFiltro %>"
-                        >
-                      <% } %>
-
-                      <button
-                        class="adm-mini"
-                        title="Reativar como pago"
-                      >
-                        <i class="fa-solid fa-arrow-rotate-right"></i>
-                      </button>
-
-                    </form>
-
-                  <% } %>
-
-                <% } %>
-
-              </div>
-
+              <%- include('acoes-matricula', { m }) %>
             </td>
 
           </tr>
