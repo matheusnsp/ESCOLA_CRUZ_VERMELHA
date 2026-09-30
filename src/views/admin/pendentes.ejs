@@ -148,7 +148,8 @@ function acoesHtml(m) { %>
       %>
       <% if (!m.taxaConfirmada && pode('pendentes:gerenciar')) { %>
         <form method="POST" action="/pendentes/<%= m.id %>/remover"
-              data-confirmar="Remover a inscrição de <%= m.aluno.nome.split(' ')[0] %> em <%= m.turma.curso.nome %>?&#10;&#10;A vaga será liberada e o registro apagado. Não dá pra desfazer.">
+              data-confirmar="Remover a inscrição de <%= m.aluno.nome.split(' ')[0] %> em <%= m.turma.curso.nome %>?&#10;&#10;A vaga será liberada e o registro apagado. Não dá pra desfazer."
+              data-motivo="Motivo da remoção" data-botao="Remover">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button class="adm-mini danger" title="Remover inscrição e liberar a vaga">
             <i class="fa-solid fa-trash"></i>

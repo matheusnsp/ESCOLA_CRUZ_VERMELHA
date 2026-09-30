@@ -145,20 +145,12 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
                   <i class="fa-solid fa-triangle-exclamation"></i> PIX: estornar na Únicopag
                 </span>
               <% } else { %>
-                <details class="adm-estorno">
-                  <summary><i class="fa-solid fa-rotate-left"></i> Estornar</summary>
-                  <form method="POST" action="/inscricoes/<%= m.id %>/estornar"
-                        class="adm-estorno-form"
-                        data-confirmar="Confirmar estorno? Devolve o valor ao aluno e não pode ser desfeito.">
-                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                    <input type="text" name="motivo" required maxlength="200" placeholder="Motivo do estorno">
-                    <label>
-                      <input type="checkbox" name="apenasContabil">
-                      Pago fora da Únicopag (só contábil)
-                    </label>
-                    <button type="submit">Confirmar estorno</button>
-                  </form>
-                </details>
+                <form method="POST" action="/inscricoes/<%= m.id %>/estornar"
+                      data-confirmar="Estornar <%= formatBRL(p.valor) %> de <%= m.aluno.nome %> (<%= m.turma.curso.nome %>)? O valor volta para o aluno e não dá para desfazer."
+                      data-motivo="Motivo do estorno" data-contabil data-botao="Estornar">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button type="submit" class="adm-link-perigo"><i class="fa-solid fa-rotate-left"></i> Estornar</button>
+                </form>
               <% } %>
             <% } else { %>
               <span class="adm-mut">—</span>

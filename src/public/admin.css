@@ -1205,3 +1205,27 @@ a.adm-stat-link:hover { border-color: #d97706; box-shadow: var(--sombra); }
 @media (max-width: 620px) {
   .adm-cards.c3 { grid-template-columns: 1fr; }
 }
+
+/* ===== Janela de confirmação (header.ejs) =============== */
+.adm-confirma { max-width: 460px; }
+.adm-confirma-corpo { padding: 22px 22px 8px; display: grid; gap: 14px; }
+.adm-confirma-corpo h2 { font-family: var(--fonte-t); font-size: 18px; font-weight: 800; margin: 0; color: var(--tinta); }
+.adm-confirma-corpo p { margin: 0; color: var(--tinta-60); font-size: 14.5px; line-height: 1.5; white-space: pre-line; }
+.adm-confirma-campo { display: grid; gap: 6px; font-size: 13px; font-weight: 700; color: var(--tinta); }
+.adm-confirma-campo textarea {
+  font: inherit; font-weight: 400; font-size: 14px; padding: 10px 12px; resize: vertical; min-height: 72px;
+  border: 1px solid var(--linha); border-radius: var(--r-s); background: var(--campo); color: var(--tinta);
+}
+.adm-confirma-campo textarea:focus { outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px var(--vermelho-bg); }
+.adm-confirma-erro { color: var(--erro-tx); font-weight: 600; }
+.adm-confirma-check { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--tinta-60); cursor: pointer; }
+.adm-confirma-check input { margin-top: 2px; accent-color: var(--vermelho); width: 16px; height: 16px; flex: none; }
+.adm-confirma-botoes { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 22px 20px; }
+.adm-btn-perigo { background: var(--vermelho); color: #fff; border: 0; cursor: pointer; }
+.adm-btn-perigo:hover { background: var(--vermelho-esc); }
+.adm-link-perigo {
+  background: none; border: 0; padding: 4px 0; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 700;
+  color: var(--vermelho); display: inline-flex; align-items: center; gap: 6px;
+}
+.adm-link-perigo:hover { text-decoration: underline; }
+#admConfirma [hidden] { display: none !important; }

@@ -348,7 +348,8 @@
                     <form
                       method="POST"
                       action="/inscricoes/<%= m.id %>/cancelar"
-                      data-confirmar="Cancelar esta inscrição?"
+                      data-confirmar="Cancelar a inscrição de <%= m.aluno.nome %> em <%= m.turma.curso.nome %>? A vaga é liberada."
+                      data-motivo="Motivo do cancelamento" data-botao="Cancelar inscrição"
                     >
 
                       <input
@@ -403,7 +404,8 @@
                     <form
                       method="POST"
                       action="/inscricoes/<%= m.id %>/estornar"
-                      data-confirmar="Estornar este pagamento?"
+                      data-confirmar="Estornar o pagamento de <%= m.aluno.nome %> (<%= m.turma.curso.nome %>)? O valor volta para o aluno e não dá para desfazer."
+                      data-motivo="Motivo do estorno" data-contabil data-botao="Estornar"
                     >
 
                       <input

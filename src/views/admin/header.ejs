@@ -56,14 +56,94 @@
   </div>
 </header>
 
+<!-- Janela de confirmação das ações sem volta (estornar, cancelar, remover, excluir...).
+     O formulário pede com atributos:
+       data-confirmar="pergunta"          obrigatório
+       data-motivo="Motivo do estorno"    mostra um campo de motivo obrigatório (vai em name="motivo")
+       data-contabil                      mostra "Pago fora da Únicopag (só contábil)" (name="apenasContabil")
+       data-botao="Estornar"              texto do botão de confirmar -->
+<div class="adm-modal-overlay" id="admConfirma" aria-hidden="true">
+  <div class="adm-modal adm-confirma" role="dialog" aria-modal="true" aria-labelledby="admConfirmaTit">
+    <div class="adm-confirma-corpo">
+      <h2 id="admConfirmaTit">Confirmar</h2>
+      <p id="admConfirmaTxt"></p>
+      <label class="adm-confirma-campo" id="admConfirmaMotivoRot" hidden>
+        <span id="admConfirmaMotivoTit">Motivo</span>
+        <textarea id="admConfirmaMotivo" rows="3" maxlength="200" placeholder="Escreva o motivo"></textarea>
+        <small class="adm-confirma-erro" id="admConfirmaErro" hidden>Escreva o motivo para continuar.</small>
+      </label>
+      <label class="adm-confirma-check" id="admConfirmaContabilRot" hidden>
+        <input type="checkbox" id="admConfirmaContabil">
+        <span>Pago fora da Únicopag (dinheiro ou presencial): registrar só no sistema, sem chamar o gateway</span>
+      </label>
+    </div>
+    <div class="adm-confirma-botoes">
+      <button type="button" class="adm-btn-sec" id="admConfirmaNao">Voltar</button>
+      <button type="button" class="adm-btn adm-btn-perigo" id="admConfirmaSim">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <script>
-  // Pergunta antes das ações sem volta (estornar, remover, excluir...): <form data-confirmar="...">.
   // Não dá para usar onsubmit="return confirm(...)" no HTML: a CSP do helmet (script-src-attr 'none')
   // bloqueia esse tipo de script, e o formulário era enviado direto, sem a pergunta.
-  document.addEventListener('submit', function (e) {
-    var f = e.target;
-    if (f && f.dataset && f.dataset.confirmar && !window.confirm(f.dataset.confirmar)) e.preventDefault();
-  }, true);
+  (function () {
+    var caixa = document.getElementById('admConfirma');
+    var txt = document.getElementById('admConfirmaTxt');
+    var motivoRot = document.getElementById('admConfirmaMotivoRot');
+    var motivoTit = document.getElementById('admConfirmaMotivoTit');
+    var motivo = document.getElementById('admConfirmaMotivo');
+    var erro = document.getElementById('admConfirmaErro');
+    var contabilRot = document.getElementById('admConfirmaContabilRot');
+    var contabil = document.getElementById('admConfirmaContabil');
+    var sim = document.getElementById('admConfirmaSim');
+    var nao = document.getElementById('admConfirmaNao');
+    var atual = null;
+
+    function campo(f, nome) {
+      var el = f.querySelector('[name="' + nome + '"]');
+      if (!el) { el = document.createElement('input'); el.type = 'hidden'; el.name = nome; f.appendChild(el); }
+      return el;
+    }
+    function fechar() { caixa.classList.remove('aberto'); caixa.setAttribute('aria-hidden', 'true'); atual = null; }
+    function abrir(f) {
+      atual = f;
+      txt.textContent = f.dataset.confirmar;
+      var pedeMotivo = 'motivo' in f.dataset;
+      motivoRot.hidden = !pedeMotivo; erro.hidden = true; motivo.value = '';
+      motivoTit.textContent = f.dataset.motivo || 'Motivo';
+      contabilRot.hidden = !('contabil' in f.dataset); contabil.checked = false;
+      sim.textContent = f.dataset.botao || 'Confirmar';
+      caixa.classList.add('aberto'); caixa.setAttribute('aria-hidden', 'false');
+      (pedeMotivo ? motivo : sim).focus();
+    }
+
+    document.addEventListener('submit', function (e) {
+      var f = e.target;
+      if (!f || !f.dataset || !f.dataset.confirmar) return;
+      e.preventDefault();
+      abrir(f);
+    }, true);
+
+    sim.addEventListener('click', function () {
+      var f = atual;
+      if (!f) return;
+      if ('motivo' in f.dataset) {
+        var v = motivo.value.trim();
+        if (!v) { erro.hidden = false; motivo.focus(); return; }
+        campo(f, 'motivo').value = v;
+      }
+      if ('contabil' in f.dataset) {
+        var c = campo(f, 'apenasContabil');
+        if (contabil.checked) c.value = 'on'; else c.parentNode.removeChild(c);
+      }
+      fechar();
+      f.submit(); // submit() não dispara o evento de novo
+    });
+    nao.addEventListener('click', fechar);
+    caixa.addEventListener('click', function (e) { if (e.target === caixa) fechar(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && atual) fechar(); });
+  })();
 
   (function () {
     var grupo = document.getElementById('admTema');
