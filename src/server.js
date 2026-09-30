@@ -41,6 +41,11 @@ app.locals.statusBadge = function (s) {
   return `<span class="badge ${cls}">${txt}</span>`;
 };
 
+// Helper disponível em todas as views: nome do status da turma na tela. No banco o valor
+// continua ENCERRADA (evita migração); para a secretaria ele aparece como CONCLUÍDA.
+const ROTULO_TURMA = { ENCERRADA: 'CONCLUÍDA' };
+app.locals.rotuloTurma = (s) => ROTULO_TURMA[s] || s;
+
 // Helper disponível em todas as views: endereço de CSS/JS com a versão do conteúdo
 // (<link href="<%= asset('/admin.css') %>">), para um deploy nunca deixar CSS velho no cache.
 app.locals.asset = require('./lib/assets').asset;
@@ -239,6 +244,12 @@ app.use((err, req, res, next) => {
     mensagem: 'Ocorreu um erro inesperado. Tente novamente em instantes.',
   });
 });
+
+// Conclui as turmas confirmadas cujo último dia de aula já passou (lib/concluir-turmas.js).
+// Roda ao subir e depois de hora em hora; as telas de turmas e o site também chamam.
+const { concluirTurmasPassadas } = require('./lib/concluir-turmas');
+concluirTurmasPassadas();
+setInterval(concluirTurmasPassadas, 60 * 60 * 1000).unref();
 
 const port = process.env.PORT || 3000;
 

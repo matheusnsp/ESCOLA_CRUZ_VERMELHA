@@ -25,6 +25,8 @@ const router = express.Router();
 // Não precisa de cron/scheduler — funciona porque o site é acessado
 // regularmente; a primeira visita depois que a data vira já corrige o status.
 // ─────────────────────────────────────────────────────────────────────────
+const { concluirTurmasPassadas } = require('../lib/concluir-turmas');
+
 async function fecharTurmasVencidas() {
   try {
     await prisma.turma.updateMany({
@@ -34,6 +36,7 @@ async function fecharTurmasVencidas() {
   } catch (e) {
     console.error('[Turmas] Falha ao fechar turmas vencidas:', e.message);
   }
+  await concluirTurmasPassadas(); // e as confirmadas cujo último dia de aula já passou
 }
 
 // Antes rodava (e esperava) a cada request, inclusive em /sobre: um UPDATE no banco antes de

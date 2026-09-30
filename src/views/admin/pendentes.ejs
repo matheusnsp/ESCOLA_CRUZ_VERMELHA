@@ -336,7 +336,7 @@ function contatoHtml(m) { %>
           <td><%= m.turma.curso.nome %></td>
           <td>
             <small class="adm-mut">
-              <%= m.turma.status %> · <%= dataBR(m.turma.inicioPrevisto) %>
+              <%= rotuloTurma(m.turma.status) %> · <%= dataBR(m.turma.inicioPrevisto) %>
             </small>
           </td>
           <td>
