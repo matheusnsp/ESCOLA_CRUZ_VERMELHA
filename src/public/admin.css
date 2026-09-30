@@ -160,18 +160,23 @@
   .adm-nav a.on i { color: var(--vermelho); }
   
   /* ── Botão de tema (claro/escuro) ───────────────────────── */
+  /* três opções lado a lado: claro · automático · escuro */
   .adm-tema {
-    background: none; border: 1px solid var(--linha); color: var(--tinta-60);
-    width: 38px; height: 38px; border-radius: 50%;
-    display: grid; place-items: center; cursor: pointer;
-    font-size: 14px; flex: none;
-    transition: border-color .12s, color .12s, background .12s;
+    display: inline-flex; flex: none; gap: 2px; padding: 3px;
+    border: 1px solid var(--linha); border-radius: 999px; background: var(--bg);
   }
-  .adm-tema:hover { border-color: var(--vermelho); color: var(--vermelho); background: var(--vermelho-bg); }
-  /* mostra o sol no escuro e a lua no claro */
-  .adm-tema .ic-escuro { display: none; }
-  html[data-tema="escuro"] .adm-tema .ic-escuro { display: block; }
-  html[data-tema="escuro"] .adm-tema .ic-claro  { display: none; }
+  .adm-tema button {
+    width: 30px; height: 30px; border: 0; border-radius: 50%;
+    display: grid; place-items: center; cursor: pointer;
+    background: none; color: var(--mut); font-size: 13px;
+    transition: color .12s, background .12s;
+  }
+  .adm-tema button:hover { color: var(--tinta); }
+  .adm-tema button[aria-checked="true"] {
+    background: var(--campo); color: var(--vermelho);
+    box-shadow: 0 1px 3px rgba(0,0,0,.18);
+  }
+  .adm-tema button:focus-visible { outline: 2px solid var(--vermelho); outline-offset: 1px; }
   
   .adm-sair { display: flex; align-items: center; gap: 12px; margin: 0; }
   .adm-sair span { font-size: 13px; color: var(--mut); font-weight: 600; }
@@ -777,12 +782,15 @@
     /* flex: 1 1 100% (e não só width): o flex: 1 da regra geral zerava a base e o menu ficava
        espremido ao lado do logo em vez de descer para a linha de baixo. */
     .adm-nav { order: 3; width: 100%; flex: 1 1 100%; overflow-x: auto; padding-bottom: 2px; }
-    .adm-sair { margin-left: auto; }
+    .adm-tema { margin-left: auto; }
     .adm-nav a { white-space: nowrap; }
     .transf-resumo { grid-template-columns: 1fr 1fr; }
   }
   
   @media (max-width: 620px) {
+    /* celular: sem o nome ao lado do Sair, para logo, tema e Sair caberem numa linha só */
+    .adm-sair span { display: none; }
+    .adm-tema button { width: 28px; height: 28px; }
     .adm-cards { grid-template-columns: 1fr; }
     .adm-wrap { padding: 22px 16px 40px; }
     .adm-h1 { font-size: 24px; }
@@ -1142,6 +1150,10 @@ body.dark .adm-permissao {
     align-items: center; gap: 10px;
     padding: 14px 4px 0; border-top: 1px solid var(--linha);
   }
+  .adm-top-pe { flex-wrap: wrap; }
+  /* na barra lateral o seletor de tema ocupa a linha inteira; nome e Sair vão para a de baixo */
+  .adm-tema { flex: 1 1 100%; }
+  .adm-tema button { flex: 1; width: auto; border-radius: 999px; }
   .adm-sair { flex: 1; min-width: 0; justify-content: space-between; gap: 8px; }
   .adm-sair span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .adm-sair button { padding: 8px 12px; }
