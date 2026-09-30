@@ -286,6 +286,8 @@ app.use((err, req, res, next) => {
 const { concluirTurmasPassadas } = require('./lib/concluir-turmas');
 concluirTurmasPassadas();
 setInterval(concluirTurmasPassadas, 60 * 60 * 1000).unref();
+// Boas-vindas de quem pagou depois de a secretaria liberar a mensagem da turma (lib/boas-vindas.js).
+setInterval(() => require('./lib/boas-vindas').enviarPendentes(), 15 * 60 * 1000).unref();
 
 const port = process.env.PORT || 3000;
 

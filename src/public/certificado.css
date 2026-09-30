@@ -1,0 +1,51 @@
+/* Certificado impresso (views/admin/certificado-imprimir.ejs): A4 deitado, frente e verso.
+   Medidas em mm para a impressão sair igual em qualquer impressora. */
+@page { size: A4 landscape; margin: 0; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: #e9e6e1; font-family: Arimo, Arial, Helvetica, sans-serif; color: #111; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+.cert-barra { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 20px; background: #fff; border-bottom: 1px solid #ddd; font-size: 14px; }
+.cert-barra small { display: block; color: #666; margin-top: 2px; }
+.cert-barra button { font: inherit; font-weight: 700; background: #c8102e; color: #fff; border: 0; border-radius: 8px; padding: 10px 22px; cursor: pointer; }
+
+.cert-pagina { position: relative; width: 297mm; height: 210mm; margin: 12mm auto; background: #fff; overflow: hidden; box-shadow: 0 2px 14px rgba(0,0,0,.15); page-break-after: always; break-after: page; }
+
+/* ---------- Frente ---------- */
+.cert-moldura { position: absolute; inset: 7mm; width: calc(100% - 14mm); height: calc(100% - 14mm); }
+.cert-frente { text-align: center; padding: 27mm 30mm 0; }
+.cert-marca { display: inline-flex; align-items: center; gap: 2.5mm; height: 15mm; }
+.cert-marca img { height: 100%; width: auto; display: block; }
+.cert-marca img + img { height: 82%; }
+.cert-titulo { margin: 3mm 0 0; font-family: 'Pinyon Script', 'Edwardian Script ITC', cursive; font-weight: 400; font-size: 29mm; line-height: 1; color: #111; }
+.cert-nome { margin: 5mm 0 0; font-family: 'Great Vibes', 'Monotype Corsiva', cursive; font-size: 14mm; line-height: 1.1; color: #215e99; }
+.cert-texto { margin: 7mm auto 0; max-width: 222mm; font-size: 5mm; line-height: 1.55; }
+.cert-texto b { font-weight: 700; }
+.cert-local { margin: 7mm 0 0; font-size: 4.2mm; }
+.cert-assinaturas { position: absolute; left: 34mm; right: 34mm; bottom: 24mm; display: flex; justify-content: space-between; gap: 30mm; }
+.cert-assinaturas > div { flex: 1; display: flex; flex-direction: column; align-items: center; font-size: 3.9mm; line-height: 1.35; }
+.cert-linha { display: block; width: 88mm; border-top: .35mm solid #111; margin-bottom: 1.5mm; }
+.cert-assinaturas b { font-size: 4.2mm; text-transform: uppercase; }
+.cert-assinaturas small { font-size: 2.9mm; font-weight: 700; }
+
+/* ---------- Verso ---------- */
+.cert-verso { padding: 12mm 16mm; }
+.cert-verso-topo { display: flex; align-items: center; justify-content: space-between; padding-bottom: 4mm; border-bottom: .5mm solid #111; font-family: 'Libre Baskerville', 'Bell MT', Georgia, serif; }
+.cert-verso-topo > div:first-child { display: flex; flex-direction: column; gap: 1mm; }
+.cert-verso-topo b { font-size: 6.4mm; letter-spacing: .02em; }
+.cert-verso-topo span { font-size: 4.6mm; }
+.cert-verso-topo .cert-marca { height: 17mm; }
+.cert-verso-corpo { display: grid; grid-template-columns: 95mm 1fr; gap: 12mm; margin-top: 7mm; height: calc(210mm - 24mm - 30mm); }
+.cert-verso-dados { text-align: center; font-size: 3.9mm; line-height: 1.45; border-right: .3mm solid #bbb; padding-right: 10mm; }
+.cert-verso-dados p { margin: 0 0 3.6mm; }
+.cert-verso-curso { font-size: 6mm; line-height: 1.3; }
+.cert-verso-curso b { display: inline-block; margin-top: 1mm; }
+.cert-verso-conteudo h2 { margin: 0 0 3mm; font-size: 5mm; text-align: center; }
+.cert-verso-conteudo ul { margin: 0; padding-left: 6mm; font-size: 3.9mm; line-height: 1.55; columns: 1; }
+.cert-verso-conteudo li { margin-bottom: 1mm; break-inside: avoid; }
+
+@media print {
+  body { background: #fff; }
+  .cert-barra { display: none; }
+  .cert-pagina { margin: 0; box-shadow: none; }
+}

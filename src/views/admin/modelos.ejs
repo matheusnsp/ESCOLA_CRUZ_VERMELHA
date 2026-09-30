@@ -1,0 +1,46 @@
+<%- include('head', { titulo: 'Modelos' }) %>
+<%- include('header', { ativo: 'turmas' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Boas-vindas e certificado</h1>
+  <a href="<%= voltar %>" class="adm-link"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
+</div>
+
+<% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
+
+<form method="POST" action="/modelos" class="adm-form adm-box">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <input type="hidden" name="voltar" value="<%= voltar %>">
+
+  <h2 class="adm-form-secao full"><i class="fa-solid fa-envelope-open-text"></i> Mensagem de boas-vindas (padrão de todas as turmas)</h2>
+  <label class="full">
+    Texto
+    <textarea name="texto" rows="18" class="adm-mono"><%= modelo.texto %></textarea>
+    <small class="adm-hint">Preenchidos sozinhos: <code>{CURSO}</code> (maiúsculas), <code>{curso}</code>, <code>{data}</code> e <code>{hora}</code> (primeira aula), <code>{local}</code> e <code>{doacao}</code>.
+      Use *asteriscos* para negrito, como no WhatsApp. Apague tudo e salve para voltar ao texto original.</small>
+  </label>
+  <label class="full">
+    Doação solidária (padrão)
+    <textarea name="doacao" rows="4"><%= modelo.doacao %></textarea>
+    <small class="adm-hint">Entra no lugar de <code>{doacao}</code>. Cada turma pode trocar só este trecho, na tela de Boas-vindas da turma.</small>
+  </label>
+  <label class="full">
+    Local
+    <textarea name="local" rows="2"><%= modelo.local %></textarea>
+  </label>
+
+  <h2 class="adm-form-secao full"><i class="fa-solid fa-award"></i> Certificado</h2>
+  <label>Quem assina pela coordenação<input type="text" name="coordNome" maxlength="80" value="<%= ajustes.coordNome %>"></label>
+  <label>Cargo<input type="text" name="coordCargo" maxlength="80" value="<%= ajustes.coordCargo %>"></label>
+  <label>Livro em uso
+    <input type="number" name="livro" min="1" value="<%= ajustes.livro %>">
+    <small class="adm-hint">Certificados novos recebem este livro e o próximo registro da sequência dele. Os já emitidos mantêm o número.</small>
+  </label>
+
+  <div class="full adm-form-rodape">
+    <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+    <a href="<%= voltar %>" class="adm-link">Cancelar</a>
+  </div>
+</form>
+
+<%- include('foot') %>
