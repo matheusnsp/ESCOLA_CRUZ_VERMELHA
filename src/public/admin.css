@@ -1463,10 +1463,8 @@ a.adm-hz-turma:hover { border-color: var(--vermelho); background: var(--vermelho
 /* Seletor de papel em Usuários do painel */
 .adm-papel-form select { font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--linha); background: var(--campo); color: var(--tinta); min-width: 150px; }
 .adm-papel-form select:disabled { opacity: .55; }
-.adm-usuario-acoes { white-space: nowrap; text-align: right; }
-.adm-usuario-acoes form { display: inline-flex !important; vertical-align: middle; margin-left: 6px; }
-@media (max-width: 620px) {
-  .adm-usuarios { table-layout: auto !important; }
-  .adm-usuarios td.adm-usuario-acoes { text-align: left; white-space: normal; }
-  .adm-usuarios td.adm-usuario-acoes form:first-child { margin-left: 0; }
-}
+.adm-usuarios td { vertical-align: middle; }
+.adm-usuario-acoes { text-align: right; width: 1%; white-space: nowrap; }
+.adm-papel-form { display: flex; gap: 8px; align-items: center; }
+.adm-papel-form [hidden] { display: none !important; }
+@media (max-width: 620px) { .adm-usuario-acoes { text-align: left; width: auto; } }

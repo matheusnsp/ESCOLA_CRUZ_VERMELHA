@@ -14,58 +14,51 @@
   <% if (!linhas.length) { %>
     <p class="adm-vazio">Nenhum usuário admin cadastrado.</p>
   <% } else { %>
-    <table class="adm-table adm-table-cards adm-usuarios" style="table-layout:fixed;width:100%;">
-      <colgroup>
-        <col style="width:160px;">
-        <col style="width:200px;">
-        <col style="width:130px;">
-        <col>
-        <col style="width:260px;">
-      </colgroup>
+    <%
+      const NOMES = { SECRETARIA: 'Secretaria', COORDENADOR: 'Coordenador', FINANCEIRO: 'Financeiro', CONSULTA: 'Consulta', DEV: 'Dev' };
+    %>
+    <table class="adm-table adm-table-cards adm-usuarios">
       <thead>
         <tr>
-          <th>Nome</th>
-          <th>E-mail</th>
+          <th>Usuário</th>
           <th>Papel</th>
           <th>Permissões</th>
-          <th>Trocar papel / excluir</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
-        <% linhas.forEach(function(u) { %>
+        <% linhas.forEach(function(u) { const eu = u.id === meuId; %>
           <tr>
-            <td style="border-bottom:none;"><strong><%= u.nome %></strong></td>
-            <td style="border-bottom:none;word-break:break-all;"><small class="adm-mut"><%= u.email %></small></td>
-            <td style="border-bottom:none;"><span class="badge ok"><%= u.papel %></span></td>
-            <td style="border-bottom:none;">
+            <td>
+              <strong><%= u.nome %></strong><% if (eu) { %> <span class="adm-mut">(você)</span><% } %>
+              <small class="adm-mut adm-hz-contato"><%= u.email %></small>
+            </td>
+            <td>
+              <% if (eu) { %>
+                <span class="badge ok" title="Você não pode alterar o próprio papel"><%= NOMES[u.papel] || u.papel %></span>
+              <% } else { %>
+                <form method="POST" action="/dev/usuarios/<%= u.id %>/papel" class="adm-papel-form">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <select name="papel" aria-label="Papel de <%= u.nome %>" data-atual="<%= u.papel %>">
+                    <% papeis.forEach(function(p) { %>
+                      <option value="<%= p %>" <%= p === u.papel ? 'selected' : '' %>><%= NOMES[p] || p %></option>
+                    <% }) %>
+                  </select>
+                  <button type="submit" class="adm-pend-btn" hidden><i class="fa-solid fa-check"></i> Salvar</button>
+                </form>
+              <% } %>
+            </td>
+            <td>
               <% if (u.papel === 'DEV') { %><span class="adm-mut">todas (acesso total)</span>
               <% } else { %><a href="/dev/permissoes" class="adm-link"><%= u.permissoes.length %> <%= u.permissoes.length === 1 ? 'permissão' : 'permissões' %> <i class="fa-solid fa-arrow-right"></i></a><% } %>
             </td>
-            <td style="border-bottom:none;" class="adm-acoes adm-usuario-acoes">
-              <% if (u.id === meuId) { %>
-                <form class="adm-papel-form" style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;">
-                  <select disabled>
-                    <% papeis.forEach(function(p) { %>
-                      <option value="<%= p %>" <%= p === u.papel ? 'selected' : '' %>><%= p %></option>
-                    <% }) %>
-                  </select>
-                  <button type="button" class="adm-mini" disabled title="Você não pode alterar o próprio papel"><i class="fa-solid fa-check"></i></button>
-                </form>
-              <% } else { %>
-                <form method="POST" action="/dev/usuarios/<%= u.id %>/papel" class="adm-papel-form" style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;">
-                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                  <select name="papel">
-                    <% papeis.forEach(function(p) { %>
-                      <option value="<%= p %>" <%= p === u.papel ? 'selected' : '' %>><%= p %></option>
-                    <% }) %>
-                  </select>
-                  <button type="submit" class="adm-mini" title="Salvar"><i class="fa-solid fa-check"></i></button>
-                </form>
+            <td class="adm-usuario-acoes">
+              <% if (!eu) { %>
                 <form method="POST" action="/dev/usuarios/<%= u.id %>/excluir"
                       data-confirmar="Excluir <%= u.nome %> (<%= u.email %>)? A pessoa perde o acesso ao painel na hora. Não dá para desfazer; para voltar, crie o usuário de novo."
                       data-botao="Excluir usuário">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                  <button type="submit" class="adm-mini danger" title="Excluir usuário" aria-label="Excluir <%= u.nome %>"><i class="fa-solid fa-trash"></i></button>
+                  <button type="submit" class="adm-pend-btn perigo" aria-label="Excluir <%= u.nome %>"><i class="fa-solid fa-trash"></i> Excluir</button>
                 </form>
               <% } %>
             </td>
@@ -73,6 +66,12 @@
         <% }) %>
       </tbody>
     </table>
+    <script>
+      // O "Salvar" do papel só aparece depois de escolher outro papel.
+      document.querySelectorAll('.adm-papel-form select').forEach(function (s) {
+        s.addEventListener('change', function () { s.form.querySelector('button').hidden = s.value === s.dataset.atual; });
+      });
+    </script>
   <% } %>
 </div>
 
