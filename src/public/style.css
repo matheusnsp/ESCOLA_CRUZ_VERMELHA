@@ -1573,3 +1573,14 @@ button:focus-visible {
   .ct-btn-retomar:hover {
     background: #a50d26;
   }
+/* Banner "falta pagar o curso" (partials/site-header.ejs): quem pagou só a taxa de inscrição. */
+.aviso-pagamento { background: #cc0000; color: #fff; }
+.aviso-pagamento-in { max-width: 1200px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; gap: 14px; }
+.aviso-pagamento-in > i { font-size: 20px; flex-shrink: 0; }
+.aviso-pagamento-in p { margin: 0; font-size: 14.5px; line-height: 1.45; flex: 1; }
+.aviso-pagamento-btn { flex-shrink: 0; background: #fff; color: #cc0000; font-weight: 800; font-size: 14px; padding: 10px 16px; border-radius: 8px; text-decoration: none; white-space: nowrap; }
+.aviso-pagamento-btn:hover { background: #fff5f5; }
+@media (max-width: 720px) {
+  .aviso-pagamento-in { flex-wrap: wrap; padding: 12px 16px; }
+  .aviso-pagamento-btn { width: 100%; text-align: center; }
+}
