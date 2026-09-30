@@ -1346,3 +1346,26 @@ a.adm-pend-btn { text-decoration: none; }
 @media (max-width: 620px) { .adm-legenda dl > div { flex-direction: column; gap: 4px; } .adm-legenda dt { min-width: 0; } }
 .adm-cards.c1 { grid-template-columns: minmax(0, 360px); }
 .adm-painel-grade.so-turmas { grid-template-columns: 1fr; }
+
+/* ===== Cursos ============================================ */
+.adm-curso-cel { display: flex; align-items: center; gap: 12px; }
+.adm-curso-thumb { width: 56px; height: 40px; flex: none; border-radius: 8px; object-fit: cover; background: var(--linha2); display: grid; place-items: center; color: var(--mut); }
+
+/* ===== Formulário de curso: seções e foto =============== */
+.adm-form-secao { font-family: var(--fonte-t); font-size: 15px; font-weight: 800; margin: 10px 0 -4px; padding-top: 16px; border-top: 1px solid var(--linha2); color: var(--tinta); display: flex; align-items: center; gap: 8px; }
+.adm-form-secao:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
+.adm-form-secao i { color: var(--vermelho); font-size: 14px; }
+.adm-foto-campo { display: grid; gap: 8px; }
+.adm-foto-rot { font-size: 13px; font-weight: 600; color: var(--tinta-60); }
+.adm-foto-linha { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.adm-foto-linha > div { display: grid; gap: 8px; flex: 1; min-width: 220px; }
+.adm-foto-atual { width: 160px; height: 100px; border-radius: 10px; object-fit: cover; background: var(--linha2); display: grid; place-items: center; color: var(--mut); font-size: 22px; flex: none; }
+
+/* ===== Turmas: coluna de vagas =========================== */
+.adm-vagas-cel { min-width: 120px; }
+.adm-vagas-cel .adm-barra { margin: 6px 0 4px; max-width: 140px; }
+.adm-vagas-cel small { font-size: 11.5px; }
+.adm-form > .full, .adm-form > h2.full, .adm-form > p.full { grid-column: 1 / -1; }
+.adm-form-rodape { display: flex; align-items: center; gap: 16px; padding-top: 16px; border-top: 1px solid var(--linha2); margin-top: 6px; }
+.adm-aulas-dica { margin: 0 0 10px; }
+.adm-form label .adm-hint { font-weight: 400; }

@@ -750,6 +750,17 @@ router.get('/', async (req, res) => {
 
 });
 
+// Taxa de matrícula padrão, lida da configuração (a mesma que o site cobra quando o curso deixa a
+// taxa em branco). O formulário de curso mostra esse valor em vez de um número fixo no código.
+async function lerTaxaPadrao() {
+  try {
+    const cfg = await prisma.configuracao.findUnique({ where: { chave: 'matricula_valor_padrao' } });
+    return cfg ? Number(cfg.valor) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // ---------- Cursos ----------
 
 router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), async (req, res) => {
@@ -786,6 +797,12 @@ router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), as
             turmas: true,
           },
         },
+        // Turmas ainda por começar (abertas ou confirmadas): a lista mostra quantas e a próxima.
+        turmas: {
+          where: turmaEmAberto(),
+          orderBy: { inicioPrevisto: 'asc' },
+          select: { id: true, inicioPrevisto: true },
+        },
       },
     }),
 
@@ -812,8 +829,8 @@ function backCursos(req, msg, tipo = 'ok') {
   return `${url}${conector}${tipo}=${encodeURIComponent(msg)}`;
 }
 
-router.get('/cursos/novo', requirePermissao('cursos:criar'), (req, res) => {
-  res.render('admin/curso-form', { curso: null, escolaridades: ESCOLARIDADES, erro: null });
+router.get('/cursos/novo', requirePermissao('cursos:criar'), async (req, res) => {
+  res.render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: null, escolaridades: ESCOLARIDADES, erro: null });
 });
 
 function lerCursoDoForm(body) {
@@ -826,10 +843,15 @@ function lerCursoDoForm(body) {
     precoAvista: parseDecimal(body.precoAvista),
     precoCheio: parseDecimal(body.precoCheio),
     parcelas: parseInteiro(body.parcelas, { min: 1 }),
-    valorParcela: parseDecimal(body.valorParcela),
+    // O valor da parcela não é pedido no formulário (o site calcula as parcelas na hora, com os
+    // juros do cartão); o campo do banco fica com parcelado ÷ parcelas, só como referência.
+    valorParcela: body.valorParcela ? parseDecimal(body.valorParcela) : NaN,
     taxaMatricula: parseDecimal(body.taxaMatricula, { opcional: true }),
     ativo: body.ativo === 'on' || body.ativo === 'true',
   };
+  if (Number.isNaN(dados.valorParcela) && !Number.isNaN(dados.precoCheio) && dados.parcelas > 0) {
+    dados.valorParcela = Math.round((Number(dados.precoCheio) / dados.parcelas) * 100) / 100;
+  }
   let erro = null;
   if (!dados.nome) erro = 'Informe o nome do curso.';
   else if (Number.isNaN(dados.cargaHoraria)) erro = 'Carga horaria invalida.';
@@ -840,9 +862,9 @@ function lerCursoDoForm(body) {
 }
 
 router.post('/cursos', requirePermissao('cursos:criar'), uploadFoto, async (req, res) => {
-  if (req.uploadErro) return res.status(400).render('admin/curso-form', { curso: req.body, escolaridades: ESCOLARIDADES, erro: req.uploadErro });
+  if (req.uploadErro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: req.body, escolaridades: ESCOLARIDADES, erro: req.uploadErro });
   const { dados, erro } = lerCursoDoForm(req.body);
-  if (erro) return res.status(400).render('admin/curso-form', { curso: req.body, escolaridades: ESCOLARIDADES, erro });
+  if (erro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: req.body, escolaridades: ESCOLARIDADES, erro });
   dados.imagemUrl = req.file ? await salvarFotoCurso(req.file) : null;
   const curso = await prisma.curso.create({ data: dados });
   await auditar(req, 'CRIOU_CURSO', 'Curso', curso.id, { nome: curso.nome });
@@ -855,7 +877,7 @@ router.get('/cursos/:id/editar', requirePermissao('cursos:gerenciar'), async (re
     include: { faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] } },
   });
   if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
-  res.render('admin/curso-form', { curso, escolaridades: ESCOLARIDADES, erro: null, erroFaq: req.query.erroFaq || null });
+  res.render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso, escolaridades: ESCOLARIDADES, erro: null, erroFaq: req.query.erroFaq || null });
 });
 
 router.post('/cursos/:id/faqs', requirePermissao('cursos:gerenciar'), async (req, res) => {
@@ -883,9 +905,10 @@ router.post('/cursos/:id/faqs/:faqId/remover', requirePermissao('cursos:gerencia
 router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, async (req, res) => {
   const existe = await prisma.curso.findUnique({ where: { id: req.params.id } });
   if (!existe) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
-  if (req.uploadErro) return res.status(400).render('admin/curso-form', { curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro: req.uploadErro });
+  if (req.uploadErro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro: req.uploadErro });
   const { dados, erro } = lerCursoDoForm(req.body);
-  if (erro) return res.status(400).render('admin/curso-form', { curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro });
+  if (erro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro });
+  if (!req.body.valorParcela) delete dados.valorParcela; // não está mais no formulário: na edição, mantém o gravado
   if (req.file) {
     dados.imagemUrl = await salvarFotoCurso(req.file);
     await removerFotoCurso(existe.imagemUrl); 
@@ -932,14 +955,25 @@ router.post('/cursos/:id/ativar', requirePermissao('cursos:gerenciar'), async (r
 router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
   await concluirTurmasPassadas(); // a lista já abre com as turmas de ontem como CONCLUÍDA
   const turmas = await prisma.turma.findMany({
-    orderBy: { criadoEm: 'desc' },
+    orderBy: { inicioPrevisto: 'asc' },
     include: {
       curso: true,
-      aulas: { orderBy: { data: 'asc' }, take: 1 },
+      aulas: { orderBy: { data: 'asc' } },
       _count: { select: { matriculas: { where: { taxaConfirmada: true, statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] } } } } },
     },
   });
-  res.render('admin/turmas', { turmas, statusTurma: STATUS_TURMA, flash: req.query.ok || null, erro: req.query.erro || null });
+  // Abas: por começar (aberta/confirmada com início no futuro), em andamento (aberta/confirmada
+  // que já começou e ainda não foi concluída), concluídas e canceladas.
+  const agora = new Date();
+  const ativa = (t) => ['ABERTA', 'CONFIRMADA'].includes(t.status);
+  const abas = {
+    'por-comecar': turmas.filter((t) => ativa(t) && new Date(t.inicioPrevisto) > agora),
+    'andamento': turmas.filter((t) => ativa(t) && new Date(t.inicioPrevisto) <= agora),
+    'concluidas': turmas.filter((t) => t.status === 'ENCERRADA').reverse(),
+    'canceladas': turmas.filter((t) => t.status === 'CANCELADA').reverse(),
+  };
+  const aba = abas[req.query.aba] ? req.query.aba : 'por-comecar';
+  res.render('admin/turmas', { turmas, abas, aba, statusTurma: STATUS_TURMA, flash: req.query.ok || null, erro: req.query.erro || null });
 });
 
 router.get('/turmas/nova', requirePermissao('turmas:gerenciar'), async (req, res) => {

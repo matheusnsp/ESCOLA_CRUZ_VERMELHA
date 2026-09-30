@@ -31,16 +31,16 @@
   </label>
 
   <label class="adm-campo">
-    <span>Status</span>
+    <span>No site</span>
     <select name="status">
-      <option value="">Todos os status</option>
+      <option value="">Todos</option>
 
       <option value="ATIVO" <%= statusFiltro === 'ATIVO' ? 'selected' : '' %>>
-        Ativo
+        Visíveis no site
       </option>
 
       <option value="INATIVO" <%= statusFiltro === 'INATIVO' ? 'selected' : '' %>>
-        Inativo
+        Ocultos
       </option>
     </select>
   </label>
@@ -70,7 +70,7 @@
       <% } else if (statusFiltro) { %>
 
         Nenhum curso
-        <%= statusFiltro === 'ATIVO' ? 'ativo' : 'inativo' %>.
+        <%= statusFiltro === 'ATIVO' ? 'visível no site' : 'oculto' %>.
 
       <% } else { %>
 
@@ -86,153 +86,84 @@
 
   <% } else { %>
 
-    <table class="adm-table">
+    <table class="adm-table adm-table-cards">
 
       <thead>
         <tr>
           <th>Curso</th>
           <th>Carga</th>
-          <th>À vista</th>
+          <th>Valores</th>
           <th>Turmas</th>
-          <th>Status</th>
-          <th class="centro">Ações</th>
+          <th>No site</th>
+          <th>Ações</th>
         </tr>
       </thead>
-
       <tbody>
-
-        <% cursos.forEach(function (c) { %>
-
+        <% cursos.forEach(function (c) {
+             const prox = c.turmas && c.turmas[0];
+             const dt = d => { const x = new Date(d); return String(x.getUTCDate()).padStart(2, '0') + '/' + String(x.getUTCMonth() + 1).padStart(2, '0'); }; %>
         <tr>
-
           <td>
-            <strong><%= c.nome %></strong>
-
-            <% if (c.escolaridadeMinima) { %>
-              <br>
-              <small class="adm-mut">
-                <%= c.escolaridadeMinima %>
-              </small>
+            <div class="adm-curso-cel">
+              <% if (c.imagemUrl) { %>
+                <img src="<%= c.imagemUrl %>" alt="" class="adm-curso-thumb" loading="lazy">
+              <% } else { %>
+                <span class="adm-curso-thumb vazio"><i class="fa-solid fa-image"></i></span>
+              <% } %>
+              <span>
+                <strong><%= c.nome %></strong>
+                <% if (c.escolaridadeMinima) { %><br><small class="adm-mut"><%= c.escolaridadeMinima %></small><% } %>
+              </span>
+            </div>
+          </td>
+          <td><%= c.cargaHoraria %>h</td>
+          <td>
+            <%= formatBRL(c.precoAvista) %> <small class="adm-mut">à vista</small>
+            <br><small class="adm-mut"><%= formatBRL(c.precoCheio) %> no parcelado<%= Number(c.parcelas) > 1 ? ' (até ' + c.parcelas + '×)' : '' %></small>
+          </td>
+          <td>
+            <% if (c.turmas && c.turmas.length) { %>
+              <%= c.turmas.length %> por começar
+              <br><small class="adm-mut">próxima <%= dt(prox.inicioPrevisto) %></small>
+            <% } else { %>
+              <span class="adm-mut">nenhuma aberta</span>
+              <% if (c._count.turmas) { %><br><small class="adm-mut"><%= c._count.turmas %> no histórico</small><% } %>
             <% } %>
           </td>
-
-          <td>
-            <%= c.cargaHoraria %>h
-          </td>
-
-          <td>
-            <%= formatBRL(c.precoAvista) %>
-          </td>
-
-          <td>
-            <%= c._count.turmas %>
-          </td>
-
           <td>
             <% if (c.ativo) { %>
-              <span class="badge ok">Ativo</span>
+              <span class="badge ok" title="Aparece no site da escola">Visível</span>
             <% } else { %>
-              <span class="badge mut">Inativo</span>
+              <span class="badge mut" title="Não aparece no site da escola">Oculto</span>
             <% } %>
           </td>
-
-          <td class="adm-acoes centro">
-
+          <td class="adm-acoes">
             <% if (pode('cursos:gerenciar')) { %>
-
-              <div class="adm-acoes-wrap linha">
-
-                <a
-                  href="/cursos/<%= c.id %>/editar"
-                  class="adm-mini"
-                  title="Editar curso"
-                >
-                  <i class="fa-solid fa-pen"></i>
-                </a>
-
-                <form
-                  method="POST"
-                  action="/cursos/<%= c.id %>/ativar"
-                >
-                  <input
-                    type="hidden"
-                    name="_csrf"
-                    value="<%= csrfToken %>"
-                  >
-
-                  <% if (statusFiltro) { %>
-                    <input
-                      type="hidden"
-                      name="status"
-                      value="<%= statusFiltro %>"
-                    >
-                  <% } %>
-
-                  <% if (busca) { %>
-                    <input
-                      type="hidden"
-                      name="q"
-                      value="<%= busca %>"
-                    >
-                  <% } %>
-
-                  <button
-                    class="adm-mini"
-                    title="<%= c.ativo ? 'Desativar' : 'Ativar' %>"
-                  >
-                    <i class="fa-solid <%= c.ativo ? 'fa-eye-slash' : 'fa-eye' %>"></i>
-                  </button>
-
+              <div class="adm-pend-acoes">
+                <a href="/cursos/<%= c.id %>/editar" class="adm-pend-btn"><i class="fa-solid fa-pen"></i> Editar</a>
+                <form method="POST" action="/cursos/<%= c.id %>/ativar"
+                      data-confirmar="<%= c.ativo ? 'Ocultar ' + c.nome + ' do site? As turmas e matrículas continuam; o curso só deixa de aparecer para os alunos.' : 'Mostrar ' + c.nome + ' no site da escola?' %>"
+                      data-botao="<%= c.ativo ? 'Ocultar do site' : 'Mostrar no site' %>">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <% if (statusFiltro) { %><input type="hidden" name="status" value="<%= statusFiltro %>"><% } %>
+                  <% if (busca) { %><input type="hidden" name="q" value="<%= busca %>"><% } %>
+                  <button class="adm-pend-btn"><i class="fa-solid <%= c.ativo ? 'fa-eye-slash' : 'fa-eye' %>"></i> <%= c.ativo ? 'Ocultar' : 'Mostrar' %></button>
                 </form>
-
-                <form
-                  method="POST"
-                  action="/cursos/<%= c.id %>/excluir"
-                  data-confirmar="Excluir este curso? Só é possível se não houver turmas/matrículas."
-                >
-                  <input
-                    type="hidden"
-                    name="_csrf"
-                    value="<%= csrfToken %>"
-                  >
-
-                  <% if (statusFiltro) { %>
-                    <input
-                      type="hidden"
-                      name="status"
-                      value="<%= statusFiltro %>"
-                    >
-                  <% } %>
-
-                  <% if (busca) { %>
-                    <input
-                      type="hidden"
-                      name="q"
-                      value="<%= busca %>"
-                    >
-                  <% } %>
-
-                  <button
-                    class="adm-mini danger"
-                    title="Excluir curso"
-                  >
-                    <i class="fa-solid fa-trash"></i>
-                  </button>
-
-                </form>
-
+                <% if (!c._count.turmas) { %>
+                  <form method="POST" action="/cursos/<%= c.id %>/excluir"
+                        data-confirmar="Excluir o curso <%= c.nome %>? Não dá para desfazer." data-botao="Excluir">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <% if (statusFiltro) { %><input type="hidden" name="status" value="<%= statusFiltro %>"><% } %>
+                    <% if (busca) { %><input type="hidden" name="q" value="<%= busca %>"><% } %>
+                    <button class="adm-pend-btn perigo"><i class="fa-solid fa-trash"></i> Excluir</button>
+                  </form>
+                <% } %>
               </div>
-
             <% } %>
-
           </td>
-
         </tr>
-
         <% }) %>
-
       </tbody>
-
     </table>
 
   <% } %>

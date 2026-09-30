@@ -16,20 +16,22 @@
       enctype="multipart/form-data" class="adm-form adm-box">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
+  <h2 class="adm-form-secao full"><i class="fa-solid fa-file-lines"></i> Página do curso</h2>
+
   <label class="full">Nome do curso
     <input type="text" name="nome" value="<%= c.nome || '' %>" required>
   </label>
 
-  <label class="full">Descrição
-    <textarea name="descricao" rows="2"><%= c.descricao || '' %></textarea>
+  <label class="full">Resumo
+    <textarea name="descricao" rows="2" placeholder="Uma ou duas frases. Aparece no cartão do curso e no topo da página."><%= c.descricao || '' %></textarea>
   </label>
 
-  <label class="full">Texto completo (página do curso)
+  <label class="full">Texto completo
     <textarea name="descricaoLonga" rows="8"
-              placeholder="Texto detalhado que aparece na página do curso. Pode usar parágrafos."><%= c.descricaoLonga || '' %></textarea>
+              placeholder="Texto que aparece na página do curso. Deixe uma linha em branco entre os parágrafos."><%= c.descricaoLonga || '' %></textarea>
   </label>
 
-  <label>Carga horária (h)
+  <label>Carga horária (horas)
     <input type="number" name="cargaHoraria" min="1" value="<%= c.cargaHoraria || '' %>" required>
   </label>
 
@@ -41,51 +43,58 @@
     </select>
   </label>
 
-  <label>Preço à vista (R$)
+  <div class="full adm-foto-campo">
+    <span class="adm-foto-rot">Foto do curso</span>
+    <div class="adm-foto-linha">
+      <% if (c.imagemUrl) { %>
+        <img src="<%= c.imagemUrl %>" alt="Foto atual" class="adm-foto-atual">
+      <% } else { %>
+        <span class="adm-foto-atual vazio"><i class="fa-solid fa-image"></i></span>
+      <% } %>
+      <div>
+        <input type="file" name="foto" accept="image/png,image/jpeg,image/webp,image/gif">
+        <small class="adm-hint">JPG, PNG, WEBP ou GIF, até 3 MB.<%= c.imagemUrl ? ' Envie outra para substituir a atual.' : (novo ? ' Opcional.' : '') %></small>
+        <% if (c.imagemUrl) { %>
+          <label class="check"><input type="checkbox" name="removerFoto"> Remover a foto atual</label>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="adm-form-secao full"><i class="fa-solid fa-tag"></i> Valores</h2>
+
+  <label>À vista (R$)
     <input type="text" name="precoAvista" value="<%= c.precoAvista || '' %>" placeholder="150.00" required>
   </label>
 
-  <label>Preço cheio (R$)
+  <label>No parcelado, total (R$)
     <input type="text" name="precoCheio" value="<%= c.precoCheio || '' %>" placeholder="155.00" required>
   </label>
 
-  <label>Parcelas
+  <label>Máximo de parcelas
     <input type="number" name="parcelas" min="1" value="<%= c.parcelas || 1 %>" required>
-  </label>
-
-  <label>Valor da parcela (R$)
-    <input type="text" name="valorParcela" value="<%= c.valorParcela || '' %>" placeholder="77.50" required>
   </label>
 
   <label>Taxa de matrícula (R$)
     <input type="text" name="taxaMatricula"
            value="<%= c.taxaMatricula != null ? c.taxaMatricula : '' %>"
-           placeholder="em branco = padrão (100,00)">
+           placeholder="em branco = padrão (<%= typeof taxaPadrao === 'number' && !isNaN(taxaPadrao) ? taxaPadrao.toFixed(2).replace('.', ',') : 'sem padrão' %>)">
   </label>
 
-  <label class="full">Foto do curso
-    <% if (c.imagemUrl) { %>
-      <span class="foto-atual">
-        <img src="<%= c.imagemUrl %>" alt="Foto atual">
-        <small>Foto atual — envie outra para substituir.</small>
-      </span>
-      <label class="check">
-        <input type="checkbox" name="removerFoto"> Remover foto atual (deixar sem imagem)
-      </label>
-    <% } %>
-    <input type="file" name="foto" accept="image/png,image/jpeg,image/webp,image/gif">
-    <small class="adm-hint">JPG, PNG, WEBP ou GIF, até 3 MB.<%= novo ? ' Opcional.' : '' %></small>
-  </label>
+  <p class="adm-hint full">O valor de cada parcela é calculado na hora da inscrição, já com os juros do cartão. A taxa de matrícula é cobrada à parte, sem juros.</p>
+
+  <h2 class="adm-form-secao full"><i class="fa-solid fa-globe"></i> Publicação</h2>
 
   <label class="check full">
     <input type="checkbox" name="ativo" <%= (novo || c.ativo) ? 'checked' : '' %>>
-    Curso ativo (aparece no site do aluno)
+    Mostrar este curso no site da escola
   </label>
 
-  <div class="full">
+  <div class="full adm-form-rodape">
     <button type="submit" class="adm-btn">
       <i class="fa-solid fa-floppy-disk"></i> <%= novo ? 'Criar curso' : 'Salvar alterações' %>
     </button>
+    <a href="/cursos" class="adm-link">Cancelar</a>
   </div>
 </form>
 
