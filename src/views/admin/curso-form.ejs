@@ -91,22 +91,6 @@
     <p class="adm-hint full">Depois de salvar, aqui aparece o valor que o aluno paga à vista e no parcelado, já com os juros do cartão.</p>
   <% } %>
 
-  <h2 class="adm-form-secao full" id="certificado"><i class="fa-solid fa-award"></i> Certificado</h2>
-  <label class="full">
-    Nome no certificado
-    <input type="text" name="nomeCertificado" maxlength="120" value="<%= c.nomeCertificado || '' %>" placeholder="Em branco = <%= c.nome || 'nome do curso' %>">
-    <small class="adm-hint">Use quando o certificado precisa de um nome mais completo que o do site (ex.: "Punção Venosa e Diluição de Medicamentos").</small>
-  </label>
-  <label class="full">
-    Conteúdo programático
-    <textarea name="conteudoProgramatico" rows="8" placeholder="Um item por linha, ex.:&#10;Fundamentos da terapia intravenosa&#10;Revisão anatômica do sistema venoso periférico"><%= c.conteudoProgramatico || '' %></textarea>
-    <small class="adm-hint">Um item por linha. Vai no verso do certificado.</small>
-  </label>
-  <label class="full">
-    Validade (opcional)
-    <input type="text" name="certificadoValidade" maxlength="120" value="<%= c.certificadoValidade || '' %>" placeholder="Ex.: Validade de 2 anos">
-  </label>
-
   <h2 class="adm-form-secao full"><i class="fa-solid fa-globe"></i> Publicação</h2>
 
   <label class="check full">

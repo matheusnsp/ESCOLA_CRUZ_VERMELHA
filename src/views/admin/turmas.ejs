@@ -83,12 +83,6 @@
                 <a href="/turmas/<%= t.id %>/notas" class="adm-pend-btn"><i class="fa-solid fa-star-half-stroke"></i> Notas</a>
               <% } %>
               <% if (pode('turmas:gerenciar')) { %>
-                <% if (aba === 'por-comecar' || aba === 'andamento') { %>
-                  <a href="/turmas/<%= t.id %>/boas-vindas" class="adm-pend-btn"><i class="fa-solid fa-envelope-open-text"></i> Boas-vindas</a>
-                <% } %>
-                <% if (aba === 'andamento' || aba === 'concluidas') { %>
-                  <a href="/turmas/<%= t.id %>/certificados" class="adm-pend-btn"><i class="fa-solid fa-award"></i> Certificados</a>
-                <% } %>
                 <a href="/turmas/<%= t.id %>/editar" class="adm-pend-btn"><i class="fa-solid fa-pen"></i> Editar</a>
                 <% if (!insc) { %>
                   <form method="POST" action="/turmas/<%= t.id %>/excluir"
