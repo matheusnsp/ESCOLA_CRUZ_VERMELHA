@@ -20,7 +20,7 @@ async function main() {
   await prisma.configuracao.upsert({
     where: { chave: 'matricula_valor_padrao' },
     update: {},
-    create: { chave: 'matricula_valor_padrao', valor: '100.00' },
+    create: { chave: 'matricula_valor_padrao', valor: '99.00' },
   });
 
   // 2) Conta da secretaria/admin.

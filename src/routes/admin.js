@@ -750,6 +750,17 @@ router.get('/', async (req, res) => {
 
 });
 
+// Taxa de matrícula padrão, lida da configuração (a mesma que o site cobra quando o curso deixa a
+// taxa em branco). O formulário de curso mostra esse valor em vez de um número fixo no código.
+async function lerTaxaPadrao() {
+  try {
+    const cfg = await prisma.configuracao.findUnique({ where: { chave: 'matricula_valor_padrao' } });
+    return cfg ? Number(cfg.valor) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // ---------- Cursos ----------
 
 router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), async (req, res) => {
@@ -818,8 +829,8 @@ function backCursos(req, msg, tipo = 'ok') {
   return `${url}${conector}${tipo}=${encodeURIComponent(msg)}`;
 }
 
-router.get('/cursos/novo', requirePermissao('cursos:criar'), (req, res) => {
-  res.render('admin/curso-form', { curso: null, escolaridades: ESCOLARIDADES, erro: null });
+router.get('/cursos/novo', requirePermissao('cursos:criar'), async (req, res) => {
+  res.render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: null, escolaridades: ESCOLARIDADES, erro: null });
 });
 
 function lerCursoDoForm(body) {
@@ -851,9 +862,9 @@ function lerCursoDoForm(body) {
 }
 
 router.post('/cursos', requirePermissao('cursos:criar'), uploadFoto, async (req, res) => {
-  if (req.uploadErro) return res.status(400).render('admin/curso-form', { curso: req.body, escolaridades: ESCOLARIDADES, erro: req.uploadErro });
+  if (req.uploadErro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: req.body, escolaridades: ESCOLARIDADES, erro: req.uploadErro });
   const { dados, erro } = lerCursoDoForm(req.body);
-  if (erro) return res.status(400).render('admin/curso-form', { curso: req.body, escolaridades: ESCOLARIDADES, erro });
+  if (erro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: req.body, escolaridades: ESCOLARIDADES, erro });
   dados.imagemUrl = req.file ? await salvarFotoCurso(req.file) : null;
   const curso = await prisma.curso.create({ data: dados });
   await auditar(req, 'CRIOU_CURSO', 'Curso', curso.id, { nome: curso.nome });
@@ -866,7 +877,7 @@ router.get('/cursos/:id/editar', requirePermissao('cursos:gerenciar'), async (re
     include: { faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] } },
   });
   if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
-  res.render('admin/curso-form', { curso, escolaridades: ESCOLARIDADES, erro: null, erroFaq: req.query.erroFaq || null });
+  res.render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso, escolaridades: ESCOLARIDADES, erro: null, erroFaq: req.query.erroFaq || null });
 });
 
 router.post('/cursos/:id/faqs', requirePermissao('cursos:gerenciar'), async (req, res) => {
@@ -894,9 +905,9 @@ router.post('/cursos/:id/faqs/:faqId/remover', requirePermissao('cursos:gerencia
 router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, async (req, res) => {
   const existe = await prisma.curso.findUnique({ where: { id: req.params.id } });
   if (!existe) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
-  if (req.uploadErro) return res.status(400).render('admin/curso-form', { curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro: req.uploadErro });
+  if (req.uploadErro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro: req.uploadErro });
   const { dados, erro } = lerCursoDoForm(req.body);
-  if (erro) return res.status(400).render('admin/curso-form', { curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro });
+  if (erro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro });
   if (!req.body.valorParcela) delete dados.valorParcela; // não está mais no formulário: na edição, mantém o gravado
   if (req.file) {
     dados.imagemUrl = await salvarFotoCurso(req.file);

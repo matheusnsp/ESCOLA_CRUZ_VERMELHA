@@ -78,7 +78,7 @@
   <label>Taxa de matrícula (R$)
     <input type="text" name="taxaMatricula"
            value="<%= c.taxaMatricula != null ? c.taxaMatricula : '' %>"
-           placeholder="em branco = padrão (100,00)">
+           placeholder="em branco = padrão (<%= typeof taxaPadrao === 'number' && !isNaN(taxaPadrao) ? taxaPadrao.toFixed(2).replace('.', ',') : 'sem padrão' %>)">
   </label>
 
   <p class="adm-hint full">O valor de cada parcela é calculado na hora da inscrição, já com os juros do cartão. A taxa de matrícula é cobrada à parte, sem juros.</p>
