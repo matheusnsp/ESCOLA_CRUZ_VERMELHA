@@ -1426,3 +1426,4 @@ a.adm-hz-turma:hover { border-color: var(--vermelho); background: var(--vermelho
 .adm-aba-sep i { font-size: 12px; margin-right: 2px; }
 @media (max-width: 620px) { .adm-aba-sep { margin-left: 0; } }
 .adm-hz-intro { margin-top: 0; }
+.adm-aba i { font-size: 12px; margin-right: 2px; }
