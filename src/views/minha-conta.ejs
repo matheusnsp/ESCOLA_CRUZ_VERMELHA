@@ -91,6 +91,13 @@
             </a>
           </div>
 
+          <% (typeof avisosTurma !== 'undefined' ? avisosTurma : []).forEach(function (a, i) { %>
+            <details class="ct-aviso-turma" <%= i === 0 ? 'open' : '' %>>
+              <summary><i class="fa-solid fa-bullhorn"></i> <span>Informações para o seu curso: <b><%= a.curso %></b></span></summary>
+              <div class="ct-aviso-texto"><%- a.html %></div>
+            </details>
+          <% }) %>
+
           <% if (!matriculas.length) { %>
 
             <div class="ct-vazio">

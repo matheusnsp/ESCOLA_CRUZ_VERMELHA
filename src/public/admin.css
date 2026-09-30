@@ -1472,3 +1472,39 @@ a.adm-hz-turma:hover { border-color: var(--vermelho); background: var(--vermelho
 
 /* Sem sublinhado ao passar o mouse em nada do painel (botões e links); o hover é cor/opacidade. */
 .adm-wrap a:hover, .adm-top a:hover, .adm-wrap button:hover, .adm-wrap summary:hover { text-decoration: none; }
+
+/* ---------- Boas-vindas da turma e certificados ---------- */
+.adm-bv-sub { margin: 4px 0 0; font-size: 14px; }
+.adm-bv-grade { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 18px; align-items: start; }
+.adm-bv-lado { display: grid; gap: 18px; }
+.adm-bv-lado .adm-box, .adm-bv-previa { margin: 0; }
+.adm-bv-email { margin: 16px 20px 0; border: 1px solid var(--linha); border-radius: 12px; background: var(--campo); padding: 18px 22px; font-size: 14.5px; line-height: 1.6; color: var(--tinta); max-height: 620px; overflow: auto; }
+.adm-bv-assunto { margin: 0 0 14px; padding-bottom: 12px; border-bottom: 1px dashed var(--linha); font-weight: 700; }
+.adm-bv-assunto small { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--mut); }
+.adm-bv-corpo p { margin: 0 0 12px; }
+.adm-bv-nota { margin: 12px 20px 18px; }
+.adm-bv-envio { padding: 16px 20px 20px; display: grid; gap: 10px; }
+.adm-bv-envio p { margin: 0; font-size: 14px; }
+.adm-bv-envio .adm-btn { width: 100%; justify-content: center; }
+.adm-bv-envio .adm-btn:disabled { opacity: .55; cursor: default; }
+.adm-bv-liberar button { background: none; border: 0; padding: 0; font: inherit; font-size: 13.5px; cursor: pointer; }
+.adm-bv-doacao { padding: 16px 20px 20px; display: grid; gap: 8px; }
+.adm-bv-doacao textarea, .adm-form textarea.adm-mono { width: 100%; font: inherit; font-size: 14px; line-height: 1.5; padding: 10px 12px; border: 1px solid var(--linha); border-radius: 10px; background: var(--campo); color: var(--tinta); resize: vertical; }
+.adm-form textarea.adm-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+.adm-bv-doacao .adm-pend-btn { justify-self: start; }
+.adm-bv-alunos { list-style: none; margin: 0; padding: 8px 20px 16px; }
+.adm-bv-alunos li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--linha); font-size: 14px; }
+.adm-bv-alunos li:last-child { border-bottom: 0; }
+.adm-bv-alunos li.fraco span { color: var(--mut); }
+.adm-bv-alunos em { font-style: normal; white-space: nowrap; }
+@media (max-width: 980px) { .adm-bv-grade { grid-template-columns: 1fr; } }
+
+.adm-cert-pend { margin-bottom: 18px; }
+.adm-cert-pend p { margin: 0 0 6px; }
+.adm-cert-pend ul { margin: 0; padding-left: 22px; font-size: 14px; line-height: 1.6; }
+.adm-cert-dica { margin: 14px 20px 18px; }
+#formCert th:first-child, #formCert td:first-child { width: 36px; }
+#formCert input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--vermelho); }
+.adm-cert-pend { padding: 14px 18px; border: 1px solid var(--alerta-bd, #f5d38a); background: var(--alerta-bg, #fff8e6); color: var(--alerta-tx, #7a4b00); border-radius: 12px; }
+.adm-cert-pend .adm-link { font-size: 13.5px; }
+.adm-hint a, .adm-bv-nota a, .adm-cert-dica a { color: var(--vermelho); font-weight: 700; text-decoration: none; }

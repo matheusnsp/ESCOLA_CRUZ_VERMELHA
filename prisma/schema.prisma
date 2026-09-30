@@ -66,6 +66,11 @@ model Curso {
   ativo              Boolean    @default(true)
   criadoEm          DateTime   @default(now())
   descricaoLonga     String?
+  // Certificado: nome impresso (se diferente do nome do curso), conteúdo do verso (um item por
+  // linha) e texto de validade.
+  nomeCertificado      String?
+  conteudoProgramatico String?
+  certificadoValidade  String?
   faqs               FaqCurso[]
   turmas             Turma[]
 }
@@ -90,6 +95,12 @@ model Turma {
   minimoAlunos   Int         @default(15)
   status         StatusTurma @default(ABERTA)
   criadoEm       DateTime    @default(now())
+  // Instrutor (assina o certificado), trecho da doação só desta turma (vazio = texto padrão) e
+  // quando a secretaria liberou as boas-vindas (quem pagar depois recebe sozinho).
+  instrutorNome       String?
+  instrutorRegistro   String?
+  boasVindasDoacao    String?
+  boasVindasEnviadaEm DateTime?
   aulas          AulaData[]
   matriculas     Matricula[]
   curso          Curso       @relation(fields: [cursoId], references: [id])
@@ -140,8 +151,14 @@ model Matricula {
   turma               Turma              @relation(fields: [turmaId], references: [id])
   pagamentos          Pagamento[]
   diferencaTransferencia Decimal?
+  boasVindasEm        DateTime?
+  // Certificado: Livro/Registro gerados na primeira impressão e mantidos nas próximas.
+  certLivro           Int?
+  certRegistro        Int?
+  certEmitidoEm       DateTime?
 
   @@unique([alunoId, turmaId])
+  @@unique([certLivro, certRegistro])
 }
 
 model Pagamento {

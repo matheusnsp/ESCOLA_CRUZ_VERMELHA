@@ -71,6 +71,24 @@ function calcularRetomada(m) {
   return { url: `/inscrever/${m.turmaId}/pagar-curso`, rotulo: 'Continuar — pagar o curso' };
 }
 
+// Boas-vindas liberadas pela secretaria (lib/boas-vindas.js): o mesmo texto do e-mail aparece aqui
+// para quem está com o pagamento em dia, até a turma terminar.
+async function avisosDeBoasVindas(matriculas) {
+  const boasVindas = require('../lib/boas-vindas');
+  const elegiveis = matriculas.filter((m) => m.turma.boasVindasEnviadaEm && m.taxaConfirmada
+    && ['PAGO', 'PARCELADO'].includes(m.statusPagamento));
+  if (!elegiveis.length) return [];
+  const turmas = await prisma.turma.findMany({
+    where: { id: { in: elegiveis.map((m) => m.turmaId) } },
+    include: { curso: true, aulas: true },
+  });
+  const modelo = await boasVindas.lerModelo();
+  return turmas.filter(boasVindas.turmaEmCurso).map((t) => ({
+    curso: t.curso.nome,
+    html: boasVindas.textoParaHtml(boasVindas.montarTexto(t, modelo)),
+  }));
+}
+
 // Área do aluno — painel único com seções (inscricoes | dados | seguranca | excluir).
 router.get('/minha-conta', requireLogin, async (req, res) => {
   const secValidas = ['inscricoes', 'dados', 'seguranca', 'excluir'];
@@ -101,6 +119,7 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
     usuario,
     sec,
     matriculas: matriculasComRetomada,
+    avisosTurma: await avisosDeBoasVindas(matriculas),
     matriculasAtivas,
     docMascarado: usuario.cpfCnpj ? mascarar(usuario.cpfCnpj) : usuario.passaporte ? usuario.passaporte : '—',
     formatBRL,
