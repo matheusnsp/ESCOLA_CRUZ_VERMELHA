@@ -18,7 +18,7 @@
     { chave: 'aberta',     label: 'Abertas',     icone: 'fa-lock-open',   badge: 'ok'   },
     { chave: 'confirmada', label: 'Confirmadas', icone: 'fa-circle-check', badge: 'ok'  },
     { chave: 'cancelada',  label: 'Canceladas',  icone: 'fa-ban',          badge: 'canc' },
-    { chave: 'encerrada',  label: 'Encerradas',  icone: 'fa-box-archive', badge: 'mut'  },
+    { chave: 'encerrada',  label: 'Concluídas',  icone: 'fa-box-archive', badge: 'mut'  },
   ];
 
   const porStatus = {};
@@ -52,7 +52,7 @@
   </div>
   <div class="adm-stat warn">
     <span><%= porStatus.cancelada.length + porStatus.encerrada.length %></span>
-    <small><i class="fa-solid fa-box-archive"></i> Canceladas + Encerradas</small>
+    <small><i class="fa-solid fa-box-archive"></i> Canceladas + Concluídas</small>
   </div>
 </div>
 
@@ -115,7 +115,7 @@
             <% } %>
           </td>
           <td><a href="/inscricoes?turma=<%= t.id %>"><%= t._count.matriculas %>/<%= t.vagas %></a></td>
-          <td><span class="badge st-<%= t.status.toLowerCase() %>"><%= t.status %></span></td>
+          <td><span class="badge st-<%= t.status.toLowerCase() %>"><%= rotuloTurma(t.status) %></span></td>
           <td class="adm-acoes">
             <div class="adm-acoes-wrap linha">
             <% if (pode('turmas:gerenciar') || pode('secretaria:leitura')) { %>

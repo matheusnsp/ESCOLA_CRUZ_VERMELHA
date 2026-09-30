@@ -80,7 +80,7 @@
                 data-preco-avista="<%= t.curso.precoAvista %>"
                 data-preco-cheio="<%= t.curso.precoCheio %>"
                 data-taxa="<%= t.curso.taxaMatricula != null ? t.curso.taxaMatricula : 100 %>">
-          <%= t.curso.nome %> — <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %> (<%= t.status %>)<%= t.cursoId === m.turma.cursoId ? ' · mesmo curso' : ' · outro curso' %>
+          <%= t.curso.nome %> — <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %> (<%= rotuloTurma(t.status) %>)<%= t.cursoId === m.turma.cursoId ? ' · mesmo curso' : ' · outro curso' %>
         </option>
       <% }) %>
     </select>

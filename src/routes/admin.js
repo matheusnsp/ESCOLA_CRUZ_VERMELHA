@@ -17,6 +17,7 @@ const { formatBRL, calcularValores } = require('../lib/matricula');
 const { estornarTransacao } = require('../lib/unicopag'); // 💡 A3 — refund real no gateway
 const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarTextoWhats, montarLinkProspeccao } = require('../lib/lembretes');
 const { coletarDadosRelatorio, gerarExcel, gerarPdf, coletarLancamentosOfx, gerarOfx } = require('../lib/relatorio'); // relatórios Excel/PDF
+const { concluirTurmasPassadas } = require('../lib/concluir-turmas');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 const { temPermissao, PAPEIS_ADMIN, listarPermissoes } = require('../lib/permissoes');
 const horariosSite = require('../lib/horarios-site'); // questionário de dias e horários (lido do site)
@@ -877,6 +878,7 @@ router.post('/cursos/:id/ativar', requirePermissao('cursos:gerenciar'), async (r
 // ---------- Turmas ----------
 
 router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
+  await concluirTurmasPassadas(); // a lista já abre com as turmas de ontem como CONCLUÍDA
   const turmas = await prisma.turma.findMany({
     orderBy: { criadoEm: 'desc' },
     include: {
@@ -1031,7 +1033,7 @@ router.post('/turmas/:id/excluir', requirePermissao('turmas:gerenciar'), async (
 
   const matriculas = await prisma.matricula.count({ where: { turmaId: turma.id } });
   if (matriculas > 0) {
-    return res.redirect('/turmas?erro=' + encodeURIComponent('Nao e possivel excluir: a turma tem aluno(s) matriculado(s). Use o status "CANCELADA" ou "ENCERRADA" para tira-la do site preservando o historico.'));
+    return res.redirect('/turmas?erro=' + encodeURIComponent('Nao e possivel excluir: a turma tem aluno(s) matriculado(s). Use o status "CANCELADA" ou "CONCLUÍDA" para tira-la do site preservando o historico.'));
   }
 
   await prisma.turma.delete({ where: { id: turma.id } });

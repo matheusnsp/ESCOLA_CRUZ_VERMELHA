@@ -69,7 +69,7 @@ Início previsto
 <label>Status
 <select name="status">
 <% statusTurma.forEach(function(s){ %>
-<option value="<%= s %>" <%= (t.status||'ABERTA')===s ? 'selected' : '' %>><%= s %></option>
+<option value="<%= s %>" <%= (t.status||'ABERTA')===s ? 'selected' : '' %>><%= rotuloTurma(s) %></option>
 <% }) %>
 </select>
 </label>
