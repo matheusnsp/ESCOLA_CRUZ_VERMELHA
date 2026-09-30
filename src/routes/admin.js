@@ -21,8 +21,6 @@ const { coletarDadosRelatorio, gerarExcel, gerarPdf, coletarLancamentosOfx, gera
 const { concluirTurmasPassadas } = require('../lib/concluir-turmas');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 const permissoes = require('../lib/permissoes');
-const boasVindas = require('../lib/boas-vindas');
-const certificado = require('../lib/certificado');
 const { temPermissao, PAPEIS_ADMIN, listarPermissoes } = permissoes;
 const horariosSite = require('../lib/horarios-site'); // questionário de dias e horários (lido do site)
 const cacheRapido = require('../lib/cache-rapido');
@@ -885,9 +883,6 @@ function lerCursoDoForm(body) {
     valorParcela: body.valorParcela ? parseDecimal(body.valorParcela) : NaN,
     taxaMatricula: parseDecimal(body.taxaMatricula, { opcional: true }),
     ativo: body.ativo === 'on' || body.ativo === 'true',
-    nomeCertificado: String(body.nomeCertificado || '').trim().slice(0, 120) || null,
-    conteudoProgramatico: String(body.conteudoProgramatico || '').replace(/\r\n/g, '\n').trim().slice(0, 4000) || null,
-    certificadoValidade: String(body.certificadoValidade || '').trim().slice(0, 120) || null,
   };
   if (Number.isNaN(dados.valorParcela) && !Number.isNaN(dados.precoCheio) && dados.parcelas > 0) {
     dados.valorParcela = Math.round((Number(dados.precoCheio) / dados.parcelas) * 100) / 100;
@@ -1040,8 +1035,6 @@ function lerTurmaDoForm(body) {
     vagas: parseInteiro(body.vagas, { min: 1 }),
     minimoAlunos: parseInteiro(body.minimoAlunos, { min: 0 }),
     status: STATUS_TURMA.includes(body.status) ? body.status : 'ABERTA',
-    instrutorNome: String(body.instrutorNome || '').trim().slice(0, 80) || null,
-    instrutorRegistro: String(body.instrutorRegistro || '').trim().slice(0, 60) || null,
   };
 
   const aulasRaw = body.aulas || {};
@@ -1237,123 +1230,6 @@ router.get('/horarios.csv', requirePermissao('turmas:gerenciar', 'painel:leitura
   res.set('Content-Disposition', `attachment; filename="horarios-${nome}.csv"`);
   res.set('Cache-Control', 'no-store');
   res.send(horariosSite.csv(h.respostas, h.dados.rotulos));
-});
-
-// ---------- Boas-vindas da turma (e-mail + aviso em "Minha conta") ----------
-
-async function carregarTurmaBoasVindas(id) {
-  return prisma.turma.findUnique({
-    where: { id },
-    include: {
-      curso: true,
-      aulas: { orderBy: { data: 'asc' } },
-      matriculas: {
-        where: { taxaConfirmada: true, statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] } },
-        include: { aluno: { select: { id: true, nome: true, email: true, celular: true } } },
-        orderBy: { aluno: { nome: 'asc' } },
-      },
-    },
-  });
-}
-
-router.get('/turmas/:id/boas-vindas', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  const turma = await carregarTurmaBoasVindas(req.params.id);
-  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
-  const modelo = await boasVindas.lerModelo();
-  const texto = boasVindas.montarTexto(turma, modelo);
-  res.render('admin/turma-boas-vindas', {
-    turma, modelo, texto,
-    html: boasVindas.textoParaHtml(texto),
-    assunto: boasVindas.assunto(turma),
-    ok: req.query.ok || null,
-    emCurso: boasVindas.turmaEmCurso(turma),
-  });
-});
-
-router.post('/turmas/:id/boas-vindas/doacao', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  const turma = await prisma.turma.findUnique({ where: { id: req.params.id } });
-  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
-  const modelo = await boasVindas.lerModelo();
-  let doacao = String(req.body.doacao || '').replace(/\r\n/g, '\n').trim().slice(0, 2000);
-  if (doacao === modelo.doacao.trim()) doacao = ''; // igual ao padrão: não guarda cópia
-  await prisma.turma.update({ where: { id: turma.id }, data: { boasVindasDoacao: doacao || null } });
-  await auditar(req, 'EDITOU_DOACAO_TURMA', 'Turma', turma.id, { personalizada: !!doacao });
-  res.redirect(`/turmas/${turma.id}/boas-vindas?ok=` + encodeURIComponent(doacao ? 'Doação desta turma salva.' : 'Esta turma usa a doação padrão.'));
-});
-
-router.post('/turmas/:id/boas-vindas/enviar', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  const turma = await prisma.turma.findUnique({ where: { id: req.params.id } });
-  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
-  const r = await boasVindas.enviarTurma(turma.id);
-  await auditar(req, 'ENVIOU_BOAS_VINDAS', 'Turma', turma.id, r);
-  const msg = r.enviados
-    ? `Boas-vindas enviadas para ${r.enviados} ${r.enviados === 1 ? 'aluno' : 'alunos'}.`
-    : 'Ninguém novo para receber agora.';
-  res.redirect(`/turmas/${turma.id}/boas-vindas?ok=` + encodeURIComponent(msg + (r.erros ? ` ${r.erros} falharam; tentamos de novo em 15 min.` : ' Quem pagar depois recebe sozinho.')));
-});
-
-// Texto padrão das boas-vindas e ajustes do certificado.
-router.get('/modelos', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  res.render('admin/modelos', {
-    modelo: await boasVindas.lerModelo(),
-    padroes: boasVindas.PADROES,
-    ajustes: await certificado.lerAjustes(),
-    voltar: /^\/turmas\/[\w-]+\/(boas-vindas|certificados)$/.test(String(req.query.voltar || '')) ? req.query.voltar : '/turmas',
-    ok: req.query.ok || null,
-  });
-});
-
-router.post('/modelos', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  await boasVindas.salvarModelo({ texto: req.body.texto, doacao: req.body.doacao, local: req.body.local });
-  await certificado.salvarAjustes({ coordNome: req.body.coordNome, coordCargo: req.body.coordCargo, livro: req.body.livro });
-  await auditar(req, 'EDITOU_MODELOS', 'Configuracao', null, null);
-  const voltar = /^\/turmas\/[\w-]+\/(boas-vindas|certificados)$/.test(String(req.body.voltar || '')) ? req.body.voltar : '';
-  res.redirect('/modelos?ok=' + encodeURIComponent('Modelos salvos.') + (voltar ? '&voltar=' + encodeURIComponent(voltar) : ''));
-});
-
-// ---------- Certificados ----------
-
-async function carregarTurmaCertificados(id) {
-  return prisma.turma.findUnique({
-    where: { id },
-    include: {
-      curso: true,
-      aulas: { orderBy: { data: 'asc' } },
-      matriculas: {
-        where: boasVindas.FILTRO_ALUNO_OK,
-        include: { aluno: true },
-        orderBy: { aluno: { nome: 'asc' } },
-      },
-    },
-  });
-}
-
-router.get('/turmas/:id/certificados', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  const turma = await carregarTurmaCertificados(req.params.id);
-  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
-  const aprovados = turma.matriculas.filter((m) => m.situacao === 'APROVADO');
-  res.render('admin/turma-certificados', {
-    turma, aprovados,
-    outros: turma.matriculas.filter((m) => m.situacao !== 'APROVADO'),
-    pendencias: certificado.pendencias(turma, aprovados),
-    ajustes: await certificado.lerAjustes(),
-  });
-});
-
-router.get('/turmas/:id/certificados/imprimir', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  const ids = [].concat(req.query.m || []).map(String).filter((x) => /^[\w-]{1,64}$/.test(x)).slice(0, 200);
-  const turma = await carregarTurmaCertificados(req.params.id);
-  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
-  const escolhidos = turma.matriculas.filter((m) => m.situacao === 'APROVADO' && (!ids.length || ids.includes(m.id)));
-  if (!escolhidos.length) return res.redirect(`/turmas/${turma.id}/certificados`);
-  const novos = await certificado.numerar(escolhidos.map((m) => m.id));
-  if (novos) await auditar(req, 'EMITIU_CERTIFICADOS', 'Turma', turma.id, { novos });
-  await auditar(req, 'IMPRIMIU_CERTIFICADOS', 'Turma', turma.id, { alunos: escolhidos.length });
-  const atual = await carregarTurmaCertificados(turma.id); // com Livro/Registro recém-gravados
-  const ajustes = await certificado.lerAjustes();
-  const lista = atual.matriculas.filter((m) => escolhidos.some((e) => e.id === m.id))
-    .map((m) => certificado.dadosDoCertificado({ ...m, turma: atual }, ajustes, req.app.locals.documentoAluno));
-  res.render('admin/certificado-imprimir', { lista, turma: atual });
 });
 
 // ---------- Inscricoes / Pagamentos ----------
