@@ -1,8 +1,8 @@
 <%- include('head', { titulo: 'Horários dos alunos' }) %>
-<%- include('header', { ativo: 'horarios' }) %>
+<%- include('header', { ativo: 'turmas' }) %>
 
 <div class="adm-h1-row">
-  <h1 class="adm-h1">Dias e horários dos alunos</h1>
+  <h1 class="adm-h1">Turmas</h1>
   <% if (!erro) { %>
     <div class="adm-acoes">
       <a href="/horarios?<%= h.cursoSel ? 'curso=' + encodeURIComponent(h.cursoSel) + '&' : '' %>atualizar=1" class="adm-btn adm-btn-neutro"><i class="fa-solid fa-rotate"></i> Atualizar</a>
@@ -13,8 +13,10 @@
   <% } %>
 </div>
 
+<%- include('abas-turmas', { aba: 'horarios' }) %>
+
 <p class="adm-hz-intro">
-  O que cada aluno marcou no site depois de pagar a inscrição. Use para abrir ou remarcar turmas.
+  Dias e horários que cada aluno marcou no site depois de pagar a inscrição. Use para abrir ou remarcar turmas.
 </p>
 
 <% if (erro) { %>

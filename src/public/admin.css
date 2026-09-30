@@ -1421,3 +1421,8 @@ a.adm-hz-turma:hover { border-color: var(--vermelho); background: var(--vermelho
 .adm-hz-quando { display: block; font-size: 12px; }
 .adm-hz-respostas .badge { display: inline-block; margin-top: 3px; }
 .adm-hz-faltam .adm-table { margin-top: 4px; }
+/* Horários dos alunos: última aba de Turmas, separada das abas de status */
+.adm-aba-sep { margin-left: auto; }
+.adm-aba-sep i { font-size: 12px; margin-right: 2px; }
+@media (max-width: 620px) { .adm-aba-sep { margin-left: 0; } }
+.adm-hz-intro { margin-top: 0; }

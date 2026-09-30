@@ -13,12 +13,6 @@
 
 <%
   // Abas no lugar dos 6 cartões e das seções por status (que repetiam as mesmas contagens).
-  const ROTULOS = [
-    { id: 'por-comecar', rot: 'Por começar' },
-    { id: 'andamento',   rot: 'Em andamento' },
-    { id: 'concluidas',  rot: 'Concluídas' },
-    { id: 'canceladas',  rot: 'Canceladas' },
-  ];
   const lista = abas[aba];
   const dia = d => { const x = new Date(d); const p = n => String(n).padStart(2, '0'); return p(x.getUTCDate()) + '/' + p(x.getUTCMonth() + 1); };
   const ocupadas = lista.reduce((t, x) => t + x._count.matriculas, 0);
@@ -26,13 +20,7 @@
   const podeAlunos = pode('aluno:gerenciar') || pode('painel:leitura');
 %>
 
-<div class="adm-abas">
-  <% ROTULOS.forEach(function (a) { %>
-    <a href="/turmas?aba=<%= a.id %>" class="adm-aba <%= aba === a.id ? 'on' : '' %>">
-      <%= a.rot %> <span class="adm-aba-num"><%= abas[a.id].length %></span>
-    </a>
-  <% }) %>
-</div>
+<%- include('abas-turmas', { aba, abas }) %>
 
 <div class="adm-box">
   <% if (lista.length && (aba === 'por-comecar' || aba === 'andamento')) { %>

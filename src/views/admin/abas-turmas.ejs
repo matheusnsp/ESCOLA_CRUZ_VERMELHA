@@ -1,0 +1,22 @@
+<%
+// Abas da seção Turmas (a tela de Turmas e a de Horários dos alunos). Horários saiu do menu e
+// virou a última aba daqui. Uso: include('abas-turmas', { aba, abas }) — abas (as listas por
+// status) só na tela de Turmas, para mostrar as contagens.
+const _ROT = [
+  { id: 'por-comecar', rot: 'Por começar' },
+  { id: 'andamento',   rot: 'Em andamento' },
+  { id: 'concluidas',  rot: 'Concluídas' },
+  { id: 'canceladas',  rot: 'Canceladas' },
+];
+const _contas = typeof abas !== 'undefined' && abas ? abas : null;
+%>
+<nav class="adm-abas" aria-label="Turmas">
+  <% _ROT.forEach(function (a) { %>
+    <a href="/turmas?aba=<%= a.id %>" class="adm-aba <%= aba === a.id ? 'on' : '' %>">
+      <%= a.rot %><% if (_contas) { %> <span class="adm-aba-num"><%= _contas[a.id].length %></span><% } %>
+    </a>
+  <% }) %>
+  <% if (pode('turmas:gerenciar') || pode('painel:leitura')) { %>
+    <a href="/horarios" class="adm-aba adm-aba-sep <%= aba === 'horarios' ? 'on' : '' %>"><i class="fa-solid fa-clock"></i> Horários dos alunos</a>
+  <% } %>
+</nav>
