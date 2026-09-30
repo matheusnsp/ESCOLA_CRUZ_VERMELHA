@@ -69,7 +69,7 @@
                            : 'Nenhum aluno cadastrado ainda.') %>
     </div>
   <% } else { %>
-    <table class="adm-table">
+    <table class="adm-table adm-table-cards">
       <thead>
         <tr>
           <th>Aluno</th>
@@ -89,7 +89,7 @@
               <br><small class="adm-mut"><%= a.email %></small>
               <% if (a.celular) { const _d = String(a.celular).replace(/\D/g, ''); %><br><small class="adm-mut"><i class="fa-solid fa-phone"></i> <%= _d.length === 11 ? '(' + _d.slice(0,2) + ') ' + _d.slice(2,7) + '-' + _d.slice(7) : _d.length === 10 ? '(' + _d.slice(0,2) + ') ' + _d.slice(2,6) + '-' + _d.slice(6) : a.celular %></small><% } %>
             </td>
-            <td><% if (a.cpfCnpj || a.passaporte) { %><%= a.cpfCnpj || a.passaporte %><% } else { %><span class="adm-mut">—</span><% } %></td>
+            <td><% const _doc = documentoAluno(a); %><% if (_doc) { %><small class="adm-mut"><%= _doc.tipo %></small><br><%= _doc.numero %><% } else { %><span class="adm-mut">—</span><% } %></td>
             <td>
               <% if (a._count.matriculas > 0) { %>
                 <a href="/alunos/<%= a.id %>/matriculas" class="adm-link-aluno">

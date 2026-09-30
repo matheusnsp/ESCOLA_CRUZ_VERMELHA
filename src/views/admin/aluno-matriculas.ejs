@@ -35,8 +35,9 @@
     <span><% if (_celFmt) { %><%= _celFmt %><% } else { %><%- _nd %><% } %></span>
   </div>
   <div class="adm-ficha-item">
-    <small>CPF/CNPJ ou passaporte</small>
-    <span><% if (aluno.cpfCnpj || aluno.passaporte) { %><%= aluno.cpfCnpj || aluno.passaporte %><% } else { %><%- _nd %><% } %></span>
+    <% const _doc = documentoAluno(aluno); %>
+    <small><%= _doc ? _doc.tipo : 'Documento' %></small>
+    <span><% if (_doc) { %><%= _doc.numero %><% } else { %><%- _nd %><% } %></span>
   </div>
   <div class="adm-ficha-item">
     <small>Escolaridade</small>
@@ -60,7 +61,7 @@
 
   <% } else { %>
 
-    <table class="adm-table adm-table-fixa">
+    <table class="adm-table adm-table-cards adm-table-fixa">
 
       <colgroup>
         <col>

@@ -1266,3 +1266,30 @@ a.adm-pend-btn { text-decoration: none; }
 .adm-pend-acoes a.adm-pend-btn { color: var(--tinta-60); }
 .adm-pend-acoes a.adm-pend-btn:hover { color: var(--tinta); }
 .adm-h1-row .adm-pend-acoes a.adm-pend-btn { color: var(--tinta-60); } .adm-h1-row .adm-pend-acoes { gap: 14px; }
+
+/* ===== Tabelas viram cartões no celular =================
+   .adm-table-cards: cada linha vira um cartão; a primeira célula (o aluno) é o título e as
+   demais mostram o nome da coluna ao lado (data-label, preenchido no header.ejs). */
+@media (max-width: 620px) {
+  .adm-box:has(> .adm-table-cards) { overflow: visible; }
+  table.adm-table-cards { min-width: 0 !important; width: 100%; table-layout: auto !important; }
+  .adm-table-cards colgroup, .adm-table-cards thead { display: none; }
+  .adm-table-cards tbody, .adm-table-cards tr { display: block; }
+  .adm-table-cards tbody tr { padding: 14px 16px 12px; border-bottom: 1px solid var(--linha); }
+  .adm-table-cards tbody tr:last-child { border-bottom: 0; }
+  .adm-table-cards tbody tr[hidden] { display: none; }
+  /* rótulo à esquerda em posição absoluta: com grid, cada pedaço da célula (texto, <br>, <small>)
+     virava um item e a segunda linha caía na coluna do rótulo */
+  .adm-table-cards td {
+    display: block; position: relative; min-height: 22px;
+    padding: 6px 0 6px 100px !important; border: 0 !important; text-align: left; white-space: normal;
+    overflow: visible !important; text-overflow: clip !important;
+  }
+  .adm-table-cards td::before {
+    content: attr(data-label); position: absolute; left: 0; top: 9px; width: 90px; color: var(--mut);
+    font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; line-height: 1.3;
+  }
+  .adm-table-cards td:first-child { padding: 0 0 8px !important; font-size: 15px; }
+  .adm-table-cards td:first-child::before { content: none; }
+  .adm-table-cards .adm-pend-acoes { gap: 6px; }
+}
