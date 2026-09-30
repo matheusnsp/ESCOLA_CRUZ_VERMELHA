@@ -1158,3 +1158,50 @@ body.dark .adm-permissao {
   .adm-sair span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .adm-sair button { padding: 8px 12px; }
 }
+
+/* ===== Financeiro =======================================
+   Um botão "Exportar" com as quatro opções dentro, cartão que leva para Pendentes,
+   e a tabela única de pagamentos com abas e busca. */
+.adm-exportar { position: relative; }
+.adm-exportar > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.adm-exportar > summary::-webkit-details-marker { display: none; }
+.adm-exportar-seta { font-size: 11px; transition: transform .15s; }
+.adm-exportar[open] .adm-exportar-seta { transform: rotate(180deg); }
+.adm-exportar-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 240px;
+  background: var(--card); border: 1px solid var(--linha); border-radius: var(--r-s);
+  box-shadow: var(--sombra); padding: 6px;
+}
+.adm-exportar-menu a {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px;
+  color: var(--tinta); text-decoration: none;
+}
+.adm-exportar-menu a:hover { background: var(--bg); }
+.adm-exportar-menu i { width: 18px; text-align: center; color: var(--vermelho); font-size: 16px; }
+.adm-exportar-menu b { display: block; font-size: 14px; }
+.adm-exportar-menu small { display: block; color: var(--mut); font-size: 12px; }
+
+a.adm-stat-link { color: inherit; text-decoration: none; transition: border-color .12s, box-shadow .12s; }
+a.adm-stat-link:hover { border-color: #d97706; box-shadow: var(--sombra); }
+.adm-stat .adm-stat-sub { text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 12.5px; }
+
+.adm-box-alerta { border-color: var(--erro-tx); }
+.adm-btn-mini { padding: 6px 12px; font-size: 13px; }
+
+.adm-fin-head { flex-wrap: wrap; }
+.adm-fin-busca {
+  flex: 0 1 280px; min-width: 0; padding: 9px 12px; font: inherit; font-size: 14px;
+  border: 1px solid var(--linha); border-radius: var(--r-s); background: var(--campo); color: var(--tinta);
+}
+.adm-fin-busca:focus { outline: none; border-color: var(--vermelho); }
+.adm-fin-abas { padding: 14px 20px 0; margin: 0 0 14px; }
+.adm-fin-abas .adm-aba { font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+#finLinhas tr[hidden] { display: none; }
+@media (max-width: 620px) {
+  .adm-fin-busca { flex: 1 1 100%; }
+}
+#finMais[hidden], #finNada[hidden] { display: none; }
+#finLinhas .badge { white-space: nowrap; }
+@media (max-width: 620px) {
+  .adm-cards.c3 { grid-template-columns: 1fr; }
+}
