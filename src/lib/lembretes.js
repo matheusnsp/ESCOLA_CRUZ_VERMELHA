@@ -34,12 +34,14 @@ const { obterOpcaoParcelamento } = require('./unicopag');
 const {
   enviarLembretePagamentoPendente,
   enviarLembreteVespera,
+  enviarLembretePrazoCurso,
   enviarLembreteInscricaoIncompleta,
 } = require('./email');
 
 // ── Ajustes de comportamento ─────────────────────────────────────────────
 const CARENCIA_MIN = 60;        // minutos após a taxa antes do 1º lembrete
-const JANELA_VESPERA_H = 24;    // manda o 2º quando a turma começa em até X h
+const JANELA_VESPERA_H = 24;    // véspera: a turma começa em até X h
+const JANELA_PRAZO_H = 72;      // prazo: a turma começa em até X h (e mais de 24 h)
 const LIMITE_POR_PASSADA = 100; // teto de e-mails por execução
 
 function formatarData(d) {
@@ -103,6 +105,30 @@ const INCLUDE_PADRAO = {
   turma: { include: { curso: true } },
 };
 
+// Cada lembrete sai UMA vez por matrícula, mesmo com os 3 serviços do Render rodando a passada ao
+// mesmo tempo: a marcação é gravada ANTES do envio e só um deles consegue gravar.
+//   imediato / vespera → campos lembreteImediatoEm / lembreteVesperaEm (updateMany com null)
+//   prazo              → registro no LogAuditoria com id fixo por matrícula (id duplicado falha)
+async function reservar(m, tipo) {
+  if (tipo === 'prazo') {
+    try {
+      await prisma.logAuditoria.create({ data: { id: `lembrete-prazo-${m.id}`, atorId: 'SISTEMA', acao: 'LEMBRETE_PRAZO_CURSO', alvoTipo: 'Matricula', alvoId: m.id } });
+      return true;
+    } catch (e) {
+      if (e.code === 'P2002') return false;
+      throw e;
+    }
+  }
+  const campo = tipo === 'vespera' ? 'lembreteVesperaEm' : 'lembreteImediatoEm';
+  const r = await prisma.matricula.updateMany({ where: { id: m.id, [campo]: null }, data: { [campo]: new Date() } });
+  return r.count === 1;
+}
+
+async function desfazerReserva(m, tipo) {
+  if (tipo === 'prazo') await prisma.logAuditoria.deleteMany({ where: { id: `lembrete-prazo-${m.id}` } });
+  else await prisma.matricula.update({ where: { id: m.id }, data: { [tipo === 'vespera' ? 'lembreteVesperaEm' : 'lembreteImediatoEm']: null } });
+}
+
 async function despachar(m, tipo, simular) {
   const primeiroNome = String(m.aluno.nome || '').split(' ')[0];
   const valores = await montarValores(m);
@@ -115,110 +141,87 @@ async function despachar(m, tipo, simular) {
 
   if (simular) {
     console.log(`[LEMBRETES] (simulação) ${tipo} → ${m.aluno.email} | ${dados.curso} | ${dados.numParcelas}× ${dados.valorParcela}`);
-    return;
+    return false;
   }
+  if (!(await reservar(m, tipo))) return false; // outro serviço já mandou
 
-  if (tipo === 'vespera') {
-    await enviarLembreteVespera(m.aluno.email, primeiroNome, dados);
-    await prisma.matricula.update({
-      where: { id: m.id },
-      data: { lembreteVesperaEm: new Date() },
-    });
-  } else {
-    await enviarLembretePagamentoPendente(m.aluno.email, primeiroNome, dados);
-    await prisma.matricula.update({
-      where: { id: m.id },
-      data: { lembreteImediatoEm: new Date() },
-    });
+  try {
+    if (tipo === 'vespera') await enviarLembreteVespera(m.aluno.email, primeiroNome, dados);
+    else if (tipo === 'prazo') await enviarLembretePrazoCurso(m.aluno.email, primeiroNome, dados);
+    else await enviarLembretePagamentoPendente(m.aluno.email, primeiroNome, dados);
+  } catch (e) {
+    await desfazerReserva(m, tipo).catch(() => {}); // tenta de novo na próxima passada
+    throw e;
   }
   console.log(`[LEMBRETES] ${tipo} enviado → ${m.aluno.email} (${dados.curso})`);
+  return true;
 }
 
 /**
- * Varre as matrículas elegíveis e dispara os dois tipos de lembrete.
+ * Varre as matrículas com a taxa paga e o curso pendente e manda a sequência de lembretes:
+ *   1. imediato — 1 h depois da taxa (a pessoa fechou a tela sem pagar o curso);
+ *   2. prazo    — a turma começa em até 3 dias (e o imediato saiu há mais de 12 h);
+ *   3. véspera  — a turma começa em até 24 h.
+ * Todos deixam claro que sem o curso pago a entrada na aula não é liberada.
  *
  * @param {object} opts
- * @param {number} opts.carenciaMin  Minutos desde a confirmação da taxa (default CARENCIA_MIN). Use 0 pra varrer o passivo.
+ * @param {number} opts.carenciaMin  Minutos desde a confirmação da taxa (default CARENCIA_MIN).
  * @param {boolean} opts.simular     Só imprime no console, não envia nem grava.
- * @returns {Promise<{imediatos:number, vesperas:number, erros:number}>}
  */
 async function processarLembretes(opts = {}) {
   const carenciaMin = opts.carenciaMin != null ? opts.carenciaMin : CARENCIA_MIN;
   const simular = !!opts.simular;
-  const resumo = { imediatos: 0, vesperas: 0, erros: 0 };
+  const resumo = { imediatos: 0, prazos: 0, vesperas: 0, erros: 0 };
 
   const agora = new Date();
   const corteCarencia = new Date(agora.getTime() - carenciaMin * 60000);
   const limiteVespera = new Date(agora.getTime() + JANELA_VESPERA_H * 3600000);
+  const limitePrazo = new Date(agora.getTime() + JANELA_PRAZO_H * 3600000);
+  const tocadaHaPouco = new Date(agora.getTime() - 60 * 60000); // abriu a tela do cartão agora
 
-  // ── 1. IMEDIATO ────────────────────────────────────────────────────────
-  // Taxa confirmada há mais de `carenciaMin` e nunca lembrado.
-  const imediatos = await prisma.matricula.findMany({
-    where: {
-      ...filtroBase(),
+  const lotes = [
+    ['imediato', 'imediatos', {
       lembreteImediatoEm: null,
       taxaConfirmadaEm: { lt: corteCarencia },
-      // Turma que já começou não recebe este lembrete — só o de véspera faz
-      // sentido perto da data, e passada a data nenhum dos dois faz.
       turma: { ...filtroBase().turma, inicioPrevisto: { gt: agora } },
-    },
-    include: INCLUDE_PADRAO,
-    take: LIMITE_POR_PASSADA,
-  });
-
-  for (const m of imediatos) {
-    try {
-      await despachar(m, 'imediato', simular);
-      resumo.imediatos++;
-    } catch (e) {
-      resumo.erros++;
-      console.error(`[LEMBRETES] Falha no imediato da matrícula ${m.id}:`, e.message);
-    }
-  }
-
-  // ── 2. VÉSPERA ─────────────────────────────────────────────────────────
-  // Turma começa dentro da janela, ainda pendente, nunca avisado na véspera.
-  //
-  // O filtro de atualizadoEm evita mandar "você não pagou" pra quem está com
-  // uma cobrança em aberto neste exato momento (abriu a tela do cartão há
-  // dois minutos) — nesse caso a matrícula acabou de ser tocada.
-  const vesperas = await prisma.matricula.findMany({
-    where: {
-      ...filtroBase(),
+    }],
+    ['prazo', 'prazos', {
+      atualizadoEm: { lt: tocadaHaPouco },
+      OR: [{ lembreteImediatoEm: null }, { lembreteImediatoEm: { lt: new Date(agora.getTime() - 12 * 3600000) } }],
+      turma: { ...filtroBase().turma, inicioPrevisto: { gt: limiteVespera, lte: limitePrazo } },
+    }],
+    ['vespera', 'vesperas', {
       lembreteVesperaEm: null,
-      atualizadoEm: { lt: new Date(agora.getTime() - 60 * 60000) },
-      turma: {
-        ...filtroBase().turma,
-        inicioPrevisto: { gt: agora, lte: limiteVespera },
-      },
-    },
-    include: INCLUDE_PADRAO,
-    take: LIMITE_POR_PASSADA,
-  });
+      atualizadoEm: { lt: tocadaHaPouco },
+      turma: { ...filtroBase().turma, inicioPrevisto: { gt: agora, lte: limiteVespera } },
+    }],
+  ];
 
-  for (const m of vesperas) {
-    try {
-      await despachar(m, 'vespera', simular);
-      resumo.vesperas++;
-    } catch (e) {
-      resumo.erros++;
-      console.error(`[LEMBRETES] Falha na véspera da matrícula ${m.id}:`, e.message);
+  for (const [tipo, chave, where] of lotes) {
+    const lista = await prisma.matricula.findMany({
+      where: { ...filtroBase(), ...where },
+      include: INCLUDE_PADRAO,
+      take: LIMITE_POR_PASSADA,
+    });
+    for (const m of lista) {
+      try {
+        if (await despachar(m, tipo, simular)) resumo[chave]++;
+      } catch (e) {
+        resumo.erros++;
+        console.error(`[LEMBRETES] Falha no lembrete ${tipo} da matrícula ${m.id}:`, e.message);
+      }
     }
   }
 
-  if (resumo.imediatos || resumo.vesperas || resumo.erros) {
+  if (resumo.imediatos || resumo.prazos || resumo.vesperas || resumo.erros) {
     console.log('[LEMBRETES] Passada concluída:', resumo);
   }
   return resumo;
 }
 
 /**
- * Agenda a varredura periódica. Chamar uma vez no server.js.
- *
- * ⚠️ Se o app rodar em mais de uma instância (Render com escala > 1), o job
- * roda em todas. Os campos lembrete*Em evitam e-mail duplicado, mas duas
- * instâncias podem passar pela mesma matrícula ao mesmo tempo e enviar duas
- * vezes. Com uma instância só — o caso hoje — não há problema.
+ * Agenda a varredura periódica. Chamada no server.js. Roda nos 3 serviços do Render; a reserva
+ * feita antes do envio (reservar) garante um e-mail só por lembrete.
  */
 function agendarLembretes(intervaloMin = 15) {
   setInterval(() => {

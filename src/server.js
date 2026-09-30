@@ -235,6 +235,39 @@ app.use(async (req, res, next) => {
   return next();
 });
 
+// Banner "falta pagar o curso" no site do aluno (partials/site-header.ejs): quem pagou só a taxa de
+// um curso parcelado vê o aviso em todas as páginas até pagar. Guardado por 60 s por aluno.
+const pendenciaCache = new Map();
+app.use(async (req, res, next) => {
+  if (!req.session?.usuarioId || req.session.papel !== 'ALUNO' || isAdminReq(req) || req.method !== 'GET') return next();
+  try {
+    const guardado = pendenciaCache.get(req.session.usuarioId);
+    let dado = guardado && Date.now() - guardado.em < 60 * 1000 ? guardado.dado : undefined;
+    if (dado === undefined) {
+      const m = await prisma.matricula.findFirst({
+        where: {
+          alunoId: req.session.usuarioId, statusPagamento: 'PENDENTE', taxaConfirmada: true, plano: 'PARCELADO',
+          turma: { status: { in: ['ABERTA', 'CONFIRMADA'] }, inicioPrevisto: { gte: new Date(Date.now() - 36 * 3600000) } },
+        },
+        orderBy: { turma: { inicioPrevisto: 'asc' } },
+        include: { turma: { include: { curso: { select: { nome: true } } } } },
+      });
+      dado = m ? {
+        curso: m.turma.curso.nome,
+        inicio: new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR', { timeZone: 'UTC' }),
+        link: `/inscrever/${m.turmaId}/pagar-curso`,
+      } : null;
+      pendenciaCache.set(req.session.usuarioId, { em: Date.now(), dado });
+      if (pendenciaCache.size > 5000) pendenciaCache.clear();
+    }
+    // Não mostra na própria tela de pagamento.
+    if (dado && !req.path.startsWith('/inscrever/') && !req.path.startsWith('/inscricao/')) res.locals.cursoPendente = dado;
+  } catch (e) {
+    console.error('[Pendencia] banner:', e.message);
+  }
+  return next();
+});
+
 // ---- Roteamento por contexto: site do ALUNO x painel da SECRETARIA ----
 const ADMIN_HOST = (process.env.ADMIN_HOST || 'secretaria').toLowerCase();
 const ADMIN_PORT = process.env.ADMIN_PORT ? Number(process.env.ADMIN_PORT) : null;
@@ -286,6 +319,9 @@ app.use((err, req, res, next) => {
 const { concluirTurmasPassadas } = require('./lib/concluir-turmas');
 concluirTurmasPassadas();
 setInterval(concluirTurmasPassadas, 60 * 60 * 1000).unref();
+// Lembretes de "falta pagar o curso" para quem pagou só a taxa (lib/lembretes.js): 1 h depois,
+// 3 dias antes e na véspera. Cada um sai uma vez por aluno, mesmo com os 3 serviços rodando.
+require('./lib/lembretes').agendarLembretes(30);
 
 const port = process.env.PORT || 3000;
 

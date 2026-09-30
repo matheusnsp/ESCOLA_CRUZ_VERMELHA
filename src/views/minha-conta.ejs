@@ -171,7 +171,11 @@
                   <div class="ct-retomar">
                     <p class="ct-retomar-txt">
                       <i class="fa-solid fa-circle-half-stroke"></i>
-                      Falta concluir o pagamento para efetivar sua matrícula.
+                      <% if (m.taxaConfirmada) { %>
+                        <span><b>Falta pagar o curso.</b> A taxa reserva a sua vaga, mas sem o pagamento do curso a entrada na aula não é liberada.</span>
+                      <% } else { %>
+                        Falta concluir o pagamento para efetivar sua matrícula.
+                      <% } %>
                     </p>
                     <a href="<%= m.retomada.url %>" class="ct-btn-retomar">
                       <%= m.retomada.rotulo %> <i class="fa-solid fa-arrow-right"></i>
