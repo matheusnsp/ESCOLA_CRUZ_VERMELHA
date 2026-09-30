@@ -56,8 +56,8 @@ app.locals.statusMatricula = function (m) {
   if (!parcelado) return app.locals.statusBadge(m ? m.statusPagamento : '');
   const quitado = m.statusPagamento === 'PAGO';
   return quitado
-    ? '<span class="badge ok" title="Todas as parcelas foram pagas.">PARCELADO</span><small class="adm-status-sub">quitado</small>'
-    : '<span class="badge parc" title="Pago no cartão em parcelas; ainda há parcelas a vencer.">PARCELADO</span><small class="adm-status-sub">em andamento</small>';
+    ? '<span class="badge ok" title="Parcelado · quitado: todas as parcelas foram pagas.">PARCELADO</span>'
+    : '<span class="badge parc" title="Parcelado · em andamento: ainda há parcelas a vencer.">PARCELADO</span>';
 };
 
 // Helper disponível em todas as views: documento do aluno com o tipo que ele usou no cadastro
