@@ -118,16 +118,28 @@
           </td>
           <td><%= c.cargaHoraria %>h</td>
           <td>
-            <%= formatBRL(c.precoAvista) %> <small class="adm-mut">à vista</small>
-            <br><small class="adm-mut"><%= formatBRL(c.precoCheio) %> no parcelado<%= Number(c.parcelas) > 1 ? ' (até ' + c.parcelas + '×)' : '' %></small>
+            <%- include('valores-curso', { v: c.valores, compacto: true }) %>
           </td>
           <td>
-            <% if (c.turmas && c.turmas.length) { %>
-              <%= c.turmas.length %> por começar
-              <br><small class="adm-mut">próxima <%= dt(prox.inicioPrevisto) %></small>
-            <% } else { %>
-              <span class="adm-mut">nenhuma aberta</span>
-              <% if (c._count.turmas) { %><br><small class="adm-mut"><%= c._count.turmas %> no histórico</small><% } %>
+            <%
+              // Cada turma por começar é um atalho para a lista de alunos dela.
+              const podeAlunos = pode('aluno:gerenciar') || pode('painel:leitura');
+            %>
+            <div class="adm-turmas-chips">
+              <% (c.turmas || []).slice(0, 3).forEach(function (t) { %>
+                <<%= podeAlunos ? 'a' : 'span' %><% if (podeAlunos) { %> href="/alunos?turma=<%= t.id %>"<% } %> class="adm-chip-turma" title="<%= rotuloTurma(t.status) %> · <%= t._count.matriculas %> de <%= t.vagas %> vagas">
+                  <b><%= dt(t.inicioPrevisto) %></b> <span><%= t._count.matriculas %>/<%= t.vagas %></span>
+                </<%= podeAlunos ? 'a' : 'span' %>>
+              <% }) %>
+              <% if (c.turmas && c.turmas.length > 3) { %>
+                <a href="/turmas" class="adm-chip-turma mais">+<%= c.turmas.length - 3 %></a>
+              <% } %>
+              <% if (!(c.turmas && c.turmas.length)) { %>
+                <span class="adm-mut">nenhuma aberta<% if (c._count.turmas) { %> · <%= c._count.turmas %> no histórico<% } %></span>
+              <% } %>
+            </div>
+            <% if (pode('turmas:gerenciar')) { %>
+              <a href="/turmas/nova?curso=<%= c.id %>" class="adm-link adm-nova-turma"><i class="fa-solid fa-plus"></i> Nova turma</a>
             <% } %>
           </td>
           <td>

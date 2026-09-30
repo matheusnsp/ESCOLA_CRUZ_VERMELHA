@@ -81,7 +81,15 @@
            placeholder="em branco = padrão (<%= typeof taxaPadrao === 'number' && !isNaN(taxaPadrao) ? taxaPadrao.toFixed(2).replace('.', ',') : 'sem padrão' %>)">
   </label>
 
-  <p class="adm-hint full">O valor de cada parcela é calculado na hora da inscrição, já com os juros do cartão. A taxa de matrícula é cobrada à parte, sem juros.</p>
+  <% if (typeof valores !== 'undefined' && valores) { %>
+    <div class="full adm-simulacao">
+      <span class="adm-foto-rot">Como aparece para o aluno na inscrição</span>
+      <%- include('valores-curso', { v: valores, compacto: false }) %>
+      <small class="adm-hint">Mesma conta do checkout da escola, com os juros do cartão da Únicopag. Atualiza ao salvar.</small>
+    </div>
+  <% } else { %>
+    <p class="adm-hint full">Depois de salvar, aqui aparece o valor que o aluno paga à vista e no parcelado, já com os juros do cartão.</p>
+  <% } %>
 
   <h2 class="adm-form-secao full"><i class="fa-solid fa-globe"></i> Publicação</h2>
 

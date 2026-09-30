@@ -13,7 +13,8 @@ const { criarCodigo2fa, verificarCodigo2fa, consumirToken, criarTokenDesbloqueio
 const { enviarCodigo2fa, enviarAlertaLoginSecretaria, enviarLinkDesbloqueio, enviarEmailResetSenha } = require('../lib/email');
 const { ESCOLARIDADES: ESCOLARIDADES_ALUNO, SITUACOES_ESCOLARIDADE, GENEROS, UFS } = require('../lib/validation');
 const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
-const { formatBRL, calcularValores } = require('../lib/matricula');
+const { formatBRL, calcularValores, lerConfigMatricula } = require('../lib/matricula');
+const { simularValores } = require('../lib/simular-valores');
 const { estornarTransacao } = require('../lib/unicopag'); // 💡 A3 — refund real no gateway
 const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarTextoWhats, montarLinkProspeccao } = require('../lib/lembretes');
 const { coletarDadosRelatorio, gerarExcel, gerarPdf, coletarLancamentosOfx, gerarOfx } = require('../lib/relatorio'); // relatórios Excel/PDF
@@ -801,7 +802,10 @@ router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), as
         turmas: {
           where: turmaEmAberto(),
           orderBy: { inicioPrevisto: 'asc' },
-          select: { id: true, inicioPrevisto: true },
+          select: {
+            id: true, inicioPrevisto: true, vagas: true, status: true,
+            _count: { select: { matriculas: { where: { taxaConfirmada: true, statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] } } } } },
+          },
         },
       },
     }),
@@ -809,6 +813,10 @@ router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), as
     prisma.curso.count(),
 
   ]);
+
+  // O que o aluno paga de verdade (à vista e parcelado com os juros do cartão), igual ao checkout.
+  const cfgMatricula = await lerConfigMatricula();
+  await Promise.all(cursos.map(async (c) => { c.valores = await simularValores(c, cfgMatricula); }));
 
   res.render('admin/cursos', {
     cursos,
@@ -877,7 +885,8 @@ router.get('/cursos/:id/editar', requirePermissao('cursos:gerenciar'), async (re
     include: { faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] } },
   });
   if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
-  res.render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso, escolaridades: ESCOLARIDADES, erro: null, erroFaq: req.query.erroFaq || null });
+  const valores = await simularValores(curso, await lerConfigMatricula());
+  res.render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso, valores, formatBRL, escolaridades: ESCOLARIDADES, erro: null, erroFaq: req.query.erroFaq || null });
 });
 
 router.post('/cursos/:id/faqs', requirePermissao('cursos:gerenciar'), async (req, res) => {
@@ -981,7 +990,9 @@ router.get('/turmas/nova', requirePermissao('turmas:gerenciar'), async (req, res
     where: req.session.papel === 'DEV' ? {} : { ativo: true },
     orderBy: { nome: 'asc' },
   });
-  res.render('admin/turma-form', { turma: null, aulas: [], cursos, statusTurma: STATUS_TURMA, erro: null });
+  // ?curso=ID (vindo da lista de cursos) já deixa o curso escolhido.
+  const cursoId = cursos.some((c) => c.id === req.query.curso) ? req.query.curso : undefined;
+  res.render('admin/turma-form', { turma: cursoId ? { cursoId } : null, aulas: [], cursos, statusTurma: STATUS_TURMA, erro: null });
 });
 
 function parseDateOnly(data) {

@@ -1369,3 +1369,31 @@ a.adm-pend-btn { text-decoration: none; }
 .adm-form-rodape { display: flex; align-items: center; gap: 16px; padding-top: 16px; border-top: 1px solid var(--linha2); margin-top: 6px; }
 .adm-aulas-dica { margin: 0 0 10px; }
 .adm-form label .adm-hint { font-weight: 400; }
+
+/* ===== Valores reais do curso (à vista e parcelado com juros) ===== */
+.adm-valores { display: grid; gap: 4px; }
+.adm-valores small { display: block; font-size: 11.5px; }
+.adm-simulacao { display: grid; gap: 8px; }
+.adm-valores-caixa { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.adm-valores-opcao { display: grid; gap: 4px; padding: 14px 16px; border: 1px solid var(--linha); border-radius: var(--r-s); background: var(--bg); }
+.adm-valores-opcao em { font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--mut); }
+.adm-valores-opcao > b { font-family: var(--fonte-t); font-size: 22px; font-weight: 900; color: var(--tinta); letter-spacing: -.02em; }
+.adm-valores-opcao small { font-size: 12.5px; line-height: 1.45; }
+@media (max-width: 620px) { .adm-valores-caixa { grid-template-columns: 1fr; } }
+
+/* Cursos: valores em duas linhas rotuladas e turmas como atalhos */
+dl.adm-valores { margin: 0; display: grid; gap: 6px; }
+dl.adm-valores > div { display: grid; grid-template-columns: 70px 1fr; gap: 8px; align-items: baseline; }
+dl.adm-valores dt { font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--mut); }
+dl.adm-valores dd { margin: 0; }
+dl.adm-valores dd b { color: var(--tinta); font-size: 14px; }
+dl.adm-valores dd small { display: block; font-size: 11.5px; color: var(--mut); }
+dl.adm-valores .adm-valores-nota { grid-template-columns: 1fr; }
+dl.adm-valores .adm-valores-nota dd { font-size: 11.5px; color: var(--mut); }
+.adm-turmas-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.adm-chip-turma { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--linha); background: var(--campo); color: var(--tinta); font-size: 12.5px; text-decoration: none; transition: border-color .12s, background .12s; }
+a.adm-chip-turma:hover { border-color: var(--vermelho); background: var(--vermelho-bg); }
+.adm-chip-turma b { font-weight: 800; }
+.adm-chip-turma span { color: var(--mut); font-variant-numeric: tabular-nums; }
+.adm-chip-turma.mais { color: var(--mut); }
+.adm-nova-turma { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 12.5px; }

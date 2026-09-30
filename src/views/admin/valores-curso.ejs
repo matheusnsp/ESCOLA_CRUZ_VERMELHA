@@ -1,0 +1,49 @@
+<%
+// Valores que o aluno paga (lib/simular-valores.js): à vista e parcelado com os juros do cartão.
+// Uso: include('valores-curso', { v, compacto })
+const _f = (n) => formatBRL(n);
+%>
+<% if (!v) { %>
+  <span class="adm-mut">—</span>
+<% } else if (compacto) { %>
+  <dl class="adm-valores">
+    <div>
+      <dt>À vista</dt>
+      <dd><b class="num"><%= _f(v.aVista.total) %></b></dd>
+    </div>
+    <div>
+      <dt>Parcelado</dt>
+      <% if (v.parcelado) { %>
+        <dd>
+          <b class="num"><%= v.parcelado.numParcelas %>× <%= _f(v.parcelado.valorParcela) %></b>
+          <small>total <%= _f(v.parcelado.total) %></small>
+          <% if (!v.parcelado.juros) { %><small class="adm-txt-alerta" title="Não foi possível consultar os juros na Únicopag agora">sem juros (gateway fora do ar)</small><% } %>
+        </dd>
+      <% } else { %>
+        <dd><span class="adm-mut">não oferecido</span></dd>
+      <% } %>
+    </div>
+    <% if (v.aVista.taxa) { %>
+      <div class="adm-valores-nota"><dd>inclui taxa de matrícula de <%= _f(v.aVista.taxa) %></dd></div>
+    <% } %>
+  </dl>
+<% } else { %>
+  <div class="adm-valores-caixa">
+    <div class="adm-valores-opcao">
+      <em>À vista · PIX ou cartão</em>
+      <b class="num"><%= _f(v.aVista.total) %></b>
+      <small class="adm-mut">curso <%= _f(v.aVista.curso) %> + taxa de matrícula <%= _f(v.aVista.taxa) %></small>
+    </div>
+    <div class="adm-valores-opcao">
+      <em>Parcelado no cartão</em>
+      <% if (v.parcelado) { %>
+        <b class="num"><%= v.parcelado.numParcelas %>× de <%= _f(v.parcelado.valorParcela) %></b>
+        <small class="adm-mut">curso <%= _f(v.parcelado.cursoComJuros) %><%= v.parcelado.juros ? ' com juros' : '' %> + taxa <%= _f(v.parcelado.taxa) %> à vista = <b><%= _f(v.parcelado.total) %></b></small>
+        <% if (!v.parcelado.juros) { %><small class="adm-txt-alerta">Não foi possível consultar os juros na Únicopag agora; valor sem juros.</small><% } %>
+      <% } else { %>
+        <b class="adm-mut">não oferecido</b>
+        <small class="adm-mut">Para oferecer, coloque mais de 1 em "Máximo de parcelas".</small>
+      <% } %>
+    </div>
+  </div>
+<% } %>
