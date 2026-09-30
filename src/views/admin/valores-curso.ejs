@@ -11,6 +11,7 @@ const _f = (n) => formatBRL(n);
     <small><%= v.aVista.taxa ? 'taxa de ' + _f(v.aVista.taxa) + ' inclusa' : 'sem taxa de matrícula' %></small>
     <% if (v.parcelado) { %>
       <p class="adm-valores-parc"><b class="num"><%= v.parcelado.numParcelas %>× <%= _f(v.parcelado.valorParcela) %></b> <span>no cartão</span></p>
+      <small>total <%= _f(v.parcelado.cursoComJuros) %><%= v.parcelado.juros ? ' com juros' : '' %></small>
       <% if (v.parcelado.taxa) { %><small>+ taxa de <%= _f(v.parcelado.taxa) %> paga à parte</small><% } %>
     <% } %>
     <% if (v.parcelado && !v.parcelado.juros) { %><small class="adm-txt-alerta" title="Não foi possível consultar os juros na Únicopag agora">parcelas sem juros: gateway fora do ar</small><% } %>
@@ -26,7 +27,7 @@ const _f = (n) => formatBRL(n);
       <em>Parcelado no cartão</em>
       <% if (v.parcelado) { %>
         <b class="num"><%= v.parcelado.numParcelas %>× de <%= _f(v.parcelado.valorParcela) %></b>
-        <small class="adm-mut">curso <%= _f(v.parcelado.cursoComJuros) %><%= v.parcelado.juros ? ' com juros' : '' %> no cartão<% if (v.parcelado.taxa) { %> · a taxa de matrícula (<%= _f(v.parcelado.taxa) %>) é paga à parte, antes das parcelas<% } %></small>
+        <small class="adm-mut">total no cartão <b><%= _f(v.parcelado.cursoComJuros) %></b><%= v.parcelado.juros ? ' com juros' : '' %><% if (v.parcelado.taxa) { %> · a taxa de matrícula (<%= _f(v.parcelado.taxa) %>) é paga à parte, antes das parcelas<% } %></small>
         <% if (!v.parcelado.juros) { %><small class="adm-txt-alerta">Não foi possível consultar os juros na Únicopag agora; valor sem juros.</small><% } %>
       <% } else { %>
         <b class="adm-mut">não oferecido</b>
