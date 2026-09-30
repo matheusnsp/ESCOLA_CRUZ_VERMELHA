@@ -57,6 +57,14 @@
 </header>
 
 <script>
+  // Pergunta antes das ações sem volta (estornar, remover, excluir...): <form data-confirmar="...">.
+  // Não dá para usar onsubmit="return confirm(...)" no HTML: a CSP do helmet (script-src-attr 'none')
+  // bloqueia esse tipo de script, e o formulário era enviado direto, sem a pergunta.
+  document.addEventListener('submit', function (e) {
+    var f = e.target;
+    if (f && f.dataset && f.dataset.confirmar && !window.confirm(f.dataset.confirmar)) e.preventDefault();
+  }, true);
+
   (function () {
     var grupo = document.getElementById('admTema');
     var botoes = grupo.querySelectorAll('button');

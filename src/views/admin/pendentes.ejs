@@ -128,7 +128,7 @@ function acoesHtml(m) { %>
 
       <% if (pode('pendentes:gerenciar') && m.pendencia.podeEmail) { %>
         <form method="POST" action="/pendentes/<%= m.id %>/lembrar"
-              onsubmit="return confirm('Enviar o lembrete por e-mail para <%= m.aluno.nome.split(' ')[0] %>?')">
+              data-confirmar="Enviar o lembrete por e-mail para <%= m.aluno.nome.split(' ')[0] %>?">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button class="adm-mini" title="Enviar lembrete por e-mail">
             <i class="fa-solid fa-envelope"></i>
@@ -148,7 +148,7 @@ function acoesHtml(m) { %>
       %>
       <% if (!m.taxaConfirmada && pode('pendentes:gerenciar')) { %>
         <form method="POST" action="/pendentes/<%= m.id %>/remover"
-              onsubmit="return confirm('Remover a inscrição de <%= m.aluno.nome.split(' ')[0] %> em <%= m.turma.curso.nome %>?\n\nA vaga será liberada e o registro apagado. Não dá pra desfazer.')">
+              data-confirmar="Remover a inscrição de <%= m.aluno.nome.split(' ')[0] %> em <%= m.turma.curso.nome %>?&#10;&#10;A vaga será liberada e o registro apagado. Não dá pra desfazer.">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button class="adm-mini danger" title="Remover inscrição e liberar a vaga">
             <i class="fa-solid fa-trash"></i>

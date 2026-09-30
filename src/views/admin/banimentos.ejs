@@ -63,7 +63,7 @@
             <i class="fa-solid fa-pen-to-square"></i>
           </a>
           <form method="POST" action="/alunos/<%= aluno.id %>/desbanir" style="display:inline"
-            onsubmit="return confirm('Desbanir <%= aluno.nome.split(' ')[0] %>?')">
+            data-confirmar="Desbanir <%= aluno.nome.split(' ')[0] %>?">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button type="submit" class="adm-mini" style="color:#16a34a;border:none;background:none;cursor:pointer;" title="Desbanir">
               <i class="fa-solid fa-lock-open"></i>

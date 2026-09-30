@@ -40,6 +40,9 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
   <% } %>
 </div>
 
+<% if (flash) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div><% } %>
+<% if (erro)  { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+
 <!-- ═══ Resumo ═══════════════════════════════════════════════════════════ -->
 <div class="adm-cards c3">
   <div class="adm-stat ok">
@@ -79,7 +82,7 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
         <td>
           <% if (pode('financeiro:reembolsar')) { %>
             <form method="POST" action="/inscricoes/<%= m.id %>/reembolso-concluido"
-                  onsubmit="return confirm('Confirmar que o reembolso foi realizado?')">
+                  data-confirmar="Confirmar que o reembolso foi realizado?">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <button class="adm-btn-sec adm-btn-mini"><i class="fa-solid fa-check"></i> Marcar como feito</button>
             </form>
@@ -146,7 +149,7 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
                   <summary><i class="fa-solid fa-rotate-left"></i> Estornar</summary>
                   <form method="POST" action="/inscricoes/<%= m.id %>/estornar"
                         class="adm-estorno-form"
-                        onsubmit="return confirm('Confirmar estorno? Devolve o valor ao aluno e não pode ser desfeito.')">
+                        data-confirmar="Confirmar estorno? Devolve o valor ao aluno e não pode ser desfeito.">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <input type="text" name="motivo" required maxlength="200" placeholder="Motivo do estorno">
                     <label>

@@ -148,7 +148,7 @@
         acesso ao site. A ação fica registrada na auditoria.
       </p>
       <form method="POST" action="/alunos/<%= aluno.id %>/banir"
-            onsubmit="return confirm('Tem certeza? Esta ação cancela todas as matrículas ativas do aluno.')">
+            data-confirmar="Tem certeza? Esta ação cancela todas as matrículas ativas do aluno.">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <textarea name="motivo" required maxlength="300" class="adm-textarea"
                   placeholder="Motivo do banimento (obrigatório)"></textarea>
@@ -167,7 +167,7 @@
         ativas foram canceladas no momento do banimento.
       </p>
       <form method="POST" action="/alunos/<%= aluno.id %>/desbanir"
-            onsubmit="return confirm('Desbanir este aluno?')">
+            data-confirmar="Desbanir este aluno?">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <button type="submit" class="adm-btn adm-btn-ok">
           <i class="fa-solid fa-lock-open"></i> Desbanir aluno

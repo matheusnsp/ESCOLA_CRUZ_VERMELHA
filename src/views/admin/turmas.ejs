@@ -124,7 +124,7 @@
             <% if (pode('turmas:gerenciar')) { %>
               <a href="/turmas/<%= t.id %>/editar" class="adm-mini" title="Editar"><i class="fa-solid fa-pen"></i></a>
               <form method="POST" action="/turmas/<%= t.id %>/excluir"
-                    onsubmit="return confirm('Excluir esta turma? Só é possível se não houver alunos matriculados.')">
+                    data-confirmar="Excluir esta turma? Só é possível se não houver alunos matriculados.">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <button class="adm-mini danger" title="Excluir turma"><i class="fa-solid fa-trash"></i></button>
               </form>

@@ -53,7 +53,7 @@
           <td><%= a.peso %></td>
           <td class="adm-acoes">
             <form method="POST" action="/inscricoes/<%= m.id %>/avaliacoes/<%= a.id %>/remover"
-                  onsubmit="return confirm('Remover esta avaliação?');">
+                  data-confirmar="Remover esta avaliação?">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <button class="adm-mini danger" title="Remover"><i class="fa-solid fa-trash"></i></button>
             </form>

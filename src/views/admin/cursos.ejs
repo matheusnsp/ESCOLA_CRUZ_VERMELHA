@@ -188,7 +188,7 @@
                 <form
                   method="POST"
                   action="/cursos/<%= c.id %>/excluir"
-                  onsubmit="return confirm('Excluir este curso? Só é possível se não houver turmas/matrículas.')"
+                  data-confirmar="Excluir este curso? Só é possível se não houver turmas/matrículas."
                 >
                   <input
                     type="hidden"

@@ -348,7 +348,7 @@
                     <form
                       method="POST"
                       action="/inscricoes/<%= m.id %>/cancelar"
-                      onsubmit="return confirm('Cancelar esta inscrição?')"
+                      data-confirmar="Cancelar esta inscrição?"
                     >
 
                       <input
@@ -403,7 +403,7 @@
                     <form
                       method="POST"
                       action="/inscricoes/<%= m.id %>/estornar"
-                      onsubmit="return confirm('Estornar este pagamento?')"
+                      data-confirmar="Estornar este pagamento?"
                     >
 
                       <input
