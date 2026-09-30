@@ -889,9 +889,38 @@ function backCursos(req, msg, tipo = 'ok') {
   return `${url}${conector}${tipo}=${encodeURIComponent(msg)}`;
 }
 
+// O formulário do curso mostra as assinaturas do certificado (lista de Modelos).
+router.use('/cursos', async (req, res, next) => {
+  try { res.locals.certAjustes = await certificado.lerAjustes(); } catch (e) { res.locals.certAjustes = null; }
+  next();
+});
+
 router.get('/cursos/novo', requirePermissao('cursos:criar'), async (req, res) => {
   res.render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: null, escolaridades: ESCOLARIDADES, erro: null });
 });
+
+// Assinaturas no formulário do curso: as linhas de quem assina (lista única, a mesma de Modelos) e
+// quem sai no certificado deste curso. Devolve { assinantes, escolha, erro }.
+function assinaturasDoForm(body) {
+  const linhas = [].concat(Object.values(body.assin || {})).slice(0, certificado.MAX_ASSINANTES);
+  const assinantes = linhas.map((l) => ({ nome: String(l.nome || '').trim(), cargo: String(l.cargo || '').trim() }));
+  const escolha = linhas.map((l, i) => (l.marcado && assinantes[i].nome ? 'a' + i : null)).filter(Boolean);
+  if (body.assinInstrutor) escolha.push('instrutor');
+  let erro = null;
+  if (!assinantes.some((a) => a.nome)) erro = 'Informe pelo menos uma pessoa que assina o certificado.';
+  else if (!escolha.length) erro = 'Marque pelo menos uma assinatura para o certificado.';
+  else if (escolha.length > certificado.MAX_NO_CERTIFICADO) erro = `O certificado leva no máximo ${certificado.MAX_NO_CERTIFICADO} assinaturas.`;
+  return { assinantes, escolha, erro };
+}
+
+async function salvarAssinaturasDoCurso(cursoId, body, req) {
+  if (!body.assin) return; // formulário antigo, sem a seção
+  const { assinantes, escolha } = assinaturasDoForm(body);
+  const { livro } = await certificado.lerAjustes();
+  await certificado.salvarAjustes({ assinantes, livro });
+  await extras.salvarExtra('curso', cursoId, { certAssinaturas: escolha });
+  await auditar(req, 'EDITOU_ASSINATURAS_CERTIFICADO', 'Curso', cursoId, { escolha });
+}
 
 // Campos do certificado no formulário do curso (guardados em lib/extras.js, não no Curso).
 function extrasCursoDoForm(body) {
@@ -927,6 +956,7 @@ function lerCursoDoForm(body) {
   else if (Number.isNaN(dados.precoAvista) || Number.isNaN(dados.precoCheio) || Number.isNaN(dados.valorParcela)) erro = 'Verifique os valores (use numeros, ex.: 150.00).';
   else if (Number.isNaN(dados.parcelas)) erro = 'Numero de parcelas invalido.';
   else if (Number.isNaN(dados.taxaMatricula)) erro = 'Taxa de matricula invalida (deixe em branco para usar o padrao).';
+  else if (body.assin) erro = assinaturasDoForm(body).erro;
   return { dados, erro };
 }
 
@@ -937,6 +967,7 @@ router.post('/cursos', requirePermissao('cursos:criar'), uploadFoto, async (req,
   dados.imagemUrl = req.file ? await salvarFotoCurso(req.file) : null;
   const curso = await prisma.curso.create({ data: dados });
   await extras.salvarExtra('curso', curso.id, extrasCursoDoForm(req.body));
+  await salvarAssinaturasDoCurso(curso.id, req.body, req);
   await auditar(req, 'CRIOU_CURSO', 'Curso', curso.id, { nome: curso.nome });
   res.redirect('/cursos?ok=Curso criado.');
 });
@@ -992,6 +1023,7 @@ router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, asy
   }
   await prisma.curso.update({ where: { id: req.params.id }, data: dados });
   await extras.salvarExtra('curso', req.params.id, extrasCursoDoForm(req.body));
+  await salvarAssinaturasDoCurso(req.params.id, req.body, req);
   await auditar(req, 'EDITOU_CURSO', 'Curso', req.params.id, { nome: dados.nome });
   res.redirect('/cursos?ok=Curso atualizado.');
 });
@@ -1404,6 +1436,7 @@ router.get('/turmas/:id/certificados', requirePermissao('turmas:gerenciar'), asy
     pendencias: certificado.pendencias(turma, aprovados),
     ajustes: await certificado.lerAjustes(),
     escolha: certificado.escolhaDaTurma(turma),
+    segueCurso: !(Array.isArray(turma.certAssinaturas) && turma.certAssinaturas.length),
     maxNoCertificado: certificado.MAX_NO_CERTIFICADO,
     redacaoLigada: redacao.configurado(),
     ok: req.query.ok || null,
@@ -1413,14 +1446,17 @@ router.get('/turmas/:id/certificados', requirePermissao('turmas:gerenciar'), asy
 
 // Assinaturas que saem no certificado desta turma e o nome/registro do instrutor.
 router.post('/turmas/:id/certificados/assinaturas', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  const turma = await prisma.turma.findUnique({ where: { id: req.params.id } });
+  const turma = await prisma.turma.findUnique({ where: { id: req.params.id }, include: { curso: true } });
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
+  await extras.anexar('curso', [turma.curso]);
   const escolha = [].concat(req.body.assinatura || []).map(String).filter((x) => /^a\d$|^instrutor$/.test(x));
   const volta = (tipo, msg) => res.redirect(`/turmas/${turma.id}/certificados?${tipo}=` + encodeURIComponent(msg));
   if (!escolha.length) return volta('erro', 'Marque pelo menos uma assinatura.');
   if (escolha.length > certificado.MAX_NO_CERTIFICADO) return volta('erro', `O certificado leva no máximo ${certificado.MAX_NO_CERTIFICADO} assinaturas.`);
+  // Igual à do curso: não guarda, e a turma continua seguindo o curso se ele mudar.
+  const igualAoCurso = escolha.join() === certificado.escolhaDoCurso(turma.curso).join();
   await extras.salvarExtra('turma', turma.id, {
-    certAssinaturas: escolha,
+    certAssinaturas: igualAoCurso ? null : escolha,
     instrutorNome: String(req.body.instrutorNome || '').trim().slice(0, 80) || null,
     instrutorRegistro: String(req.body.instrutorRegistro || '').trim().slice(0, 60) || null,
   });

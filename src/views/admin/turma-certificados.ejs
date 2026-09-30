@@ -24,9 +24,10 @@
     <a href="/modelos?voltar=/turmas/<%= turma.id %>/certificados" class="adm-link">Editar a lista de quem assina</a>
   </div>
   <div class="adm-cert-assin-corpo">
-    <p class="adm-hint">Marque quem assina (até <%= maxNoCertificado %>). A ordem é a da lista.</p>
+    <p class="adm-hint">Marque quem assina (até <%= maxNoCertificado %>). A ordem é a da lista.
+      <% if (segueCurso) { %>Hoje segue o <a href="/cursos/<%= turma.curso.id %>/editar#assinaturas">padrão do curso</a>.<% } else { %>Esta turma tem escolha própria; marque igual ao <a href="/cursos/<%= turma.curso.id %>/editar#assinaturas">padrão do curso</a> para voltar a segui-lo.<% } %></p>
     <div class="adm-cert-assin-opcoes">
-      <% ajustes.assinantes.forEach(function (a, i) { %>
+      <% ajustes.assinantes.forEach(function (a, i) { if (!a.nome) return; %>
         <label class="adm-cert-opcao">
           <input type="checkbox" name="assinatura" value="a<%= i %>" <%= escolha.includes('a' + i) ? 'checked' : '' %>>
           <span><b><%= a.nome %></b><small><%= a.cargo %></small></span>

@@ -25,20 +25,21 @@ async function lerAjustes() {
   const m = Object.fromEntries(cfgs.map((c) => [c.chave, c.valor]));
   let assinantes = [];
   try { assinantes = JSON.parse(m.cert_assinantes || '[]'); } catch (e) { assinantes = []; }
-  assinantes = (Array.isArray(assinantes) ? assinantes : [])
-    .map((a) => ({ nome: String(a && a.nome || '').trim().slice(0, 80), cargo: String(a && a.cargo || '').trim().slice(0, 80) }))
-    .filter((a) => a.nome).slice(0, MAX_ASSINANTES);
-  if (!assinantes.length) {
+  // As posições são fixas (a0…a5): as turmas e os cursos guardam a escolha pela posição, então uma
+  // linha apagada fica vazia em vez de puxar as de baixo.
+  assinantes = (Array.isArray(assinantes) ? assinantes : []).slice(0, MAX_ASSINANTES)
+    .map((a) => ({ nome: String(a && a.nome || '').trim().slice(0, 80), cargo: String(a && a.cargo || '').trim().slice(0, 80) }));
+  if (!assinantes.some((a) => a.nome)) {
     assinantes = [{ nome: (m.cert_coordenador_nome || '').trim() || PADRAO_ASSINANTE.nome, cargo: (m.cert_coordenador_cargo || '').trim() || PADRAO_ASSINANTE.cargo }];
   }
   return { assinantes, livro: Math.max(1, parseInt(m.cert_livro_atual, 10) || 1) };
 }
 
-// v.assinantes: [{ nome, cargo }] (linhas sem nome são descartadas).
+// v.assinantes: [{ nome, cargo }] na ordem das linhas do formulário (linha sem nome fica vazia).
 async function salvarAjustes(v) {
-  const assinantes = (v.assinantes || [])
-    .map((a) => ({ nome: String(a.nome || '').trim().slice(0, 80), cargo: String(a.cargo || '').trim().slice(0, 80) }))
-    .filter((a) => a.nome).slice(0, MAX_ASSINANTES);
+  const assinantes = (v.assinantes || []).slice(0, MAX_ASSINANTES)
+    .map((a) => ({ nome: String(a && a.nome || '').trim().slice(0, 80), cargo: String(a && a.nome && a.cargo || '').trim().slice(0, 80) }));
+  while (assinantes.length && !assinantes[assinantes.length - 1].nome) assinantes.pop();
   const salvar = async (chave, valor) => valor
     ? prisma.configuracao.upsert({ where: { chave }, update: { valor }, create: { chave, valor } })
     : prisma.configuracao.deleteMany({ where: { chave } });
@@ -48,11 +49,18 @@ async function salvarAjustes(v) {
   await prisma.configuracao.deleteMany({ where: { chave: { in: ['cert_coordenador_nome', 'cert_coordenador_cargo'] } } });
 }
 
-// Quais assinaturas saem no certificado da turma. turma.certAssinaturas (extra da turma) guarda a
-// escolha: ['a0', 'a2', 'instrutor']. Sem escolha: a primeira da lista e o instrutor.
+// Quais assinaturas saem no certificado. A escolha ('a0', 'a2', 'instrutor'…) fica no curso
+// (curso.certAssinaturas) e a turma pode ter a própria (turma.certAssinaturas). Sem nenhuma: a
+// primeira da lista e o instrutor.
+const ESCOLHA_PADRAO = ['a0', 'instrutor'];
+const limparEscolha = (e) => (Array.isArray(e) ? e.filter((x) => /^a\d$|^instrutor$/.test(x)) : []);
+function escolhaDoCurso(curso) {
+  const e = limparEscolha(curso && curso.certAssinaturas);
+  return e.length ? e : ESCOLHA_PADRAO;
+}
 function escolhaDaTurma(turma) {
-  const e = Array.isArray(turma.certAssinaturas) ? turma.certAssinaturas.filter((x) => /^a\d$|^instrutor$/.test(x)) : null;
-  return e && e.length ? e : ['a0', 'instrutor'];
+  const e = limparEscolha(turma.certAssinaturas);
+  return e.length ? e : escolhaDoCurso(turma.curso);
 }
 
 function assinaturasDaTurma(turma, ajustes) {
@@ -63,7 +71,7 @@ function assinaturasDaTurma(turma, ajustes) {
       lista.push({ nome: (turma.instrutorNome || '').trim(), cargo: 'Instrutor' + (reg ? ' ' + reg : ''), instrutor: true });
     } else {
       const a = ajustes.assinantes[Number(chave.slice(1))];
-      if (a) lista.push({ nome: a.nome, cargo: a.cargo });
+      if (a && a.nome) lista.push({ nome: a.nome, cargo: a.cargo });
     }
   }
   return lista.slice(0, MAX_NO_CERTIFICADO);
@@ -184,5 +192,5 @@ function pendencias(turma, alunos = []) {
 
 module.exports = {
   lerAjustes, salvarAjustes, numerar, anexarCertificados, dadosDoCertificado, pendencias, PADROES,
-  escolhaDaTurma, assinaturasDaTurma, MAX_ASSINANTES, MAX_NO_CERTIFICADO,
+  escolhaDaTurma, escolhaDoCurso, assinaturasDaTurma, MAX_ASSINANTES, MAX_NO_CERTIFICADO,
 };
