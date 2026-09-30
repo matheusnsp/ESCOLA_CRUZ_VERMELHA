@@ -1,0 +1,14 @@
+<%
+// Legenda dos status de matrícula (Matrículas e página do aluno). Fechada por padrão.
+%>
+<details class="adm-legenda">
+  <summary><i class="fa-solid fa-circle-info"></i> O que significa cada status?</summary>
+  <dl>
+    <div><dt><span class="badge pend">PENDENTE</span></dt><dd>Inscrição feita, pagamento do curso ainda não entrou.</dd></div>
+    <div><dt><span class="badge ok">PAGO</span></dt><dd>Pago à vista (PIX ou cartão) ou confirmado pela secretaria.</dd></div>
+    <div><dt><span class="badge parc">PARCELADO</span><small class="adm-status-sub">em andamento</small></dt><dd>Pago no cartão em parcelas pelo site; ainda há parcelas a vencer.</dd></div>
+    <div><dt><span class="badge ok">PARCELADO</span><small class="adm-status-sub">quitado</small></dt><dd>Todas as parcelas pagas. A secretaria marca pelo botão <b>Parcelas quitadas</b>.</dd></div>
+    <div><dt><span class="badge canc">CANCELADO</span></dt><dd>Inscrição cancelada; a vaga foi liberada.</dd></div>
+    <div><dt><span class="badge est">ESTORNADO</span></dt><dd>O valor foi devolvido ao aluno.</dd></div>
+  </dl>
+</details>

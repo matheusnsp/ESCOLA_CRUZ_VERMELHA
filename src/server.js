@@ -46,6 +46,20 @@ app.locals.statusBadge = function (s) {
 const ROTULO_TURMA = { ENCERRADA: 'CONCLUÍDA' };
 app.locals.rotuloTurma = (s) => ROTULO_TURMA[s] || s;
 
+// Helper disponível em todas as views: status da MATRÍCULA, separando o parcelado que ainda tem
+// parcelas (status PARCELADO, gravado quando o cartão parcelado é aprovado) do parcelado já
+// quitado (plano PARCELADO com status PAGO: a secretaria marcou as parcelas como quitadas).
+// Antes os dois apareciam como "PARCELADO", só com cores diferentes. A legenda fica em
+// views/admin/legenda-status.ejs.
+app.locals.statusMatricula = function (m) {
+  const parcelado = m && (m.statusPagamento === 'PARCELADO' || (m.plano === 'PARCELADO' && m.statusPagamento === 'PAGO'));
+  if (!parcelado) return app.locals.statusBadge(m ? m.statusPagamento : '');
+  const quitado = m.statusPagamento === 'PAGO';
+  return quitado
+    ? '<span class="badge ok" title="Todas as parcelas foram pagas.">PARCELADO</span><small class="adm-status-sub">quitado</small>'
+    : '<span class="badge parc" title="Pago no cartão em parcelas; ainda há parcelas a vencer.">PARCELADO</span><small class="adm-status-sub">em andamento</small>';
+};
+
 // Helper disponível em todas as views: documento do aluno com o tipo que ele usou no cadastro
 // ({ tipo: 'CPF', numero: '123.456.789-00' }), ou null. Sem tipoDocumento gravado (cadastros
 // antigos), deduz pelo tamanho: 11 dígitos CPF, 14 CNPJ.
