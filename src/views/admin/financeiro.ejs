@@ -7,182 +7,139 @@ function dataBR(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
-const LIMITE_GRUPO = 3;
 
-// 💡 PERMISSÕES — esta tela agora distingue três níveis, e não mais um só:
+// 💡 PERMISSÕES — esta tela distingue três níveis:
 //
 //   financeiro:leitura      entra aqui e vê tudo (Coordenador, Financeiro, Dev)
-//   relatorio:baixar        baixa Excel/PDF/CSV (Coordenador, Financeiro, Dev)
+//   relatorio:baixar        exporta Excel/PDF/CSV/OFX (Coordenador, Financeiro, Dev)
 //   financeiro:reembolsar   estorna e marca reembolso concluído (Financeiro, Dev)
 //
-// Antes as três coisas dependiam de financeiro:aprovar, o que amarrava
-// "baixar relatório" a "poder estornar". O Coordenador precisa da primeira
-// sem a segunda — daí a separação.
+// Uma tabela só de pagamentos (uma linha por matrícula), em vez de "Taxa paga" e "Matrículas
+// geradas" repetindo as mesmas pessoas. O que ainda não foi pago fica na tela Pendentes.
+const ROTULO = { curso: 'Curso + taxa', taxa: 'Só a taxa', estornado: 'Estornado' };
+const BADGE  = { curso: 'ok', taxa: 'pend', estornado: 'est' };
+const conta  = { curso: 0, taxa: 0, estornado: 0 };
+pagamentos.forEach(p => { conta[p.tipo]++; });
 %>
 
 <div class="adm-h1-row">
   <h1 class="adm-h1">Financeiro</h1>
   <% if (pode('relatorio:baixar')) { %>
-    <div class="adm-acoes-topo">
-      <a href="/relatorios/completo.xlsx" class="adm-btn-out xls">
-        <i class="fa-solid fa-file-excel"></i> Baixar Excel
-      </a>
-      <a href="/relatorios/completo.pdf" class="adm-btn-out pdf">
-        <i class="fa-solid fa-file-pdf"></i> Baixar PDF
-      </a>
-      <a href="/relatorios/completo.csv" class="adm-btn-out csv">
-        <i class="fa-solid fa-file-csv"></i> Baixar CSV
-      </a>
-      <%
-        // 💡 NOVO — OFX: extrato pro contador importar no sistema contábil.
-        // Diferente dos outros três, este não é um relatório de leitura — é
-        // um arquivo de conciliação, lido por máquina.
-      %>
-      <a href="/relatorios/completo.ofx" class="adm-btn-out ofx">
-        <i class="fa-solid fa-file-invoice-dollar"></i> Baixar OFX
-      </a>
-    </div>
+    <details class="adm-exportar">
+      <summary class="adm-btn-sec"><i class="fa-solid fa-download"></i> Exportar <i class="fa-solid fa-chevron-down adm-exportar-seta"></i></summary>
+      <div class="adm-exportar-menu">
+        <a href="/relatorios/completo.xlsx"><i class="fa-solid fa-file-excel"></i><span><b>Excel</b><small>planilha completa</small></span></a>
+        <a href="/relatorios/completo.pdf"><i class="fa-solid fa-file-pdf"></i><span><b>PDF</b><small>para imprimir</small></span></a>
+        <a href="/relatorios/completo.csv"><i class="fa-solid fa-file-csv"></i><span><b>CSV</b><small>dados em texto</small></span></a>
+        <%
+          // OFX: extrato para o contador importar no sistema contábil (lido por máquina).
+        %>
+        <a href="/relatorios/completo.ofx"><i class="fa-solid fa-file-invoice-dollar"></i><span><b>OFX</b><small>extrato para o contador</small></span></a>
+      </div>
+    </details>
   <% } %>
 </div>
 
-<!-- ═══ Inscrições / valores ══════════════════════════════════════════════ -->
-<div class="adm-cards">
-  <div class="adm-stat ok">
-    <span><%= stats.taxaPagaCount %></span>
-    <small><i class="fa-solid fa-circle-check"></i> Taxa de inscrição paga</small>
-    <small class="adm-stat-sub"><%= formatBRL(stats.totalTaxasPagas) %></small>
-  </div>
-  <div class="adm-stat ok">
-    <span><%= stats.matriculaGeradaCount %></span>
-    <small><i class="fa-solid fa-id-badge"></i> Curso pago + matrícula gerada</small>
-    <small class="adm-stat-sub"><%= formatBRL(stats.totalCursosPagos) %> (sem taxa)</small>
-  </div>
-  <div class="adm-stat warn">
-    <span><%= stats.pendentesCount %></span>
-    <small><i class="fa-solid fa-clock"></i> Pendentes</small>
-  </div>
-  <div class="adm-stat">
-    <span><%= formatBRL(stats.totalRecebido) %></span>
-    <small><i class="fa-solid fa-sack-dollar"></i> Total recebido</small>
-  </div>
-</div>
-
+<!-- ═══ Resumo ═══════════════════════════════════════════════════════════ -->
 <div class="adm-cards c3">
-  <div class="adm-stat">
+  <div class="adm-stat ok">
+    <span><%= formatBRL(stats.totalRecebido) %></span>
+    <small><i class="fa-solid fa-sack-dollar"></i> Recebido</small>
+    <small class="adm-stat-sub"><%= conta.curso %> curso(s) pago(s) · <%= conta.taxa %> só com a taxa</small>
+  </div>
+  <a class="adm-stat warn adm-stat-link" href="/pendentes">
     <span><%= formatBRL(stats.totalPendente) %></span>
-    <small><i class="fa-solid fa-triangle-exclamation"></i> Total pendente a receber</small>
-  </div>
+    <small><i class="fa-solid fa-clock"></i> A receber</small>
+    <small class="adm-stat-sub"><%= aReceberCount %> com taxa paga e curso pendente · ver Pendentes →</small>
+  </a>
   <div class="adm-stat">
-    <span><%= stats.estornosCount %> · <%= formatBRL(stats.totalEstornado) %></span>
-    <small><i class="fa-solid fa-rotate-left"></i> Estornos (qtd. · valor total)</small>
-  </div>
-  <div class="adm-stat danger">
-    <span><%= stats.reembolsosCount %> · <%= formatBRL(stats.totalAReembolsar) %></span>
-    <small><i class="fa-solid fa-money-bill-transfer"></i> Reembolsos pendentes</small>
+    <span><%= formatBRL(stats.totalEstornado) %></span>
+    <small><i class="fa-solid fa-rotate-left"></i> Estornado</small>
+    <small class="adm-stat-sub"><%= stats.estornosCount %> estorno(s)</small>
   </div>
 </div>
 
-<!-- ═══ Estornos ══════════════════════════════════════════════════════════ -->
-<div class="adm-box adm-espaco" id="grupo-estornos">
+<!-- ═══ Reembolsos pendentes: só aparece quando existe algum ═════════════ -->
+<% if (reembolsosPendentesLista.length) { %>
+<div class="adm-box adm-espaco adm-box-alerta">
   <div class="adm-box-head">
-    <h2><i class="fa-solid fa-rotate-left"></i> Estornos</h2>
-    <span class="badge est"><%= stats.estornosCount %> registro(s)</span>
+    <h2><i class="fa-solid fa-money-bill-transfer"></i> Reembolsos a fazer</h2>
+    <span class="badge canc"><%= stats.reembolsosCount %> · <%= formatBRL(stats.totalAReembolsar) %></span>
   </div>
-
-  <% if (estornos.length === 0) { %>
-    <p class="adm-vazio">Nenhum estorno registrado.</p>
-  <% } else { %>
-    <table class="adm-table">
-      <thead>
-        <tr><th>Aluno</th><th>Curso</th><th>Data</th><th>Valor</th><th>Motivo</th></tr>
-      </thead>
-      <tbody>
-        <% estornos.forEach((m, i) => { %>
-        <tr<% if (i >= LIMITE_GRUPO) { %> class="adm-extra"<% } %>>
-          <td><strong><%= m.aluno.nome %></strong></td>
-          <td><%= m.turma.curso.nome %></td>
-          <td><%= dataBR(m.atualizadoEm) %></td>
-          <td><%= formatBRL(Number(m.valorCurso)) %></td>
-          <td><span class="badge canc"><%= motivos[m.id] || 'Não informado' %></span></td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
-    <% if (estornos.length > LIMITE_GRUPO) { %>
-      <button type="button" class="adm-vermais" data-grupo="grupo-estornos"
-              data-extra="<%= estornos.length - LIMITE_GRUPO %>">
-        Ver mais <%= estornos.length - LIMITE_GRUPO %>
-      </button>
-    <% } %>
-  <% } %>
+  <table class="adm-table">
+    <thead>
+      <tr><th>Aluno</th><th>Curso</th><th>Valor</th><th>Ação</th></tr>
+    </thead>
+    <tbody>
+      <% reembolsosPendentesLista.forEach((m) => { %>
+      <tr>
+        <td><strong><%= m.aluno.nome %></strong></td>
+        <td><%= m.turma.curso.nome %></td>
+        <td><strong><%= formatBRL(Math.abs(Number(m.diferencaTransferencia))) %></strong></td>
+        <td>
+          <% if (pode('financeiro:reembolsar')) { %>
+            <form method="POST" action="/inscricoes/<%= m.id %>/reembolso-concluido"
+                  onsubmit="return confirm('Confirmar que o reembolso foi realizado?')">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="adm-btn-sec adm-btn-mini"><i class="fa-solid fa-check"></i> Marcar como feito</button>
+            </form>
+          <% } else { %>
+            <span class="adm-mut">Aguardando o financeiro</span>
+          <% } %>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
 </div>
+<% } %>
 
-<!-- ═══ Taxa de inscrição paga ════════════════════════════════════════════ -->
-<div class="adm-box adm-espaco" id="grupo-taxa">
-  <div class="adm-box-head">
-    <h2><i class="fa-solid fa-circle-check"></i> Taxa de inscrição paga</h2>
-    <span class="badge ok"><%= stats.taxaPagaCount %> aluno(s)</span>
+<!-- ═══ Pagamentos ═══════════════════════════════════════════════════════ -->
+<div class="adm-box" id="pagamentos">
+  <div class="adm-box-head adm-fin-head">
+    <h2><i class="fa-solid fa-receipt"></i> Pagamentos</h2>
+    <input type="search" class="adm-fin-busca" id="finBusca" placeholder="Buscar aluno ou curso" aria-label="Buscar aluno ou curso">
   </div>
 
-  <% if (taxaPagaLista.length === 0) { %>
-    <p class="adm-vazio">Nenhum registro.</p>
+  <div class="adm-abas adm-fin-abas" role="tablist">
+    <button type="button" class="adm-aba on" data-filtro="todos">Todos <span class="adm-aba-num"><%= pagamentos.length %></span></button>
+    <button type="button" class="adm-aba" data-filtro="curso">Curso pago <span class="adm-aba-num"><%= conta.curso %></span></button>
+    <button type="button" class="adm-aba" data-filtro="taxa">Só a taxa <span class="adm-aba-num"><%= conta.taxa %></span></button>
+    <button type="button" class="adm-aba" data-filtro="estornado">Estornados <span class="adm-aba-num"><%= conta.estornado %></span></button>
+  </div>
+
+  <% if (!pagamentos.length) { %>
+    <p class="adm-vazio">Nenhum pagamento recebido ainda.</p>
   <% } else { %>
     <table class="adm-table">
       <thead>
-        <tr><th>Aluno</th><th>Curso</th><th>Data pag.</th><th>Valor</th></tr>
+        <tr><th>Aluno</th><th>Curso</th><th>Pagou</th><th>Data</th><th>Valor</th><th>Ação</th></tr>
       </thead>
-      <tbody>
-        <% taxaPagaLista.forEach((m, i) => { %>
-        <tr<% if (i >= LIMITE_GRUPO) { %> class="adm-extra"<% } %>>
-          <td><strong><%= m.aluno.nome %></strong></td>
+      <tbody id="finLinhas">
+        <% pagamentos.forEach((p) => { const m = p.m; %>
+        <tr data-tipo="<%= p.tipo %>" data-busca="<%= (m.aluno.nome + ' ' + m.aluno.email + ' ' + m.turma.curso.nome).toLowerCase() %>">
+          <td>
+            <strong><%= m.aluno.nome %></strong>
+            <% if (p.tipo === 'curso') { %><br><span class="badge mut"><%= codigoMatricula(m) %></span><% } %>
+          </td>
           <td><%= m.turma.curso.nome %></td>
-          <td><%= dataBR(m.taxaConfirmadaEm) %></td>
-          <td><%= formatBRL(Number(m.valorTaxaMatricula) || 100) %></td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
-    <% if (taxaPagaLista.length > LIMITE_GRUPO) { %>
-      <button type="button" class="adm-vermais" data-grupo="grupo-taxa"
-              data-extra="<%= taxaPagaLista.length - LIMITE_GRUPO %>">
-        Ver mais <%= taxaPagaLista.length - LIMITE_GRUPO %>
-      </button>
-    <% } %>
-  <% } %>
-</div>
-
-<!-- ═══ Matrículas geradas ════════════════════════════════════════════════ -->
-<div class="adm-box adm-espaco" id="grupo-matriculas">
-  <div class="adm-box-head">
-    <h2><i class="fa-solid fa-id-badge"></i> Matrículas geradas</h2>
-    <span class="badge ok"><%= stats.matriculaGeradaCount %> aluno(s)</span>
-  </div>
-
-  <% if (matriculaGeradaLista.length === 0) { %>
-    <p class="adm-vazio">Nenhum registro.</p>
-  <% } else { %>
-    <table class="adm-table">
-      <thead>
-        <tr><th>Aluno</th><th>Curso</th><th>Matrícula</th><th>Data pag.</th><th>Valor</th><th>Ação</th></tr>
-      </thead>
-      <tbody>
-        <% matriculaGeradaLista.forEach((m, i) => { %>
-        <tr<% if (i >= LIMITE_GRUPO) { %> class="adm-extra"<% } %>>
-          <td><strong><%= m.aluno.nome %></strong></td>
-          <td><%= m.turma.curso.nome %></td>
-          <td><span class="badge mut"><%= codigoMatricula(m) %></span></td>
-          <td><%= dataBR(m.confirmadaEm) %></td>
-          <td><%= formatBRL(Number(m.valorCurso)) %></td>
+          <td>
+            <span class="badge <%= BADGE[p.tipo] %>"><%= ROTULO[p.tipo] %></span>
+            <% if (p.tipo !== 'estornado' && m.forma) { %><br><small class="adm-mut"><%= m.forma === 'PIX' ? 'PIX' : 'Cartão' %><%= m.statusPagamento === 'PARCELADO' ? ' · parcelado' : '' %></small><% } %>
+            <% if (p.tipo === 'estornado') { %><br><small class="adm-mut"><%= motivos[m.id] || 'Motivo não informado' %></small><% } %>
+          </td>
+          <td><%= dataBR(p.data) %></td>
+          <td><strong><%= formatBRL(p.valor) %></strong></td>
           <td>
             <%
               // Estorno devolve dinheiro e é irreversível: só Financeiro e Dev.
-              // O Coordenador vê a tela e a linha, mas não a ação.
+              // O Coordenador vê a linha, mas não a ação.
             %>
-            <% if (pode('financeiro:reembolsar')) { %>
+            <% if (p.tipo === 'curso' && pode('financeiro:reembolsar')) { %>
               <% if (m.forma === 'PIX') { %>
                 <span class="adm-aviso-cel"
                       title="Reembolsos de PIX precisam ser feitos manualmente pelo painel da Únicopag">
-                  <i class="fa-solid fa-triangle-exclamation"></i> PIX — estornar manualmente
+                  <i class="fa-solid fa-triangle-exclamation"></i> PIX: estornar na Únicopag
                 </span>
               <% } else { %>
                 <details class="adm-estorno">
@@ -200,112 +157,52 @@ const LIMITE_GRUPO = 3;
                   </form>
                 </details>
               <% } %>
-            <% } %>
-          </td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
-    <% if (matriculaGeradaLista.length > LIMITE_GRUPO) { %>
-      <button type="button" class="adm-vermais" data-grupo="grupo-matriculas"
-              data-extra="<%= matriculaGeradaLista.length - LIMITE_GRUPO %>">
-        Ver mais <%= matriculaGeradaLista.length - LIMITE_GRUPO %>
-      </button>
-    <% } %>
-  <% } %>
-</div>
-
-<!-- ═══ Aguardando pagamento ══════════════════════════════════════════════ -->
-<div class="adm-box adm-espaco" id="grupo-pendentes">
-  <div class="adm-box-head">
-    <h2><i class="fa-solid fa-clock"></i> Aguardando pagamento</h2>
-    <span class="badge pend"><%= stats.pendentesCount %> aluno(s)</span>
-  </div>
-
-  <% if (pendentesLista.length === 0) { %>
-    <p class="adm-vazio">Nenhuma pendência.</p>
-  <% } else { %>
-    <table class="adm-table">
-      <thead>
-        <tr><th>Aluno</th><th>Curso</th><th>Pendência</th><th>Desde</th><th>Valor</th></tr>
-      </thead>
-      <tbody>
-        <% pendentesLista.forEach((p, i) => { %>
-        <tr<% if (i >= LIMITE_GRUPO) { %> class="adm-extra"<% } %>>
-          <td><strong><%= p.m.aluno.nome %></strong></td>
-          <td><%= p.m.turma.curso.nome %></td>
-          <td><span class="badge pend"><%= p.tipo %></span></td>
-          <td><%= dataBR(p.desde) %></td>
-          <td><%= formatBRL(p.valor) %></td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
-    <% if (pendentesLista.length > LIMITE_GRUPO) { %>
-      <button type="button" class="adm-vermais" data-grupo="grupo-pendentes"
-              data-extra="<%= pendentesLista.length - LIMITE_GRUPO %>">
-        Ver mais <%= pendentesLista.length - LIMITE_GRUPO %>
-      </button>
-    <% } %>
-  <% } %>
-</div>
-
-<!-- ═══ Reembolsos pendentes ══════════════════════════════════════════════ -->
-<div class="adm-box" id="grupo-reembolsos">
-  <div class="adm-box-head">
-    <h2><i class="fa-solid fa-money-bill-transfer"></i> Reembolsos pendentes</h2>
-    <span class="badge canc"><%= stats.reembolsosCount %> aluno(s)</span>
-  </div>
-
-  <% if (reembolsosPendentesLista.length === 0) { %>
-    <p class="adm-vazio">Nenhum reembolso pendente.</p>
-  <% } else { %>
-    <table class="adm-table">
-      <thead>
-        <tr><th>Aluno</th><th>Curso</th><th>Valor</th><th>Ação</th></tr>
-      </thead>
-      <tbody>
-        <% reembolsosPendentesLista.forEach((m, i) => { %>
-        <tr<% if (i >= LIMITE_GRUPO) { %> class="adm-extra"<% } %>>
-          <td><strong><%= m.aluno.nome %></strong></td>
-          <td><%= m.turma.curso.nome %></td>
-          <td><strong><%= formatBRL(Math.abs(Number(m.diferencaTransferencia))) %></strong></td>
-          <td>
-            <% if (pode('financeiro:reembolsar')) { %>
-              <form method="POST" action="/inscricoes/<%= m.id %>/reembolso-concluido"
-                    onsubmit="return confirm('Confirmar que o reembolso foi realizado?')">
-                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <button class="adm-mini ok" title="Reembolso concluído">
-                  <i class="fa-solid fa-check"></i>
-                </button>
-              </form>
             <% } else { %>
-              <span class="adm-mut">Aguardando o financeiro</span>
+              <span class="adm-mut">—</span>
             <% } %>
           </td>
         </tr>
         <% }) %>
       </tbody>
     </table>
-    <% if (reembolsosPendentesLista.length > LIMITE_GRUPO) { %>
-      <button type="button" class="adm-vermais" data-grupo="grupo-reembolsos"
-              data-extra="<%= reembolsosPendentesLista.length - LIMITE_GRUPO %>">
-        Ver mais <%= reembolsosPendentesLista.length - LIMITE_GRUPO %>
-      </button>
-    <% } %>
+    <p class="adm-vazio" id="finNada" hidden>Nenhum pagamento com esse filtro.</p>
+    <button type="button" class="adm-vermais" id="finMais" hidden>Ver mais</button>
   <% } %>
 </div>
 
 <script>
-  document.querySelectorAll('.adm-vermais').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var box = document.getElementById(btn.dataset.grupo);
-      var extra = btn.dataset.extra;
-      var abrindo = !box.classList.contains('aberto');
-      box.classList.toggle('aberto');
-      btn.textContent = abrindo ? 'Ver menos' : ('Ver mais ' + extra);
+  // Filtro por aba + busca, no navegador (a lista já veio inteira). Mostra 25 por vez.
+  (function () {
+    var linhas = Array.prototype.slice.call(document.querySelectorAll('#finLinhas tr'));
+    if (!linhas.length) return;
+    var abas = document.querySelectorAll('.adm-fin-abas .adm-aba');
+    var busca = document.getElementById('finBusca');
+    var mais = document.getElementById('finMais');
+    var nada = document.getElementById('finNada');
+    var POR_VEZ = 25, limite = POR_VEZ, filtro = 'todos';
+
+    function aplicar() {
+      var termo = (busca.value || '').trim().toLowerCase();
+      var achadas = linhas.filter(function (tr) {
+        return (filtro === 'todos' || tr.dataset.tipo === filtro) && (!termo || tr.dataset.busca.indexOf(termo) !== -1);
+      });
+      linhas.forEach(function (tr) { tr.hidden = true; });
+      achadas.slice(0, limite).forEach(function (tr) { tr.hidden = false; });
+      nada.hidden = achadas.length > 0;
+      mais.hidden = achadas.length <= limite;
+      mais.textContent = 'Ver mais ' + Math.min(POR_VEZ, achadas.length - limite);
+    }
+
+    abas.forEach(function (a) {
+      a.addEventListener('click', function () {
+        abas.forEach(function (b) { b.classList.toggle('on', b === a); });
+        filtro = a.dataset.filtro; limite = POR_VEZ; aplicar();
+      });
     });
-  });
+    busca.addEventListener('input', function () { limite = POR_VEZ; aplicar(); });
+    mais.addEventListener('click', function () { limite += POR_VEZ; aplicar(); });
+    aplicar();
+  })();
 </script>
 
 <%- include('foot') %>

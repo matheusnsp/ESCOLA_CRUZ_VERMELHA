@@ -1248,7 +1248,9 @@ function mapaMotivosEstorno(logs) {
   for (const log of logs) {
     if (map[log.alvoId]) continue;
     try {
-      const detalhe = log.detalhe ? JSON.parse(log.detalhe) : {};
+      // detalhe é Json no Prisma: chega como objeto (texto só em registros antigos). O
+      // JSON.parse direto no objeto falhava e todo estorno aparecia como "Não informado".
+      const detalhe = !log.detalhe ? {} : typeof log.detalhe === 'string' ? JSON.parse(log.detalhe) : log.detalhe;
       map[log.alvoId] = detalhe.motivo || 'Não informado';
     } catch {
       map[log.alvoId] = 'Não informado';
@@ -1394,10 +1396,27 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     0
   );
 
+  // Uma linha por matrícula que já teve dinheiro entrando (taxa, curso ou os dois), em vez de
+  // listar a mesma pessoa em "Taxa paga" e de novo em "Matrículas geradas". Estornadas entram
+  // também, marcadas como tal, para a tabela contar a história inteira.
+  const porId = new Map();
+  [...taxaPagaLista, ...matriculaGeradaLista, ...estornos].forEach((m) => porId.set(m.id, m));
+  const pagamentos = [...porId.values()].map((m) => {
+    if (m.statusPagamento === 'ESTORNADO') {
+      return { m, tipo: 'estornado', valor: Number(m.valorCurso), data: m.atualizadoEm };
+    }
+    if (['PAGO', 'PARCELADO'].includes(m.statusPagamento)) {
+      return { m, tipo: 'curso', valor: Number(m.valorCurso), data: m.confirmadaEm || m.taxaConfirmadaEm };
+    }
+    return { m, tipo: 'taxa', valor: Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO, data: m.taxaConfirmadaEm };
+  }).sort((x, y) => new Date(y.data || 0) - new Date(x.data || 0));
+
   res.render('admin/financeiro', {
     formatBRL,
     codigoMatricula,
     motivos,
+    pagamentos,
+    aReceberCount: cursoPendenteLista.length,
 
     stats: {
       taxaPagaCount: taxaPagaLista.length,
