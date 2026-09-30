@@ -119,7 +119,7 @@
                 <% if (a._count.matriculas === 0 && !a.bloqueioTotal && pode('aluno:gerenciar')) { %>
                   <% if (a.linkProspeccao) { %>
                     <form method="POST" action="/alunos/<%= a.id %>/prospeccao" target="_blank"
-                          onsubmit="return confirm('Abrir o WhatsApp para convidar <%= a.nome.split(' ')[0] %>?<%= a.prospeccaoEm ? '\n\nAtenção: esta pessoa já foi contatada em ' + dataHoraBR(a.prospeccaoEm) + '.' : '' %>')">
+                          data-confirmar="Abrir o WhatsApp para convidar <%= a.nome.split(' ')[0] %>?<%= a.prospeccaoEm ? '\n\nAtenção: esta pessoa já foi contatada em ' + dataHoraBR(a.prospeccaoEm) + '.' : '' %>">
                       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                       <button class="adm-mini ok" title="Convidar por WhatsApp">
                         <i class="fa-brands fa-whatsapp"></i>

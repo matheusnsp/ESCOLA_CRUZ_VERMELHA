@@ -109,7 +109,7 @@
               <div><%= f.resposta %></div>
             </div>
             <form method="POST" action="/cursos/<%= c.id %>/faqs/<%= f.id %>/remover"
-                  onsubmit="return confirm('Remover esta dúvida?');">
+                  data-confirmar="Remover esta dúvida?">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <button class="adm-mini danger" title="Remover"><i class="fa-solid fa-trash"></i></button>
             </form>

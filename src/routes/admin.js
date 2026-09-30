@@ -1417,6 +1417,8 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     motivos,
     pagamentos,
     aReceberCount: cursoPendenteLista.length,
+    flash: req.query.ok || null,
+    erro: req.query.erro || null,
 
     stats: {
       taxaPagaCount: taxaPagaLista.length,

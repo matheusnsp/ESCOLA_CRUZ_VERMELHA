@@ -90,6 +90,10 @@ app.use(
         ...(isProd ? {} : { upgradeInsecureRequests: null }),
       },
     },
+    // same-origin: o navegador conta ao próprio site de qual página veio o formulário (o "voltar"
+    // das ações do painel usa isso), e continua sem mandar nada para sites de fora. Com o padrão
+    // do helmet (no-referrer), toda ação voltava para Matrículas, viesse de onde viesse.
+    referrerPolicy: { policy: 'same-origin' },
     // HSTS so faz sentido sob HTTPS real (producao). Em dev atrapalha o Safari.
     // 1 ano + subdominios (cobre o painel em secretaria.<dominio>).
     hsts: isProd ? { maxAge: 31536000, includeSubDomains: true } : false,

@@ -55,7 +55,7 @@
 
 <!-- ═══ Formulário ════════════════════════════════════════════════════════ -->
 <form method="POST" action="/inscricoes/<%= m.id %>/transferir" class="adm-box adm-box-pad"
-      onsubmit="return confirm('Confirmar a transferência deste aluno?')">
+      data-confirmar="Confirmar a transferência deste aluno?">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
   <!-- 💡 Preserva a busca/filtros da listagem de origem, pra voltar exatamente
