@@ -1,42 +1,112 @@
 <%- include('head', { titulo: 'Painel' }) %>
 <%- include('header', { ativo: 'home' }) %>
 
-<h1 class="adm-h1">Painel</h1>
+<%
+  const podeDinheiro = pode('financeiro:leitura') || pode('financeiro:aprovar');
+  const podePend = pode('pendentes:gerenciar');
+  const hojeTxt = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Sao_Paulo' });
+  function dataUTC(d) { const x = new Date(d); const p = n => String(n).padStart(2, '0'); return p(x.getUTCDate()) + '/' + p(x.getUTCMonth() + 1); }
+%>
+<div class="adm-h1-row">
+  <div>
+    <h1 class="adm-h1">Painel</h1>
+    <p class="adm-mut adm-painel-data"><%= hojeTxt.charAt(0).toUpperCase() + hojeTxt.slice(1) %></p>
+  </div>
+  <div class="adm-painel-agora">
+    <button type="button" class="adm-pend-btn" id="cardAlunosOnline"><span class="adm-ponto-on"></span> <b id="alunosOnline"><%= stats.alunosOnline %></b> online agora</button>
+    <button type="button" class="adm-pend-btn" id="cardAlunosHoje"><i class="fa-solid fa-right-to-bracket"></i> <b><%= stats.alunosHoje %></b> entraram hoje</button>
+  </div>
+</div>
 
-<div class="adm-cards c3">
-
-  <a href="/cursos?status=ATIVO" class="adm-stat adm-stat-clicavel">
-    <span><%= stats.cursosAtivos %>/<%= stats.totalCursos %></span>
-    <small>Cursos ativos</small>
+<!-- ═══ O dia em números ═════════════════════════════════════════════════ -->
+<div class="adm-cards <%= podeDinheiro ? 'c3' : 'c2' %>">
+  <a href="/inscricoes" class="adm-stat adm-stat-clicavel">
+    <span><%= hoje.matriculasHoje %></span>
+    <small><i class="fa-solid fa-user-plus"></i> Matrículas hoje</small>
+    <small class="adm-stat-sub"><%= hoje.matriculasSemana %> nos últimos 7 dias</small>
   </a>
-
-  <a href="/turmas?status=aberta" class="adm-stat adm-stat-clicavel">
-    <span><%= stats.turmasAbertas %></span>
-    <small>Turmas abertas</small>
+  <% if (podeDinheiro) { %>
+  <a href="/financeiro" class="adm-stat ok adm-stat-clicavel">
+    <span><%= formatBRL(hoje.recebidoMes) %></span>
+    <small><i class="fa-solid fa-sack-dollar"></i> Recebido em <%= hoje.mesNome %></small>
+    <small class="adm-stat-sub">cursos e taxas confirmados no mês</small>
   </a>
-
-  <a href="/inscricoes?status=PENDENTE" class="adm-stat warn adm-stat-clicavel">
-    <span><%= stats.pendentes %></span>
-    <small>Pagamentos pendentes</small>
+  <% } %>
+  <% if (podeDinheiro || podePend) { %>
+  <a href="/pendentes" class="adm-stat warn adm-stat-clicavel">
+    <span><%= formatBRL(hoje.emAberto) %></span>
+    <small><i class="fa-solid fa-clock"></i> A receber</small>
+    <small class="adm-stat-sub"><%= hoje.emAbertoCount %> com taxa paga e curso pendente</small>
   </a>
+  <% } %>
+</div>
 
-  <a href="/inscricoes?status=PAGO,PARCELADO" class="adm-stat ok adm-stat-clicavel">
-    <span><%= stats.pagas %></span>
-    <small>Pagas</small>
-  </a>
+<div class="adm-painel-grade">
 
-  <div class="adm-stat ok adm-stat-clicavel" id="cardAlunosOnline">
-    <span id="alunosOnline"><%= stats.alunosOnline %></span>
-    <small>Alunos online agora</small>
+  <!-- ═══ Próximas turmas ═══════════════════════════════════════════════ -->
+  <div class="adm-box">
+    <div class="adm-box-head">
+      <h2><i class="fa-solid fa-calendar-days"></i> Próximas turmas <span class="adm-mut adm-h2-sub"><%= stats.cursosAtivos %> de <%= stats.totalCursos %> cursos no site</span></h2>
+      <a href="/turmas" class="adm-link">Ver turmas</a>
+    </div>
+    <% if (!proximasTurmas.length) { %>
+      <p class="adm-vazio">Nenhuma turma aberta com data futura.</p>
+    <% } else { %>
+      <ul class="adm-turmas-lista">
+        <% proximasTurmas.forEach(function (t) {
+             const insc = t._count.matriculas;
+             const pct = t.vagas ? Math.min(100, Math.round(insc / t.vagas * 100)) : 0;
+             const faltam = Math.ceil((new Date(t.inicioPrevisto) - Date.now()) / 86400000);
+             const abaixoMin = t.minimoAlunos && insc < t.minimoAlunos; %>
+          <li>
+            <a href="/alunos?turma=<%= t.id %>" class="adm-turma-item">
+              <div class="adm-turma-data"><b><%= dataUTC(t.inicioPrevisto).slice(0, 2) %></b><span><%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR', { month: 'short', timeZone: 'UTC' }).replace('.', '') %></span></div>
+              <div class="adm-turma-info">
+                <strong><%= t.curso.nome %></strong>
+                <small class="adm-mut">
+                  <%= faltam <= 0 ? 'começa hoje' : 'em ' + faltam + (faltam === 1 ? ' dia' : ' dias') %>
+                  <% if (t.aulas && t.aulas[0]) { %> · <%= t.aulas[0].horario %><% } %>
+                  · <%= rotuloTurma(t.status).toLowerCase() %>
+                </small>
+                <div class="adm-barra" title="<%= insc %> de <%= t.vagas %> vagas"><span class="<%= abaixoMin ? 'baixa' : '' %>" style="width: <%= pct %>%"></span></div>
+              </div>
+              <div class="adm-turma-vagas">
+                <b><%= insc %>/<%= t.vagas %></b>
+                <small class="<%= abaixoMin ? 'adm-txt-alerta' : 'adm-mut' %>"><%= abaixoMin ? 'mín. ' + t.minimoAlunos : 'vagas' %></small>
+              </div>
+            </a>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
   </div>
 
-  <div class="adm-stat adm-stat-clicavel" id="cardAlunosHoje">
-    <span><%= stats.alunosHoje %></span>
-    <small>Entraram hoje</small>
+  <!-- ═══ Para agir ═══════════════════════════════════════════════════════ -->
+  <div class="adm-box">
+    <div class="adm-box-head">
+      <h2><i class="fa-solid fa-list-check"></i> Para agir</h2>
+    </div>
+    <ul class="adm-agir">
+      <% if (podePend) { %>
+      <li><a href="/pendentes?aba=com-taxa">
+        <span class="adm-agir-num <%= hoje.emAbertoCount ? 'warn' : '' %>"><%= hoje.emAbertoCount %></span>
+        <span><b>Taxa paga, curso pendente</b><small class="adm-mut">vaga reservada, falta pagar o curso</small></span>
+        <i class="fa-solid fa-chevron-right"></i></a></li>
+      <li><a href="/pendentes?aba=sem-taxa">
+        <span class="adm-agir-num"><%= hoje.pararamAntes %></span>
+        <span><b>Pararam antes de pagar</b><small class="adm-mut">turma ainda não começou</small></span>
+        <i class="fa-solid fa-chevron-right"></i></a></li>
+      <% } %>
+      <% if (podeDinheiro) { %>
+      <li><a href="/financeiro">
+        <span class="adm-agir-num <%= hoje.reembolsos ? 'perigo' : '' %>"><%= hoje.reembolsos %></span>
+        <span><b>Reembolsos a fazer</b><small class="adm-mut">diferença de transferência a devolver</small></span>
+        <i class="fa-solid fa-chevron-right"></i></a></li>
+      <% } %>
+    </ul>
   </div>
 
 </div>
-
 
 <!-- ========================================================= -->
 <!-- Modal: alunos que entraram hoje -->
@@ -227,7 +297,7 @@
 <div class="adm-box">
 
   <div class="adm-box-head">
-    <h2>Últimas inscrições</h2>
+    <h2><i class="fa-solid fa-clock-rotate-left"></i> Últimas matrículas</h2>
 
     <a href="/inscricoes" class="adm-link">
       Ver todas
@@ -237,12 +307,12 @@
   <% if (!ultimas.length) { %>
 
     <p class="adm-vazio">
-      Nenhuma inscrição ainda.
+      Nenhuma matrícula ainda.
     </p>
 
   <% } else { %>
 
-    <table class="adm-table">
+    <table class="adm-table adm-table-cards">
 
       <thead>
         <tr>
