@@ -30,6 +30,9 @@
     <% if (pode('financeiro:leitura')) { %>
       <a href="/financeiro" class="<%= secaoAtiva === 'financeiro' ? 'on' : '' %>"><i class="fa-solid fa-sack-dollar"></i> Financeiro</a>
     <% } %>
+    <% if (pode('contas:lancar') || pode('contas:aprovar') || pode('contas:pagar')) { %>
+      <a href="/contas" class="<%= secaoAtiva === 'contas' ? 'on' : '' %>"><i class="fa-solid fa-file-invoice-dollar"></i> Contas a pagar</a>
+    <% } %>
     <% if (admPapel === 'DEV') { %>
       <%# Admin e Ban viraram abas de Configurações (abas-config.ejs) %>
       <a href="/dev/usuarios" class="<%= ['dev-usuarios', 'banimentos'].includes(secaoAtiva) ? 'on' : '' %>"><i class="fa-solid fa-gear"></i> Configurações</a>

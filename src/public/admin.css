@@ -1539,3 +1539,51 @@ a.adm-hz-turma:hover { border-color: var(--vermelho); background: var(--vermelho
 .adm-curso-assin-linha input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--vermelho); }
 .adm-curso-assin-instrutor { grid-template-columns: 22px 1fr; font-size: 14px; padding: 6px 0; }
 @media (max-width: 620px) { .adm-curso-assin-linha { grid-template-columns: 22px 1fr; } .adm-curso-assin-linha input[type="text"]:last-child { grid-column: 2; } }
+/* ===== Contas a pagar (/contas) ========================= */
+.adm-cp-novos { display: flex; gap: 8px; flex-wrap: wrap; }
+a.adm-btn-sec { text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+button.adm-link { background: none; border: 0; padding: 4px 0; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 700; color: var(--vermelho); display: inline-flex; align-items: center; gap: 6px; }
+.adm-cp-desc { color: var(--tinta); text-decoration: none; }
+.adm-cp-desc i { color: var(--mut); margin-right: 2px; }
+.adm-cp-desc:hover strong { color: var(--vermelho); }
+.adm-cp-valor { white-space: nowrap; }
+.adm-cp-atrasado { color: var(--erro-tx); font-weight: 700; }
+.adm-cp-acoes { white-space: nowrap; }
+.adm-cp-acoes form { display: inline; margin-left: 10px; }
+.adm-cp-acoes > a + form, .adm-cp-acoes > form:first-child { margin-left: 0; }
+.adm-cp-acoes > a { margin-right: 10px; }
+.adm-cp-aprovar { background: var(--ok-bg); color: var(--ok-tx); border: 1px solid var(--ok-bd); border-radius: 8px; padding: 6px 12px; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; }
+.adm-cp-aprovar:hover { filter: brightness(.96); }
+.adm-cp-enviar { display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding: 14px 20px; border-top: 1px solid var(--linha2); flex-wrap: wrap; }
+.adm-cp-lote { margin-bottom: 18px; }
+.adm-cp-como { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; word-break: break-all; color: var(--tinta-60); }
+.adm-cp-obs { white-space: pre-line; }
+.adm-cp-tipos { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.adm-cp-tipos legend { margin-bottom: 8px; }
+.adm-cp-tipos .adm-cert-opcao { margin: 0; }
+.adm-cp-anexos { display: grid; gap: 8px; }
+.adm-cp-lista-anexos { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.adm-cp-lista-anexos li { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.adm-cp-lista-anexos a { color: var(--tinta); font-weight: 600; text-decoration: none; }
+.adm-cp-lista-anexos a:hover { color: var(--vermelho); }
+.adm-cp-lista-anexos .check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--mut); }
+.adm-cp-ficha { display: grid; gap: 18px; margin-bottom: 18px; }
+.adm-cp-topo { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.adm-cp-grande { font-size: 28px; font-weight: 800; color: var(--tinta); }
+.adm-cp-dados { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px 24px; margin: 0; }
+.adm-cp-dados .full { grid-column: 1 / -1; }
+.adm-cp-dados dt { font-size: 12.5px; font-weight: 600; color: var(--mut); }
+.adm-cp-dados dd { margin: 2px 0 0; color: var(--tinta); }
+.adm-cp-botoes { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.adm-cp-botoes form { margin: 0; }
+.adm-cp-recusar { color: var(--vermelho); }
+.adm-cp-decisao { margin: 0; padding: 10px 14px; border-radius: 10px; font-size: 14px; }
+.adm-cp-decisao.ok { background: var(--ok-bg); color: var(--ok-tx); }
+.adm-cp-decisao.nao { background: var(--erro-bg); color: var(--erro-tx); }
+.adm-cp-hist { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 14px; }
+#pagar { margin-bottom: 18px; }
+@media (max-width: 620px) { .adm-cp-acoes { white-space: normal; } .adm-cp-acoes form { margin-left: 0; margin-right: 12px; } .adm-cp-enviar { justify-content: stretch; } .adm-cp-enviar .adm-btn { width: 100%; justify-content: center; } }
+.adm-form .adm-cp-tipos .adm-cert-opcao { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; }
+.adm-cp-tipos .adm-cert-opcao input[type="radio"] { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--vermelho); flex-shrink: 0; }
+.adm-cp-tipos .adm-cert-opcao:has(input:checked) { border-color: var(--vermelho); background: var(--vermelho-bg); }
+.adm-cp-form label > span > small.adm-mut { font-weight: 500; }

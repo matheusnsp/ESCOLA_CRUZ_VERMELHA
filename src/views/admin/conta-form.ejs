@@ -1,0 +1,96 @@
+<%
+var t = contas.TIPOS[item.tipo] ? item.tipo : 'DESPESA';
+var TITULO = { DESPESA: 'despesa', COMPRA: 'pedido de compra', REEMBOLSO: 'pedido de reembolso' };
+var valorTexto = item.valorTexto != null ? item.valorTexto : (Number.isFinite(item.valor) ? (item.valor / 100).toFixed(2).replace('.', ',') : '');
+%>
+<%- include('head', { titulo: (novo ? 'Nova ' : 'Editar ') + TITULO[t] }) %>
+<%- include('header', { ativo: 'contas' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= novo ? (t === 'DESPESA' ? 'Nova despesa' : 'Novo ' + TITULO[t]) : 'Editar ' + TITULO[t] %></h1>
+  <a href="/contas?aba=semana" class="adm-link">← Voltar</a>
+</div>
+
+<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+
+<form method="POST" action="<%= novo ? '/contas' : '/contas/' + item.id %>?_csrf=<%= csrfToken %>" enctype="multipart/form-data" class="adm-form adm-box adm-cp-form">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+  <fieldset class="full adm-cp-tipos">
+    <legend class="adm-foto-rot">Tipo</legend>
+    <% Object.keys(contas.TIPOS).forEach(function (k) { %>
+      <label class="adm-cert-opcao">
+        <input type="radio" name="tipo" value="<%= k %>" <%= t === k ? 'checked' : '' %>>
+        <span><b><i class="fa-solid <%= contas.TIPOS[k].icone %>"></i> <%= contas.TIPOS[k].nome %></b>
+          <small><%= k === 'DESPESA' ? 'Conta da semana: boleto, nota, serviço.' : k === 'COMPRA' ? 'Pedir autorização antes de gastar.' : 'Alguém pagou do próprio bolso.' %></small></span>
+      </label>
+    <% }) %>
+  </fieldset>
+
+  <label class="full">
+    O que é
+    <input type="text" name="descricao" maxlength="200" required value="<%= item.descricao || '' %>" placeholder="Ex.: Luvas e seringas para a aula prática de punção">
+  </label>
+  <label>
+    <span id="rotFavorecido"><%= t === 'REEMBOLSO' ? 'Quem deve ser reembolsado' : 'Fornecedor / a quem pagar' %></span>
+    <input type="text" name="favorecido" maxlength="120" required value="<%= item.favorecido || '' %>" placeholder="Ex.: Distribuidora Médica Rio">
+  </label>
+  <label>
+    Categoria
+    <select name="categoria" required>
+      <option value="" <%= item.categoria ? '' : 'selected' %> disabled>Escolha…</option>
+      <% contas.CATEGORIAS.forEach(function (c) { %><option <%= item.categoria === c ? 'selected' : '' %>><%= c %></option><% }) %>
+    </select>
+  </label>
+  <label>
+    Valor (R$)
+    <input type="text" name="valor" inputmode="decimal" required value="<%= valorTexto %>" placeholder="150,00">
+  </label>
+  <label>
+    <span>Vencimento <small class="adm-mut">(opcional)</small></span>
+    <input type="date" name="vencimento" value="<%= item.vencimento || '' %>">
+  </label>
+  <label class="full">
+    <span>Como pagar <small class="adm-mut">(opcional)</small></span>
+    <input type="text" name="comoPagar" maxlength="300" value="<%= item.comoPagar || '' %>" placeholder="Chave PIX, linha digitável do boleto ou dados da conta">
+  </label>
+  <label class="full">
+    <span>Observação <small class="adm-mut">(opcional)</small></span>
+    <textarea name="observacao" rows="3" maxlength="1000" placeholder="Algo que o diretor precisa saber para aprovar"><%= item.observacao || '' %></textarea>
+  </label>
+
+  <div class="full adm-cp-anexos">
+    <span class="adm-foto-rot">Nota, boleto ou recibo</span>
+    <% if (!novo && item.anexos && item.anexos.length) { %>
+      <ul class="adm-cp-lista-anexos">
+        <% item.anexos.forEach(function (a, n) { %>
+          <li>
+            <a href="/contas/<%= item.id %>/anexos/<%= n %>" target="_blank" rel="noopener"><i class="fa-solid <%= a.tipo === 'application/pdf' ? 'fa-file-pdf' : 'fa-file-image' %>"></i> <%= a.nome %></a>
+            <label class="check"><input type="checkbox" name="removerAnexo" value="<%= n %>"> remover</label>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+    <input type="file" name="anexos" multiple accept="application/pdf,image/jpeg,image/png,image/webp">
+    <small class="adm-hint">PDF ou foto (JPG, PNG, WEBP), até 10 MB cada, 5 por vez. Fica guardado de forma privada: só abre por aqui.</small>
+  </div>
+
+  <div class="full adm-form-rodape">
+    <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> <%= novo ? 'Lançar' : 'Salvar alterações' %></button>
+    <a href="/contas?aba=semana" class="adm-link">Cancelar</a>
+    <small class="adm-mut">Fica em "Esta semana" até você enviar para aprovação.</small>
+  </div>
+</form>
+
+<script>
+  (function () {
+    var rot = document.getElementById('rotFavorecido');
+    document.querySelectorAll('input[name="tipo"]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        rot.textContent = r.value === 'REEMBOLSO' ? 'Quem deve ser reembolsado' : 'Fornecedor / a quem pagar';
+      });
+    });
+  })();
+</script>
+
+<%- include('foot') %>

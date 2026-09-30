@@ -22,6 +22,8 @@ const PERMISSOES = {
     'taxa:aprovar',        // confirmar pagamento da TAXA de inscrição
     'pagamento:confirmar', // confirmar pagamento do CURSO (só confirmar —
                             // cancelar/estornar continuam do Financeiro/Dev)
+    'contas:lancar',       // Contas a pagar: lançar despesas da semana e pedir compra/reembolso.
+                           // Não mostra o caixa: ela vê só o que foi lançado e o andamento.
     'pendentes:gerenciar', // ver /pendentes, enviar lembrete, registrar contato
                         // por WhatsApp e REMOVER matrícula fantasma (só as
                         // que nunca tiveram dinheiro: PENDENTE +
@@ -52,6 +54,8 @@ const PERMISSOES = {
                             // relatório carrega a movimentação financeira
                             // inteira num arquivo que sai do sistema.
     'pendentes:gerenciar',  // ver /pendentes e enviar lembrete
+    'contas:aprovar',       // Contas a pagar: aprovar ou recusar o que a secretaria enviou
+    'contas:pagar',         // Contas a pagar: marcar como paga (data, forma, comprovante)
   ],
 
   // ---- CONSULTA -------------------------------------------------------
@@ -93,6 +97,9 @@ const CATALOGO = [
   { grupo: 'Financeiro', id: 'financeiro:aprovar',    nome: 'Cancelar inscrição' },
   { grupo: 'Financeiro', id: 'financeiro:reembolsar', nome: 'Estornar pagamento e marcar reembolso', desc: 'Devolve dinheiro ao aluno; não dá para desfazer.' },
   { grupo: 'Financeiro', id: 'relatorio:baixar',      nome: 'Baixar relatórios', desc: 'Excel, PDF, CSV e OFX com a movimentação.' },
+  { grupo: 'Contas a pagar', id: 'contas:lancar',  nome: 'Lançar despesas e pedir compra ou reembolso', desc: 'Envia a semana para aprovação. Não mostra o caixa.' },
+  { grupo: 'Contas a pagar', id: 'contas:aprovar', nome: 'Aprovar ou recusar despesas e pedidos' },
+  { grupo: 'Contas a pagar', id: 'contas:pagar',   nome: 'Marcar despesa como paga', desc: 'Data, forma de pagamento e comprovante.' },
   { grupo: 'Só visualizar', id: 'painel:leitura',     nome: 'Ver cursos, turmas, alunos e horários', desc: 'Sem botões de ação.' },
 ];
 const IDS = new Set(CATALOGO.map((c) => c.id));
@@ -107,11 +114,21 @@ let atual = PADRAO;
 let lidoEm = 0;
 let lendo = null;
 
+// Permissões criadas depois que a tela de Permissões já existia. Uma lista gravada antes delas não
+// sabe que existem: para essas, vale o padrão do papel (senão a secretaria perderia a função nova
+// só porque alguém já tinha mexido nas permissões). A lista gravada guarda em "_conhecidas" o
+// catálogo da época; o que não está lá recebe o padrão.
+const NOVAS_DEPOIS_DA_TELA = ['contas:lancar', 'contas:aprovar', 'contas:pagar'];
+
 function limpar(mapa) {
   const certo = {};
+  const conhecidas = mapa && Array.isArray(mapa._conhecidas)
+    ? mapa._conhecidas
+    : CATALOGO.map((c) => c.id).filter((id) => !NOVAS_DEPOIS_DA_TELA.includes(id));
   for (const papel of PAPEIS_EDITAVEIS) {
-    const lista = mapa && Array.isArray(mapa[papel]) ? mapa[papel] : PADRAO[papel];
-    certo[papel] = CATALOGO.map((c) => c.id).filter((id) => lista.includes(id)); // só ids conhecidos, na ordem do catálogo
+    const gravada = mapa && Array.isArray(mapa[papel]) ? mapa[papel] : null;
+    const tem = (id) => (gravada && conhecidas.includes(id) ? gravada : PADRAO[papel]).includes(id);
+    certo[papel] = CATALOGO.map((c) => c.id).filter(tem); // só ids conhecidos, na ordem do catálogo
   }
   return certo;
 }
@@ -142,8 +159,9 @@ async function salvar(mapa) {
     await prisma.configuracao.deleteMany({ where: { chave: CHAVE } });
     atual = PADRAO;
   } else {
-    const certo = limpar(mapa);
-    await prisma.configuracao.upsert({ where: { chave: CHAVE }, update: { valor: JSON.stringify(certo) }, create: { chave: CHAVE, valor: JSON.stringify(certo) } });
+    const certo = limpar({ ...mapa, _conhecidas: CATALOGO.map((c) => c.id) });
+    const valor = JSON.stringify({ ...certo, _conhecidas: CATALOGO.map((c) => c.id) });
+    await prisma.configuracao.upsert({ where: { chave: CHAVE }, update: { valor }, create: { chave: CHAVE, valor } });
     atual = certo;
   }
   lidoEm = Date.now();
