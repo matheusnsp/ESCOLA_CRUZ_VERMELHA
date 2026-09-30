@@ -1427,3 +1427,46 @@ a.adm-hz-turma:hover { border-color: var(--vermelho); background: var(--vermelho
 @media (max-width: 620px) { .adm-aba-sep { margin-left: 0; } }
 .adm-hz-intro { margin-top: 0; }
 .adm-aba i { font-size: 12px; margin-right: 2px; }
+
+/* ---------- Configurações → Permissões ---------- */
+.adm-perm { min-width: 640px; }
+.adm-perm td { vertical-align: middle; }
+.adm-perm td small { display: block; font-size: 12.5px; margin-top: 2px; font-weight: 500; }
+.adm-perm th.adm-perm-col, .adm-perm td.adm-perm-col { text-align: center; width: 118px; }
+.adm-perm th.adm-perm-col small { display: block; font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--mut); margin-top: 2px; }
+.adm-perm tr.adm-perm-grupo th { background: var(--bg); color: var(--tinta); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; padding-top: 10px; padding-bottom: 10px; }
+.adm-perm tbody tr.adm-perm-grupo:hover { background: var(--bg); }
+.adm-perm-check { position: relative; display: inline-flex; cursor: pointer; }
+.adm-perm-check input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.adm-perm-check span { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; border: 1.5px solid var(--linha); background: var(--campo); color: transparent; font-size: 13px; transition: background .12s, border-color .12s; }
+.adm-perm-check input:checked + span { background: var(--vermelho); border-color: var(--vermelho); color: #fff; }
+.adm-perm-check input:focus-visible + span { outline: 3px solid var(--foco); outline-offset: 2px; }
+.adm-perm-check:hover span { border-color: var(--vermelho); }
+.adm-perm td.mudou { position: relative; }
+.adm-perm td.mudou::after, .adm-perm-legenda i { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--alerta-tx, #b45309); }
+.adm-perm td.mudou::after { position: absolute; top: 10px; right: calc(50% - 22px); }
+.adm-perm-legenda { white-space: nowrap; margin-left: 6px; font-size: 13px; }
+.adm-perm-legenda i { margin-right: 4px; vertical-align: 1px; }
+.adm-perm-rodape { padding: 16px 20px; margin: 0; border-top: 1px solid var(--linha); display: flex; align-items: center; gap: 14px; }
+.adm-perm-padrao { margin-top: 12px; }
+.adm-perm-padrao button { background: none; border: 0; cursor: pointer; font: inherit; font-size: 14px; padding: 0; }
+.adm-perm-curto { display: none; }
+@media (max-width: 620px) {
+  .adm-perm { min-width: 0; }
+  .adm-perm-longo { display: none; }
+  .adm-perm-curto { display: inline; }
+  .adm-perm th.adm-perm-col, .adm-perm td.adm-perm-col { width: 46px; padding-left: 2px; padding-right: 2px; }
+  .adm-perm th.adm-perm-col small { display: none; }
+  .adm-perm td:first-child { padding-right: 6px; }
+  .adm-perm td.mudou::after { top: 6px; right: 2px; }
+}
+/* Seletor de papel em Usuários do painel */
+.adm-papel-form select { font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--linha); background: var(--campo); color: var(--tinta); min-width: 150px; }
+.adm-papel-form select:disabled { opacity: .55; }
+.adm-usuario-acoes { white-space: nowrap; text-align: right; }
+.adm-usuario-acoes form { display: inline-flex !important; vertical-align: middle; margin-left: 6px; }
+@media (max-width: 620px) {
+  .adm-usuarios { table-layout: auto !important; }
+  .adm-usuarios td.adm-usuario-acoes { text-align: left; white-space: normal; }
+  .adm-usuarios td.adm-usuario-acoes form:first-child { margin-left: 0; }
+}

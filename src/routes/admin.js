@@ -20,7 +20,8 @@ const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarTextoWhats
 const { coletarDadosRelatorio, gerarExcel, gerarPdf, coletarLancamentosOfx, gerarOfx } = require('../lib/relatorio'); // relatórios Excel/PDF
 const { concluirTurmasPassadas } = require('../lib/concluir-turmas');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
-const { temPermissao, PAPEIS_ADMIN, listarPermissoes } = require('../lib/permissoes');
+const permissoes = require('../lib/permissoes');
+const { temPermissao, PAPEIS_ADMIN, listarPermissoes } = permissoes;
 const horariosSite = require('../lib/horarios-site'); // questionário de dias e horários (lido do site)
 const cacheRapido = require('../lib/cache-rapido');
 
@@ -530,7 +531,8 @@ router.post('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
 
-router.use((req, res, next) => {
+router.use(async (req, res, next) => {
+  await permissoes.carregar(); // relê as permissões editadas em Configurações (no máximo a cada 30 s)
   res.locals.admUsuarioNome = req.session?.nome || '';
   res.locals.admPapel = req.session?.papel || null;
   res.locals.path = req.path;
@@ -2556,6 +2558,29 @@ router.post('/dev/usuarios/:id/papel', requireDev, async (req, res) => {
   res.redirect('/dev/usuarios?ok=' + encodeURIComponent(`Papel de ${usuario.nome} alterado para ${novoPapel}.`));
 });
 
+// Excluir um usuário do painel. A sessão dele cai no próximo clique (o server.js derruba quem não
+// existe mais). Não exclui a si mesmo nem o último Dev, e recusa conta com matrícula de aluno.
+router.post('/dev/usuarios/:id/excluir', requireDev, async (req, res) => {
+  const volta = (tipo, msg) => res.redirect(`/dev/usuarios?${tipo}=` + encodeURIComponent(msg));
+  if (req.params.id === req.session.usuarioId) return volta('erro', 'Você não pode excluir a própria conta.');
+
+  const usuario = await prisma.usuario.findUnique({ where: { id: req.params.id }, include: { _count: { select: { matriculas: true } } } });
+  if (!usuario || !PAPEIS_ADMIN.includes(usuario.papel)) return volta('erro', 'Usuário não encontrado.');
+  if (usuario.papel === 'DEV' && (await prisma.usuario.count({ where: { papel: 'DEV' } })) <= 1) {
+    return volta('erro', 'Não dá para excluir o último Dev.');
+  }
+  if (usuario._count.matriculas) {
+    return volta('erro', `${usuario.nome} tem matrícula como aluno; troque o papel em vez de excluir.`);
+  }
+
+  await prisma.$transaction([
+    prisma.tokenAuth.deleteMany({ where: { usuarioId: usuario.id } }),
+    prisma.usuario.delete({ where: { id: usuario.id } }),
+  ]);
+  await auditar(req, 'EXCLUIU_ADMIN', 'Usuario', usuario.id, { nome: usuario.nome, email: usuario.email, papel: usuario.papel });
+  return volta('ok', `${usuario.nome} foi excluído(a) e perdeu o acesso ao painel.`);
+});
+
 router.get('/dev/usuarios/novo', requireDev, (req, res) => {
   res.render('admin/dev-usuario-form', { papeis: PAPEIS_ADMIN, erro: null, valores: {} });
 });
@@ -2587,6 +2612,49 @@ router.post('/dev/usuarios/novo', requireDev, async (req, res) => {
     if (err.code === 'P2002') return reErro('Já existe uma conta com este e-mail.');
     throw err;
   }
+});
+
+// ---------- Permissões de cada papel (Configurações → Permissões) ----------
+
+router.get('/dev/permissoes', requireDev, async (req, res) => {
+  await permissoes.carregar({ forcar: true });
+  const contagem = await prisma.usuario.groupBy({ by: ['papel'], where: { papel: { in: permissoes.PAPEIS_EDITAVEIS } }, _count: true });
+  res.render('admin/dev-permissoes', {
+    catalogo: permissoes.CATALOGO,
+    papeis: permissoes.PAPEIS_EDITAVEIS,
+    atual: permissoes.permissoesAtuais(),
+    padrao: permissoes.permissoesPadrao(),
+    pessoas: Object.fromEntries(contagem.map((c) => [c.papel, c._count])),
+    ok: req.query.ok || null,
+  });
+});
+
+router.post('/dev/permissoes', requireDev, async (req, res) => {
+  const antes = permissoes.permissoesAtuais();
+  const marcado = req.body.perm || {};
+  const novo = {};
+  for (const papel of permissoes.PAPEIS_EDITAVEIS) {
+    const lista = [].concat(marcado[papel] || []).map(String);
+    novo[papel] = lista.filter((id) => permissoes.IDS.has(id));
+  }
+  const salvo = await permissoes.salvar(novo);
+
+  // O que mudou, para o log de auditoria e a mensagem.
+  const mudancas = {};
+  for (const papel of permissoes.PAPEIS_EDITAVEIS) {
+    const deu = salvo[papel].filter((id) => !antes[papel].includes(id));
+    const tirou = antes[papel].filter((id) => !salvo[papel].includes(id));
+    if (deu.length || tirou.length) mudancas[papel] = { deu, tirou };
+  }
+  const n = Object.values(mudancas).reduce((t, m) => t + m.deu.length + m.tirou.length, 0);
+  if (n) await auditar(req, 'ALTEROU_PERMISSOES', 'Configuracao', null, mudancas);
+  res.redirect('/dev/permissoes?ok=' + encodeURIComponent(n ? `Permissões salvas (${n} ${n === 1 ? 'mudança' : 'mudanças'}). Já valem para quem está logado.` : 'Nada mudou.'));
+});
+
+router.post('/dev/permissoes/padrao', requireDev, async (req, res) => {
+  await permissoes.salvar(null);
+  await auditar(req, 'RESTAUROU_PERMISSOES_PADRAO', 'Configuracao', null, {});
+  res.redirect('/dev/permissoes?ok=' + encodeURIComponent('Permissões voltaram ao padrão.'));
 });
 
 // ---------- Banimento de Alunos ----------

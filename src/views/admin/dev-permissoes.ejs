@@ -1,0 +1,76 @@
+<%- include('head', { titulo: 'Permissões' }) %>
+<%- include('header', { ativo: 'dev-usuarios' }) %>
+<%
+  const NOMES = { SECRETARIA: 'Secretaria', COORDENADOR: 'Coordenador', FINANCEIRO: 'Financeiro', CONSULTA: 'Consulta' };
+  const grupos = [...new Set(catalogo.map(c => c.grupo))];
+  const mudou = (papel, id) => atual[papel].includes(id) !== padrao[papel].includes(id);
+  const personalizado = papeis.some(p => catalogo.some(c => mudou(p, c.id)));
+%>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Configurações</h1>
+</div>
+<%- include('abas-config', { aba: 'permissoes' }) %>
+
+<% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
+
+<p class="adm-hz-intro">Marque o que cada papel pode fazer no painel. Vale na hora para todo mundo daquele papel.
+  O papel <b>Dev</b> sempre pode tudo. <span class="adm-perm-legenda"><i></i> diferente do padrão</span></p>
+
+<form method="POST" action="/dev/permissoes" class="adm-box" id="formPerm">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="adm-hz-rolagem">
+  <table class="adm-table adm-perm">
+    <thead>
+      <tr>
+        <th>Pode…</th>
+        <% papeis.forEach(function (p) { %>
+          <th class="adm-perm-col"><span class="adm-perm-longo"><%= NOMES[p] || p %></span><span class="adm-perm-curto" title="<%= NOMES[p] %>"><%= (NOMES[p] || p).slice(0, 4) %>.</span><small><%= pessoas[p] || 0 %> <%= (pessoas[p] || 0) === 1 ? 'pessoa' : 'pessoas' %></small></th>
+        <% }) %>
+      </tr>
+    </thead>
+    <tbody>
+      <% grupos.forEach(function (g) { %>
+        <tr class="adm-perm-grupo"><th colspan="<%= papeis.length + 1 %>"><%= g %></th></tr>
+        <% catalogo.filter(c => c.grupo === g).forEach(function (c) { %>
+          <tr>
+            <td><b><%= c.nome %></b><% if (c.desc) { %><small class="adm-mut"><%= c.desc %></small><% } %></td>
+            <% papeis.forEach(function (p) { %>
+              <td class="adm-perm-col <%= mudou(p, c.id) ? 'mudou' : '' %>">
+                <label class="adm-perm-check" title="<%= NOMES[p] %>: <%= c.nome %><%= mudou(p, c.id) ? ' (padrão: ' + (padrao[p].includes(c.id) ? 'sim' : 'não') + ')' : '' %>">
+                  <input type="checkbox" name="perm[<%= p %>][]" value="<%= c.id %>" <%= atual[p].includes(c.id) ? 'checked' : '' %>>
+                  <span aria-hidden="true"><i class="fa-solid fa-check"></i></span>
+                  <em class="adm-hz-sr"><%= NOMES[p] %>: <%= c.nome %></em>
+                </label>
+              </td>
+            <% }) %>
+          </tr>
+        <% }) %>
+      <% }) %>
+    </tbody>
+  </table>
+  </div>
+  <div class="adm-form-rodape adm-perm-rodape">
+    <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> Salvar permissões</button>
+    <span class="adm-mut" id="permAviso" hidden>Há mudanças não salvas.</span>
+  </div>
+</form>
+
+<% if (personalizado) { %>
+  <form method="POST" action="/dev/permissoes/padrao" class="adm-perm-padrao"
+        data-confirmar="Voltar as permissões de todos os papéis ao padrão do sistema? As mudanças feitas aqui se perdem." data-botao="Voltar ao padrão">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button type="submit" class="adm-link"><i class="fa-solid fa-rotate-left"></i> Voltar tudo ao padrão</button>
+  </form>
+<% } %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var f = document.getElementById('formPerm'), aviso = document.getElementById('permAviso'), mexeu = false;
+    f.addEventListener('change', function () { mexeu = true; aviso.hidden = false; });
+    f.addEventListener('submit', function () { mexeu = false; });
+    window.addEventListener('beforeunload', function (e) { if (mexeu) { e.preventDefault(); e.returnValue = ''; } });
+  });
+</script>
+
+<%- include('foot') %>

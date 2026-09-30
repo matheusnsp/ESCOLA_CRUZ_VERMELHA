@@ -14,13 +14,13 @@
   <% if (!linhas.length) { %>
     <p class="adm-vazio">Nenhum usuário admin cadastrado.</p>
   <% } else { %>
-    <table class="adm-table" style="table-layout:fixed;width:100%;">
+    <table class="adm-table adm-table-cards adm-usuarios" style="table-layout:fixed;width:100%;">
       <colgroup>
         <col style="width:160px;">
         <col style="width:200px;">
         <col style="width:130px;">
         <col>
-        <col style="width:210px;">
+        <col style="width:260px;">
       </colgroup>
       <thead>
         <tr>
@@ -28,7 +28,7 @@
           <th>E-mail</th>
           <th>Papel</th>
           <th>Permissões</th>
-          <th></th>
+          <th>Trocar papel / excluir</th>
         </tr>
       </thead>
       <tbody>
@@ -38,16 +38,13 @@
             <td style="border-bottom:none;word-break:break-all;"><small class="adm-mut"><%= u.email %></small></td>
             <td style="border-bottom:none;"><span class="badge ok"><%= u.papel %></span></td>
             <td style="border-bottom:none;">
-              <div class="adm-permissoes">
-                <% u.permissoes.forEach(function(p) { %>
-                  <code class="adm-permissao"><%= p %></code>
-                <% }) %>
-              </div>
+              <% if (u.papel === 'DEV') { %><span class="adm-mut">todas (acesso total)</span>
+              <% } else { %><a href="/dev/permissoes" class="adm-link"><%= u.permissoes.length %> <%= u.permissoes.length === 1 ? 'permissão' : 'permissões' %> <i class="fa-solid fa-arrow-right"></i></a><% } %>
             </td>
-            <td style="border-bottom:none;" class="adm-acoes">
+            <td style="border-bottom:none;" class="adm-acoes adm-usuario-acoes">
               <% if (u.id === meuId) { %>
-                <form style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;">
-                  <select style="font-size:13px;width:100%;" disabled>
+                <form class="adm-papel-form" style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;">
+                  <select disabled>
                     <% papeis.forEach(function(p) { %>
                       <option value="<%= p %>" <%= p === u.papel ? 'selected' : '' %>><%= p %></option>
                     <% }) %>
@@ -55,14 +52,20 @@
                   <button type="button" class="adm-mini" disabled title="Você não pode alterar o próprio papel"><i class="fa-solid fa-check"></i></button>
                 </form>
               <% } else { %>
-                <form method="POST" action="/dev/usuarios/<%= u.id %>/papel" style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;">
+                <form method="POST" action="/dev/usuarios/<%= u.id %>/papel" class="adm-papel-form" style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap;">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                  <select name="papel" style="font-size:13px;width:100%;">
+                  <select name="papel">
                     <% papeis.forEach(function(p) { %>
                       <option value="<%= p %>" <%= p === u.papel ? 'selected' : '' %>><%= p %></option>
                     <% }) %>
                   </select>
                   <button type="submit" class="adm-mini" title="Salvar"><i class="fa-solid fa-check"></i></button>
+                </form>
+                <form method="POST" action="/dev/usuarios/<%= u.id %>/excluir"
+                      data-confirmar="Excluir <%= u.nome %> (<%= u.email %>)? A pessoa perde o acesso ao painel na hora. Não dá para desfazer; para voltar, crie o usuário de novo."
+                      data-botao="Excluir usuário">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button type="submit" class="adm-mini danger" title="Excluir usuário" aria-label="Excluir <%= u.nome %>"><i class="fa-solid fa-trash"></i></button>
                 </form>
               <% } %>
             </td>
