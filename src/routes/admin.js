@@ -799,8 +799,10 @@ router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), as
           },
         },
         // Turmas ainda por começar (abertas ou confirmadas): a lista mostra quantas e a próxima.
+        // Abertas, confirmadas e concluídas: a lista mostra as abertas; sem nenhuma aberta, as
+        // confirmadas; sem essas, a última concluída (a escolha fica na view).
         turmas: {
-          where: turmaEmAberto(),
+          where: { status: { in: ['ABERTA', 'CONFIRMADA', 'ENCERRADA'] } },
           orderBy: { inicioPrevisto: 'asc' },
           select: {
             id: true, inicioPrevisto: true, vagas: true, status: true,

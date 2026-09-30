@@ -1381,19 +1381,23 @@ a.adm-pend-btn { text-decoration: none; }
 .adm-valores-opcao small { font-size: 12.5px; line-height: 1.45; }
 @media (max-width: 620px) { .adm-valores-caixa { grid-template-columns: 1fr; } }
 
-/* Cursos: valores em duas linhas rotuladas e turmas como atalhos */
-dl.adm-valores { margin: 0; display: grid; gap: 6px; }
-dl.adm-valores > div { display: grid; grid-template-columns: 70px 1fr; gap: 8px; align-items: baseline; }
-dl.adm-valores dt { font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--mut); }
-dl.adm-valores dd { margin: 0; }
-dl.adm-valores dd b { color: var(--tinta); font-size: 14px; }
-dl.adm-valores dd small { display: block; font-size: 11.5px; color: var(--mut); }
-dl.adm-valores .adm-valores-nota { grid-template-columns: 1fr; }
-dl.adm-valores .adm-valores-nota dd { font-size: 11.5px; color: var(--mut); }
+/* Cursos: valores (valor primeiro, forma de pagamento ao lado) e turmas como atalhos */
+.adm-valores { display: grid; gap: 3px; }
+.adm-valores p { margin: 0; line-height: 1.35; }
+.adm-valores p b { color: var(--tinta); font-size: 14px; font-weight: 800; }
+.adm-valores p span { color: var(--tinta-60); font-size: 12.5px; }
+.adm-valores small { display: block; font-size: 11.5px; color: var(--mut); line-height: 1.4; white-space: nowrap; }
+.adm-valores p + small { margin-top: 2px; }
 .adm-turmas-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .adm-chip-turma { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--linha); background: var(--campo); color: var(--tinta); font-size: 12.5px; text-decoration: none; transition: border-color .12s, background .12s; }
 a.adm-chip-turma:hover { border-color: var(--vermelho); background: var(--vermelho-bg); }
 .adm-chip-turma b { font-weight: 800; }
-.adm-chip-turma span { color: var(--mut); font-variant-numeric: tabular-nums; }
+.adm-chip-turma span { color: var(--mut); font-variant-numeric: tabular-nums; padding-left: 7px; border-left: 1px solid var(--linha); }
+.adm-chip-turma i { font-size: 11px; opacity: .7; margin-right: 1px; }
 .adm-chip-turma.mais { color: var(--mut); }
+.adm-chip-turma em { font-style: normal; font-size: 11px; font-weight: 700; color: var(--mut); }
+.adm-chip-turma.fechada b { color: var(--tinta-60); }
 .adm-nova-turma { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 12.5px; }
+/* Chips de turma e valores sem quebrar no meio (a data e "no cartão" caíam para a linha de baixo) */
+@media (min-width: 621px) { .adm-chip-turma, .adm-chip-turma b, .adm-chip-turma span, .adm-valores p { white-space: nowrap; } }
+@media (max-width: 620px) { .adm-chip-turma { flex-wrap: wrap; row-gap: 2px; } .adm-chip-turma b { white-space: nowrap; } }

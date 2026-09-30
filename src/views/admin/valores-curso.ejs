@@ -6,27 +6,15 @@ const _f = (n) => formatBRL(n);
 <% if (!v) { %>
   <span class="adm-mut">—</span>
 <% } else if (compacto) { %>
-  <dl class="adm-valores">
-    <div>
-      <dt>À vista</dt>
-      <dd><b class="num"><%= _f(v.aVista.total) %></b></dd>
-    </div>
-    <div>
-      <dt>Parcelado</dt>
-      <% if (v.parcelado) { %>
-        <dd>
-          <b class="num"><%= v.parcelado.numParcelas %>× <%= _f(v.parcelado.valorParcela) %></b>
-          <small>total <%= _f(v.parcelado.total) %></small>
-          <% if (!v.parcelado.juros) { %><small class="adm-txt-alerta" title="Não foi possível consultar os juros na Únicopag agora">sem juros (gateway fora do ar)</small><% } %>
-        </dd>
-      <% } else { %>
-        <dd><span class="adm-mut">não oferecido</span></dd>
-      <% } %>
-    </div>
-    <% if (v.aVista.taxa) { %>
-      <div class="adm-valores-nota"><dd>inclui taxa de matrícula de <%= _f(v.aVista.taxa) %></dd></div>
+  <div class="adm-valores">
+    <p><b class="num"><%= _f(v.aVista.total) %></b> <span>à vista</span></p>
+    <% if (v.parcelado) { %>
+      <p><b class="num"><%= v.parcelado.numParcelas %>× <%= _f(v.parcelado.valorParcela) %></b> <span>no cartão</span></p>
     <% } %>
-  </dl>
+    <% if (v.parcelado) { %><small>total no cartão <%= _f(v.parcelado.total) %></small><% } %>
+    <small><%= v.aVista.taxa ? 'inclui taxa de ' + _f(v.aVista.taxa) : 'sem taxa de matrícula' %></small>
+    <% if (v.parcelado && !v.parcelado.juros) { %><small class="adm-txt-alerta" title="Não foi possível consultar os juros na Únicopag agora">parcelas sem juros: gateway fora do ar</small><% } %>
+  </div>
 <% } else { %>
   <div class="adm-valores-caixa">
     <div class="adm-valores-opcao">
