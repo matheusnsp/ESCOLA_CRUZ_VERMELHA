@@ -60,6 +60,9 @@ function requireAdmin(req, res, next) {
     // precisão basta.
     if (!req.session.adminLastSeen || agora - req.session.adminLastSeen > 60 * 1000) {
       req.session.adminLastSeen = agora;
+      // Mesma cadência para o "online agora" de Configurações → Usuários do painel.
+      prisma.usuario.update({ where: { id: req.session.usuarioId }, data: { ultimaAtividade: new Date(agora) } })
+        .catch((e) => console.error('[admin] ultimaAtividade:', e.message));
     }
     return next();
   }
@@ -296,6 +299,7 @@ async function logarComoAdmin(req, res, usuario) {
       if (err2) { return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar a sessao.' }); }
       try {
         const quando = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        await prisma.usuario.update({ where: { id: usuario.id }, data: { ultimoLogin: new Date(), ultimaAtividade: new Date() } });
         await enviarAlertaLoginSecretaria(usuario.email, usuario.nome, quando, ip);
         await auditar(req, 'LOGIN_ADMIN', 'Usuario', usuario.id, { ip, papel: usuario.papel });
       } catch (e) { console.error('Pos-login (alerta/auditoria):', e); }
@@ -527,7 +531,11 @@ router.post('/redefinir-senha', resetSenhaLimiter, async (req, res) => {
   return res.render('admin/login', { erro: null, info: 'Senha definida com sucesso. Faca login normalmente.' });
 });
 
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
+  // Saiu: deixa de contar como online (a janela é de 5 min), mas continua "visto há poucos minutos".
+  if (req.session?.usuarioId) {
+    await prisma.usuario.update({ where: { id: req.session.usuarioId }, data: { ultimaAtividade: new Date(Date.now() - 5 * 60 * 1000 - 1000) } }).catch(() => {});
+  }
   req.session.destroy(() => res.redirect('/login'));
 });
 
@@ -2526,7 +2534,20 @@ router.get('/dev/usuarios', requireDev, async (req, res) => {
     where: { papel: { in: PAPEIS_ADMIN } },
     orderBy: [{ papel: 'asc' }, { nome: 'asc' }],
   });
-  const linhas = usuarios.map((u) => ({ ...u, permissoes: listarPermissoes(u.papel) }));
+  // Quem entrou antes de o login gravar ultimoLogin: usa o último LOGIN_ADMIN do log de auditoria.
+  const logins = await prisma.logAuditoria.groupBy({
+    by: ['atorId'], where: { acao: 'LOGIN_ADMIN', atorId: { in: usuarios.map((u) => u.id) } }, _max: { criadoEm: true },
+  });
+  const loginPorId = Object.fromEntries(logins.map((l) => [l.atorId, l._max.criadoEm]));
+  const agora = Date.now();
+  const linhas = usuarios.map((u) => {
+    const ultimoLogin = u.ultimoLogin || loginPorId[u.id] || null;
+    const visto = [u.ultimaAtividade, ultimoLogin].filter((d) => d && d.getTime() > 0).sort((a, b) => b - a)[0] || null;
+    return {
+      ...u, permissoes: listarPermissoes(u.papel), ultimoLogin, visto,
+      online: !!(u.ultimaAtividade && agora - u.ultimaAtividade.getTime() < 5 * 60 * 1000),
+    };
+  });
   res.render('admin/dev-usuarios', {
     linhas,
     papeis: PAPEIS_ADMIN,
