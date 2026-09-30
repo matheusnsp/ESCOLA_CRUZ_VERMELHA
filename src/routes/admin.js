@@ -1237,7 +1237,8 @@ router.post('/inscricoes/:id/cancelar', requirePermissao('financeiro:aprovar'), 
     where: { matriculaId: m.id, status: 'PENDENTE' },
     data: { status: 'CANCELADO' },
   });
-  await auditar(req, 'CANCELOU_INSCRICAO', 'Matricula', m.id, null);
+  const motivo = String(req.body.motivo || '').trim().slice(0, 200) || null;
+  await auditar(req, 'CANCELOU_INSCRICAO', 'Matricula', m.id, motivo ? { motivo } : null);
   res.redirect(back(req, 'Inscricao cancelada.'));
 });
 
@@ -2384,6 +2385,7 @@ router.post('/pendentes/:id/remover', requirePermissao('pendentes:gerenciar'), a
     plano: m.plano,
     criadoEm: m.criadoEm,
     pagamentosRemovidos: m.pagamentos.length,
+    motivo: String(req.body.motivo || '').trim().slice(0, 200) || null,
   };
 
   try {
