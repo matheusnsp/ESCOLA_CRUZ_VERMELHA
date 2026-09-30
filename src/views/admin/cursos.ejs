@@ -118,16 +118,32 @@
           </td>
           <td><%= c.cargaHoraria %>h</td>
           <td>
-            <%= formatBRL(c.precoAvista) %> <small class="adm-mut">à vista</small>
-            <br><small class="adm-mut"><%= formatBRL(c.precoCheio) %> no parcelado<%= Number(c.parcelas) > 1 ? ' (até ' + c.parcelas + '×)' : '' %></small>
+            <%- include('valores-curso', { v: c.valores, compacto: true }) %>
           </td>
           <td>
-            <% if (c.turmas && c.turmas.length) { %>
-              <%= c.turmas.length %> por começar
-              <br><small class="adm-mut">próxima <%= dt(prox.inicioPrevisto) %></small>
-            <% } else { %>
-              <span class="adm-mut">nenhuma aberta</span>
-              <% if (c._count.turmas) { %><br><small class="adm-mut"><%= c._count.turmas %> no histórico</small><% } %>
+            <%
+              // Mostra as turmas abertas; sem nenhuma aberta, as confirmadas; sem essas, a última
+              // concluída. Cada uma é um atalho para os alunos da turma.
+              const podeAlunos = pode('aluno:gerenciar') || pode('painel:leitura');
+              const todas = c.turmas || [];
+              let mostrar = todas.filter(t => t.status === 'ABERTA');
+              if (!mostrar.length) mostrar = todas.filter(t => t.status === 'CONFIRMADA');
+              if (!mostrar.length) mostrar = todas.filter(t => t.status === 'ENCERRADA').slice(-1);
+              const extra = mostrar.length > 3 ? mostrar.length - 3 : 0;
+            %>
+            <div class="adm-turmas-chips">
+              <% mostrar.slice(0, 3).forEach(function (t) { const aberta = t.status === 'ABERTA'; %>
+                <<%= podeAlunos ? 'a' : 'span' %><% if (podeAlunos) { %> href="/alunos?turma=<%= t.id %>"<% } %> class="adm-chip-turma <%= aberta ? '' : 'fechada' %>" title="<%= rotuloTurma(t.status) %> · <%= t._count.matriculas %> de <%= t.vagas %> vagas">
+                  <b><i class="fa-regular fa-calendar"></i> <%= dt(t.inicioPrevisto) %></b>
+                  <span><i class="fa-solid fa-user-group"></i> <%= t._count.matriculas %> de <%= t.vagas %> alunos</span>
+                  <% if (!aberta) { %><em><%= rotuloTurma(t.status).toLowerCase() %></em><% } %>
+                </<%= podeAlunos ? 'a' : 'span' %>>
+              <% }) %>
+              <% if (extra) { %><a href="/turmas" class="adm-chip-turma mais">+<%= extra %></a><% } %>
+              <% if (!mostrar.length) { %><span class="adm-mut">nenhuma turma</span><% } %>
+            </div>
+            <% if (pode('turmas:gerenciar')) { %>
+              <a href="/turmas/nova?curso=<%= c.id %>" class="adm-link adm-nova-turma"><i class="fa-solid fa-plus"></i> Nova turma</a>
             <% } %>
           </td>
           <td>
