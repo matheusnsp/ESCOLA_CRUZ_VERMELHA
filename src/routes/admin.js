@@ -1170,6 +1170,19 @@ async function recalcularMedia(matriculaId) {
   return media;
 }
 
+router.get('/turmas/:id/notas', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
+  const turma = await prisma.turma.findUnique({
+    where: { id: req.params.id },
+    include: {
+      curso: true,
+      aulas: { orderBy: { data: 'asc' }, take: 1 },
+      matriculas: { where: FILTRO_VAGA, include: { aluno: true }, orderBy: { aluno: { nome: 'asc' } } },
+    },
+  });
+  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
+  res.render('admin/turma-notas', { turma, ok: req.query.ok || null, erro: req.query.erro || null });
+});
+
 router.post('/turmas/:id/notas', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const turma = await prisma.turma.findUnique({
     where: { id: req.params.id },
@@ -1380,10 +1393,12 @@ async function carregarTurmaCertificados(id) {
 router.get('/turmas/:id/certificados', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const turma = await carregarTurmaCertificados(req.params.id);
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
-  const aprovados = turma.matriculas.filter((m) => m.situacao === 'APROVADO');
+  // Curso de extensão não tem nota: sai certificado para todos com o pagamento em dia, menos quem
+  // foi marcado como Reprovado.
+  const aprovados = turma.matriculas.filter((m) => m.situacao !== 'REPROVADO');
   res.render('admin/turma-certificados', {
     turma, aprovados,
-    outros: turma.matriculas.filter((m) => m.situacao !== 'APROVADO'),
+    outros: turma.matriculas.filter((m) => m.situacao === 'REPROVADO'),
     pendencias: certificado.pendencias(turma, aprovados),
     ajustes: await certificado.lerAjustes(),
   });
@@ -1393,7 +1408,7 @@ router.get('/turmas/:id/certificados/imprimir', requirePermissao('turmas:gerenci
   const ids = [].concat(req.query.m || []).map(String).filter((x) => /^[\w-]{1,64}$/.test(x)).slice(0, 200);
   const turma = await carregarTurmaCertificados(req.params.id);
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
-  const escolhidos = turma.matriculas.filter((m) => m.situacao === 'APROVADO' && (!ids.length || ids.includes(m.id)));
+  const escolhidos = turma.matriculas.filter((m) => m.situacao !== 'REPROVADO' && (!ids.length || ids.includes(m.id)));
   if (!escolhidos.length) return res.redirect(`/turmas/${turma.id}/certificados`);
   const novos = await certificado.numerar(escolhidos.map((m) => m.id), req.session.usuarioId);
   if (novos) await auditar(req, 'EMITIU_CERTIFICADOS', 'Turma', turma.id, { novos });

@@ -2,6 +2,7 @@
 <%- include('header', { ativo: 'turmas' }) %>
 <%
   const dia = (d) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+  const temNota = aprovados.some((m) => m.nota != null);
   const nota = (n) => n == null ? '—' : String(Math.round(n * 10) / 10).replace('.', ',');
 %>
 
@@ -26,23 +27,23 @@
 
 <form method="GET" action="/turmas/<%= turma.id %>/certificados/imprimir" target="_blank" class="adm-box" id="formCert">
   <div class="adm-box-head">
-    <h2 class="adm-h2"><i class="fa-solid fa-award"></i> Aprovados (<%= aprovados.length %>)</h2>
+    <h2 class="adm-h2"><i class="fa-solid fa-award"></i> Alunos com pagamento em dia (<%= aprovados.length %>)</h2>
     <% if (aprovados.length) { %>
       <button class="adm-btn" id="btnImprimir"><i class="fa-solid fa-print"></i> Imprimir selecionados</button>
     <% } %>
   </div>
   <% if (!aprovados.length) { %>
-    <p class="adm-vazio">Ninguém aprovado nesta turma ainda. Marque a situação de cada aluno em <a href="/turmas/<%= turma.id %>/notas">Notas</a>.</p>
+    <p class="adm-vazio">Nenhum aluno com o pagamento em dia nesta turma.</p>
   <% } else { %>
     <table class="adm-table adm-table-cards">
-      <thead><tr><th><input type="checkbox" id="certTodos" checked aria-label="Marcar todos"></th><th>Aluno</th><th>Documento</th><th>Nota</th><th>Livro / Registro</th><th></th></tr></thead>
+      <thead><tr><th><input type="checkbox" id="certTodos" checked aria-label="Marcar todos"></th><th>Aluno</th><th>Documento</th><% if (temNota) { %><th>Nota</th><% } %><th>Livro / Registro</th><th></th></tr></thead>
       <tbody>
         <% aprovados.forEach(function (m) { const doc = documentoAluno(m.aluno); %>
           <tr>
             <td><input type="checkbox" name="m" value="<%= m.id %>" checked aria-label="Imprimir <%= m.aluno.nome %>"></td>
             <td><strong><%= m.aluno.nome %></strong></td>
             <td><% if (doc) { %><small class="adm-mut"><%= doc.tipo %></small> <%= doc.numero %><% } else { %><span class="adm-txt-alerta">sem documento</span><% } %></td>
-            <td><%= nota(m.nota) %></td>
+            <% if (temNota) { %><td><%= nota(m.nota) %></td><% } %>
             <td><% if (m.certRegistro) { %>Livro <%= m.certLivro %> · Nº <%= m.certRegistro %><small class="adm-mut adm-hz-contato">emitido em <%= new Date(m.certEmitidoEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) %></small>
                 <% } else { %><span class="adm-mut">gerado ao imprimir</span><% } %></td>
             <td><a href="/turmas/<%= turma.id %>/certificados/imprimir?m=<%= m.id %>" target="_blank" class="adm-pend-btn"><i class="fa-solid fa-print"></i> Imprimir</a></td>
@@ -58,10 +59,10 @@
 
 <% if (outros.length) { %>
   <details class="adm-box adm-espaco adm-hz-faltam">
-    <summary><i class="fa-solid fa-user-clock"></i> <%= outros.length %> <%= outros.length === 1 ? 'aluno sem aprovação' : 'alunos sem aprovação' %></summary>
+    <summary><i class="fa-solid fa-user-xmark"></i> <%= outros.length %> <%= outros.length === 1 ? 'aluno reprovado (sem certificado)' : 'alunos reprovados (sem certificado)' %></summary>
     <ul class="adm-bv-alunos">
       <% outros.forEach(function (m) { %>
-        <li class="fraco"><span><%= m.aluno.nome %></span><em class="badge <%= m.situacao === 'REPROVADO' ? 'canc' : '' %>"><%= m.situacao === 'REPROVADO' ? 'reprovado' : 'sem situação' %></em></li>
+        <li class="fraco"><span><%= m.aluno.nome %></span><em class="badge canc">reprovado</em></li>
       <% }) %>
     </ul>
   </details>
