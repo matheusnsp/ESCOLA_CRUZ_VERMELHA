@@ -665,7 +665,7 @@ router.get('/', async (req, res) => {
     prisma.matricula.findMany({
       where: FILTRO_MATRICULA_FANTASMA,
       orderBy: { criadoEm: 'desc' },
-      take: 8,
+      take: 6,
       include: {
         aluno: true,
         turma: { include: { curso: true } },
@@ -673,6 +673,46 @@ router.get('/', async (req, res) => {
     }),
 
   ]);
+
+  // Painel voltado para o dia: o que entrou, o que falta receber, as próximas turmas e o que
+  // precisa de ação. Os números de dinheiro usam as mesmas regras de Financeiro e Pendentes.
+  const agora = new Date();
+  const diaSP = hojeSPStr();
+  const inicioMes = new Date(`${diaSP.slice(0, 8)}01T00:00:00-03:00`);
+  const inicioSemana = new Date(inicioHoje.getTime() - 6 * 86400000);
+  const [
+    matriculasHoje, matriculasSemana, cursoPagoMes, taxaSoMes,
+    emAbertoLista, pararamAntes, reembolsos, proximasTurmas,
+  ] = await Promise.all([
+    prisma.matricula.count({ where: { criadoEm: { gte: inicioHoje }, ...FILTRO_MATRICULA_FANTASMA } }),
+    prisma.matricula.count({ where: { criadoEm: { gte: inicioSemana }, ...FILTRO_MATRICULA_FANTASMA } }),
+    prisma.matricula.findMany({
+      where: { statusPagamento: { in: ['PAGO', 'PARCELADO'] }, confirmadaEm: { gte: inicioMes } },
+      select: { valorCurso: true },
+    }),
+    prisma.matricula.findMany({
+      where: { taxaConfirmada: true, taxaConfirmadaEm: { gte: inicioMes }, statusPagamento: { notIn: ['PAGO', 'PARCELADO', 'ESTORNADO'] } },
+      select: { valorTaxaMatricula: true },
+    }),
+    prisma.matricula.findMany({
+      where: { statusPagamento: 'PENDENTE', taxaConfirmada: true, turma: turmaEmAberto(agora) },
+      select: { valorCurso: true, diferencaTransferencia: true },
+    }),
+    prisma.matricula.count({ where: { statusPagamento: 'PENDENTE', taxaConfirmada: false, turma: turmaEmAberto(agora) } }),
+    prisma.matricula.count({ where: { diferencaTransferencia: { lt: 0 } } }),
+    prisma.turma.findMany({
+      where: turmaEmAberto(agora),
+      orderBy: { inicioPrevisto: 'asc' },
+      take: 6,
+      include: {
+        curso: { select: { nome: true } },
+        aulas: { orderBy: { data: 'asc' }, take: 1 },
+        _count: { select: { matriculas: { where: { statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] }, ...FILTRO_MATRICULA_FANTASMA } } } },
+      },
+    }),
+  ]);
+  const recebidoMes = cursoPagoMes.reduce((t, m) => t + Number(m.valorCurso), 0)
+    + taxaSoMes.reduce((t, m) => t + (Number(m.valorTaxaMatricula) || 100), 0);
 
   res.render('admin/dashboard', {
 
@@ -685,6 +725,18 @@ router.get('/', async (req, res) => {
       alunosOnline,
       alunosHoje,
     },
+
+    hoje: {
+      matriculasHoje,
+      matriculasSemana,
+      recebidoMes,
+      mesNome: new Date(`${diaSP}T12:00:00-03:00`).toLocaleDateString('pt-BR', { month: 'long', timeZone: 'America/Sao_Paulo' }),
+      emAberto: emAbertoLista.reduce((t, m) => t + valorEmAberto(m), 0),
+      emAbertoCount: emAbertoLista.length,
+      pararamAntes,
+      reembolsos,
+    },
+    proximasTurmas,
 
     alunosHojeLista,
 
