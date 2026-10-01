@@ -26,7 +26,7 @@
   <% if (lista.length && (aba === 'por-comecar' || aba === 'andamento')) { %>
     <p class="adm-box-intro"><i class="fa-solid fa-user-group"></i>
       <strong><%= ocupadas %> de <%= vagas %> vagas</strong> ocupadas nestas turmas (<%= vagas ? Math.round(ocupadas / vagas * 100) : 0 %>%).
-      Contam as matrículas com a taxa paga.
+      Contam as inscrições com a taxa paga.
     </p>
   <% } %>
 
@@ -71,7 +71,7 @@
           <td class="adm-vagas-cel">
             <b class="num"><%= insc %>/<%= t.vagas %></b>
             <div class="adm-barra"><span class="<%= abaixoMin ? 'baixa' : '' %>" style="width: <%= pct %>%"></span></div>
-            <% if (t.pag && t.pag.matricula) { %><small class="adm-pag-divisao" title="Pagaram tudo · pagaram só a matrícula"><b><%= t.pag.tudo %></b> tudo pago · <b><%= t.pag.matricula - t.pag.tudo %></b> só matrícula</small><% } %>
+            <% if (t.pag && t.pag.matricula) { %><small class="adm-pag-divisao" title="Pagaram a matrícula · pagaram só a inscrição"><b><%= t.pag.tudo %></b> matrícula paga · <b><%= t.pag.matricula - t.pag.tudo %></b> só inscrição</small><% } %>
             <% if (t.minimoAlunos) { %><small class="<%= abaixoMin ? 'adm-txt-alerta' : 'adm-mut' %>">mínimo <%= t.minimoAlunos %></small><% } %>
           </td>
           <td><span class="badge st-<%= t.status.toLowerCase() %>"><%= rotuloTurma(t.status) %></span></td>

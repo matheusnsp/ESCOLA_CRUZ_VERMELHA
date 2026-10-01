@@ -28,7 +28,7 @@
     <div>
       <span>Plano / Valor atual</span>
       <strong><%= m.plano === 'A_VISTA' ? 'À vista' : 'Parcelado' %></strong>
-      <small><%= formatBRL(m.valorCurso) %> (curso + matrícula)</small>
+      <small><%= formatBRL(m.valorCurso) %> (matrícula + inscrição)</small>
     </div>
     <div>
       <span>Status</span>
@@ -92,7 +92,7 @@
     <i class="fa-solid fa-circle-info"></i>
     <span>
       Mesmo curso: sem alteração de valores. Curso diferente: o valor é
-      recalculado pelo preço do novo curso (+ taxa de matrícula) no mesmo plano
+      recalculado pela matrícula do novo curso (+ taxa de inscrição) no mesmo plano
       do aluno. Se ficar mais caro, a diferença fica pendente de pagamento; se
       ficar mais barato, o valor pago a mais fica registrado para reembolso.
       A vaga no destino não é bloqueada, mesmo se estiver cheia.
@@ -106,7 +106,7 @@
 
 <script>
 (function () {
-  const valorAtual = <%- JSON.stringify(Number(m.valorCurso)) %>; // já inclui a taxa de matrícula (curso + taxa)
+  const valorAtual = <%- JSON.stringify(Number(m.valorCurso)) %>; // já inclui a taxa de inscrição (matrícula + taxa)
   const plano  = <%- JSON.stringify(m.plano) %>;
   const select = document.getElementById('turmaDestino');
   const aviso  = document.getElementById('diffAviso');

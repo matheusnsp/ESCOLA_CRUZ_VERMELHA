@@ -75,7 +75,7 @@
     <input type="number" name="parcelas" min="1" value="<%= c.parcelas || 1 %>" required>
   </label>
 
-  <label>Taxa de matrícula (R$)
+  <label>Taxa de inscrição (R$)
     <input type="text" name="taxaMatricula"
            value="<%= c.taxaMatricula != null ? c.taxaMatricula : '' %>"
            placeholder="em branco = padrão (<%= typeof taxaPadrao === 'number' && !isNaN(taxaPadrao) ? taxaPadrao.toFixed(2).replace('.', ',') : 'sem padrão' %>)">

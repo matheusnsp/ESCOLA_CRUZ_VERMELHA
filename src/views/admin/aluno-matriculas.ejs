@@ -2,7 +2,7 @@
 <%- include('header', { ativo: 'alunos' }) %>
 
 <div class="adm-h1-row">
-  <h1 class="adm-h1">Matrículas de <%= aluno.nome %></h1>
+  <h1 class="adm-h1">Inscrições de <%= aluno.nome %></h1>
 
   <div class="adm-pend-acoes">
     <% if (pode('aluno:gerenciar')) { %>
@@ -50,7 +50,7 @@
   </div>
 </div>
 
-<!-- MATRÍCULAS -->
+<!-- INSCRIÇÕES -->
 <%- include('legenda-status') %>
 
 <div class="adm-box">
@@ -58,7 +58,7 @@
   <% if (!matriculas.length) { %>
 
     <p class="adm-vazio">
-      Este aluno ainda não possui matrículas.
+      Este aluno ainda não possui inscrições.
     </p>
 
   <% } else { %>
@@ -145,7 +145,7 @@
               <% if (!m.taxaConfirmada) { %>
 
                 <span class="adm-mut">
-                  Aguardando confirmação da taxa
+                  Aguardando confirmação da taxa de inscrição
                 </span>
 
               <% } else { %>
@@ -183,7 +183,7 @@
               <% if (!m.taxaConfirmada) { %>
 
                 <span class="adm-mut">
-                  Taxa pendente
+                  Taxa de inscrição pendente
                 </span>
 
               <% } else { %>
@@ -217,7 +217,7 @@
 
             </td>
 
-            <!-- AÇÕES (as mesmas da tela de Matrículas: acoes-matricula.ejs) -->
+            <!-- AÇÕES (as mesmas da tela de Inscrições: acoes-matricula.ejs) -->
             <td class="adm-acoes">
               <%- include('acoes-matricula', { m: Object.assign({}, m, { aluno: aluno }) }) %>
             </td>

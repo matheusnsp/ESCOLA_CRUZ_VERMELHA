@@ -1,8 +1,8 @@
-<%- include('head', { titulo: 'Matrículas' }) %>
+<%- include('head', { titulo: 'Inscrições' }) %>
 <%- include('header', { ativo: 'inscricoes' }) %>
 
 <div class="adm-h1-row">
-  <h1 class="adm-h1">Matrículas</h1>
+  <h1 class="adm-h1">Inscrições</h1>
   <span class="adm-mut">
     <% if (filtrosAtivos) { %>
       Filtrado: <strong><%= totalFiltrado %></strong> de <%= totalGeral %>
@@ -132,7 +132,7 @@
               <% if (m.aluno._count.matriculas > 1) { %>
                 <br>
                 <a href="/alunos/<%= m.aluno.id %>/matriculas" class="adm-mut adm-link-badge">
-                  <%= m.aluno._count.matriculas %> matrículas
+                  <%= m.aluno._count.matriculas %> inscrições
                 </a>
               <% } %>
             </td>

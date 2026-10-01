@@ -10,7 +10,7 @@
   // ela. O problema não era o texto, era o recorte — a lista misturava quem
   // valia abordar com quem não valia.
   //
-  //   1. Taxa paga, curso pendente  → dinheiro em jogo
+  //   1. Inscrição paga, matrícula pendente  → dinheiro em jogo
   //   2. Nada pago, dá tempo        → recuperável
   //   3. Fora de prazo              → turma encerrada ou já começou
   //
@@ -67,7 +67,7 @@
   };
 
   const abas = [
-    { id: 'com-taxa',   rot: 'Taxa paga, curso pendente', lista: comTaxa },
+    { id: 'com-taxa',   rot: 'Inscrição paga, matrícula pendente', lista: comTaxa },
     { id: 'sem-taxa',   rot: 'Nada pago, ainda dá tempo', lista: semTaxa },
     { id: 'fora-prazo', rot: 'Fora de prazo',             lista: foraDePrazo },
   ];
@@ -100,7 +100,7 @@
 <%
   // Uma frase por aba, dizendo quem está ali e como abordar.
   const intro = {
-    'com-taxa':   'Pagaram a taxa, a vaga está reservada e falta pagar o curso. É onde tem dinheiro parado.',
+    'com-taxa':   'Pagaram a inscrição, a vaga está reservada e falta pagar a matrícula. É onde tem dinheiro parado.',
     'sem-taxa':   'Escolheram o curso e pararam antes de pagar. A vaga não está reservada e a turma ainda não começou.',
     'fora-prazo': 'A turma já começou ou foi encerrada. Não mande o texto de retomar a inscrição: chame para uma turma nova do mesmo curso.',
   };
@@ -193,7 +193,7 @@ function situacaoHtml(m) {
   const plano = m.plano === 'A_VISTA' ? 'à vista' : m.plano === 'PRESENCIAL' ? 'presencial' : 'parcelado'; %>
   <td>
     <% if (m.taxaConfirmada) { %>
-      <span class="badge ok">Taxa paga</span>
+      <span class="badge ok">Inscrição paga</span>
     <% } else { %>
       <span class="badge mut">Nada pago</span>
     <% } %>
@@ -223,7 +223,7 @@ function contatoHtml(m) { %>
 
   <% if (!atual.lista.length) { %>
     <p class="adm-vazio">
-      <%= aba === 'com-taxa' ? 'Ninguém com taxa paga e curso pendente. Tudo em dia.'
+      <%= aba === 'com-taxa' ? 'Ninguém com inscrição paga e matrícula pendente. Tudo em dia.'
         : aba === 'sem-taxa' ? 'Nenhuma inscrição parada com turma em aberto.'
         : 'Nenhuma pendência fora de prazo.' %>
     </p>

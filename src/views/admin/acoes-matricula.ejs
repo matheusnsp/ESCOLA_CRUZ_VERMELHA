@@ -1,5 +1,5 @@
 <%
-// Ações de uma matrícula, iguais em Matrículas e na página do aluno (antes cada tela tinha o seu
+// Ações de uma matrícula, iguais em Inscrições e na página do aluno (antes cada tela tinha o seu
 // conjunto de ícones sem nome). Cada ação mantém a sua permissão:
 //
 //   confirmar taxa        taxa:aprovar
@@ -10,7 +10,7 @@
 //   estornar              financeiro:reembolsar  (Financeiro, Dev)
 //
 // Uso: include('acoes-matricula', { m })  — m com aluno e turma.curso.
-// Os filtros da tela de Matrículas (busca, turmaId, statusFiltro), quando existem, vão junto
+// Os filtros da tela de Inscrições (busca, turmaId, statusFiltro), quando existem, vão junto
 // para o "voltar" cair na mesma lista filtrada.
 const _q = typeof busca !== 'undefined' ? busca : null;
 const _turma = typeof turmaId !== 'undefined' ? turmaId : null;

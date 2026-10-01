@@ -7,10 +7,10 @@ const _f = (n) => formatBRL(n);
   <span class="adm-mut">—</span>
 <% } else if (compacto) { %>
   <%
-    // Só os dois totais que o aluno paga, com a taxa de matrícula nos dois para dar para comparar.
+    // Só os dois totais que o aluno paga, com a taxa de inscrição nos dois para dar para comparar.
     // O detalhe (parcelas, juros, taxa à parte) fica no título e em Editar curso.
-    const _dicaAv = 'curso ' + _f(v.aVista.curso) + ' + taxa ' + _f(v.aVista.taxa) + ', numa cobrança só';
-    const _dicaPa = v.parcelado ? v.parcelado.numParcelas + '× ' + _f(v.parcelado.valorParcela) + ' no cartão' + (v.parcelado.juros ? ' (com juros)' : '') + ' + taxa ' + _f(v.parcelado.taxa) + ' paga à parte' : '';
+    const _dicaAv = 'matrícula ' + _f(v.aVista.curso) + ' + taxa de inscrição ' + _f(v.aVista.taxa) + ', numa cobrança só';
+    const _dicaPa = v.parcelado ? v.parcelado.numParcelas + '× ' + _f(v.parcelado.valorParcela) + ' no cartão' + (v.parcelado.juros ? ' (com juros)' : '') + ' + taxa de inscrição ' + _f(v.parcelado.taxa) + ' paga à parte' : '';
   %>
   <div class="adm-valores">
     <p title="<%= _dicaAv %>"><b class="num"><%= _f(v.aVista.total) %></b> <span>à vista</span></p>
@@ -25,13 +25,13 @@ const _f = (n) => formatBRL(n);
     <div class="adm-valores-opcao">
       <em>À vista · PIX ou cartão</em>
       <b class="num"><%= _f(v.aVista.total) %></b>
-      <small class="adm-mut">curso <%= _f(v.aVista.curso) %> + taxa de matrícula <%= _f(v.aVista.taxa) %></small>
+      <small class="adm-mut">matrícula <%= _f(v.aVista.curso) %> + taxa de inscrição <%= _f(v.aVista.taxa) %></small>
     </div>
     <div class="adm-valores-opcao">
       <em>Parcelado no cartão</em>
       <% if (v.parcelado) { %>
         <b class="num"><%= v.parcelado.numParcelas %>× de <%= _f(v.parcelado.valorParcela) %></b>
-        <small class="adm-mut">total no cartão <b><%= _f(v.parcelado.cursoComJuros) %></b><%= v.parcelado.juros ? ' com juros' : '' %><% if (v.parcelado.taxa) { %> · a taxa de matrícula (<%= _f(v.parcelado.taxa) %>) é paga à parte, antes das parcelas<% } %></small>
+        <small class="adm-mut">total no cartão <b><%= _f(v.parcelado.cursoComJuros) %></b><%= v.parcelado.juros ? ' com juros' : '' %><% if (v.parcelado.taxa) { %> · a taxa de inscrição (<%= _f(v.parcelado.taxa) %>) é paga à parte, antes das parcelas<% } %></small>
         <% if (!v.parcelado.juros) { %><small class="adm-txt-alerta">Não foi possível consultar os juros na Únicopag agora; valor sem juros.</small><% } %>
       <% } else { %>
         <b class="adm-mut">não oferecido</b>
