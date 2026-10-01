@@ -89,7 +89,7 @@ const CATALOGO = [
   { grupo: 'Cursos e turmas', id: 'turmas:gerenciar',      nome: 'Criar e editar turmas', desc: 'Datas, aulas, status, notas e a aba Horários dos alunos.' },
   { grupo: 'Alunos e inscrições', id: 'aluno:gerenciar',   nome: 'Editar dados dos alunos', desc: 'Cadastro, convite por WhatsApp.' },
   { grupo: 'Alunos e inscrições', id: 'aluno:mover_turma', nome: 'Transferir aluno de turma' },
-  { grupo: 'Alunos e inscrições', id: 'doacao:confirmar',  nome: 'Marcar alimento entregue', desc: 'Também abre a tela de Inscrições.' },
+  { grupo: 'Alunos e inscrições', id: 'doacao:confirmar',  nome: 'Marcar alimento entregue', desc: 'Também abre a tela de Matrículas.' },
   { grupo: 'Alunos e inscrições', id: 'taxa:aprovar',      nome: 'Confirmar a taxa de inscrição' },
   { grupo: 'Alunos e inscrições', id: 'pagamento:confirmar', nome: 'Confirmar o pagamento da matrícula', desc: 'Só confirmar; cancelar e estornar ficam no Financeiro.' },
   { grupo: 'Alunos e inscrições', id: 'pendentes:gerenciar', nome: 'Tela Pendentes', desc: 'Cobrar por WhatsApp e remover inscrição que nunca pagou.' },
