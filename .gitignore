@@ -9,3 +9,5 @@ src/public/uploads/*
 
 # PDFs de documentos enviados pela secretaria (dados de alunos — fora do versionamento)
 /storage/
+# Anexos das Contas a pagar em desenvolvimento (notas, boletos, recibos): fora do versionamento
+/privado/

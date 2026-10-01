@@ -511,7 +511,15 @@ async function enviarBoasVindasTurma(email, nome, { assunto, texto }) {
   await enviar(email, assunto, html, `Boas-vindas da turma (${assunto})`, link);
 }
 
+// Contas a pagar (lib/contas.js): aviso para quem aprova, paga ou lançou. Só o resumo (quantos,
+// quanto, quem enviou); os detalhes ficam no sistema, atrás do login.
+async function enviarAvisoContas(email, nome, { assunto, texto, link, botao }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  await enviar(email, assunto, moldura(limpo(assunto), limpo(nome), limpo(texto), botao || 'Abrir no sistema', link, 'Aviso automático da secretaria da escola.'), `Contas a pagar (${assunto})`, link);
+}
+
 module.exports = {
+  enviarAvisoContas,
   enviarBoasVindasTurma,
   enviarEmailResetSenha,
   enviarEmailConfirmacao,

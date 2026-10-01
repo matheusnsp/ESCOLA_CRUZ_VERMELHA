@@ -1,0 +1,138 @@
+<%- include('head', { titulo: item.descricao }) %>
+<%- include('header', { ativo: 'contas' }) %>
+
+<%
+function dataBR(s) {
+  if (!s) return '—';
+  return /^\d{4}-\d{2}-\d{2}$/.test(s)
+    ? s.split('-').reverse().join('/')
+    : new Date(s).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+var st = contas.SITUACOES[item.situacao];
+var ACOES = { LANCOU: 'Lançou', EDITOU: 'Editou', ENVIOU: 'Enviou para aprovação', APROVOU: 'Aprovou', RECUSOU: 'Recusou', PAGOU: 'Registrou o pagamento' };
+var voltarAba = item.situacao === 'RASCUNHO' ? 'semana' : item.situacao === 'AGUARDANDO' && pode('contas:aprovar') ? 'aprovar' : item.situacao === 'APROVADA' && pode('contas:pagar') ? 'pagar' : pode('contas:lancar') ? 'enviadas' : 'historico';
+%>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><i class="fa-solid <%= contas.TIPOS[item.tipo].icone %>"></i> <%= item.descricao %></h1>
+  <a href="/contas?aba=<%= voltarAba %>" class="adm-link">← Voltar</a>
+</div>
+
+<% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
+<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+
+<div class="adm-box adm-box-pad adm-cp-ficha">
+  <div class="adm-cp-topo">
+    <span class="adm-cp-grande"><%= contas.reais(item.valor) %></span>
+    <span class="badge <%= st.badge %>"><%= st.nome %></span>
+  </div>
+  <dl class="adm-cp-dados">
+    <div><dt>Tipo</dt><dd><%= contas.TIPOS[item.tipo].nome %></dd></div>
+    <div><dt><%= item.tipo === 'REEMBOLSO' ? 'Reembolsar' : 'Fornecedor / a quem pagar' %></dt><dd><%= item.favorecido %></dd></div>
+    <div><dt>Categoria</dt><dd><%= item.categoria %></dd></div>
+    <div><dt>Vencimento</dt><dd><%= item.vencimento ? dataBR(item.vencimento) : '—' %></dd></div>
+    <% if (item.comoPagar) { %><div class="full"><dt>Como pagar</dt><dd class="adm-cp-como"><%= item.comoPagar %></dd></div><% } %>
+    <% if (item.observacao) { %><div class="full"><dt>Observação</dt><dd class="adm-cp-obs"><%= item.observacao %></dd></div><% } %>
+    <div><dt>Lançado por</dt><dd><%= item.criadoPorNome %> · <%= dataBR(item.criadoEm) %></dd></div>
+    <% if (lote) { %><div><dt>Envio</dt><dd><%= contas.rotuloSemana(lote.semana) %></dd></div><% } %>
+  </dl>
+
+  <div class="adm-cp-anexos">
+    <span class="adm-foto-rot">Nota, boleto ou recibo</span>
+    <% if (!item.anexos.length) { %>
+      <p class="adm-mut">Nenhum arquivo anexado.</p>
+    <% } else { %>
+      <ul class="adm-cp-lista-anexos">
+        <% item.anexos.forEach(function (a, n) { %>
+          <li><a href="/contas/<%= item.id %>/anexos/<%= n %>" target="_blank" rel="noopener"><i class="fa-solid <%= a.tipo === 'application/pdf' ? 'fa-file-pdf' : 'fa-file-image' %>"></i> <%= a.nome %></a>
+            <small class="adm-mut"><%= Math.max(1, Math.round(a.tamanho / 1024)) %> KB</small></li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+
+  <% if (item.situacao === 'RASCUNHO' && pode('contas:lancar')) { %>
+    <div class="adm-cp-botoes">
+      <a href="/contas/<%= item.id %>/editar" class="adm-btn-sec"><i class="fa-solid fa-pen"></i> Editar</a>
+      <form method="POST" action="/contas/<%= item.id %>/enviar" data-confirmar="Enviar agora para aprovação, sem esperar a semana?" data-botao="Enviar agora">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="adm-btn"><i class="fa-solid fa-paper-plane"></i> Enviar agora</button>
+      </form>
+    </div>
+  <% } %>
+
+  <% if (item.situacao === 'AGUARDANDO' && pode('contas:aprovar')) { %>
+    <div class="adm-cp-botoes">
+      <form method="POST" action="/contas/<%= item.id %>/aprovar">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="voltar" value="item">
+        <button type="submit" class="adm-btn"><i class="fa-solid fa-check"></i> Aprovar</button>
+      </form>
+      <form method="POST" action="/contas/<%= item.id %>/recusar" data-confirmar="Recusar &quot;<%= item.descricao %>&quot; (<%= contas.reais(item.valor) %>)?" data-motivo="Motivo da recusa (a secretaria vai ler)" data-botao="Recusar">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="voltar" value="item">
+        <button type="submit" class="adm-btn-sec adm-cp-recusar"><i class="fa-solid fa-xmark"></i> Recusar</button>
+      </form>
+    </div>
+  <% } %>
+
+  <% if (item.decisao) { %>
+    <p class="adm-cp-decisao <%= item.decisao.aprovada ? 'ok' : 'nao' %>">
+      <i class="fa-solid <%= item.decisao.aprovada ? 'fa-circle-check' : 'fa-circle-xmark' %>"></i>
+      <%= item.decisao.aprovada ? 'Aprovada' : 'Recusada' %> por <%= item.decisao.porNome %> em <%= dataBR(item.decisao.em) %><% if (item.decisao.motivo) { %>: “<%= item.decisao.motivo %>”<% } %>
+    </p>
+  <% } %>
+</div>
+
+<% if (item.situacao === 'APROVADA' && pode('contas:pagar')) { %>
+  <form method="POST" action="/contas/<%= item.id %>/pagar?_csrf=<%= csrfToken %>" enctype="multipart/form-data" class="adm-form adm-box adm-cp-form" id="pagar">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <h2 class="adm-form-secao full"><i class="fa-solid fa-money-check-dollar"></i> Registrar pagamento</h2>
+    <label>
+      Data do pagamento
+      <input type="date" name="pagoEm" required value="<%= hoje %>">
+    </label>
+    <label>
+      Forma
+      <select name="forma" required>
+        <% contas.FORMAS_PAGAMENTO.forEach(function (f) { %><option><%= f %></option><% }) %>
+      </select>
+    </label>
+    <label class="full">
+      <span>Observação <small class="adm-mut">(opcional)</small></span>
+      <input type="text" name="observacao" maxlength="300" placeholder="Ex.: pago pela conta da filial">
+    </label>
+    <div class="full">
+      <span class="adm-foto-rot">Comprovante <small class="adm-mut">(opcional)</small></span>
+      <input type="file" name="comprovantes" multiple accept="application/pdf,image/jpeg,image/png,image/webp">
+    </div>
+    <div class="full adm-form-rodape">
+      <button type="submit" class="adm-btn"><i class="fa-solid fa-circle-check"></i> Marcar como paga</button>
+    </div>
+  </form>
+<% } %>
+
+<% if (item.pagamento) { var p = item.pagamento; %>
+  <div class="adm-box adm-box-pad">
+    <h2 class="adm-h2 adm-bloco-h"><i class="fa-solid fa-circle-check"></i> Pagamento</h2>
+    <p>Pago em <b><%= dataBR(p.pagoEm) %></b> · <%= p.forma %> · registrado por <%= p.porNome %><% if (p.observacao) { %><br><span class="adm-mut"><%= p.observacao %></span><% } %></p>
+    <% if (p.comprovantes && p.comprovantes.length) { %>
+      <ul class="adm-cp-lista-anexos">
+        <% p.comprovantes.forEach(function (a, n) { %>
+          <li><a href="/contas/<%= item.id %>/comprovantes/<%= n %>" target="_blank" rel="noopener"><i class="fa-solid <%= a.tipo === 'application/pdf' ? 'fa-file-pdf' : 'fa-file-image' %>"></i> <%= a.nome %></a></li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+<% } %>
+
+<div class="adm-box adm-box-pad">
+  <h2 class="adm-h2 adm-bloco-h"><i class="fa-solid fa-clock-rotate-left"></i> Histórico</h2>
+  <ol class="adm-cp-hist">
+    <% item.historico.forEach(function (h) { %>
+      <li><b><%= ACOES[h.acao] || h.acao %></b> · <%= h.porNome %> · <span class="adm-mut"><%= dataBR(h.em) %></span><% if (h.motivo) { %><br><small class="adm-mut">“<%= h.motivo %>”</small><% } %></li>
+    <% }) %>
+  </ol>
+</div>
+
+<%- include('foot') %>

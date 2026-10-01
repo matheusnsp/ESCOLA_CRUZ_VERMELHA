@@ -1,0 +1,222 @@
+<%- include('head', { titulo: 'Contas a pagar' }) %>
+<%- include('header', { ativo: 'contas' }) %>
+
+<%
+// Contas a pagar (regras em lib/contas.js). Quem só lança vê as abas Esta semana, Enviadas e
+// Histórico: os itens lançados e o andamento, nunca o caixa.
+function dataBR(s) {
+  if (!s) return '—';
+  return /^\d{4}-\d{2}-\d{2}$/.test(s)
+    ? s.split('-').reverse().join('/')
+    : new Date(s).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+}
+var hojeISO = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+function venc(i) {
+  if (!i.vencimento) return '<span class="adm-mut">sem vencimento</span>';
+  var atrasado = i.vencimento < hojeISO && i.situacao !== 'PAGA';
+  return '<span class="' + (atrasado ? 'adm-cp-atrasado' : '') + '">' + dataBR(i.vencimento) + (atrasado ? ' · vencido' : '') + '</span>';
+}
+function semAcento(t) { return String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+function soma(lista) { return lista.reduce(function (t, i) { return t + i.valor; }, 0); }
+var NOMES = { semana: 'Esta semana', enviadas: 'Enviadas', aprovar: 'Para aprovar', pagar: 'A pagar', historico: 'Histórico' };
+var ICONES = { semana: 'fa-pen-to-square', enviadas: 'fa-paper-plane', aprovar: 'fa-stamp', pagar: 'fa-money-check-dollar', historico: 'fa-clock-rotate-left' };
+var NUM = { semana: rascunhos.length, enviadas: enviadas.filter(function (i) { return i.situacao === 'AGUARDANDO' || i.situacao === 'RECUSADA'; }).length, aprovar: aguardando.length, pagar: aPagar.length, historico: null };
+%>
+
+<%# Uma linha de item: tipo, descrição, favorecido, valor, vencimento, anexos. %>
+<% function linhaItem(i, extra) { %>
+  <td>
+    <a href="/contas/<%= i.id %>" class="adm-cp-desc"><i class="fa-solid <%= contas.TIPOS[i.tipo].icone %>" title="<%= contas.TIPOS[i.tipo].nome %>"></i> <strong><%= i.descricao %></strong></a>
+    <br><small class="adm-mut"><%= contas.TIPOS[i.tipo].nome %> · <%= i.categoria %><% if (i.anexos.length) { %> · <i class="fa-solid fa-paperclip"></i> <%= i.anexos.length %><% } %></small>
+  </td>
+  <td><%= i.favorecido %></td>
+  <td class="adm-cp-valor"><strong><%= contas.reais(i.valor) %></strong></td>
+  <td><%- venc(i) %></td>
+<% } %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Contas a pagar</h1>
+  <% if (pode('contas:lancar')) { %>
+    <div class="adm-cp-novos">
+      <a href="/contas/nova?tipo=DESPESA" class="adm-btn"><i class="fa-solid fa-plus"></i> Nova despesa</a>
+      <a href="/contas/nova?tipo=COMPRA" class="adm-btn-sec"><i class="fa-solid fa-cart-shopping"></i> Pedido de compra</a>
+      <a href="/contas/nova?tipo=REEMBOLSO" class="adm-btn-sec"><i class="fa-solid fa-hand-holding-dollar"></i> Reembolso</a>
+    </div>
+  <% } %>
+</div>
+
+<% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
+<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+
+<nav class="adm-abas" aria-label="Contas a pagar">
+  <% abas.forEach(function (a) { %>
+    <a href="/contas?aba=<%= a %>" class="adm-aba <%= aba === a ? 'on' : '' %>"><i class="fa-solid <%= ICONES[a] %>"></i> <%= NOMES[a] %><% if (NUM[a]) { %> <span class="adm-aba-num"><%= NUM[a] %></span><% } %></a>
+  <% }) %>
+</nav>
+
+<% if (aba === 'semana') { %>
+
+  <div class="adm-box">
+    <div class="adm-box-head">
+      <h2><i class="fa-solid fa-pen-to-square"></i> Lançadas, ainda não enviadas</h2>
+      <small class="adm-mut"><%= semanaAtual %></small>
+    </div>
+    <% if (!rascunhos.length) { %>
+      <p class="adm-vazio">Nada lançado. Use <b>Nova despesa</b> ao longo da semana e envie tudo junto para aprovação.</p>
+    <% } else { %>
+      <table class="adm-table adm-table-cards">
+        <thead><tr><th>Despesa</th><th>Fornecedor / favorecido</th><th>Valor</th><th>Vencimento</th><th>Ações</th></tr></thead>
+        <tbody>
+          <% rascunhos.forEach(function (i) { %>
+            <tr>
+              <% linhaItem(i) %>
+              <td class="adm-cp-acoes">
+                <a href="/contas/<%= i.id %>/editar" class="adm-link"><i class="fa-solid fa-pen"></i> Editar</a>
+                <% if (i.tipo !== 'DESPESA') { %>
+                  <form method="POST" action="/contas/<%= i.id %>/enviar" data-confirmar="Enviar este pedido agora para aprovação, sem esperar a semana?" data-botao="Enviar agora">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button type="submit" class="adm-link"><i class="fa-solid fa-paper-plane"></i> Enviar agora</button>
+                  </form>
+                <% } %>
+                <form method="POST" action="/contas/<%= i.id %>/excluir" data-confirmar="Excluir &quot;<%= i.descricao %>&quot;?" data-botao="Excluir">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button type="submit" class="adm-link-perigo"><i class="fa-solid fa-trash"></i> Excluir</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <form method="POST" action="/contas/enviar" class="adm-cp-enviar"
+            data-confirmar="Enviar <%= rascunhos.length %> <%= rascunhos.length === 1 ? 'item' : 'itens' %> (<%= contas.reais(soma(rascunhos)) %>) para aprovação? Depois de enviado, não dá para editar." data-botao="Enviar">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="todos" value="1">
+        <span><b><%= rascunhos.length %></b> <%= rascunhos.length === 1 ? 'item' : 'itens' %> · <b><%= contas.reais(soma(rascunhos)) %></b></span>
+        <button type="submit" class="adm-btn"><i class="fa-solid fa-paper-plane"></i> Enviar a semana para aprovação</button>
+      </form>
+    <% } %>
+  </div>
+
+<% } else if (aba === 'enviadas' || aba === 'historico') { %>
+
+  <% var lista = aba === 'enviadas' ? enviadas.filter(function (i) { return ['AGUARDANDO', 'APROVADA', 'RECUSADA'].includes(i.situacao); }) : enviadas; %>
+  <div class="adm-box">
+    <div class="adm-box-head adm-fin-head">
+      <h2><i class="fa-solid <%= ICONES[aba] %>"></i> <%= aba === 'enviadas' ? 'Em andamento' : 'Tudo o que foi enviado' %></h2>
+      <input type="search" class="adm-fin-busca" id="cpBusca" placeholder="Buscar descrição ou fornecedor" aria-label="Buscar descrição ou fornecedor">
+    </div>
+    <% if (!lista.length) { %>
+      <p class="adm-vazio"><%= aba === 'enviadas' ? 'Nada em andamento. O que já foi pago fica no Histórico.' : 'Nada enviado ainda.' %></p>
+    <% } else { %>
+      <table class="adm-table adm-table-cards">
+        <thead><tr><th>Despesa</th><th>Fornecedor / favorecido</th><th>Valor</th><th>Vencimento</th><th>Situação</th></tr></thead>
+        <tbody id="cpLinhas">
+          <% lista.forEach(function (i) { var st = contas.SITUACOES[i.situacao]; %>
+            <tr data-busca="<%= semAcento(i.descricao + ' ' + i.favorecido + ' ' + i.categoria) %>">
+              <% linhaItem(i) %>
+              <td>
+                <span class="badge <%= st.badge %>"><%= st.nome %></span>
+                <% if (i.situacao === 'RECUSADA' && i.decisao) { %><br><small class="adm-mut"><%= i.decisao.motivo %></small><% } %>
+                <% if (i.situacao === 'PAGA' && i.pagamento) { %><br><small class="adm-mut"><%= dataBR(i.pagamento.pagoEm) %> · <%= i.pagamento.forma %></small><% } %>
+                <% if (i.situacao === 'AGUARDANDO') { %><br><small class="adm-mut">enviada em <%= dataBR(i.enviadoEm) %></small><% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <p class="adm-vazio" id="cpNada" hidden>Nada com essa busca.</p>
+    <% } %>
+  </div>
+
+<% } else if (aba === 'aprovar') { %>
+
+  <%
+    // Agrupa por envio (lote), o mais antigo primeiro: é a ordem em que chegaram.
+    var grupos = {};
+    aguardando.forEach(function (i) { (grupos[i.loteId] = grupos[i.loteId] || []).push(i); });
+    var ordem = Object.keys(grupos).sort(function (a, b) { return String((lotes[a] || {}).enviadoEm).localeCompare(String((lotes[b] || {}).enviadoEm)); });
+  %>
+  <% if (!ordem.length) { %>
+    <div class="adm-box"><p class="adm-vazio">Nada aguardando aprovação.</p></div>
+  <% } %>
+  <% ordem.forEach(function (loteId) { var l = lotes[loteId] || {}; var its = grupos[loteId]; %>
+    <div class="adm-box adm-cp-lote">
+      <div class="adm-box-head">
+        <h2><i class="fa-solid fa-inbox"></i> <%= l.semana ? contas.rotuloSemana(l.semana) : 'Envio' %></h2>
+        <small class="adm-mut">enviado por <%= l.enviadoPorNome || '—' %> em <%= dataBR(l.enviadoEm) %> · <%= its.length %> <%= its.length === 1 ? 'item' : 'itens' %> aguardando · <b><%= contas.reais(soma(its)) %></b></small>
+      </div>
+      <table class="adm-table adm-table-cards">
+        <thead><tr><th>Despesa</th><th>Fornecedor / favorecido</th><th>Valor</th><th>Vencimento</th><th>Decisão</th></tr></thead>
+        <tbody>
+          <% its.forEach(function (i) { %>
+            <tr>
+              <% linhaItem(i) %>
+              <td class="adm-cp-acoes">
+                <form method="POST" action="/contas/<%= i.id %>/aprovar">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button type="submit" class="adm-cp-aprovar"><i class="fa-solid fa-check"></i> Aprovar</button>
+                </form>
+                <form method="POST" action="/contas/<%= i.id %>/recusar" data-confirmar="Recusar &quot;<%= i.descricao %>&quot; (<%= contas.reais(i.valor) %>)?" data-motivo="Motivo da recusa (a secretaria vai ler)" data-botao="Recusar">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button type="submit" class="adm-link-perigo"><i class="fa-solid fa-xmark"></i> Recusar</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% if (its.length > 1) { %>
+        <form method="POST" action="/contas/lote/<%= loteId %>/aprovar" class="adm-cp-enviar"
+              data-confirmar="Aprovar os <%= its.length %> itens deste envio (<%= contas.reais(soma(its)) %>)?" data-botao="Aprovar todos">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <span>Conferiu tudo?</span>
+          <button type="submit" class="adm-btn"><i class="fa-solid fa-check-double"></i> Aprovar todos (<%= contas.reais(soma(its)) %>)</button>
+        </form>
+      <% } %>
+    </div>
+  <% }) %>
+
+<% } else if (aba === 'pagar') { %>
+
+  <div class="adm-box">
+    <div class="adm-box-head">
+      <h2><i class="fa-solid fa-money-check-dollar"></i> Aprovadas, a pagar</h2>
+      <% if (aPagar.length) { %><small class="adm-mut"><%= aPagar.length %> · <b><%= contas.reais(soma(aPagar)) %></b> · por vencimento</small><% } %>
+    </div>
+    <% if (!aPagar.length) { %>
+      <p class="adm-vazio">Nada aprovado esperando pagamento.</p>
+    <% } else { %>
+      <table class="adm-table adm-table-cards">
+        <thead><tr><th>Despesa</th><th>Fornecedor / favorecido</th><th>Valor</th><th>Vencimento</th><th>Como pagar</th></tr></thead>
+        <tbody>
+          <% aPagar.forEach(function (i) { %>
+            <tr>
+              <% linhaItem(i) %>
+              <td>
+                <% if (i.comoPagar) { %><small class="adm-cp-como"><%= i.comoPagar %></small><br><% } %>
+                <a href="/contas/<%= i.id %>#pagar" class="adm-link"><i class="fa-solid fa-circle-check"></i> Registrar pagamento</a>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+
+<% } %>
+
+<script>
+  (function () {
+    var busca = document.getElementById('cpBusca');
+    if (!busca) return;
+    var linhas = document.querySelectorAll('#cpLinhas tr');
+    var nada = document.getElementById('cpNada');
+    busca.addEventListener('input', function () {
+      var q = busca.value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); var n = 0;
+      linhas.forEach(function (tr) { var v = !q || tr.dataset.busca.indexOf(q) !== -1; tr.hidden = !v; if (v) n++; });
+      nada.hidden = n > 0;
+    });
+  })();
+</script>
+
+<%- include('foot') %>

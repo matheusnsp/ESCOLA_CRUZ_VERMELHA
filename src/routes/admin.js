@@ -577,6 +577,9 @@ router.use((req, res, next) => {
   next();
 });
 
+// ---------- Contas a pagar (routes/contas.js) ----------
+router.use(require('./contas')({ requirePermissao, auditar, ADMIN_URL }));
+
 // ---------- Dashboard ----------
 
 // 💡 NOVO — Mesmo filtro de "matrícula fantasma" usado em conta.js (tela do
