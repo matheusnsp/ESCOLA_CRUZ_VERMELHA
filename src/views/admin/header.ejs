@@ -13,7 +13,7 @@
     <% // Horários fica como aba dentro de Turmas (abas-turmas.ejs). %>
     <% // Mesma permissão da rota /inscricoes: sem ela (ex.: Consulta) o link caía numa página de erro. %>
     <% if (pode('doacao:confirmar') || pode('financeiro:aprovar') || pode('financeiro:leitura')) { %>
-      <a href="/inscricoes" class="<%= secaoAtiva === 'inscricoes' ? 'on' : '' %>"><i class="fa-solid fa-users"></i> Inscrições</a>
+      <a href="/inscricoes" class="<%= secaoAtiva === 'inscricoes' ? 'on' : '' %>"><i class="fa-solid fa-users"></i> Matrículas</a>
     <% } %>
     <%
       // 💡 Pagamentos pendentes. A condição espelha a permissão da rota
