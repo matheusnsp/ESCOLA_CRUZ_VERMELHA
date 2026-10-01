@@ -2771,7 +2771,7 @@ router.post('/pendentes/:id/remover', requirePermissao('pendentes:gerenciar'), a
     return voltar('erro', `Esta inscrição está ${m.statusPagamento} — só removemos as que nunca saíram do lugar.`);
   }
   if (m.taxaConfirmada) {
-    return voltar('erro', 'A taxa desta inscrição foi confirmada. Para cancelar, use a tela de Matrículas.');
+    return voltar('erro', 'A taxa desta inscrição foi confirmada. Para cancelar, use a tela de Inscrições.');
   }
 
   const comGateway = m.pagamentos.filter((p) => p.gatewayRef);

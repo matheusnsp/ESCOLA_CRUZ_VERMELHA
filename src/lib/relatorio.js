@@ -175,7 +175,7 @@ async function gerarExcel(dados) {
   };
 
   // ---- Aba 1: Matrículas ----
-  const wsM = wb.addWorksheet('Matrículas');
+  const wsM = wb.addWorksheet('Inscrições');
   wsM.columns = [
     { header: 'Aluno', key: 'aluno', width: 28 },
     { header: 'E-mail', key: 'email', width: 28 },
@@ -429,7 +429,7 @@ function gerarPdf(dados, stream) {
 
   // ---- Seção 3: Inscrições ----
   doc.addPage();
-  titulo('Matrículas');
+  titulo('Inscrições');
   tabela(
     [{ label: 'Aluno', width: 26 }, { label: 'Curso', width: 26 }, { label: 'Plano', width: 12 },
      { label: 'Status', width: 13 }, { label: 'Taxa', width: 8 }, { label: 'Valor', width: 13, align: 'right' },
