@@ -16,7 +16,7 @@ function dataBR(d) {
 //
 // Uma tabela só de pagamentos (uma linha por matrícula), em vez de "Taxa paga" e "Matrículas
 // geradas" repetindo as mesmas pessoas. O que ainda não foi pago fica na tela Pendentes.
-const ROTULO = { curso: 'Curso + taxa', taxa: 'Só a taxa', estornado: 'Estornado' };
+const ROTULO = { curso: 'Matrícula + inscrição', taxa: 'Só a inscrição', estornado: 'Estornado' };
 const BADGE  = { curso: 'ok', taxa: 'pend', estornado: 'est' };
 const conta  = { curso: 0, taxa: 0, estornado: 0 };
 pagamentos.forEach(p => { conta[p.tipo]++; });
@@ -48,12 +48,12 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
   <div class="adm-stat ok">
     <span><%= formatBRL(stats.totalRecebido) %></span>
     <small><i class="fa-solid fa-sack-dollar"></i> Recebido</small>
-    <small class="adm-stat-sub"><%= conta.curso %> curso(s) pago(s) · <%= conta.taxa %> só com a taxa</small>
+    <small class="adm-stat-sub"><%= conta.curso %> matrícula(s) paga(s) · <%= conta.taxa %> só com a inscrição</small>
   </div>
   <a class="adm-stat warn adm-stat-link" href="/pendentes">
     <span><%= formatBRL(stats.totalPendente) %></span>
     <small><i class="fa-solid fa-clock"></i> A receber</small>
-    <small class="adm-stat-sub"><%= aReceberCount %> com taxa paga e curso pendente · ver Pendentes →</small>
+    <small class="adm-stat-sub"><%= aReceberCount %> com inscrição paga e matrícula pendente · ver Pendentes →</small>
   </a>
   <div class="adm-stat">
     <span><%= formatBRL(stats.totalEstornado) %></span>
@@ -106,8 +106,8 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
 
   <div class="adm-abas adm-fin-abas" role="tablist">
     <button type="button" class="adm-aba on" data-filtro="todos">Todos <span class="adm-aba-num"><%= pagamentos.length %></span></button>
-    <button type="button" class="adm-aba" data-filtro="curso">Curso pago <span class="adm-aba-num"><%= conta.curso %></span></button>
-    <button type="button" class="adm-aba" data-filtro="taxa">Só a taxa <span class="adm-aba-num"><%= conta.taxa %></span></button>
+    <button type="button" class="adm-aba" data-filtro="curso">Matrícula paga <span class="adm-aba-num"><%= conta.curso %></span></button>
+    <button type="button" class="adm-aba" data-filtro="taxa">Só a inscrição <span class="adm-aba-num"><%= conta.taxa %></span></button>
     <button type="button" class="adm-aba" data-filtro="estornado">Estornados <span class="adm-aba-num"><%= conta.estornado %></span></button>
   </div>
 

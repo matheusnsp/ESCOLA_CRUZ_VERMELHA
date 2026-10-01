@@ -169,7 +169,7 @@ async function enviarEmailConfirmacao(email, nome, link) {
       <h3 style="margin-bottom:16px;">Bem-vindo à Escola de Educação e Saúde</h3>
       <p>Olá, <strong>${nome}</strong>!</p>
       <p>Sua conta foi criada. A partir de agora você pode se inscrever nos
-      nossos cursos, acompanhar seus pagamentos e ver suas matrículas pelo site.</p>
+      nossos cursos, acompanhar seus pagamentos e ver suas inscrições pelo site.</p>
 
       <p style="margin-top:22px;">Confirme seu e-mail para garantirmos que os
       avisos de matrícula cheguem até você:</p>
@@ -279,12 +279,12 @@ function blocoValor({ numParcelas, valorParcela, total, taxaPaga }) {
     </div>`;
 }
 
-// Aviso fixo dos lembretes de "falta pagar o curso": a secretaria não libera a entrada de quem só
+// Aviso fixo dos lembretes de "falta pagar a matrícula": a secretaria não libera a entrada de quem só
 // pagou a taxa, e a pessoa precisa saber disso ANTES de sair de casa.
 const AVISO_ENTRADA = `
       <div style="background:#fff5f5;border:1px solid #f5c2c7;border-left:4px solid #cc0000;border-radius:8px;padding:14px 16px;margin:18px 0;color:#742a2a;font-size:14px;line-height:1.5;">
         <strong>Importante:</strong> a taxa de inscrição reserva a sua vaga, mas <strong>só pode assistir às aulas
-        quem está com o curso pago</strong>. Sem o pagamento do curso confirmado, a entrada não é liberada na
+        quem está com a matrícula paga</strong>. Sem o pagamento da matrícula confirmado, a entrada não é liberada na
         Cruz Vermelha — por favor, não compareça antes de concluir o pagamento.
       </div>`;
 
@@ -294,47 +294,47 @@ const botaoPagar = (link, rotulo) => `
       </a>`;
 
 /**
- * Lembrete 1 — 1 h depois de a taxa ser confirmada, com o curso ainda sem pagar.
+ * Lembrete 1 — 1 h depois de a taxa ser confirmada, com a matrícula ainda sem pagar.
  */
 async function enviarLembretePagamentoPendente(email, nome, dados) {
   const { curso, inicioTurma, link } = dados;
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;">
       ${CABECALHO}
-      <h3 style="margin-bottom:16px;">Sua matrícula ainda não está completa</h3>
+      <h3 style="margin-bottom:16px;">Sua matrícula ainda não está paga</h3>
       <p>Olá, <strong>${nome}</strong>!</p>
       <p>Recebemos a sua taxa de inscrição em <strong>${curso}</strong> (turma com início em
-      <strong>${inicioTurma}</strong>). Para concluir a matrícula, falta <strong>pagar o curso</strong>.</p>
+      <strong>${inicioTurma}</strong>). Para garantir sua participação, falta <strong>pagar a matrícula</strong>.</p>
       ${blocoValor(dados)}
-      ${botaoPagar(link, 'Pagar o curso agora')}
+      ${botaoPagar(link, 'Pagar a matrícula agora')}
       ${AVISO_ENTRADA}
       <p style="color:#718096;font-size:13px;">
         Você também encontra o pagamento em "Minha conta" → "Minhas inscrições". Dúvidas, fale com a secretaria.
       </p>
     </div>`;
-  await enviar(email, `Falta pagar o curso: sua matrícula em ${curso} ainda não está completa`, html, `Lembrete de pagamento pendente (${curso})`, link);
+  await enviar(email, `Falta pagar a matrícula: sua matrícula em ${curso} ainda está pendente`, html, `Lembrete de pagamento pendente (${curso})`, link);
 }
 
 /**
- * Lembrete 2 — a turma começa em até 3 dias e o curso continua sem pagar.
+ * Lembrete 2 — a turma começa em até 3 dias e a matrícula continua sem pagar.
  */
 async function enviarLembretePrazoCurso(email, nome, dados) {
   const { curso, inicioTurma, link } = dados;
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;">
       ${CABECALHO}
-      <h3 style="margin-bottom:16px;">Faltam poucos dias: pague o curso para poder assistir às aulas</h3>
+      <h3 style="margin-bottom:16px;">Faltam poucos dias: pague a matrícula para poder assistir às aulas</h3>
       <p>Olá, <strong>${nome}</strong>!</p>
-      <p>A turma de <strong>${curso}</strong> começa em <strong>${inicioTurma}</strong> e o pagamento do
-      curso ainda não foi feito. Sem ele, a sua matrícula não está completa.</p>
+      <p>A turma de <strong>${curso}</strong> começa em <strong>${inicioTurma}</strong> e o pagamento da
+      matrícula ainda não foi feito. Sem ele, você não pode assistir às aulas.</p>
       ${blocoValor(dados)}
-      ${botaoPagar(link, 'Concluir minha matrícula')}
+      ${botaoPagar(link, 'Pagar minha matrícula')}
       ${AVISO_ENTRADA}
       <p style="color:#718096;font-size:13px;">
         Se não puder mais participar desta turma, fale com a secretaria para tratarmos da sua taxa de inscrição.
       </p>
     </div>`;
-  await enviar(email, `${curso} começa em ${inicioTurma}: falta pagar o curso`, html, `Lembrete de prazo (${curso})`, link);
+  await enviar(email, `${curso} começa em ${inicioTurma}: falta pagar a matrícula`, html, `Lembrete de prazo (${curso})`, link);
 }
 
 /**
@@ -345,18 +345,18 @@ async function enviarLembreteVespera(email, nome, dados) {
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;">
       ${CABECALHO}
-      <h3 style="margin-bottom:16px;">Seu curso começa amanhã e o pagamento não foi feito</h3>
+      <h3 style="margin-bottom:16px;">Seu curso começa amanhã e a matrícula não foi paga</h3>
       <p>Olá, <strong>${nome}</strong>!</p>
       <p>O curso <strong>${curso}</strong> começa em <strong>${inicioTurma}</strong> e a sua matrícula
-      <strong>ainda não está completa</strong>: falta o pagamento do curso.</p>
+      <strong>ainda não está paga</strong>: falta o pagamento.</p>
       ${blocoValor(dados)}
-      ${botaoPagar(link, 'Pagar o curso agora')}
+      ${botaoPagar(link, 'Pagar a matrícula agora')}
       ${AVISO_ENTRADA}
       <p style="color:#718096;font-size:13px;">
         Se não puder mais participar desta turma, fale com a secretaria para tratarmos da sua taxa de inscrição.
       </p>
     </div>`;
-  await enviar(email, `Seu curso começa amanhã: pague o curso para poder entrar na aula`, html, `Lembrete de véspera (${curso})`, link);
+  await enviar(email, `Seu curso começa amanhã: pague a matrícula para poder entrar na aula`, html, `Lembrete de véspera (${curso})`, link);
 }
 
 /**

@@ -79,7 +79,7 @@
             <% if (m.boasVindasEm) { %><em class="badge ok" title="<%= new Date(m.boasVindasEm).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) %>">recebeu</em><% } else { %><em class="badge">a enviar</em><% } %></li>
         <% }) %>
         <% aguardando.forEach(function (m) { %>
-          <li class="fraco"><span><%= m.aluno.nome %></span><em class="badge" title="Recebe sozinho quando o pagamento do curso for confirmado">aguarda pagamento</em></li>
+          <li class="fraco"><span><%= m.aluno.nome %></span><em class="badge" title="Recebe sozinho quando o pagamento da matrícula for confirmado">aguarda pagamento</em></li>
         <% }) %>
         <% if (!turma.matriculas.length) { %><li class="adm-mut">Nenhum aluno inscrito ainda.</li><% } %>
       </ul>

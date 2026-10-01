@@ -49,9 +49,9 @@
 
 const _parcelas = typeof numParcelas !== 'undefined' && numParcelas ? Number(numParcelas) : 1;
 const _rotuloValor = etapa === 'taxa' ? 'Taxa de inscrição'
-                   : _parcelas > 1    ? 'Curso parcelado'
+                   : _parcelas > 1    ? 'Matrícula parcelada'
                    : 'Total';
-const _ultimoPasso = etapa === 'taxa' ? 'Taxa confirmada' : 'Matrícula confirmada';
+const _ultimoPasso = etapa === 'taxa' ? 'Inscrição confirmada' : 'Matrícula confirmada';
 
 const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
            ? String(transacaoRef)
@@ -69,7 +69,7 @@ const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
       <p class="cc-sub">
         <%= curso.nome %><br>
         <% if (etapa === 'taxa') { %>
-          Taxa de inscrição. O curso vem logo depois.
+          Taxa de inscrição. A matrícula vem logo depois.
         <% } else if (_parcelas > 1) { %>
           <%= _parcelas %>× de <%= formatBRL(valorParcela) %> no crédito.
         <% } else { %>
@@ -641,7 +641,7 @@ const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
         </div>
         <div class="pix-et-texto">
           <p class="pix-et-rot">Passo 4</p>
-          <p class="pix-et-desc">Matrícula confirmada</p>
+          <p class="pix-et-desc"><%= etapa === 'taxa' ? 'Inscrição confirmada' : 'Matrícula confirmada' %></p>
         </div>
         <span class="pix-et-badge">Em breve</span>
       </div>
@@ -654,7 +654,7 @@ const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
     <div class="pix-aguardando">
       <i class="fa-solid fa-arrows-rotate pix-aguardando-icone girando"></i>
       <h1 class="pix-titulo" style="margin-bottom:8px">Processando…</h1>
-      <p class="pix-sub">Seu pagamento está sendo processado. Assim que o banco confirmar, sua matrícula é atualizada aqui.</p>
+      <p class="pix-sub">Seu pagamento está sendo processado. Assim que o banco confirmar, sua inscrição é atualizada aqui.</p>
     </div>
 
     <% } %>
@@ -796,7 +796,7 @@ const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
       var m = await r.json();
 
       // 'PARCELADO' também conta como quitado — é o status que a matrícula
-      // recebe quando o curso é pago em parcelas.
+      // recebe quando a matrícula é paga em parcelas.
       var quitado = ETAPA === 'taxa'
         ? m.taxaConfirmada
         : ['PAGO', 'PARCELADO'].indexOf(m.statusPagamento) !== -1;

@@ -41,13 +41,13 @@ const _abrirNoPagamento = !!erro;
 
 // ── Passos ───────────────────────────────────────────────────────────────
 // À vista / passaporte → contrato, pagamento                       = 2
-// Parcelado            → contrato, plano, taxa, curso              = 4
+// Parcelado            → contrato, plano, inscrição, matrícula     = 4
 const _totalPassos = etapaAtual === 'escolha' ? 2 : 4;
 const _passoAtual  = etapaAtual === 'escolha' ? (_abrirNoPagamento ? 2 : 1)
                    : etapaAtual === 'pagar-taxa' ? 3 : 4;
 const _trilha = _totalPassos === 2
   ? ['Contrato', 'Pagamento']
-  : ['Contrato', 'Plano', 'Taxa de inscrição', 'Curso'];
+  : ['Contrato', 'Plano', 'Taxa de inscrição', 'Matrícula'];
 %>
 
 <main class="chk">
@@ -268,11 +268,11 @@ const _trilha = _totalPassos === 2
 
           <div class="chk-resumo">
             <div class="chk-linha">
-              <span>Valor do curso</span><strong class="num"><%= formatBRL(aVista.valorCurso) %></strong>
+              <span>Valor da matrícula</span><strong class="num"><%= formatBRL(aVista.valorCurso) %></strong>
             </div>
             <% if (Number(aVista.valorTaxaMatricula) > 0) { %>
             <div class="chk-linha">
-              <span>Taxa de matrícula</span><strong class="num"><%= formatBRL(aVista.valorTaxaMatricula) %></strong>
+              <span>Taxa de inscrição</span><strong class="num"><%= formatBRL(aVista.valorTaxaMatricula) %></strong>
             </div>
             <% } %>
             <div class="chk-linha chk-linha-total">
@@ -339,7 +339,7 @@ const _trilha = _totalPassos === 2
             <input type="radio" name="_planoUI" value="PRESENCIAL">
             <span class="chk-plano-rot">Presencial</span>
             <span class="chk-plano-v num"><%= formatBRL(aVista.total) %></span>
-            <span class="chk-plano-o">só a taxa online</span>
+            <span class="chk-plano-o">só a inscrição online</span>
           </label>
           <% } %>
 
@@ -361,11 +361,11 @@ const _trilha = _totalPassos === 2
 
             <div class="chk-resumo">
               <div class="chk-linha">
-                <span>Valor do curso</span><strong class="num"><%= formatBRL(aVista.valorCurso) %></strong>
+                <span>Valor da matrícula</span><strong class="num"><%= formatBRL(aVista.valorCurso) %></strong>
               </div>
               <% if (Number(aVista.valorTaxaMatricula) > 0) { %>
               <div class="chk-linha">
-                <span>Taxa de matrícula</span><strong class="num"><%= formatBRL(aVista.valorTaxaMatricula) %></strong>
+                <span>Taxa de inscrição</span><strong class="num"><%= formatBRL(aVista.valorTaxaMatricula) %></strong>
               </div>
               <% } %>
               <div class="chk-linha chk-linha-total">
@@ -417,7 +417,7 @@ const _trilha = _totalPassos === 2
             <div class="chk-aviso">
               <i class="fa-solid fa-list-check"></i>
               <span>São <strong>dois pagamentos</strong>: a taxa de inscrição agora (PIX ou
-              cartão) e, em seguida, o curso parcelado no cartão. Cada um tem a sua tela.</span>
+              cartão) e, em seguida, a matrícula parcelada no cartão. Cada um tem a sua tela.</span>
             </div>
 
             <div class="chk-resumo">
@@ -425,7 +425,7 @@ const _trilha = _totalPassos === 2
                 <span>Taxa de inscrição (agora)</span><strong class="num"><%= formatBRL(parcelado.valorTaxaMatricula) %></strong>
               </div>
               <div class="chk-linha">
-                <span>Curso, <%= parcelado.numParcelas %>× no cartão</span><strong class="num"><%= formatBRL(parceladoComJuros.valorParcela) %>/mês</strong>
+                <span>Matrícula, <%= parcelado.numParcelas %>× no cartão</span><strong class="num"><%= formatBRL(parceladoComJuros.valorParcela) %>/mês</strong>
               </div>
               <div class="chk-linha chk-linha-total">
                 <span>Total</span><strong class="num"><%= formatBRL(parceladoComJuros.total) %></strong>
@@ -456,8 +456,8 @@ const _trilha = _totalPassos === 2
 
             <div class="chk-aviso">
               <i class="fa-solid fa-building-columns"></i>
-              <span>Você paga apenas a <strong>taxa de inscrição</strong> agora. O curso é
-              pago na secretaria.</span>
+              <span>Você paga apenas a <strong>taxa de inscrição</strong> agora. A matrícula é
+              paga na secretaria.</span>
             </div>
 
             <div class="chk-resumo">
@@ -465,7 +465,7 @@ const _trilha = _totalPassos === 2
                 <span>Taxa de inscrição</span><strong class="num"><%= formatBRL(aVista.valorTaxaMatricula) %></strong>
               </div>
               <div class="chk-linha">
-                <span>Curso</span><strong class="num"><%= formatBRL(aVista.valorCurso) %></strong>
+                <span>Matrícula</span><strong class="num"><%= formatBRL(aVista.valorCurso) %></strong>
               </div>
               <div class="chk-linha chk-linha-total">
                 <span>Total</span><strong class="num"><%= formatBRL(aVista.total) %></strong>
@@ -483,13 +483,13 @@ const _trilha = _totalPassos === 2
       </div><!-- /passoPagamento -->
 
       <!-- ══════════════════════════════════════════════════════════════════
-           ETAPA 2 — Pagar taxa (PIX ou cartão)
+           ETAPA 2 — Pagar taxa de inscrição (PIX ou cartão)
            ══════════════════════════════════════════════════════════════════ -->
       <% } else if (etapaAtual === 'pagar-taxa') { %>
 
       <div class="chk-cab anima" style="--d:0">
         <h2>Taxa de inscrição</h2>
-        <p>Pague a taxa para reservar sua vaga. O curso vem no passo seguinte.</p>
+        <p>Pague a taxa para reservar sua vaga. A matrícula vem no passo seguinte.</p>
       </div>
 
       <div class="chk-resumo anima" style="--d:1">
@@ -517,7 +517,7 @@ const _trilha = _totalPassos === 2
           <div class="chk-aviso">
             <i class="fa-solid fa-qrcode"></i>
             <span>O QR Code aparece <strong>na próxima tela deste site</strong>. Pague pelo app
-            do banco e volte: assim que o banco confirmar, você segue direto para o curso.</span>
+            do banco e volte: assim que o banco confirmar, você segue direto para a matrícula.</span>
           </div>
           <div class="chk-acao">
             <div class="chk-acao-valor"><em>Taxa</em><strong class="num"><%= formatBRL(valorTaxa) %></strong></div>
@@ -533,7 +533,7 @@ const _trilha = _totalPassos === 2
           <div class="chk-aviso">
             <i class="fa-solid fa-credit-card"></i>
             <span>Você preenche o cartão <strong>na próxima tela</strong>, com prazo de
-            5 minutos. Aprovada a taxa, você segue para o pagamento do curso.</span>
+            5 minutos. Aprovada a taxa, você segue para o pagamento da matrícula.</span>
           </div>
           <div class="chk-acao">
             <div class="chk-acao-valor"><em>Taxa</em><strong class="num"><%= formatBRL(valorTaxa) %></strong></div>
@@ -543,7 +543,7 @@ const _trilha = _totalPassos === 2
       </div>
 
       <!-- ══════════════════════════════════════════════════════════════════
-           ETAPA 3 — Pagar curso (parcelado no cartão)
+           ETAPA 3 — Pagar matrícula (parcelado no cartão)
            ══════════════════════════════════════════════════════════════════ -->
       <% } else if (etapaAtual === 'pagar-curso') { %>
 
@@ -562,7 +562,7 @@ const _trilha = _totalPassos === 2
 
       <div class="chk-resumo anima" style="--d:1">
         <div class="chk-linha">
-          <span>Valor do curso</span><strong class="num"><%= formatBRL(valorCurso) %></strong>
+          <span>Valor da matrícula</span><strong class="num"><%= formatBRL(valorCurso) %></strong>
         </div>
         <div class="chk-linha chk-linha-total">
           <span>A pagar na secretaria</span><strong class="num"><%= formatBRL(valorCurso) %></strong>
@@ -587,11 +587,11 @@ const _trilha = _totalPassos === 2
 
       <div class="chk-aviso chk-aviso-ok anima">
         <i class="fa-solid fa-circle-check"></i>
-        <span>Taxa confirmada. Falta só o pagamento do curso.</span>
+        <span>Taxa de inscrição confirmada. Falta só o pagamento da matrícula.</span>
       </div>
 
       <div class="chk-cab anima" style="--d:1">
-        <h2>Pagamento do curso</h2>
+        <h2>Pagamento da matrícula</h2>
         <p>Parcelado no cartão de crédito, em <%= numParcelas %> vezes.</p>
       </div>
 
@@ -602,7 +602,7 @@ const _trilha = _totalPassos === 2
         // Antes mostrava "Valor do curso" e "Total com juros" lado a lado, o
         // que fazia os dois parecerem concorrentes ("afinal, pago 5,00 ou
         // 5,18?"). Agora o juro ganha linha própria, então a conta fecha na
-        // vertical: curso + juros = total.
+        // vertical: matrícula + juros = total.
         //
         // A tabela guarda só a CONTA. O que o aluno realmente desembolsa por
         // mês (a parcela) sai dela e ganha destaque próprio logo abaixo — era
@@ -621,7 +621,7 @@ const _trilha = _totalPassos === 2
 
       <div class="chk-resumo anima" style="--d:2">
         <div class="chk-linha">
-          <span>Curso, sem juros</span><strong class="num"><%= formatBRL(valorCurso) %></strong>
+          <span>Matrícula, sem juros</span><strong class="num"><%= formatBRL(valorCurso) %></strong>
         </div>
         <% if (parceladoComJuros && parceladoComJuros.taxaJuros > 0) { %>
         <div class="chk-linha">
@@ -695,12 +695,12 @@ const _trilha = _totalPassos === 2
   var rotTitulo      = document.getElementById('rotuloTitulo');
   var rotContagem    = document.getElementById('rotuloContagem');
 
-  // Quantos passos o fluxo tem depende do plano: parcelado passa por taxa e
-  // curso (4); à vista e passaporte terminam no pagamento (2).
+  // Quantos passos o fluxo tem depende do plano: parcelado passa por inscrição e
+  // matrícula (4); à vista e passaporte terminam no pagamento (2).
   var planoAtual = 'A_VISTA';
   var TITULOS = {
     A_VISTA:   ['Contrato', 'Pagamento'],
-    PARCELADO: ['Contrato', 'Plano', 'Taxa de inscrição', 'Curso']
+    PARCELADO: ['Contrato', 'Plano', 'Taxa de inscrição', 'Matrícula']
   };
 
   function atualizarProgresso(passo) {

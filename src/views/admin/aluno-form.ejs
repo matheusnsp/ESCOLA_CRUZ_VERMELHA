@@ -144,11 +144,11 @@
     <div class="adm-box adm-zona adm-zona-perigo">
       <h3><i class="fa-solid fa-ban"></i> Zona de perigo</h3>
       <p class="adm-mut">
-        Banir este aluno cancela todas as matrículas ativas e bloqueia qualquer
+        Banir este aluno cancela todas as inscrições ativas e bloqueia qualquer
         acesso ao site. A ação fica registrada na auditoria.
       </p>
       <form method="POST" action="/alunos/<%= aluno.id %>/banir"
-            data-confirmar="Tem certeza? Esta ação cancela todas as matrículas ativas do aluno.">
+            data-confirmar="Tem certeza? Esta ação cancela todas as inscrições ativas do aluno.">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <textarea name="motivo" required maxlength="300" class="adm-textarea"
                   placeholder="Motivo do banimento (obrigatório)"></textarea>
@@ -163,7 +163,7 @@
     <div class="adm-box adm-zona adm-zona-ok">
       <h3><i class="fa-solid fa-lock"></i> Aluno banido</h3>
       <p class="adm-mut">
-        Este aluno está banido e não consegue acessar o site. Todas as matrículas
+        Este aluno está banido e não consegue acessar o site. Todas as inscrições
         ativas foram canceladas no momento do banimento.
       </p>
       <form method="POST" action="/alunos/<%= aluno.id %>/desbanir"

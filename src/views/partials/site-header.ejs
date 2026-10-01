@@ -52,13 +52,13 @@
 </header>
 
 <% if (typeof cursoPendente !== 'undefined' && cursoPendente) { %>
-  <%# Quem pagou só a taxa (server.js): aviso em todas as páginas até pagar o curso. %>
+  <%# Quem pagou só a taxa de inscrição (server.js): aviso em todas as páginas até pagar a matrícula. %>
   <div class="aviso-pagamento" role="alert">
     <div class="aviso-pagamento-in">
       <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-      <p><b>Falta pagar o curso <%= cursoPendente.curso %></b> (início em <%= cursoPendente.inicio %>).
-        Sem o pagamento do curso confirmado, a entrada na aula não é liberada.</p>
-      <a href="<%= cursoPendente.link %>" class="aviso-pagamento-btn">Pagar o curso agora <i class="fa-solid fa-arrow-right"></i></a>
+      <p><b>Falta pagar a matrícula do curso <%= cursoPendente.curso %></b> (início em <%= cursoPendente.inicio %>).
+        Sem o pagamento da matrícula confirmado, a entrada na aula não é liberada.</p>
+      <a href="<%= cursoPendente.link %>" class="aviso-pagamento-btn">Pagar a matrícula agora <i class="fa-solid fa-arrow-right"></i></a>
     </div>
   </div>
 <% } %>

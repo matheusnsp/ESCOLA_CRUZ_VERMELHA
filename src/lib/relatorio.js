@@ -102,16 +102,16 @@ async function coletarDadosRelatorio(prisma) {
       };
     });
 
-  // Pendências (taxa + curso), igual à tela
+  // Pendências (taxa de inscrição + matrícula), igual à tela
   const pendentesLista = [
     ...taxaPendenteLista.map((m) => ({
-      m, tipo: 'Taxa inscrição',
+      m, tipo: 'Taxa de inscrição',
       valor: Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO,
       desde: m.criadoEm,
     })),
     ...cursoPendenteLista.map((m) => ({
       m,
-      tipo: m.diferencaTransferencia != null ? 'Curso (diferença de transferência)' : 'Curso',
+      tipo: m.diferencaTransferencia != null ? 'Matrícula (diferença de transferência)' : 'Matrícula',
       valor: m.diferencaTransferencia != null ? Number(m.diferencaTransferencia) : Number(m.valorCurso),
       desde: m.criadoEm,
     })),
@@ -175,7 +175,7 @@ async function gerarExcel(dados) {
   };
 
   // ---- Aba 1: Matrículas ----
-  const wsM = wb.addWorksheet('Matrículas');
+  const wsM = wb.addWorksheet('Inscrições');
   wsM.columns = [
     { header: 'Aluno', key: 'aluno', width: 28 },
     { header: 'E-mail', key: 'email', width: 28 },
@@ -183,9 +183,9 @@ async function gerarExcel(dados) {
     { header: 'Plano', key: 'plano', width: 12 },
     { header: 'Forma', key: 'forma', width: 12 },
     { header: 'Status', key: 'status', width: 13 },
-    { header: 'Taxa confirmada', key: 'taxa', width: 15 },
-    { header: 'Valor (R$)', key: 'valor', width: 14 },
-    { header: 'Taxa (R$)', key: 'valorTaxa', width: 12 },
+    { header: 'Inscrição paga', key: 'taxa', width: 15 },
+    { header: 'Matrícula (R$)', key: 'valor', width: 14 },
+    { header: 'Taxa de inscrição (R$)', key: 'valorTaxa', width: 12 },
     { header: 'Inscrito em', key: 'inscrito', width: 14 },
   ];
   for (const m of dados.matriculas) {
@@ -214,7 +214,7 @@ async function gerarExcel(dados) {
   wsF.addRow([]);
   const linhasResumo = [
     ['Taxa de inscrição paga (alunos)', t.taxaPagaCount],
-    ['Curso pago + matrícula gerada', t.matriculaGeradaCount],
+    ['Matrícula paga (alunos)', t.matriculaGeradaCount],
     ['Pendentes', t.pendentesCount],
     ['Total recebido', t.totalRecebido],
     ['Total pendente a receber', t.totalPendente],
@@ -250,7 +250,7 @@ async function gerarExcel(dados) {
     });
   };
 
-  addSecao('Matrículas geradas (curso pago)',
+  addSecao('Matrículas pagas',
     [{ header: 'Aluno' }, { header: 'Curso' }, { header: 'Data pag.' }, { header: 'Valor (R$)' }],
     dados.financeiro.matriculaGeradaLista.map((m) => [
       m.aluno?.nome || '—', m.turma?.curso?.nome || '—', dataBR(m.confirmadaEm), Number(m.valorCurso) || 0,
@@ -282,7 +282,7 @@ async function gerarExcel(dados) {
     { header: 'Quem fez', key: 'quemFez', width: 26 },
     { header: 'Aluno reembolsado', key: 'aluno', width: 26 },
     { header: 'Curso', key: 'curso', width: 24 },
-    { header: 'Matrícula', key: 'matricula', width: 16 },
+    { header: 'Inscrição', key: 'matricula', width: 16 },
     { header: 'Valor (R$)', key: 'valor', width: 14 },
     { header: 'Tipo', key: 'tipo', width: 12 },
     { header: 'Motivo', key: 'motivo', width: 30 },
@@ -392,7 +392,7 @@ function gerarPdf(dados, stream) {
     [{ label: 'Indicador', width: 60 }, { label: 'Valor', width: 40, align: 'right' }],
     [
       ['Taxa de inscrição paga (alunos)', String(t.taxaPagaCount)],
-      ['Curso pago + matrícula gerada', String(t.matriculaGeradaCount)],
+      ['Matrícula paga (alunos)', String(t.matriculaGeradaCount)],
       ['Pendentes', String(t.pendentesCount)],
       ['Total recebido', formatBRL(t.totalRecebido)],
       ['Total pendente a receber', formatBRL(t.totalPendente)],
@@ -427,9 +427,9 @@ function gerarPdf(dados, stream) {
     );
   } else { doc.font('Helvetica-Oblique').fontSize(9).fillColor(CINZA).text('Nenhuma pendência.').fillColor('black'); }
 
-  // ---- Seção 3: Matrículas ----
+  // ---- Seção 3: Inscrições ----
   doc.addPage();
-  titulo('Matrículas');
+  titulo('Inscrições');
   tabela(
     [{ label: 'Aluno', width: 26 }, { label: 'Curso', width: 26 }, { label: 'Plano', width: 12 },
      { label: 'Status', width: 13 }, { label: 'Taxa', width: 8 }, { label: 'Valor', width: 13, align: 'right' },
@@ -446,7 +446,7 @@ function gerarPdf(dados, stream) {
   if (dados.reembolsosAuditoria.length) {
     tabela(
       [{ label: 'Data/hora', width: 16 }, { label: 'Quem fez', width: 20 }, { label: 'Aluno', width: 20 },
-       { label: 'Curso', width: 18 }, { label: 'Matrícula', width: 12 }, { label: 'Valor', width: 11, align: 'right' },
+       { label: 'Curso', width: 18 }, { label: 'Inscrição', width: 12 }, { label: 'Valor', width: 11, align: 'right' },
        { label: 'Tipo', width: 9 }, { label: 'Motivo', width: 18 }],
       dados.reembolsosAuditoria.map((r) => [
         dataHoraBR(r.quando), r.quemFez, r.aluno, r.curso, r.matricula,
@@ -555,7 +555,7 @@ async function coletarLancamentosOfx(prisma, opts = {}) {
     const ehEstorno = p.status === 'ESTORNADO';
     const aluno = p.matricula?.aluno?.nome || 'Aluno nao identificado';
     const curso = p.matricula?.turma?.curso?.nome || 'Curso nao identificado';
-    const tipo = p.tipo === 'TAXA' ? 'Taxa de inscricao' : 'Curso';
+    const tipo = p.tipo === 'TAXA' ? 'Taxa de inscricao' : 'Matricula';
 
     return {
       // FITID = identificador único da transação. É o que o importador usa

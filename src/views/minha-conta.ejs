@@ -179,9 +179,9 @@
                     <p class="ct-retomar-txt">
                       <i class="fa-solid fa-circle-half-stroke"></i>
                       <% if (m.taxaConfirmada) { %>
-                        <span><b>Falta pagar o curso.</b> A taxa reserva a sua vaga, mas sem o pagamento do curso a entrada na aula não é liberada.</span>
+                        <span><b>Falta pagar a matrícula.</b> A taxa de inscrição reserva a sua vaga, mas sem o pagamento da matrícula a entrada na aula não é liberada.</span>
                       <% } else { %>
-                        Falta concluir o pagamento para efetivar sua matrícula.
+                        Falta concluir o pagamento para efetivar sua inscrição.
                       <% } %>
                     </p>
                     <a href="<%= m.retomada.url %>" class="ct-btn-retomar">
@@ -392,7 +392,7 @@
           <div class="ct-card">
             <p class="ct-grupo-nota" style="margin-bottom:18px;">
               Esta ação é permanente e remove seus dados. Não é possível excluir
-              com matrículas ativas.
+              com inscrições ativas.
             </p>
 
             <% if (erro) { %>
@@ -402,7 +402,7 @@
             <% if (matriculasAtivas > 0) { %>
               <div class="ct-bloqueio">
                 <i class="fa-solid fa-lock"></i>
-                Você tem <%= matriculasAtivas %> matrícula(s) ativa(s). Resolva
+                Você tem <%= matriculasAtivas %> inscrição(ões) ativa(s). Resolva
                 com a secretaria antes de excluir.
               </div>
             <% } else { %>
