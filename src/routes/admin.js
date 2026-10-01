@@ -958,7 +958,7 @@ function lerCursoDoForm(body) {
   else if (Number.isNaN(dados.cargaHoraria)) erro = 'Carga horaria invalida.';
   else if (Number.isNaN(dados.precoAvista) || Number.isNaN(dados.precoCheio) || Number.isNaN(dados.valorParcela)) erro = 'Verifique os valores (use numeros, ex.: 150.00).';
   else if (Number.isNaN(dados.parcelas)) erro = 'Numero de parcelas invalido.';
-  else if (Number.isNaN(dados.taxaMatricula)) erro = 'Taxa de matricula invalida (deixe em branco para usar o padrao).';
+  else if (Number.isNaN(dados.taxaMatricula)) erro = 'Taxa de inscrição inválida (deixe em branco para usar o padrão).';
   else if (body.assin) erro = assinaturasDoForm(body).erro;
   return { dados, erro };
 }
@@ -1040,7 +1040,7 @@ router.post('/cursos/:id/excluir', requirePermissao('cursos:gerenciar'), async (
   const matriculas = turmaIds.length ? await prisma.matricula.count({ where: { turmaId: { in: turmaIds } } }) : 0;
 
   if (turmas.length > 0 || matriculas > 0) {
-    return res.redirect(backCursos(req, 'Nao e possivel excluir: o curso tem turmas e/ou matriculas. Use "desativar" para tira-lo do site preservando o historico.', 'erro'));
+    return res.redirect(backCursos(req, 'Nao e possivel excluir: o curso tem turmas e/ou inscrições. Use "desativar" para tira-lo do site preservando o historico.', 'erro'));
   }
 
   await prisma.curso.delete({ where: { id: curso.id } });
@@ -1255,7 +1255,7 @@ router.post('/turmas/:id/excluir', requirePermissao('turmas:gerenciar'), async (
 
   const matriculas = await prisma.matricula.count({ where: { turmaId: turma.id } });
   if (matriculas > 0) {
-    return res.redirect('/turmas?erro=' + encodeURIComponent('Nao e possivel excluir: a turma tem aluno(s) matriculado(s). Use o status "CANCELADA" ou "CONCLUÍDA" para tira-la do site preservando o historico.'));
+    return res.redirect('/turmas?erro=' + encodeURIComponent('Nao e possivel excluir: a turma tem aluno(s) inscrito(s). Use o status "CANCELADA" ou "CONCLUÍDA" para tira-la do site preservando o historico.'));
   }
 
   await prisma.turma.delete({ where: { id: turma.id } });
@@ -1601,7 +1601,7 @@ router.get('/inscricoes', requirePermissao(
 
 router.post('/inscricoes/:id/confirmar', requirePermissao('financeiro:aprovar', 'pagamento:confirmar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
   await prisma.matricula.update({
     where: { id: m.id },
     data: {
@@ -1618,7 +1618,7 @@ router.post('/inscricoes/:id/confirmar', requirePermissao('financeiro:aprovar', 
 
 router.post('/inscricoes/:id/cancelar', requirePermissao('financeiro:aprovar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
   await prisma.matricula.update({ where: { id: m.id }, data: { statusPagamento: 'CANCELADO' } });
   await prisma.pagamento.updateMany({
     where: { matriculaId: m.id, status: 'PENDENTE' },
@@ -1626,7 +1626,7 @@ router.post('/inscricoes/:id/cancelar', requirePermissao('financeiro:aprovar'), 
   });
   const motivo = String(req.body.motivo || '').trim().slice(0, 200) || null;
   await auditar(req, 'CANCELOU_INSCRICAO', 'Matricula', m.id, motivo ? { motivo } : null);
-  res.redirect(back(req, 'Inscricao cancelada.'));
+  res.redirect(back(req, 'Inscrição cancelada.'));
 });
 
 // ---------- Financeiro ----------
@@ -1724,7 +1724,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
   const pendentesLista = [
     ...taxaPendenteLista.map((m) => ({
       m,
-      tipo: 'Taxa inscrição',
+      tipo: 'Taxa de inscrição',
       valor: Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO,
       desde: m.criadoEm,
     })),
@@ -1733,8 +1733,8 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
       m,
       tipo:
         m.diferencaTransferencia != null
-          ? 'Curso (diferença de transferência)'
-          : 'Curso',
+          ? 'Matrícula (diferença de transferência)'
+          : 'Matrícula',
       valor:
         m.diferencaTransferencia != null
           ? Number(m.diferencaTransferencia)
@@ -1797,7 +1797,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
   );
 
   // Uma linha por matrícula que já teve dinheiro entrando (taxa, curso ou os dois), em vez de
-  // listar a mesma pessoa em "Taxa paga" e de novo em "Matrículas geradas". Estornadas entram
+  // listar a mesma pessoa em "Inscrição paga" e de novo em "Matrículas pagas". Estornadas entram
   // também, marcadas como tal, para a tabela contar a história inteira.
   const porId = new Map();
   [...taxaPagaLista, ...matriculaGeradaLista, ...estornos].forEach((m) => porId.set(m.id, m));
@@ -1869,7 +1869,7 @@ router.get('/relatorios/completo.csv', requirePermissao('relatorio:baixar'), asy
   await auditar(req, 'BAIXOU_RELATORIO', 'Relatorio', null, { formato: 'csv' });
 
   const linhas = [
-    ['Aluno', 'E-mail', 'CPF/CNPJ', 'Curso', 'Turma', 'Status', 'Forma', 'Plano', 'Valor Taxa', 'Valor Curso', 'Taxa Confirmada', 'Data Inscrição', 'Data Confirmação'],
+    ['Aluno', 'E-mail', 'CPF/CNPJ', 'Curso', 'Turma', 'Status', 'Forma', 'Plano', 'Valor Taxa Inscrição', 'Valor Matrícula', 'Inscrição Paga', 'Data Inscrição', 'Data Confirmação'],
     ...dados.matriculas.map((m) => [
       m.aluno.nome,
       m.aluno.email,
@@ -1949,7 +1949,7 @@ router.post('/inscricoes/:id/reembolso-concluido', requirePermissao('financeiro:
 
   if (!m) {
     return res.status(404).render('admin/erro', {
-      mensagem: 'Inscricao nao encontrada.',
+      mensagem: 'Inscrição não encontrada.',
     });
   }
 
@@ -1958,7 +1958,7 @@ router.post('/inscricoes/:id/reembolso-concluido', requirePermissao('financeiro:
     Number(m.diferencaTransferencia) >= 0
   ) {
     return res.status(400).render('admin/erro', {
-      mensagem: 'Esta matricula nao tem reembolso pendente.',
+      mensagem: 'Esta inscrição não tem reembolso pendente.',
     });
   }
 
@@ -1984,7 +1984,7 @@ router.post('/inscricoes/:id/reembolso-concluido', requirePermissao('financeiro:
 
 router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:reembolsar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
 
   const motivo = String(req.body.motivo || '').trim() || 'Não informado';
   const apenasContabil = req.body.apenasContabil === 'on' || req.body.apenasContabil === 'true';
@@ -2021,11 +2021,11 @@ router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:reembolsar'
     if (!curso.ok) {
       if (curso.semRef) {
         return res.status(400).render('admin/erro', {
-          mensagem: 'Não encontrei a transação do curso no gateway para estornar. Se o pagamento foi feito fora da Únicopag (dinheiro/presencial), use a opção "estorno apenas contábil".',
+          mensagem: 'Não encontrei a transação da matrícula no gateway para estornar. Se o pagamento foi feito fora da Únicopag (dinheiro/presencial), use a opção "estorno apenas contábil".',
         });
       }
       return res.status(502).render('admin/erro', {
-        mensagem: 'O gateway não confirmou o estorno do curso. Nada foi alterado. Verifique no painel da Únicopag e tente novamente.',
+        mensagem: 'O gateway não confirmou o estorno da matrícula. Nada foi alterado. Verifique no painel da Únicopag e tente novamente.',
       });
     }
 
@@ -2035,7 +2035,7 @@ router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:reembolsar'
     } else if (taxa.semRef) {
       taxaRevertida = true;
     } else {
-      avisoTaxa = ' ATENÇÃO: o curso foi estornado, mas o gateway NÃO confirmou o estorno da taxa de inscrição — trate a taxa manualmente no painel da Únicopag.';
+      avisoTaxa = ' ATENÇÃO: a matrícula foi estornada, mas o gateway NÃO confirmou o estorno da taxa de inscrição — trate a taxa manualmente no painel da Únicopag.';
       console.warn(`[A3] Taxa não estornada para matrícula ${m.id} — requer ação manual.`);
     }
   } else {
@@ -2054,13 +2054,13 @@ router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:reembolsar'
   });
   await auditar(req, 'ESTORNOU_PAGAMENTO', 'Matricula', m.id, { motivo, apenasContabil, taxaRevertida });
 
-  const base = apenasContabil ? 'Estorno contábil (curso + taxa) registrado.' : 'Curso e taxa estornados no gateway.';
+  const base = apenasContabil ? 'Estorno contábil (matrícula + inscrição) registrado.' : 'Matrícula e taxa de inscrição estornadas no gateway.';
   res.redirect(back(req, base + (avisoTaxa || '')));
 });
 
 router.post('/inscricoes/:id/alimento', requirePermissao('doacao:confirmar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
   await prisma.matricula.update({ where: { id: m.id }, data: { alimentoEntregue: !m.alimentoEntregue } });
   await auditar(req, 'ALTEROU_ALIMENTO', 'Matricula', m.id, { entregue: !m.alimentoEntregue });
   res.redirect(back(req, 'Atualizado.'));
@@ -2071,13 +2071,13 @@ router.get('/inscricoes/:id/nota', requirePermissao('turmas:gerenciar', 'painel:
     where: { id: req.params.id },
     include: { aluno: true, turma: { include: { curso: true } }, avaliacoes: { orderBy: { criadoEm: 'desc' } } },
   });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
   res.render('admin/nota', { m, erro: null });
 });
 
 router.post('/inscricoes/:id/avaliacoes', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id }, include: { aluno: true, turma: { include: { curso: true } }, avaliacoes: true } });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
 
   const reErro = (msg) => res.status(400).render('admin/nota', { m, erro: msg });
   const nome = String(req.body.nome || '').trim();
@@ -2105,7 +2105,7 @@ router.post('/inscricoes/:id/avaliacoes/:avalId/remover', requirePermissao('turm
 
 router.post('/inscricoes/:id/situacao', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
   const s = String(req.body.situacao || '').trim();
   let situacao = null;
   if (s === 'APROVADO' || s === 'REPROVADO') situacao = s;
@@ -2120,7 +2120,7 @@ router.get('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), 
     where: { id: req.params.id },
     include: { aluno: true, turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } },
   });
-  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscricao nao encontrada.' });
+  if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
   const turmas = await prisma.turma.findMany({
     where: { id: { not: m.turmaId } },
     orderBy: { criadoEm: 'desc' },
@@ -2142,7 +2142,7 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
 
   if (!m) {
     return res.status(404).render('admin/erro', {
-      mensagem: 'Inscricao nao encontrada.',
+      mensagem: 'Inscrição não encontrada.',
     });
   }
 
@@ -2496,7 +2496,7 @@ router.get('/alunos/:id/matriculas', requirePermissao('aluno:gerenciar', 'painel
 
 router.post('/alunos/:id/matriculas/:matriculaId/confirmar-taxa', requirePermissao('taxa:aprovar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.matriculaId } });
-  if (!m || m.alunoId !== req.params.id) return res.status(404).render('admin/erro', { mensagem: 'Matricula nao encontrada.' });
+  if (!m || m.alunoId !== req.params.id) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
 
   await prisma.matricula.update({
     where: { id: m.id },
@@ -2509,7 +2509,7 @@ router.post('/alunos/:id/matriculas/:matriculaId/confirmar-taxa', requirePermiss
   });
   await sincronizarPagamentoManual(req, m, 'TAXA', 'PAGO');
   await auditar(req, 'CONFIRMOU_TAXA_INSCRICAO', 'Matricula', m.id, null);
-  res.redirect(`/alunos/${req.params.id}/matriculas?ok=` + encodeURIComponent('Taxa de inscricao confirmada. Aluno adicionado a turma como pendente.'));
+  res.redirect(`/alunos/${req.params.id}/matriculas?ok=` + encodeURIComponent('Taxa de inscrição confirmada. Aluno adicionado à turma com matrícula pendente.'));
 });
 
 
@@ -2771,7 +2771,7 @@ router.post('/pendentes/:id/remover', requirePermissao('pendentes:gerenciar'), a
     return voltar('erro', `Esta inscrição está ${m.statusPagamento} — só removemos as que nunca saíram do lugar.`);
   }
   if (m.taxaConfirmada) {
-    return voltar('erro', 'A taxa desta inscrição foi confirmada. Para cancelar, use a tela de matrículas.');
+    return voltar('erro', 'A taxa desta inscrição foi confirmada. Para cancelar, use a tela de Inscrições.');
   }
 
   const comGateway = m.pagamentos.filter((p) => p.gatewayRef);
@@ -2874,7 +2874,7 @@ router.post('/dev/usuarios/:id/excluir', requireDev, async (req, res) => {
     return volta('erro', 'Não dá para excluir o último Dev.');
   }
   if (usuario._count.matriculas) {
-    return volta('erro', `${usuario.nome} tem matrícula como aluno; troque o papel em vez de excluir.`);
+    return volta('erro', `${usuario.nome} tem inscrição como aluno; troque o papel em vez de excluir.`);
   }
 
   await prisma.$transaction([

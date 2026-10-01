@@ -241,7 +241,7 @@ function agendarLembretes(intervaloMin = 15) {
 //
 // As quatro situações:
 //
-//   'curso'      taxa paga + PARCELADO → falta o curso, pagável online.
+//   'curso'      taxa paga + PARCELADO → falta a matrícula, pagável online.
 //   'taxa'       nada pago + PARCELADO/PRESENCIAL → falta a taxa, online.
 //   'inicio'     nada pago + A_VISTA → refaz o fluxo do zero (a matrícula é
 //                "fantasma" e /inscrever/:turmaId reabre a tela normal).
@@ -294,13 +294,13 @@ function montarTextoWhats(m, pendencia) {
   if (pendencia.etapa === 'curso') {
     return `${cabecalho}\n\n`
       + `Sua taxa de inscrição no curso ${curso} está paga e sua vaga está reservada. `
-      + `Falta só concluir o pagamento do curso para efetivar a matrícula.\n\n`
+      + `Falta só pagar a matrícula para garantir sua participação.\n\n`
       + `A turma começa em ${inicio}. Você pode concluir por aqui:\n${pendencia.link}`;
   }
 
   if (pendencia.etapa === 'secretaria') {
     return `${cabecalho}\n\n`
-      + `Sua taxa de inscrição no curso ${curso} está paga, mas a matrícula ainda não foi concluída.\n\n`
+      + `Sua taxa de inscrição no curso ${curso} está paga, mas a matrícula ainda não foi paga.\n\n`
       + `A turma começa em ${inicio}. Pode falar comigo por aqui pra finalizarmos?`;
   }
 
@@ -363,9 +363,9 @@ async function enviarLembreteAvulso(matriculaId) {
     include: INCLUDE_PADRAO,
   });
 
-  if (!m) return { ok: false, motivo: 'Matrícula não encontrada.' };
+  if (!m) return { ok: false, motivo: 'Inscrição não encontrada.' };
   if (m.statusPagamento !== 'PENDENTE') {
-    return { ok: false, motivo: 'Esta matrícula não está pendente.' };
+    return { ok: false, motivo: 'Esta inscrição não tem matrícula pendente.' };
   }
   if (!m.aluno.email) {
     return { ok: false, motivo: 'O aluno não tem e-mail cadastrado.' };
@@ -375,7 +375,7 @@ async function enviarLembreteAvulso(matriculaId) {
   if (!pendencia.podeEmail) {
     return {
       ok: false,
-      motivo: 'Neste plano o curso é pago na secretaria — não há link online pra enviar. Use o WhatsApp ou o telefone.',
+      motivo: 'Neste plano a matrícula é paga na secretaria — não há link online pra enviar. Use o WhatsApp ou o telefone.',
     };
   }
 
@@ -405,7 +405,7 @@ async function enviarLembreteAvulso(matriculaId) {
     return { ok: true, email: m.aluno.email, tipo: 'incompleta' };
   }
 
-  // ── Taxa paga, falta o curso ───────────────────────────────────────────
+  // ── Taxa paga, falta a matrícula ───────────────────────────────────────────
   const valores = await montarValores(m);
   const dados = { ...valores, curso, inicioTurma, link: pendencia.link };
 
