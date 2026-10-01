@@ -68,7 +68,7 @@ function calcularRetomada(m) {
   // taxaConfirmada + A_VISTA = transação única já paga; nada a retomar.
   if (m.plano === 'A_VISTA') return null;
 
-  return { url: `/inscrever/${m.turmaId}/pagar-curso`, rotulo: 'Continuar — pagar o curso' };
+  return { url: `/inscrever/${m.turmaId}/pagar-curso`, rotulo: 'Continuar — pagar a matrícula' };
 }
 
 // Boas-vindas liberadas pela secretaria (lib/boas-vindas.js): o mesmo texto do e-mail aparece aqui
@@ -238,7 +238,7 @@ router.post('/conta/excluir', requireLogin, async (req, res) => {
     where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' }, ...FILTRO_MATRICULA_FANTASMA },
   });
   if (ativas > 0) {
-    return reRender('Você tem matrículas ativas. Cancele-as com a secretaria antes de excluir a conta.');
+    return reRender('Você tem inscrições ativas. Cancele-as com a secretaria antes de excluir a conta.');
   }
 
   try {

@@ -122,8 +122,8 @@ var alvoCta = temTurma
       </div>
       <p class="cx-nota cx-nota-presenca">
         <i class="fa-solid fa-circle-exclamation"></i>
-        A participação nas aulas é liberada só com a <strong>matrícula completa</strong>: taxa de inscrição e
-        curso pagos. Quem pagou apenas a taxa não tem a entrada liberada.
+        A participação nas aulas é liberada só com a <strong>matrícula paga</strong>, além da taxa de
+        inscrição. Quem pagou apenas a inscrição não tem a entrada liberada.
       </p>
       <% } %>
     </section>
@@ -151,15 +151,15 @@ var alvoCta = temTurma
       <h2 class="cx-secao-t">Investimento</h2>
       <div class="cx-preco">
         <div class="cx-linha">
-          <span>Valor do curso, à vista</span>
+          <span>Valor da matrícula, à vista</span>
           <span class="num"><%= formatBRL(curso.precoAvista) %></span>
         </div>
         <div class="cx-linha">
-          <span>Valor da matrícula</span>
+          <span>Taxa de inscrição</span>
           <span class="num"><%= formatBRL(total - curso.precoAvista) %></span>
         </div>
         <div class="cx-linha cx-linha-total">
-          <span>Total à vista, com a matrícula</span>
+          <span>Total à vista, com a inscrição</span>
           <strong class="num"><%= formatBRL(total) %></strong>
         </div>
       </div>

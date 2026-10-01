@@ -775,7 +775,7 @@ router.get('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) => 
   if (!matricula.taxaConfirmada)
     return res.redirect(`/inscrever/${req.params.turmaId}/pagar-taxa`);
   if (['PAGO', 'PARCELADO', 'CANCELADO', 'ESTORNADO'].includes(matricula.statusPagamento))
-    return res.render('erro', { mensagem: 'O pagamento deste curso já foi processado. Veja em "Minha conta".' });
+    return res.render('erro', { mensagem: 'O pagamento desta matrícula já foi processado. Veja em "Minha conta".' });
 
   const erroQuery = req.query.erro === 'expirado'
     ? 'O tempo para concluir o pagamento acabou. A cobrança foi cancelada — você pode tentar de novo.'
@@ -827,7 +827,7 @@ router.post('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) =>
   if (!matricula.taxaConfirmada)
     return res.redirect(`/inscrever/${req.params.turmaId}/pagar-taxa`);
   if (['PAGO', 'PARCELADO', 'CANCELADO', 'ESTORNADO'].includes(matricula.statusPagamento))
-    return res.render('erro', { mensagem: 'O pagamento deste curso já foi processado. Veja em "Minha conta".' });
+    return res.render('erro', { mensagem: 'O pagamento desta matrícula já foi processado. Veja em "Minha conta".' });
 
   // ---------------- PRESENCIAL: sem gateway — só registra o Pagamento pendente
   // e confirma a inscrição. O valor será cobrado na secretaria. ----------------
