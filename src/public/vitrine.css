@@ -323,6 +323,17 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
 .v-escola-linha { display: flex; justify-content: space-between; gap: 20px; padding: 15px 0; border-bottom: 1px solid #333; font-size: 13px; }
 .v-escola-linha span { color: #a3a3a3; text-align: right; }
 .v-escola-linha a { color: #fff; text-decoration: none; }
+/* mapa da sede: texto à esquerda, mapa à direita (nada por cima do mapa do Google) */
+.v-escola-mapa {
+  grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); min-height: 360px;
+  background: #fff; border: 1px solid var(--v-line); border-radius: 28px; overflow: hidden;
+}
+.v-mapa-info { display: flex; flex-direction: column; justify-content: center; padding: 34px; }
+.v-mapa-info h3 { margin: 0 0 4px; font-size: 26px; line-height: 1.05; letter-spacing: -.04em; font-weight: 800; color: var(--v-ink); }
+.v-mapa-end { margin: 0; font-size: 14px; color: #666; }
+.v-mapa-txt { margin: 16px 0 22px; font-size: 14px; line-height: 1.6; color: #555; }
+.v-mapa-info .v-btn { align-self: flex-start; }
+.v-mapa-frame { display: block; width: 100%; height: 100%; min-height: 360px; border: 0; background: #e9e6e0; }
 
 /* ---------- dúvidas ---------- */
 .v-faq { display: grid; grid-template-columns: .65fr 1.35fr; gap: 80px; }
@@ -670,6 +681,9 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
   .v-escola-texto h2 { font-size: 36px; }
   .v-escola-linha { flex-direction: column; gap: 4px; }
   .v-escola-linha span { text-align: left; }
+  .v-escola-mapa { grid-template-columns: 1fr; border-radius: 22px; }
+  .v-mapa-info { padding: 24px; }
+  .v-mapa-frame { min-height: 260px; height: 260px; }
   .v-faq { gap: 30px; }
   .v-faq h2 { font-size: 40px; }
   .v-cat-topo { padding: 18px 0 20px; }
