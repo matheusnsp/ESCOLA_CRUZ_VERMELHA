@@ -164,6 +164,8 @@
               <a href="/alunos/<%= p.encaixe.alunoId %>/matriculas" class="mr-pe-link">Ver matrícula <i class="fa-solid fa-arrow-right"></i></a>
               <% if (p.encaixe.ligado) { %>
                 <span class="mr-ajustado"><i class="fa-solid fa-link"></i> Taxa paga aqui ligada à matrícula da escola: <%= formatBRL(p.encaixe.taxa || 0) %> de taxa + <%= formatBRL(p.encaixe.valorCurso || 0) %> de curso<%= p.encaixe.antes && p.encaixe.antes.valorCurso !== p.encaixe.valorCurso ? ' (antes estava ' + formatBRL(p.encaixe.antes.valorCurso) + ')' : '' %></span>
+              <% } else if (p.encaixe.erroLigar) { %>
+                <span class="mr-ajustado mr-dobro"><i class="fa-solid fa-circle-exclamation"></i> Não consegui ligar a taxa paga aqui à matrícula da escola. Tente "Atualizar"; se continuar, mande este aviso: <%= p.encaixe.erroLigar %></span>
               <% } else if (p.encaixe.dobro) { %>
                 <span class="mr-ajustado mr-dobro"><i class="fa-solid fa-triangle-exclamation"></i> Também pagou a inscrição online pela escola: confira se não pagou em dobro</span>
                 <% if (Array.isArray(p.encaixe.dobro)) { %><small class="mr-dobro-det">Pago na Únicopag da escola: <%= p.encaixe.dobro.map(function (d) { return (d.tipo === 'TAXA' ? 'taxa' : 'curso à vista (com a taxa)') + ' ' + formatBRL(d.valor) + ' · ' + (d.metodo === 'CREDITO' ? 'cartão' : String(d.metodo || '').toLowerCase()) + ' · ' + dataBR(d.em); }).join('; ') %></small><% } %>
