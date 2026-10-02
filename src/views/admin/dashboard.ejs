@@ -132,43 +132,38 @@
 <!-- ========================================================= -->
 
 <div id="modalAlunosHoje" class="adm-modal-overlay">
-
+  <% // Mesmo desenho da janela de visitantes; o "hoje" vem do banco (login ou cadastro no dia) e o
+     // histórico dos 7 dias, da contagem do site (lib/visitas.js), que começou a valer agora.
+     var va = visitasAlunos ? JSON.parse(JSON.stringify(visitasAlunos)) : null;
+     if (va) { va.dias[6].unicos = Math.max(va.dias[6].unicos, stats.alunosHoje); va.semana = va.dias.reduce(function (t, d) { return t + d.unicos; }, 0); }
+     var maxA = va ? Math.max(1, ...va.dias.map(function (d) { return d.unicos; })) : 1; %>
   <div class="adm-modal">
-
     <div class="adm-modal-head">
-
       <div>
-        <h2>
-          Alunos que entraram hoje
-          (<%= stats.alunosHoje %>)
-        </h2>
-
-        <small class="adm-modal-data">
-          <i class="fa-regular fa-calendar"></i>
-
-          <%= new Date().toLocaleDateString('pt-BR', {
-            timeZone: 'America/Sao_Paulo',
-            weekday: 'long',
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-          }) %>
-        </small>
+        <h2>Alunos no site</h2>
+        <small class="vis-sub">alunos com login (quem entra sem login aparece em "visitantes")</small>
       </div>
-
-      <button
-        type="button"
-        id="fecharModalAlunosHoje"
-        class="adm-modal-close"
-        aria-label="Fechar"
-      >
-        &times;
-      </button>
-
+      <button type="button" id="fecharModalAlunosHoje" class="adm-modal-close" aria-label="Fechar">&times;</button>
     </div>
-
-    <div class="adm-modal-body">
-
+    <div class="adm-modal-body vis-corpo">
+      <div class="vis-nums">
+        <div><b><%= stats.alunosOnline %></b><span>online agora</span></div>
+        <div><b><%= va ? va.dias[6].unicos : stats.alunosHoje %></b><span>usaram o site hoje</span></div>
+        <div><b><%= va ? va.dias[6].paginas : '—' %></b><span>páginas abertas hoje</span></div>
+        <div><b><%= va ? va.semana : '—' %></b><span>nos últimos 7 dias</span></div>
+      </div>
+      <% if (va) { %>
+      <ul class="vis-dias">
+        <% va.dias.forEach(function (d, i) { var dt = new Date(d.dia + 'T12:00:00-03:00'); %>
+          <li class="<%= i === 6 ? 'hoje' : '' %>">
+            <span class="vis-dia"><%= i === 6 ? 'Hoje' : dt.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' }).replace('.', '') %></span>
+            <span class="vis-barra"><span style="width: <%= Math.round(d.unicos / maxA * 100) %>%"></span></span>
+            <b><%= d.unicos %></b>
+          </li>
+        <% }) %>
+      </ul>
+      <% } %>
+      <h3 class="vis-lista-tit">Quem fez login hoje <small>(<%= stats.alunosHoje %>)</small></h3>
       <% if (!alunosHojeLista.length) { %>
 
         <p class="adm-vazio">
