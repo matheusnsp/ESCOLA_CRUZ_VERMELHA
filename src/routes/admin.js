@@ -1344,16 +1344,6 @@ router.post('/matricula-rapida/:inscricaoId/encaixar', requirePermissao('taxa:ap
   res.redirect('/matricula-rapida?' + (r.ok ? 'ok=' : 'erro=') + encodeURIComponent(r.msg));
 });
 
-// Quem pagou a inscrição pela matrícula rápida e o resto na escola (maquininha, PIX, dinheiro):
-// junta os dois na matrícula da escola (lib/matricula-rapida.js, ajustarComEscola).
-router.post('/matricula-rapida/:inscricaoId/ajustar', requirePermissao('financeiro:aprovar', 'pagamento:confirmar'), async (req, res) => {
-  const r = await matriculaRapida.ajustarComEscola({
-    inscricaoId: req.params.inscricaoId, valorCurso: req.body.valorCurso, metodo: req.body.metodo, porUsuarioId: req.session.usuarioId,
-  });
-  if (r.ok) await auditar(req, 'AJUSTOU_PAGAMENTO_MATRICULA_RAPIDA', 'Matricula', r.matriculaId, { inscricaoSite: req.params.inscricaoId, valorCurso: req.body.valorCurso, metodo: req.body.metodo });
-  res.redirect('/matricula-rapida?sit=encaixados&' + (r.ok ? 'ok=' : 'erro=') + encodeURIComponent(r.msg));
-});
-
 router.get('/horarios', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
   const h = await carregarHorarios(req);
   if (h.erro) {
