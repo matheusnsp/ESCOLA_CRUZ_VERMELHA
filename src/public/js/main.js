@@ -84,9 +84,11 @@ if ('serviceWorker' in navigator) {
   if (user) document.addEventListener('click', function (e) { if (user.open && !user.contains(e.target)) user.open = false; });
 })();
 
-/* Filtros da vitrine: área (home e /cursos); no catálogo também a busca e "só com inscrições abertas" */
+/* Filtros da vitrine: área (home e /cursos); no catálogo também a busca e "só com inscrições abertas".
+   Listas extras com data-filtra="<id da grade>" (as próximas turmas) seguem os mesmos filtros e a
+   seção delas some quando nada combina. */
 (function () {
-  function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
+  function norm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
   var ids = {};
   document.querySelectorAll('[data-filtros],[data-busca],[data-so-abertas]').forEach(function (el) {
     ids[el.getAttribute('data-filtros') || el.getAttribute('data-busca') || el.getAttribute('data-so-abertas')] = true;
@@ -94,8 +96,12 @@ if ('serviceWorker' in navigator) {
   Object.keys(ids).forEach(function (id) {
     var grade = document.getElementById(id);
     if (!grade) return;
-    var cards = Array.prototype.map.call(grade.querySelectorAll('[data-cat]'), function (el) {
-      return { el: el, cat: el.getAttribute('data-cat'), aberta: el.getAttribute('data-aberta') === '1', texto: norm(el.getAttribute('data-texto') || el.textContent) };
+    var listas = [grade].concat(Array.prototype.slice.call(document.querySelectorAll('[data-filtra="' + id + '"]')));
+    var cards = [];
+    listas.forEach(function (lista, i) {
+      lista.querySelectorAll('[data-cat]').forEach(function (el) {
+        cards.push({ el: el, lista: i, cat: el.getAttribute('data-cat'), aberta: el.getAttribute('data-aberta') === '1', texto: norm(el.getAttribute('data-texto') || el.textContent) });
+      });
     });
     var chips = document.querySelectorAll('[data-filtros="' + id + '"] .v-chip');
     var busca = document.querySelector('[data-busca="' + id + '"]');
@@ -106,12 +112,17 @@ if ('serviceWorker' in navigator) {
     function aplicar() {
       var q = busca ? norm(busca.value) : '';
       var so = !!(abertas && abertas.checked);
-      var n = 0;
+      var vistos = listas.map(function () { return 0; });
       cards.forEach(function (c) {
         var ok = (!cat || c.cat === cat) && (!so || c.aberta) && (!q || c.texto.indexOf(q) !== -1);
         c.el.hidden = !ok;
-        if (ok) n++;
+        if (ok) vistos[c.lista]++;
       });
+      listas.forEach(function (lista, i) {
+        var secao = i > 0 && lista.closest('[data-some-se-vazio]');
+        if (secao) secao.hidden = vistos[i] === 0;
+      });
+      var n = vistos[0];
       var filtrando = !!(cat || q || so);
       grade.classList.toggle('v-grade-filtrada', filtrando);
       if (nada) nada.hidden = n > 0;
