@@ -323,17 +323,23 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
 .v-escola-linha { display: flex; justify-content: space-between; gap: 20px; padding: 15px 0; border-bottom: 1px solid #333; font-size: 13px; }
 .v-escola-linha span { color: #a3a3a3; text-align: right; }
 .v-escola-linha a { color: #fff; text-decoration: none; }
-/* mapa da sede: texto à esquerda, mapa à direita (nada por cima do mapa do Google) */
+/* mapa da sede: o mapa ocupa a faixa toda e o cartão "Como chegar" flutua à direita.
+   O Google põe um cartão próprio (endereço e botões) no canto de cima à esquerda do mapa: o mapa
+   começa 330 px antes da faixa e esse cartão fica de fora. Com isso o pino (centro do mapa) cai no
+   meio da área livre à esquerda do nosso cartão. Logo e créditos do Google, embaixo, ficam à vista. */
 .v-escola-mapa {
-  grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); min-height: 360px;
-  background: #fff; border: 1px solid var(--v-line); border-radius: 28px; overflow: hidden;
+  grid-column: 1 / -1; position: relative; height: 460px;
+  background: #e9e6e0; border: 1px solid var(--v-line); border-radius: 28px; overflow: hidden;
 }
-.v-mapa-info { display: flex; flex-direction: column; justify-content: center; padding: 34px; }
+.v-mapa-recorte { position: absolute; inset: 0; overflow: hidden; background: #e9e6e0; }
+.v-mapa-frame { position: absolute; top: 0; left: -330px; display: block; width: calc(100% + 330px); height: 100%; border: 0; }
+.v-mapa-info {
+  position: absolute; z-index: 1; right: 28px; top: 50%; transform: translateY(-50%); width: 340px;
+  padding: 28px 28px 30px; background: #fff; border-radius: 22px; box-shadow: 0 24px 60px rgba(0, 0, 0, .18);
+}
 .v-mapa-info h3 { margin: 0 0 4px; font-size: 26px; line-height: 1.05; letter-spacing: -.04em; font-weight: 800; color: var(--v-ink); }
 .v-mapa-end { margin: 0; font-size: 14px; color: #666; }
 .v-mapa-txt { margin: 16px 0 22px; font-size: 14px; line-height: 1.6; color: #555; }
-.v-mapa-info .v-btn { align-self: flex-start; }
-.v-mapa-frame { display: block; width: 100%; height: 100%; min-height: 360px; border: 0; background: #e9e6e0; }
 
 /* ---------- dúvidas ---------- */
 .v-faq { display: grid; grid-template-columns: .65fr 1.35fr; gap: 80px; }
@@ -617,6 +623,8 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
 }
 @media (max-width: 980px) {
   .v-topbar span:last-child { display: none; }
+  .v-escola-mapa { height: 440px; }
+  .v-mapa-info { right: 20px; width: 300px; padding: 24px 24px 26px; }
   .v-hero-grid { grid-template-columns: 1fr; gap: 40px; }
   .v-destaque { max-width: 520px; margin-bottom: 0; }
   .v-quick-grid { grid-template-columns: 1fr 1fr; }
@@ -681,9 +689,11 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
   .v-escola-texto h2 { font-size: 36px; }
   .v-escola-linha { flex-direction: column; gap: 4px; }
   .v-escola-linha span { text-align: left; }
-  .v-escola-mapa { grid-template-columns: 1fr; border-radius: 22px; }
-  .v-mapa-info { padding: 24px; }
-  .v-mapa-frame { min-height: 260px; height: 260px; }
+  .v-escola-mapa { height: auto; display: flex; flex-direction: column; background: #fff; border-radius: 22px; }
+  .v-mapa-info { position: static; transform: none; width: auto; padding: 24px; border-radius: 0; box-shadow: none; }
+  .v-mapa-recorte { position: relative; inset: auto; height: 300px; }
+  /* no mapa estreito o Google mostra só um botão pequeno no canto de cima: o mapa sobe 52 px para escondê-lo */
+  .v-mapa-frame { left: 0; width: 100%; top: -52px; height: calc(100% + 52px); }
   .v-faq { gap: 30px; }
   .v-faq h2 { font-size: 40px; }
   .v-cat-topo { padding: 18px 0 20px; }
@@ -701,7 +711,7 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
   .v-cat-linha { flex-direction: column; align-items: flex-start; gap: 12px; }
   .v-grade-cat { grid-template-columns: 1fr; }
   .v-rodape-grid { grid-template-columns: 1fr; gap: 30px; }
-  body:has(.wpp-float) .v-rodape .footer-bottom { padding-bottom: 96px; }
+  body:has(.wpp-float) .v-rodape .footer-bottom { padding-bottom: 28px; }
   .v-curso-topo::before { background: linear-gradient(180deg, rgba(11, 11, 11, .55) 0%, rgba(11, 11, 11, .82) 45%, rgba(11, 11, 11, .92) 100%); }
   .v-voltar { margin-bottom: 26px; }
   .v-curso-titulo h1 { font-size: 40px; }
@@ -720,6 +730,19 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
   .v-barra-cel small { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #7d7d7d; font-weight: 700; }
   .v-barra-cel b { font-size: 20px; font-weight: 800; letter-spacing: -.03em; color: var(--v-ink); }
   body:has(.v-barra-cel) .v-rodape .footer-bottom { padding-bottom: 110px; }
+}
+/* celular estreito (até 400 px): o logotipo encolhe junto com a tela, senão empurra o menu para fora
+   e a página ganha rolagem lateral. Precisa de !important porque o style.css fixa esses tamanhos assim. */
+@media (max-width: 400px) {
+  .v-header .logo-area, .v-rodape .logo-area { gap: 10px !important; }
+  .v-header .logo-img, .v-rodape .logo-img { height: clamp(34px, 11.5vw, 46px) !important; }
+  .v-header .brand-text, .v-rodape .brand-text { padding-left: 10px !important; }
+  .v-header .brand-title, .v-rodape .brand-title { font-size: clamp(12.5px, 4.1vw, 16px) !important; }
+  .v-header .brand-subtitle, .v-rodape .brand-subtitle { font-size: clamp(9px, 2.8vw, 11px) !important; }
+}
+@media (min-width: 435px) and (max-width: 650px) {
+  .v-mapa-recorte { height: 380px; }
+  .v-mapa-frame { top: -136px; height: calc(100% + 136px); }
 }
 @media (prefers-reduced-motion: reduce) {
   .v-card, .v-destaque, .v-seta { transition: none; }
