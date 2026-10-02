@@ -116,24 +116,23 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
 .v-burger:active { background: #f1efeb; }
 .v-burger { position: relative; }
 .v-burger::after { content: ""; position: absolute; inset: 0 -4px; }
-/* o cabeçalho é sticky: tocar no botão ou dar foco a ele não pode rolar a página por causa do
-   scroll-padding-top do <html> (o topo do botão, centrado no cabeçalho, coincide com a borda dele) */
-.v-burger { scroll-margin-top: calc(8px - var(--v-header) / 2); }
 .v-burger:focus-visible { outline: 2px solid var(--v-red); outline-offset: 2px; }
 html.v-menu-aberto { overflow: hidden; }
 /* acima do botão do WhatsApp (2000) e da barra fixa do curso; abaixo só o aviso de cookies */
-html.v-menu-aberto .v-header { z-index: 2100; box-shadow: none; }
+/* enquanto o painel está à vista (inclusive no fade de saída) */
+.v-header:has(.v-gaveta:not([hidden])) { z-index: 2100; box-shadow: none; }
 /* no tablet o cabeçalho mostra Entrar / Ver cursos / Olá: com o menu aberto ficam só no menu */
 html.v-menu-aberto .v-acoes .v-so-pc, html.v-menu-aberto .v-acoes .v-user { display: none; }
 .v-gaveta {
   position: fixed; left: 0; right: 0; bottom: 0; top: var(--v-gaveta-top, var(--v-header)); z-index: 1;
   background: var(--v-bg); border-top: 1px solid var(--v-line);
   overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  scroll-padding-bottom: var(--v-gaveta-aviso, 0px);
 }
 .v-gaveta[hidden] { display: none; }
 .v-gaveta-in {
   min-height: 100%; display: flex; flex-direction: column; gap: 30px;
-  padding: clamp(18px, 3.4dvh, 30px) 0 calc(22px + env(safe-area-inset-bottom));
+  padding: clamp(18px, 3.4dvh, 30px) 0 calc(22px + env(safe-area-inset-bottom) + var(--v-gaveta-aviso, 0px));
 }
 .v-gaveta-rotulo {
   display: flex; align-items: center; gap: 10px; margin: 0 0 clamp(6px, 1.4dvh, 12px);

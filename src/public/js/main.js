@@ -74,10 +74,20 @@ if ('serviceWorker' in navigator) {
   var raiz = document.documentElement;
   var calmo = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var saida = null, rolagem = 0, inertes = [];
+  function visivel(el) { return el.getClientRects().length > 0; }
+  // aviso de cookies (consentimento.js) aberto junto com o menu: entra na volta do Tab e o fim do painel
+  // ganha espaço para nada ficar escondido atrás dele
+  function aviso() { var a = document.querySelector('.cvrj-ck'); return a && visivel(a) ? a : null; }
   // o painel começa onde o cabeçalho termina (com a página no topo, a faixa vermelha fica à vista em cima)
-  function medir() { gaveta.style.setProperty('--v-gaveta-top', Math.max(0, Math.round(header.getBoundingClientRect().bottom)) + 'px'); }
+  function medir() {
+    gaveta.style.setProperty('--v-gaveta-top', Math.max(0, Math.round(header.getBoundingClientRect().bottom)) + 'px');
+    var a = aviso();
+    gaveta.style.setProperty('--v-gaveta-aviso', a ? Math.max(0, Math.round(window.innerHeight - a.getBoundingClientRect().top)) + 'px' : '0px');
+  }
   function focaveis() {
-    return [botao].concat(Array.prototype.filter.call(gaveta.querySelectorAll('a[href], button'), function (el) { return el.offsetParent !== null; }));
+    var lista = [botao].concat(Array.prototype.filter.call(gaveta.querySelectorAll('a[href], button'), visivel));
+    var a = aviso();
+    return a ? lista.concat(Array.prototype.filter.call(a.querySelectorAll('a[href], button'), visivel)) : lista;
   }
   function aberto() { return botao.getAttribute('aria-expanded') === 'true'; }
   // tudo fora do cabeçalho fica inerte enquanto o menu está aberto (menos o aviso de cookies, que fica por cima)
@@ -87,7 +97,8 @@ if ('serviceWorker' in navigator) {
     if (!sim) return;
     for (var dentro = header; dentro && dentro !== document.body; dentro = dentro.parentElement) {
       Array.prototype.forEach.call(dentro.parentElement.children, function (el) {
-        if (el === dentro || el.inert || /^(SCRIPT|STYLE|LINK)$/.test(el.tagName) || /(^|\s)cvrj-ck/.test(el.className)) return;
+        // a faixa vermelha e o aviso de matrícula ficam à vista acima do painel com a página no topo: continuam clicáveis
+        if (el === dentro || el.inert || /^(SCRIPT|STYLE|LINK)$/.test(el.tagName) || /(^|\s)(cvrj-ck|v-topbar|aviso-pagamento)/.test(el.className)) return;
         el.inert = true; inertes.push(el);
       });
     }
@@ -125,23 +136,43 @@ if ('serviceWorker' in navigator) {
       saida = setTimeout(function () { gaveta.hidden = true; gaveta.classList.remove('v-gaveta-saindo'); }, 150);
     }
   }
-  botao.addEventListener('click', function () { abrir(!aberto()); });
+  // o toque/clique não dá foco ao botão (o foco faria a página pular por causa do cabeçalho sticky)
+  botao.addEventListener('mousedown', function (e) { e.preventDefault(); });
+  botao.addEventListener('click', function () {
+    if (!aberto()) { abrir(true); return; }
+    abrir(false); botao.focus({ preventScroll: true });
+  });
+  // se a página rolar mesmo assim (leitor de tela, iOS antigo), o painel acompanha o cabeçalho
+  window.addEventListener('scroll', function () { if (aberto()) medir(); }, { passive: true });
   gaveta.querySelectorAll('a').forEach(function (a) {
     if (a.target !== '_blank') a.addEventListener('click', function () { abrir(false); });
   });
   document.addEventListener('keydown', function (e) {
-    if (!aberto()) return;
+    // a janela "Preferências de cookies" fica por cima de tudo e cuida do próprio teclado
+    if (!aberto() || e.defaultPrevented || document.querySelector('.cvrj-ck-fundo')) return;
     if (e.key === 'Escape') { abrir(false); botao.focus({ preventScroll: true }); return; }
     if (e.key !== 'Tab') return;
     // só as pontas dão a volta; no meio da lista o Tab segue normal
-    var lista = focaveis(), ultimo = lista[lista.length - 1], atual = document.activeElement;
-    if (lista.indexOf(atual) === -1) { e.preventDefault(); (e.shiftKey ? ultimo : lista[1] || botao).focus(); }
-    else if (e.shiftKey && atual === botao) { e.preventDefault(); ultimo.focus(); }
-    else if (!e.shiftKey && atual === ultimo) { e.preventDefault(); botao.focus(); }
+    // (foco sempre com preventScroll: o cabeçalho é sticky e o scroll-padding-top do <html> faria a página pular)
+    var lista = focaveis(), ultimo = lista[lista.length - 1], atual = document.activeElement, alvo = null;
+    if (lista.indexOf(atual) === -1) alvo = e.shiftKey ? ultimo : lista[1] || botao;
+    else if (e.shiftKey && atual === botao) alvo = ultimo;
+    else if (!e.shiftKey && atual === ultimo) alvo = botao;
+    else if (e.shiftKey && atual === lista[1]) alvo = botao;
+    if (alvo) { e.preventDefault(); alvo.focus({ preventScroll: true }); }
+  });
+  // escolher no aviso de cookies tira o aviso da tela: o fim do painel volta ao normal
+  document.addEventListener('click', function (e) {
+    if (aberto() && e.target.closest && e.target.closest('.cvrj-ck, .cvrj-ck-fundo')) setTimeout(medir, 0);
   });
   window.addEventListener('resize', function () {
-    if (window.innerWidth > 1060) abrir(false);
-    else if (aberto()) medir();
+    if (window.innerWidth > 1060) {
+      // o menu e o botão somem no computador: o foco que estava neles vai para o menu do cabeçalho
+      var perdido = aberto() && (gaveta.contains(document.activeElement) || document.activeElement === botao);
+      abrir(false);
+      var alvo = perdido && (header.querySelector('.v-menu a') || header.querySelector('.logo-area'));
+      if (alvo) alvo.focus({ preventScroll: true });
+    } else if (aberto()) medir();
   });
   // Menu do aluno logado: fecha ao clicar fora.
   var user = header.querySelector('.v-user');
