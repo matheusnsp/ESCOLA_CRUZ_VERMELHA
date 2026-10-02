@@ -562,11 +562,10 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
 .v-barra-cel { display: none; }
 
 /* ---------- rodapé ---------- */
-.v-rodape { background: #fff; color: var(--v-ink); padding: 56px 0 26px; margin-top: auto; border-top: 1px solid var(--v-line); }
+.v-rodape { background: #fff; color: var(--v-ink); padding: 56px 0 0; margin-top: auto; border-top: 1px solid var(--v-line); }
 .v-rodape-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, .8fr) minmax(0, 1.1fr); gap: 56px; align-items: start; }
 .v-rodape .logo-area { display: inline-flex; }
 .v-rodape-txt { max-width: 400px; margin: 16px 0 0; font-size: 13.5px; line-height: 1.65; color: #5f5f5f; }
-.v-rodape-txt b { color: var(--v-ink); font-weight: 700; }
 .v-rodape-inst {
   display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; padding: 10px 15px; border-radius: 999px;
   border: 1px solid var(--v-line); font-size: 12.5px; font-weight: 750; color: var(--v-ink); text-decoration: none;
@@ -580,15 +579,9 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
 .v-rodape-lista a:hover { color: var(--v-red); }
 .v-rodape-contato li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 10px; align-items: start; }
 .v-rodape-contato i { margin-top: 4px; font-size: 12.5px; text-align: center; color: var(--v-red); }
-.v-rodape-copy {
-  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px 24px;
-  margin-top: 44px; padding-top: 20px; border-top: 1px solid var(--v-line); font-size: 12px; line-height: 1.5; color: #8a8a8a;
-}
-.v-rodape-legal { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px; }
-.v-rodape-legal a { font-size: 12px; color: #5f5f5f; text-decoration: none; }
-.v-rodape-legal a:hover { color: var(--v-red); }
-/* o botão flutuante do WhatsApp (home) não cobre os links do fim do rodapé */
-@media (max-width: 1400px) { body:has(.wpp-float) .v-rodape-copy { padding-right: 80px; } }
+.v-rodape .footer-bottom { margin-top: 44px; }
+/* o botão flutuante do WhatsApp (home) não cobre os links da faixa final */
+@media (min-width: 601px) and (max-width: 1400px) { body:has(.wpp-float) .v-rodape .footer-inner { padding-inline: 72px; } }
 
 /* ---------- responsivo ---------- */
 @media (max-width: 1360px) {
@@ -680,9 +673,7 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
   .v-cat-linha { flex-direction: column; align-items: flex-start; gap: 12px; }
   .v-grade-cat { grid-template-columns: 1fr; }
   .v-rodape-grid { grid-template-columns: 1fr; gap: 30px; }
-  .v-rodape-copy { flex-direction: column; align-items: flex-start; }
-  body:has(.wpp-float) .v-rodape-copy { padding-right: 0; }
-  body:has(.wpp-float) .v-rodape { padding-bottom: 96px; }
+  body:has(.wpp-float) .v-rodape .footer-bottom { padding-bottom: 96px; }
   .v-curso-topo::before { background: linear-gradient(180deg, rgba(11, 11, 11, .55) 0%, rgba(11, 11, 11, .82) 45%, rgba(11, 11, 11, .92) 100%); }
   .v-voltar { margin-bottom: 26px; }
   .v-curso-titulo h1 { font-size: 40px; }
@@ -700,7 +691,7 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
   }
   .v-barra-cel small { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #7d7d7d; font-weight: 700; }
   .v-barra-cel b { font-size: 20px; font-weight: 800; letter-spacing: -.03em; color: var(--v-ink); }
-  body:has(.v-barra-cel) .v-rodape { padding-bottom: 110px; }
+  body:has(.v-barra-cel) .v-rodape .footer-bottom { padding-bottom: 110px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .v-card, .v-destaque, .v-seta { transition: none; }
