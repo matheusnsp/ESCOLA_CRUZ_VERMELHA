@@ -1,0 +1,67 @@
+<%# Pesquisa de satisfação (lib/pesquisa.js). Abre pelo link do e-mail, sem login. %>
+<%- include('partials/head', { titulo: 'Pesquisa de satisfação' }) %>
+
+<main class="auth-wrap">
+  <div class="auth-card">
+
+    <div class="auth-brand">
+      <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro" class="auth-logo">
+      <div class="auth-brand-text">
+        <strong>ESCOLA DE EDUCAÇÃO</strong>
+        <span>E SAÚDE CVB-RJ</span>
+      </div>
+    </div>
+
+    <% if (respondida) { %>
+      <div class="pq-obrigado">
+        <span class="pq-obrigado-ico"><i class="fa-solid fa-heart" aria-hidden="true"></i></span>
+        <h1>Obrigado, <%= nome %>!</h1>
+        <p class="auth-sub">Recebemos a sua avaliação de <strong><%= curso %></strong>. Ela ajuda a melhorar as próximas turmas.</p>
+        <a href="/cursos" class="auth-btn auth-btn-link">Ver outros cursos</a>
+      </div>
+    <% } else { %>
+      <p class="pq-olho">Pesquisa de satisfação</p>
+      <h1>Como foi o curso?</h1>
+      <p class="auth-sub">Olá, <%= nome %>! Sua opinião ajuda a melhorar as próximas turmas. Leva menos de 1 minuto.</p>
+      <p class="pq-curso"><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i> <%= curso %></p>
+
+      <% if (erro) { %>
+        <div class="auth-erros" role="alert"><p><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></p></div>
+      <% } %>
+
+      <form method="POST" class="pq-form" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <fieldset class="pq-bloco">
+          <legend><span class="pq-passo">1</span> Que nota você dá para o curso?</legend>
+          <div class="pq-escala">
+            <% for (var n = 0; n < rotulos.length; n++) { %>
+              <label class="pq-nota">
+                <input type="radio" name="nota" value="<%= n %>" aria-label="<%= n %> — <%= rotulos[n] %>" <%= String(valores.nota) === String(n) ? 'checked' : '' %> required>
+                <span><%= n %></span>
+              </label>
+            <% } %>
+          </div>
+          <div class="pq-legenda" aria-hidden="true"><span><%= rotulos[0] %></span><span><%= rotulos[rotulos.length - 1] %></span></div>
+        </fieldset>
+
+        <div class="pq-bloco">
+          <label class="pq-label" for="pqComentario"><span class="pq-passo">2</span> Conte como foi <span class="auth-opcional">(opcional)</span></label>
+          <textarea id="pqComentario" name="comentario" rows="5" maxlength="<%= max %>" placeholder="O que você mais gostou? O que podemos melhorar?"><%= valores.comentario || '' %></textarea>
+        </div>
+
+        <label class="pq-autoriza">
+          <input type="checkbox" name="autoriza" value="1" <%= valores.autoriza ? 'checked' : '' %>>
+          <span>
+            <b>Pode publicar meu comentário no site da escola</b>
+            <small>Aparece só com o seu primeiro nome, assim: <%= nomePublico %></small>
+          </span>
+        </label>
+
+        <button type="submit" class="auth-btn">Enviar avaliação <i class="fa-solid fa-paper-plane" aria-hidden="true"></i></button>
+      </form>
+    <% } %>
+  </div>
+</main>
+
+<%- include('partials/foot') %>

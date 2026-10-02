@@ -14,6 +14,7 @@ const cacheRapido = require('../lib/cache-rapido');
 const extras = require('../lib/extras');
 const vitrine = require('../lib/vitrine');
 const { icsDaTurma } = require('../lib/agenda');
+const pesquisa = require('../lib/pesquisa');
 const sharp = require('sharp');
 
 const router = express.Router();
@@ -204,7 +205,9 @@ router.get('/', async (req, res) => {
     lerConfigMatricula(),
   ]);
   const cursos = todos.slice(0, HOME_MAX_CURSOS);
+  const depoimentos = await pesquisa.depoimentosDoSite(); // vazio enquanto a secretaria não ligar a seção
   res.render('home', {
+    depoimentos,
     cursos, totalCursos: todos.length, cfgMap, formatBRL, totalExibicao, taxaExibicao, vitrine,
     destaque: cursos.find((c) => c.turmas && c.turmas.length) || null,
   });
@@ -225,6 +228,39 @@ router.get('/cursos', async (req, res) => {
 });
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Pesquisa de satisfação (lib/pesquisa.js): link do e-mail, sem login (token = HMAC da matrícula).
+async function matriculaDaPesquisa(req) {
+  const id = String(req.params.matriculaId || '');
+  if (!/^[\w-]{1,64}$/.test(id) || !pesquisa.tokenValido(id, req.params.token)) return null;
+  return prisma.matricula.findUnique({
+    where: { id },
+    include: { aluno: { select: { nome: true } }, turma: { include: { curso: { select: { nome: true } } } } },
+  });
+}
+function telaPesquisa(res, m, extra) {
+  res.set('X-Robots-Tag', 'noindex');
+  return res.render('pesquisa', {
+    nome: String(m.aluno.nome).split(' ')[0], nomePublico: pesquisa.nomePublico(m.aluno.nome), curso: m.turma.curso.nome,
+    max: pesquisa.MAX_COMENTARIO, rotulos: pesquisa.ROTULOS, respondida: false, erro: null, valores: {}, ...extra,
+  });
+}
+router.get('/pesquisa/:matriculaId/:token', (req, res, next) => (async () => {
+  const m = await matriculaDaPesquisa(req);
+  if (!m) return res.status(404).render('erro', { mensagem: 'Link da pesquisa inválido. Confira se copiou o endereço inteiro do e-mail.' });
+  return telaPesquisa(res, m, { respondida: !!(await pesquisa.lerResposta(m.id)) });
+})().catch(next));
+router.post('/pesquisa/:matriculaId/:token', (req, res, next) => (async () => {
+  const m = await matriculaDaPesquisa(req);
+  if (!m) return res.status(404).render('erro', { mensagem: 'Link da pesquisa inválido. Confira se copiou o endereço inteiro do e-mail.' });
+  const valores = { nota: req.body.nota, comentario: req.body.comentario, autoriza: req.body.autoriza === '1' };
+  const nota = Number(valores.nota);
+  if (valores.nota === undefined || valores.nota === '' || !(nota >= 0 && nota <= pesquisa.NOTA_MAX)) {
+    return telaPesquisa(res.status(400), m, { erro: 'Escolha uma nota de 0 a 5.', valores });
+  }
+  await pesquisa.responder(m, valores); // segunda resposta para a mesma matrícula é ignorada
+  return res.redirect(303, req.originalUrl);
+})().catch(next));
 
 // "Adicionar à agenda": .ics com as aulas da turma (lib/agenda.js). Público como as datas da
 // página do curso; link em "Minhas inscrições" e no e-mail de matrícula confirmada.

@@ -520,7 +520,24 @@ async function enviarAvisoContas(email, nome, { assunto, texto, link, botao }) {
   await enviar(email, assunto, moldura(limpo(assunto), limpo(nome), limpo(texto), botao || 'Abrir no sistema', link, 'Aviso automático da secretaria da escola.'), `Contas a pagar (${assunto})`, link);
 }
 
+// Pesquisa de satisfação (lib/pesquisa.js): sai sozinha logo depois da última aula da turma.
+async function enviarPesquisaSatisfacao(email, nome, { curso, link }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const html = moldura(
+    'Como foi o seu curso?',
+    limpo(nome),
+    `Obrigado por fazer <strong>${limpo(curso)}</strong> na Escola de Educação e Saúde da Cruz Vermelha. `
+      + 'Conta pra gente como foi: é uma pergunta só, com espaço para um comentário, e leva menos de 1 minuto. '
+      + 'A sua opinião ajuda a melhorar as próximas turmas.',
+    'Responder a pesquisa',
+    link,
+    'Se preferir, é só ignorar este e-mail.'
+  );
+  await enviar(email, `Como foi o curso ${limpo(curso)}?`, html, `Pesquisa de satisfação (${curso})`, link);
+}
+
 module.exports = {
+  enviarPesquisaSatisfacao,
   enviarAvisoContas,
   enviarBoasVindasTurma,
   enviarEmailResetSenha,

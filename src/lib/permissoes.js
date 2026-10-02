@@ -24,6 +24,7 @@ const PERMISSOES = {
                             // cancelar/estornar continuam do Financeiro/Dev)
     'contas:lancar',       // Contas a pagar: lançar despesas da semana e pedir compra/reembolso.
                            // Não mostra o caixa: ela vê só o que foi lançado e o andamento.
+    'pesquisa:gerenciar',  // aba Pesquisa: aprovar depoimentos e mostrar/ocultar a seção no site
     'pendentes:gerenciar', // ver /pendentes, enviar lembrete, registrar contato
                         // por WhatsApp e REMOVER matrícula fantasma (só as
                         // que nunca tiveram dinheiro: PENDENTE +
@@ -100,6 +101,7 @@ const CATALOGO = [
   { grupo: 'Contas a pagar', id: 'contas:lancar',  nome: 'Lançar despesas e pedir compra ou reembolso', desc: 'Envia a semana para aprovação. Não mostra o caixa.' },
   { grupo: 'Contas a pagar', id: 'contas:aprovar', nome: 'Aprovar ou recusar despesas e pedidos' },
   { grupo: 'Contas a pagar', id: 'contas:pagar',   nome: 'Marcar despesa como paga', desc: 'Data, forma de pagamento e comprovante.' },
+  { grupo: 'Alunos e inscrições', id: 'pesquisa:gerenciar', nome: 'Pesquisa de satisfação', desc: 'Aprovar depoimentos e mostrar ou ocultar a seção no site.' },
   { grupo: 'Só visualizar', id: 'painel:leitura',     nome: 'Ver cursos, turmas, alunos e horários', desc: 'Sem botões de ação.' },
 ];
 const IDS = new Set(CATALOGO.map((c) => c.id));
@@ -118,7 +120,7 @@ let lendo = null;
 // sabe que existem: para essas, vale o padrão do papel (senão a secretaria perderia a função nova
 // só porque alguém já tinha mexido nas permissões). A lista gravada guarda em "_conhecidas" o
 // catálogo da época; o que não está lá recebe o padrão.
-const NOVAS_DEPOIS_DA_TELA = ['contas:lancar', 'contas:aprovar', 'contas:pagar'];
+const NOVAS_DEPOIS_DA_TELA = ['contas:lancar', 'contas:aprovar', 'contas:pagar', 'pesquisa:gerenciar'];
 
 function limpar(mapa) {
   const certo = {};

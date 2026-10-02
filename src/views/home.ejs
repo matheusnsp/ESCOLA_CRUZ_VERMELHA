@@ -172,6 +172,31 @@
     </div>
   </section>
 
+  <%# Depoimentos da pesquisa de satisfação (lib/pesquisa.js): só os aprovados pela secretaria, e só
+      quando ela liga a seção na aba Pesquisa. Sem isso, a seção nem aparece. %>
+  <% if (typeof depoimentos !== 'undefined' && depoimentos.length) { %>
+  <section class="v-secao v-depo" id="depoimentos">
+    <div class="v-wrap">
+      <div class="v-secao-head">
+        <div>
+          <p class="v-kicker">Depoimentos</p>
+          <h2>O que dizem os alunos.</h2>
+        </div>
+        <p>Comentários de quem fez os cursos, enviados na pesquisa de satisfação ao fim de cada turma.</p>
+      </div>
+      <div class="v-depo-grade">
+        <% depoimentos.forEach(function (d) { %>
+          <figure class="v-depo-card">
+            <div class="v-depo-nota" role="img" aria-label="Nota <%= d.nota %> de 5"><% for (var e = 1; e <= 5; e++) { %><i class="fa-solid fa-star<%= e <= d.nota ? '' : ' v-depo-apagada' %>" aria-hidden="true"></i><% } %></div>
+            <blockquote>“<%= d.comentario %>”</blockquote>
+            <figcaption><b><%= d.nome %></b><span><%= d.curso %></span></figcaption>
+          </figure>
+        <% }) %>
+      </div>
+    </div>
+  </section>
+  <% } %>
+
   <!-- ══ Dúvidas ══════════════════════════════════════════════════════ -->
   <section class="v-secao" id="duvidas">
     <div class="v-wrap v-faq">
