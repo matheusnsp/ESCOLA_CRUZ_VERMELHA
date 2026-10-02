@@ -1002,7 +1002,9 @@ router.get('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) => 
     // 💡 NOVO — a taxa já foi paga na etapa 2 e NÃO entra nesta cobrança.
     // A view usa isso só pra deixar explícito na tela, evitando que o aluno
     // ache que o total exibido aqui é tudo o que ele desembolsou.
-    valorTaxaPaga: Number(valores.valorTaxaMatricula),
+    // O que a pessoa pagou de fato (a matrícula guarda; quem veio da matrícula rápida pode ter
+    // pago no cartão com a taxa de processamento). Sem valor guardado, o do curso.
+    valorTaxaPaga: (await require('../lib/matricula-rapida').taxaPaga(matricula)) || Number(valores.valorTaxaMatricula),
     etapaAtual: 'pagar-curso', erro: erroQuery,
   });
 });

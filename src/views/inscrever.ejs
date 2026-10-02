@@ -646,7 +646,7 @@ const _trilha = _totalPassos === 2
       <% if (typeof valorTaxaPaga !== 'undefined' && Number(valorTaxaPaga) > 0) { %>
       <p class="chk-pago anima" style="--d:3">
         <i class="fa-solid fa-circle-check"></i>
-        Taxa de inscrição de <strong><%= formatBRL(valorTaxaPaga) %></strong> já paga — não entra nesta cobrança.
+        <span>Taxa de inscrição de <strong><%= formatBRL(valorTaxaPaga) %></strong> já paga — não entra nesta cobrança.</span>
       </p>
       <% } %>
 
