@@ -4,7 +4,7 @@
   preloadImg: '/img/capa.webp',
   descricao: 'Cursos presenciais da Escola de Educação e Saúde da Cruz Vermelha Brasileira no Rio de Janeiro: primeiros socorros, formação profissional e saúde, com certificado.'
 }) %>
-<%- include('partials/site-header', { sobreFoto: true }) %>
+<%- include('partials/site-header') %>
 
 <%
   var _taxaPadrao = Number((cfgMap && cfgMap['matricula_valor_padrao']) || 0);
@@ -151,7 +151,7 @@
       </div>
       <div class="v-escola-texto">
         <div>
-          <span class="v-cruz"><img src="/img/cruz-oficial.webp" alt="" width="26" height="26" loading="lazy"></span>
+          <p class="v-kicker v-kicker-claro">A Escola</p>
           <h2>Uma escola dentro de uma instituição humanitária.</h2>
           <p>A Escola de Educação e Saúde é o centro de formação da Cruz Vermelha Brasileira – Filial do Estado do Rio de Janeiro.</p>
           <p>As turmas são presenciais e práticas, com instrutores qualificados. Ao concluir, o aluno recebe o certificado da Cruz Vermelha Brasileira.</p>

@@ -217,26 +217,34 @@ router.get('/cursos/:cursoId', async (req, res) => {
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
   // As três consultas saem juntas: "outros cursos" não depende do curso carregado.
   const [curso, cfgMap, outros] = await Promise.all([
-    catalogo(res, `curso:${req.params.cursoId}`, () => prisma.curso.findUnique({
-      where: { id: req.params.cursoId },
-      include: {
-        turmas: {
-          where: turmasAbertas(),
-          orderBy: { inicioPrevisto: 'asc' },
-          include: { aulas: { orderBy: { data: 'asc' }, take: 1 } },
+    catalogo(res, `curso:${req.params.cursoId}`, async () => {
+      const c = await prisma.curso.findUnique({
+        where: { id: req.params.cursoId },
+        include: {
+          turmas: {
+            where: turmasAbertas(),
+            orderBy: { inicioPrevisto: 'asc' },
+            include: { aulas: { orderBy: { data: 'asc' }, take: 1 } },
+          },
+          faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] },
         },
-        faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] },
-      },
-    })),
+      });
+      if (c) await extras.anexar('curso', [c]);
+      return c;
+    }),
     lerConfigMatricula(),
-    catalogo(res, `outros:${req.params.cursoId}`, () => prisma.curso.findMany({
-      where: { ...filtro, id: { not: req.params.cursoId } },
-      orderBy: { nome: 'asc' },
-      take: 3,
-      include: {
-        turmas: { where: turmasAbertas(), orderBy: { inicioPrevisto: 'asc' }, take: 1 },
-      },
-    })),
+    catalogo(res, `outros:${req.params.cursoId}`, async () => {
+      // Outros cursos: os de turma aberta primeiro, como na vitrine.
+      const lista = await prisma.curso.findMany({
+        where: { ...filtro, id: { not: req.params.cursoId } },
+        orderBy: { nome: 'asc' },
+        include: {
+          turmas: { where: turmasAbertas(), orderBy: { inicioPrevisto: 'asc' }, take: 1 },
+        },
+      });
+      await extras.anexar('curso', lista);
+      return vitrine.ordenar(lista).slice(0, 3);
+    }),
   ]);
 
   // Curso inativo só é visível para o papel DEV (permite testar antes de publicar).
@@ -250,6 +258,8 @@ router.get('/cursos/:cursoId', async (req, res) => {
     formatBRL,
     total: totalExibicao(curso, cfgMap),
     totalExibicao,
+    taxaExibicao,
+    vitrine,
     cfgMap,
   });
 });

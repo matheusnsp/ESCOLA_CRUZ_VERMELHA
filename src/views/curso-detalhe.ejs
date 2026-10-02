@@ -1,194 +1,206 @@
-<%- include('partials/site-head', { titulo: curso.nome }) %>
-<%- include('partials/site-header') %>
+<%- include('partials/site-head', {
+  titulo: curso.nome,
+  bodyClass: 'v-claro',
+  preloadImg: curso.imagemUrl || undefined,
+  descricao: (curso.descricao || ('Curso presencial de ' + curso.nome + ' na Escola de Educação e Saúde da Cruz Vermelha Brasileira, no Rio de Janeiro.'))
+}) %>
+<%- include('partials/site-header', { menuAtivo: 'cursos' }) %>
 
 <%
 var agora = new Date();
-var prox  = (curso.turmas || []).find(function (t) { return new Date(t.inicioPrevisto) > agora; });
-var temTurma = curso.turmas && curso.turmas.length;
-
-var alvoCta = temTurma
-  ? (curso.turmas.length === 1 ? '/inscrever/' + curso.turmas[0].id : '#cx-turmas')
-  : null;
+var turmas = curso.turmas || [];
+var prox = turmas.find(function (t) { return new Date(t.inicioPrevisto) > agora; });
+var temTurma = turmas.length > 0;
+var alvoCta = temTurma ? (turmas.length === 1 ? '/inscrever/' + turmas[0].id : '#turmas') : null;
+var textoCta = turmas.length > 1 ? 'Escolher turma' : 'Inscrever-se';
+var taxa = Number(taxaExibicao(curso, cfgMap));
+var whats = 'https://wa.me/5521999922864?text=' + encodeURIComponent('Olá! Quero saber a próxima turma do curso ' + curso.nome + '.');
+function dataLonga(d) {
+  return new Date(d).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+}
 %>
 
-<main class="cx">
+<main>
 
-  <!-- ══ Hero full-width ══════════════════════════════════════════════════ -->
-  <div class="cx-hero">
-
+  <!-- ══ Topo com a foto do curso ══════════════════════════════════════ -->
+  <section class="v-curso-topo">
     <% if (curso.imagemUrl) { %>
-      <img class="cx-hero-img" src="<%= curso.imagemUrl %>" alt="<%= curso.nome %>">
-    <% } else { %>
-      <div class="cx-hero-sem-foto"></div>
+      <img class="v-curso-foto" src="<%= curso.imagemUrl %>" alt="">
     <% } %>
-
-    <div class="cx-hero-overlay"></div>
-
-    <a href="/cursos" class="cx-voltar-hero">
-      <i class="fa-solid fa-arrow-left"></i> Todos os cursos
-    </a>
-
-    <div class="cx-hero-conteudo">
-      <p class="cx-olho">Escola de Educação e Saúde CVB-RJ</p>
-      <h1 class="cx-hero-titulo"><%= curso.nome %></h1>
-      <% if (curso.descricao) { %>
-        <p class="cx-hero-lead"><%= curso.descricao %></p>
-      <% } %>
-    </div>
-
-  </div><!-- /cx-hero -->
-
-  <!-- ══ Corpo ════════════════════════════════════════════════════════════ -->
-  <div class="cx-quadro">
-
-    <!-- ── Ficha rápida ────────────────────────────────────────────────── -->
-    <div class="cx-ficha">
-      <div class="cx-ficha-item">
-        <i class="fa-regular fa-clock"></i>
-        <em>Carga horária</em>
-        <strong class="num"><%= curso.cargaHoraria %> horas</strong>
+    <div class="v-wrap v-curso-topo-grid">
+      <div class="v-curso-titulo">
+        <a class="v-voltar" href="/cursos"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Todos os cursos</a>
+        <p class="v-olho"><%= curso.categoria || 'Curso presencial' %></p>
+        <h1><%= curso.nome %></h1>
+        <% if (curso.descricao) { %><p class="v-curso-lead"><%= curso.descricao %></p><% } %>
+        <div class="v-curso-chips">
+          <span><i class="fa-regular fa-clock" aria-hidden="true"></i> <%= curso.cargaHoraria %> horas</span>
+          <% if (curso.escolaridadeMinima) { %><span><i class="fa-solid fa-user-graduate" aria-hidden="true"></i> <%= curso.escolaridadeMinima %></span><% } %>
+          <span><i class="fa-solid fa-location-dot" aria-hidden="true"></i> Presencial no Centro do Rio</span>
+          <span><i class="fa-solid fa-award" aria-hidden="true"></i> Certificado</span>
+        </div>
       </div>
-      <% if (curso.escolaridadeMinima) { %>
-      <div class="cx-ficha-item">
-        <i class="fa-solid fa-user-graduate"></i>
-        <em>Escolaridade mínima</em>
-        <strong><%= curso.escolaridadeMinima %></strong>
-      </div>
-      <% } %>
-      <% if (temTurma) { %>
-      <div class="cx-ficha-item">
-        <i class="fa-solid fa-flag-checkered"></i>
-        <em>Próxima turma</em>
-        <strong class="num"><%= new Date(curso.turmas[0].inicioPrevisto).toLocaleDateString('pt-BR') %></strong>
-      </div>
-      <% } %>
-    </div>
 
-    <!-- ── Contagem regressiva ──────────────────────────────────────────── -->
-    <% if (prox) { %>
-    <div class="curso-countdown cx-conta" data-inicio="<%= new Date(prox.inicioPrevisto).toISOString() %>">
-      <span class="cx-conta-rot">A próxima turma está prevista em</span>
-      <div class="cd-nums cx-conta-nums">
-        <span><b data-d>--</b><i>dias</i></span>
-        <span><b data-h>--</b><i>horas</i></span>
-        <span><b data-m>--</b><i>min</i></span>
-        <span><b data-s>--</b><i>seg</i></span>
-      </div>
-    </div>
-    <% } %>
-
-    <!-- ── Sobre o curso ────────────────────────────────────────────────── -->
-    <% if (curso.descricaoLonga) { %>
-    <section class="cx-secao">
-      <h2 class="cx-secao-t">Sobre o curso</h2>
-      <div class="cx-prosa">
-        <% curso.descricaoLonga.split(/\n\s*\n/).forEach(function (par) { %>
-          <% if (par.trim()) { %><p><%= par.trim() %></p><% } %>
-        <% }) %>
-      </div>
-    </section>
-    <% } %>
-
-    <!-- ── Turmas ───────────────────────────────────────────────────────── -->
-    <section class="cx-secao" id="cx-turmas">
-      <h2 class="cx-secao-t">Turmas abertas</h2>
-
-      <% if (!temTurma) { %>
-      <div class="cx-vazio">
-        <i class="fa-regular fa-calendar-xmark"></i>
-        <p>Nenhuma turma aberta no momento. Volte em breve para conferir as
-        próximas datas — ou veja os outros cursos da escola.</p>
-        <a href="/cursos">Ver outros cursos <i class="fa-solid fa-arrow-right"></i></a>
-      </div>
-      <% } else { %>
-      <div class="cx-turmas">
-        <% curso.turmas.forEach(function (t) { %>
-        <div class="cx-turma">
-          <div class="cx-turma-data">
-            <em class="num"><%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR', { day: '2-digit' }) %></em>
-            <span><%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '') %></span>
+      <aside class="v-curso-card">
+        <% if (prox) { var d = vitrine.dataTurma(prox.inicioPrevisto); %>
+          <span class="v-rotulo">Próxima turma</span>
+          <div class="v-curso-turma">
+            <div class="v-data"><b><%= d.dia %></b><span><%= d.mes %></span></div>
+            <div>
+              <strong>Início em <%= dataLonga(prox.inicioPrevisto) %></strong>
+              <% if (prox.aulas && prox.aulas.length) { %><em><i class="fa-regular fa-clock" aria-hidden="true"></i> <%= prox.aulas[0].horario %></em><% } %>
+            </div>
           </div>
-          <div class="cx-turma-txt">
-            <strong>Início em <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %></strong>
-            <% if (t.aulas && t.aulas.length) { %>
-            <em><i class="fa-regular fa-clock"></i> <%= t.aulas[0].horario %></em>
-            <% } %>
+          <div class="curso-countdown v-contagem" data-inicio="<%= new Date(prox.inicioPrevisto).toISOString() %>">
+            <span class="v-contagem-rot">Começa em</span>
+            <div class="cd-nums v-contagem-nums">
+              <span><b data-d>--</b><i>dias</i></span>
+              <span><b data-h>--</b><i>horas</i></span>
+              <span><b data-m>--</b><i>min</i></span>
+              <span><b data-s>--</b><i>seg</i></span>
+            </div>
           </div>
-          <a class="cx-turma-cta" href="/inscrever/<%= t.id %>">
-            Inscrever-se <i class="fa-solid fa-arrow-right"></i>
-          </a>
+        <% } else { %>
+          <span class="v-rotulo">Turmas em breve</span>
+          <h3>Ainda não há turma aberta</h3>
+          <p>A secretaria publica as datas aqui assim que abre as inscrições. Fale com a gente para saber a próxima turma.</p>
+        <% } %>
+
+        <div class="v-curso-preco">
+          <div>
+            <small>Matrícula à vista</small>
+            <strong><%= vitrine.reais(curso.precoAvista) %></strong>
+            <% if (taxa > 0) { %><em>+ <%= vitrine.reais(taxa) %> de taxa de inscrição</em><% } %>
+          </div>
         </div>
+
+        <% if (temTurma) { %>
+          <a class="v-btn v-btn-red v-btn-grande v-btn-bloco" href="<%= alvoCta %>"><%= textoCta %> <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+          <p class="v-curso-obs">PIX ou cartão, à vista ou parcelado. As parcelas aparecem na hora da inscrição.</p>
+        <% } else { %>
+          <a class="v-btn v-btn-escuro v-btn-grande v-btn-bloco" href="<%= whats %>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Saber a próxima turma</a>
+          <a class="v-curso-link" href="/cursos">Ver outros cursos <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+        <% } %>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ══ Corpo ═════════════════════════════════════════════════════════ -->
+  <section class="v-secao v-curso-corpo">
+    <div class="v-wrap v-curso-grid">
+      <div class="v-curso-principal">
+
+        <% if (curso.descricaoLonga) { %>
+          <div class="v-bloco">
+            <p class="v-kicker">Sobre o curso</p>
+            <h2>O que você vai aprender</h2>
+            <div class="v-prosa">
+              <% curso.descricaoLonga.split(/\n\s*\n/).forEach(function (par) { %>
+                <% if (par.trim()) { %><p><%= par.trim() %></p><% } %>
+              <% }) %>
+            </div>
+          </div>
+        <% } %>
+
+        <div class="v-bloco" id="turmas">
+          <p class="v-kicker">Turmas abertas</p>
+          <h2><%= temTurma ? (turmas.length === 1 ? 'Escolha sua turma' : 'Escolha a sua turma') : 'Sem turma aberta no momento' %></h2>
+          <% if (!temTurma) { %>
+            <div class="v-vazio v-vazio-esq">
+              <i class="fa-regular fa-calendar-xmark" aria-hidden="true"></i>
+              Nenhuma turma aberta agora. Volte em breve para conferir as próximas datas ou fale com a secretaria pelo WhatsApp.
+              <div class="v-vazio-acoes">
+                <a class="v-btn v-btn-escuro" href="<%= whats %>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Falar com a secretaria</a>
+                <a class="v-btn v-btn-contorno" href="/cursos">Ver outros cursos</a>
+              </div>
+            </div>
+          <% } else { %>
+            <div class="v-turmas">
+              <% turmas.forEach(function (t) { var dt = vitrine.dataTurma(t.inicioPrevisto); %>
+                <div class="v-turma">
+                  <div class="v-data"><b><%= dt.dia %></b><span><%= dt.mes %></span></div>
+                  <div class="v-turma-txt">
+                    <strong>Início em <%= dataLonga(t.inicioPrevisto) %></strong>
+                    <span><%= t.aulas && t.aulas.length ? t.aulas[0].horario + ' · ' : '' %>Praça da Cruz Vermelha, 10 · Centro</span>
+                  </div>
+                  <a class="v-btn v-btn-red" href="/inscrever/<%= t.id %>">Inscrever-se <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                </div>
+              <% }) %>
+            </div>
+            <p class="v-aviso">
+              <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+              <span>A participação nas aulas é liberada só com a <strong>matrícula paga</strong>, além da taxa de inscrição. Quem pagou apenas a inscrição não tem a entrada liberada.</span>
+            </p>
+          <% } %>
+        </div>
+      </div>
+
+      <aside class="v-curso-lado">
+        <div class="v-invest">
+          <p class="v-kicker">Investimento</p>
+          <div class="v-invest-linha"><span>Valor da matrícula, à vista</span><b><%= formatBRL(curso.precoAvista) %></b></div>
+          <div class="v-invest-linha"><span>Taxa de inscrição</span><b><%= formatBRL(total - curso.precoAvista) %></b></div>
+          <div class="v-invest-linha v-invest-total"><span>Total à vista, com a inscrição</span><b><%= formatBRL(total) %></b></div>
+          <p class="v-invest-obs">Valores para pagamento à vista. No parcelamento no cartão incide juros, então o total parcelado é maior; o valor exato de cada parcela aparece na hora da inscrição.</p>
+          <% if (temTurma) { %>
+            <a class="v-btn v-btn-red v-btn-grande v-btn-bloco" href="<%= alvoCta %>"><%= textoCta %> <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+          <% } %>
+          <a class="v-invest-whats" href="<%= whats %>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Dúvidas? Fale com a secretaria</a>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <% if (curso.faqs && curso.faqs.length) { %>
+  <!-- ══ Dúvidas do curso ══════════════════════════════════════════════ -->
+  <section class="v-secao v-curso-faq" id="duvidas-curso">
+    <div class="v-wrap v-faq">
+      <div>
+        <p class="v-kicker">Dúvidas frequentes</p>
+        <h2>Sobre este curso.</h2>
+        <p class="v-faq-intro">Não encontrou o que procura? Fale com a secretaria pelo WhatsApp.</p>
+      </div>
+      <div class="v-faq-lista">
+        <% curso.faqs.forEach(function (f, i) { %>
+          <details<%= i === 0 ? ' open' : '' %>>
+            <summary><%= f.pergunta %></summary>
+            <p><%= f.resposta %></p>
+          </details>
         <% }) %>
       </div>
-      <p class="cx-nota cx-nota-presenca">
-        <i class="fa-solid fa-circle-exclamation"></i>
-        <span>A participação nas aulas é liberada só com a <strong>matrícula paga</strong>, além da taxa de
-        inscrição. Quem pagou apenas a inscrição não tem a entrada liberada.</span>
-      </p>
-      <% } %>
-    </section>
+    </div>
+  </section>
+  <% } %>
 
-    <!-- ── Dúvidas frequentes ───────────────────────────────────────────── -->
-    <% if (curso.faqs && curso.faqs.length) { %>
-    <section class="cx-secao">
-      <h2 class="cx-secao-t">Dúvidas frequentes</h2>
-      <div class="cx-sanfona">
-        <% curso.faqs.forEach(function (f) { %>
-        <details class="cx-grupo">
-          <summary>
-            <span class="cx-grupo-t"><%= f.pergunta %></span>
-            <i class="fa-solid fa-chevron-down cx-seta"></i>
-          </summary>
-          <div class="cx-grupo-corpo"><%= f.resposta %></div>
-        </details>
+  <% if (outros && outros.length) { %>
+  <!-- ══ Outros cursos ═════════════════════════════════════════════════ -->
+  <section class="v-secao v-curso-outros">
+    <div class="v-wrap">
+      <div class="v-secao-head">
+        <div>
+          <p class="v-kicker">Veja também</p>
+          <h2>Outros cursos da Escola.</h2>
+        </div>
+        <a class="v-btn v-btn-escuro v-btn-grande" href="/cursos">Ver todos os cursos <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+      </div>
+      <div class="v-grade">
+        <% outros.forEach(function (o) { %>
+          <%- include('partials/v-card', { curso: o, largura: 4, vitrine: vitrine, taxaExibicao: taxaExibicao, cfgMap: cfgMap }) %>
         <% }) %>
       </div>
-    </section>
-    <% } %>
+    </div>
+  </section>
+  <% } %>
 
-    <!-- ── Investimento ─────────────────────────────────────────────────── -->
-    <section class="cx-secao">
-      <h2 class="cx-secao-t">Investimento</h2>
-      <div class="cx-preco">
-        <div class="cx-linha">
-          <span>Valor da matrícula, à vista</span>
-          <span class="num"><%= formatBRL(curso.precoAvista) %></span>
-        </div>
-        <div class="cx-linha">
-          <span>Taxa de inscrição</span>
-          <span class="num"><%= formatBRL(total - curso.precoAvista) %></span>
-        </div>
-        <div class="cx-linha cx-linha-total">
-          <span>Total à vista, com a inscrição</span>
-          <strong class="num"><%= formatBRL(total) %></strong>
-        </div>
-      </div>
-      <p class="cx-nota">
-        <i class="fa-solid fa-circle-info"></i>
-        Os valores acima são para pagamento à vista. No parcelamento incide
-        juros, então o valor total parcelado é maior que o valor à vista —
-        as opções de pagamento (PIX ou cartão, à vista ou parcelado)
-        aparecem com o valor exato de cada parcela na hora da inscrição.
-      </p>
-    </section>
-
-  </div><!-- /cx-quadro -->
-
-  <!-- ══ Barra de ação fixa ═══════════════════════════════════════════════ -->
   <% if (temTurma) { %>
-  <div class="cx-acao">
-    <div class="cx-acao-valor">
-      <em>Total</em>
-      <strong class="num"><%= formatBRL(total) %></strong>
-    </div>
-    <a class="cx-btn" href="<%= alvoCta %>">
-      <%= curso.turmas.length === 1 ? 'Inscrever-se' : 'Escolher turma' %>
-      <i class="fa-solid fa-arrow-right"></i>
-    </a>
+  <!-- Barra fixa no celular -->
+  <div class="v-barra-cel">
+    <div><small>Total à vista</small><b><%= vitrine.reais(total) %></b></div>
+    <a class="v-btn v-btn-red" href="<%= alvoCta %>"><%= textoCta %> <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
   </div>
   <% } %>
 
 </main>
 
-<!-- <%- include('partials/site-footer') %> -->
 <script src="<%= asset('/js/countdown.js') %>"></script>
+<%- include('partials/site-footer') %>
