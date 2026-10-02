@@ -262,6 +262,42 @@ router.post('/pesquisa/:matriculaId/:token', (req, res, next) => (async () => {
   return res.redirect(303, req.originalUrl);
 })().catch(next));
 
+// QR da pesquisa na sala (lib/pesquisa.js): o mesmo link para a turma toda; o aluno informa o CPF
+// e vai para a pesquisa dele. Até 15 tentativas por IP a cada 10 min (não dá para varrer CPFs).
+const tentativasAvaliar = new Map();
+async function turmaDoQr(req) {
+  const id = String(req.params.turmaId || '');
+  if (!/^[\w-]{1,64}$/.test(id) || !pesquisa.tokenTurmaValido(id, req.params.token)) return null;
+  const t = await prisma.turma.findUnique({ where: { id }, include: { curso: { select: { nome: true } } } });
+  return t && t.status !== 'CANCELADA' ? t : null;
+}
+function telaAvaliar(res, turma, extra) {
+  res.set('X-Robots-Tag', 'noindex');
+  return res.render('avaliar', { curso: turma.curso.nome, erro: null, documento: '', ...extra });
+}
+router.get('/avaliar/:turmaId/:token', (req, res, next) => (async () => {
+  const turma = await turmaDoQr(req);
+  if (!turma) return res.status(404).render('erro', { mensagem: 'Este QR de avaliação não é válido. Peça ao professor para mostrar de novo.' });
+  return telaAvaliar(res, turma);
+})().catch(next));
+router.post('/avaliar/:turmaId/:token', (req, res, next) => (async () => {
+  const turma = await turmaDoQr(req);
+  if (!turma) return res.status(404).render('erro', { mensagem: 'Este QR de avaliação não é válido. Peça ao professor para mostrar de novo.' });
+  const documento = String(req.body.documento || '').slice(0, 30);
+  const ip = req.ip || 'ip';
+  const agora = Date.now();
+  const t = tentativasAvaliar.get(ip);
+  const conta = t && agora - t.desde < 10 * 60000 ? t : { n: 0, desde: agora };
+  if (conta.n >= 15) return telaAvaliar(res.status(429), turma, { documento, erro: 'Muitas tentativas. Espere alguns minutos e tente de novo.' });
+  const m = await pesquisa.matriculaPorDocumento(turma.id, documento);
+  if (!m) {
+    conta.n++; tentativasAvaliar.set(ip, conta);
+    if (tentativasAvaliar.size > 5000) tentativasAvaliar.clear();
+    return telaAvaliar(res.status(400), turma, { documento, erro: 'Não encontramos esse CPF entre os alunos desta turma. Confira os números ou fale com o professor.' });
+  }
+  return res.redirect(303, `/pesquisa/${m.id}/${pesquisa.token(m.id)}`);
+})().catch(next));
+
 // "Adicionar à agenda": .ics com as aulas da turma (lib/agenda.js). Público como as datas da
 // página do curso; link em "Minhas inscrições" e no e-mail de matrícula confirmada.
 router.get('/turmas/:turmaId/agenda.ics', (req, res, next) => (async () => {

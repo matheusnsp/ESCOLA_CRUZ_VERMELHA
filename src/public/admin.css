@@ -1632,3 +1632,31 @@ button.adm-link { background: none; border: 0; padding: 4px 0; cursor: pointer; 
   .pq-resp-topo { grid-template-columns: auto 1fr; }
   .pq-resp-topo .pq-status { grid-column: 1 / -1; justify-self: start; }
 }
+
+/* QR da pesquisa (admin/turma-pesquisa-qr.ejs). O cartão é sempre claro: é o que vai para a tela da sala e o papel. */
+.qr-pagina { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 22px; align-items: start; }
+.qr-cartao { background: #fff; color: #141414; border: 1px solid var(--linha); border-radius: 22px; padding: 30px 28px 26px; text-align: center; }
+.qr-logo { height: 44px; display: block; margin: 0 auto 16px; }
+.qr-olho { margin: 0; font-size: 11.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #d9081f; }
+.qr-cartao h2 { margin: 6px 0 8px; font-size: 32px; letter-spacing: -.04em; font-weight: 800; }
+.qr-curso { margin: 0 0 18px; font-weight: 700; font-size: 16px; line-height: 1.35; }
+.qr-curso small { font-weight: 500; color: #6b6b6b; font-size: 13px; }
+.qr-codigo { width: 100%; max-width: 300px; margin: 0 auto; }
+.qr-codigo svg { display: block; width: 100%; height: auto; }
+.qr-passos { margin: 18px 0 0; font-size: 13.5px; color: #555; }
+.qr-acoes-in { padding: 18px 24px 22px; display: grid; gap: 16px; }
+.qr-acoes-in p { margin: 0; color: var(--tinta-60); line-height: 1.55; }
+.qr-botoes { display: flex; gap: 10px; flex-wrap: wrap; }
+.qr-link { display: grid; gap: 6px; font-size: 13px; color: var(--mut); }
+.qr-link input { font: inherit; font-size: 13.5px; padding: 10px 12px; border: 1px solid var(--linha); border-radius: 10px; background: var(--campo); color: var(--tinta); }
+@media (max-width: 900px) { .qr-pagina { grid-template-columns: 1fr; } }
+@media print {
+  .adm-top, .adm-foot, .qr-nao-imprime { display: none !important; }
+  body.adm, .adm-wrap { background: #fff !important; padding: 0 !important; margin: 0 !important; }
+  .qr-pagina { display: block; }
+  .qr-cartao { border: 0; max-width: 520px; margin: 40px auto 0; }
+  .qr-cartao h2 { font-size: 44px; }
+  .qr-codigo { max-width: 380px; }
+}
+.qr-botoes a.adm-btn-out { color: var(--tinta); background: var(--card); border: 1px solid var(--linha); text-decoration: none; }
+.qr-botoes a.adm-btn-out:hover { border-color: var(--vermelho); color: var(--vermelho); }

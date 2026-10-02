@@ -1356,6 +1356,30 @@ async function carregarTurmaBoasVindas(id) {
   return turma;
 }
 
+// QR da pesquisa de satisfação (lib/pesquisa.js) para o professor mostrar no fim da aula. O link
+// é do site do aluno: no painel (secretaria.<domínio>) vira escola.<domínio>.
+function linkQrPesquisa(req, turmaId) {
+  const host = (req.hostname || '').toLowerCase();
+  const base = /^secretaria\./.test(host) && /cruzvermelh/.test(host) ? 'https://escola.' + host.slice('secretaria.'.length) : null;
+  return pesquisa.linkTurma(turmaId, base);
+}
+router.get('/turmas/:id/pesquisa-qr', requirePermissao('turmas:gerenciar', 'pesquisa:gerenciar'), async (req, res) => {
+  const turma = await prisma.turma.findUnique({ where: { id: req.params.id }, include: { curso: { select: { nome: true } } } });
+  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma não encontrada.' });
+  const link = linkQrPesquisa(req, turma.id);
+  const qrSvg = await QRCode.toString(link, { type: 'svg', margin: 0, errorCorrectionLevel: 'M', color: { dark: '#111111', light: '#ffffff' } });
+  res.render('admin/turma-pesquisa-qr', { turma, link, qrSvg });
+});
+router.get('/turmas/:id/pesquisa-qr.png', requirePermissao('turmas:gerenciar', 'pesquisa:gerenciar'), async (req, res) => {
+  const turma = await prisma.turma.findUnique({ where: { id: req.params.id }, include: { curso: { select: { nome: true } } } });
+  if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma não encontrada.' });
+  const png = await QRCode.toBuffer(linkQrPesquisa(req, turma.id), { type: 'png', width: 1000, margin: 3, errorCorrectionLevel: 'M' });
+  const nome = String(turma.curso.nome).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').toLowerCase();
+  res.set('Content-Type', 'image/png');
+  res.set('Content-Disposition', `attachment; filename="qr-pesquisa-${nome}.png"`);
+  res.send(png);
+});
+
 router.get('/turmas/:id/boas-vindas', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const turma = await carregarTurmaBoasVindas(req.params.id);
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
