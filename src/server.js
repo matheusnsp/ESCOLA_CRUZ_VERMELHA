@@ -8,7 +8,22 @@ const session = require('express-session');
 
 const app = express();   // <- primeiro cria o app
 
+// HTTPS obrigatório em produção, antes de qualquer outra coisa (src/middleware/https.js).
+app.use(require('./middleware/https').forcarHttps());
+
 app.use(compression());  // <- depois usa os middlewares
+
+// Links dos e-mails (confirmação, redefinir senha, boletos) nunca em http em produção: um link
+// http abre a porta para o SSL stripping antes de o navegador ver o HSTS.
+if (process.env.NODE_ENV === 'production') {
+  for (const k of ['APP_URL', 'ADMIN_URL']) {
+    const v = process.env[k];
+    if (v && /^http:\/\//i.test(v) && !/^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(v)) {
+      process.env[k] = v.replace(/^http:/i, 'https:');
+      console.warn(`[seguranca] ${k} estava em http; usando https.`);
+    }
+  }
+}
 
 const PgSession = require('connect-pg-simple')(session);
 const { Pool } = require('pg');
@@ -125,9 +140,12 @@ app.use(
     // das ações do painel usa isso), e continua sem mandar nada para sites de fora. Com o padrão
     // do helmet (no-referrer), toda ação voltava para Matrículas, viesse de onde viesse.
     referrerPolicy: { policy: 'same-origin' },
-    // HSTS so faz sentido sob HTTPS real (producao). Em dev atrapalha o Safari.
-    // 1 ano + subdominios (cobre o painel em secretaria.<dominio>).
-    hsts: isProd ? { maxAge: 31536000, includeSubDomains: true } : false,
+    // HSTS (Strict-Transport-Security): só em produção, onde há HTTPS real; em dev travaria o
+    // localhost em https. 1 ano + includeSubDomains: vale para o host que respondeu e os
+    // subdomínios DELE (ex.: *.escola.cruzvermelhariodejaneiro.org), não para o domínio-pai.
+    // Sem "preload" de propósito: a lista de preload dos navegadores exige o domínio-raiz e é
+    // difícil de desfazer.
+    hsts: isProd ? { maxAge: 31536000, includeSubDomains: true, preload: false } : false,
   })
 );
 
