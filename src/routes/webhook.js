@@ -94,6 +94,7 @@ async function avisarMatriculaConfirmada(matriculaId) {
       // O 1kg de alimento só é pedido em turma que registra a entrega.
       alimento: m.alimentoEntregue === false || m.alimentoEntregue === true,
       link: `${base.replace(/\/+$/, '')}/minha-conta?sec=inscricoes`,
+      agenda: `${base.replace(/\/+$/, '')}/turmas/${m.turmaId}/agenda.ics`,
     });
   } catch (e) {
     console.error('[WEBHOOK] Falha ao enviar e-mail de matrícula confirmada:', e.message);

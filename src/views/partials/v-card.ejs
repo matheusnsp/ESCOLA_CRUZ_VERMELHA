@@ -6,7 +6,7 @@
   var _taxa = Number(taxaExibicao(curso, cfgMap));
 %>
 <article class="v-card v-c<%= largura %><%= _largo ? ' v-wide' : '' %>" data-cat="<%= curso.categoria || '' %>">
-  <a class="v-card-link" href="/cursos/<%= curso.id %>" aria-label="<%= curso.nome %>: ver turmas e valores"></a>
+  <a class="v-card-link" href="<%= urlCurso(curso) %>" aria-label="<%= curso.nome %>: ver turmas e valores"></a>
   <div class="v-card-img">
     <% if (curso.imagemUrl) { %>
       <img src="<%= curso.imagemUrl %>" alt="" loading="lazy">

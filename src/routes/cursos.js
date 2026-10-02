@@ -13,6 +13,8 @@ const { criarTransacao, obterOpcaoParcelamento } = require('../lib/unicopag');
 const cacheRapido = require('../lib/cache-rapido');
 const extras = require('../lib/extras');
 const vitrine = require('../lib/vitrine');
+const { icsDaTurma } = require('../lib/agenda');
+const sharp = require('sharp');
 
 const router = express.Router();
 
@@ -222,13 +224,103 @@ router.get('/cursos', async (req, res) => {
   res.render('cursos', { cursos, cfgMap, formatBRL, totalExibicao, taxaExibicao, vitrine });
 });
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// "Adicionar à agenda": .ics com as aulas da turma (lib/agenda.js). Público como as datas da
+// página do curso; link em "Minhas inscrições" e no e-mail de matrícula confirmada.
+router.get('/turmas/:turmaId/agenda.ics', (req, res, next) => (async () => {
+  if (!/^[\w-]{1,64}$/.test(req.params.turmaId)) return res.status(404).render('erro', { mensagem: 'Turma não encontrada.' });
+  const turma = await prisma.turma.findUnique({
+    where: { id: req.params.turmaId },
+    include: { curso: { select: { nome: true, ativo: true } }, aulas: { orderBy: { data: 'asc' } } },
+  });
+  if (!turma || turma.status === 'CANCELADA') return res.status(404).render('erro', { mensagem: 'Turma não encontrada.' });
+  const nome = vitrine.slugCurso(turma.curso.nome);
+  res.set('Content-Type', 'text/calendar; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="aulas-${nome}.ics"`);
+  res.set('Cache-Control', 'private, max-age=300');
+  return res.send(icsDaTurma(turma, res.locals.urlSite + vitrine.urlCurso(turma.curso)));
+})().catch(next));
+
+// Lista de páginas públicas para o Google (o robots.txt, em server.js, aponta para cá).
+router.get('/sitemap.xml', (req, res, next) => (async () => {
+  const cursos = await catalogo(res, 'sitemap', () => prisma.curso.findMany({ where: { ativo: true }, select: { nome: true }, orderBy: { nome: 'asc' } }));
+  const base = res.locals.urlSite;
+  const urls = ['/', '/cursos'].concat(cursos.map(vitrine.urlCurso));
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  res.set('Content-Type', 'application/xml; charset=utf-8');
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.send('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    + [...new Set(urls)].map((u) => `  <url><loc>${esc(base + u)}</loc></url>`).join('\n') + '\n</urlset>\n');
+})().catch(next));
+
+// Imagem da prévia do link (WhatsApp, Facebook): a foto do curso em 1200x630 e JPEG — a foto
+// guardada é WebP, que nem todo app mostra. Feita uma vez e guardada na memória; sem foto ou
+// com falha, vai a imagem padrão do site.
+const imagensPrevia = new Map();
+router.get('/compartilhar/curso/:id.jpg', (req, res, next) => (async () => {
+  const padrao = () => res.redirect(302, '/img/compartilhar.jpg');
+  if (!/^[\w-]{1,64}$/.test(req.params.id)) return padrao();
+  const curso = await prisma.curso.findUnique({ where: { id: req.params.id }, select: { imagemUrl: true, ativo: true } });
+  if (!curso || !curso.ativo || !/^https:\/\//i.test(curso.imagemUrl || '')) return padrao();
+  const chave = req.params.id + '|' + curso.imagemUrl;
+  let jpg = imagensPrevia.get(chave);
+  if (!jpg) {
+    try {
+      const r = await fetch(curso.imagemUrl, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) return padrao();
+      const original = Buffer.from(await r.arrayBuffer());
+      if (original.length > 10 * 1024 * 1024) return padrao();
+      jpg = await sharp(original).rotate().resize(1200, 630, { fit: 'cover', position: 'attention' }).jpeg({ quality: 80, mozjpeg: true }).toBuffer();
+      if (imagensPrevia.size >= 60) imagensPrevia.delete(imagensPrevia.keys().next().value);
+      imagensPrevia.set(chave, jpg);
+    } catch (e) {
+      console.error('[Prévia] imagem do curso', req.params.id, e.message);
+      return padrao();
+    }
+  }
+  res.set('Content-Type', 'image/jpeg');
+  res.set('Cache-Control', 'public, max-age=86400');
+  return res.send(jpg);
+})().catch(next));
+
+// Endereço do curso: /cursos/<nome-do-curso> (vitrine.urlCurso). O formato antigo, com o id
+// (/cursos/<uuid>, ainda em links compartilhados), redireciona para o novo. 301 com validade de
+// 1 dia: se o curso mudar de nome, o navegador não fica preso no endereço velho.
+async function idPeloEndereco(res, endereco) {
+  const mapa = await catalogo(res, 'enderecos-cursos', async () => {
+    const lista = await prisma.curso.findMany({ select: { id: true, nome: true, ativo: true }, orderBy: { criadoEm: 'asc' } });
+    const m = {};
+    // dois cursos com o mesmo nome: fica o ativo (e, entre iguais, o mais antigo)
+    for (const c of lista) { const k = vitrine.slugCurso(c.nome); if (!m[k] || (!m[k].ativo && c.ativo)) m[k] = c; }
+    return m;
+  });
+  return mapa[endereco] ? mapa[endereco].id : null;
+}
+
+router.get('/cursos/:cursoId', (req, res, next) => resolverEndereco(req, res, next).catch(next));
+async function resolverEndereco(req, res, next) {
+  if (UUID.test(req.params.cursoId)) {
+    const c = await prisma.curso.findUnique({ where: { id: req.params.cursoId }, select: { nome: true } });
+    if (!c) return res.status(404).render('erro', { mensagem: 'Curso não encontrado.' });
+    const q = req.originalUrl.indexOf('?');
+    res.set('Cache-Control', 'public, max-age=86400');
+    return res.redirect(301, vitrine.urlCurso(c) + (q >= 0 ? req.originalUrl.slice(q) : ''));
+  }
+  const cursoId = await idPeloEndereco(res, String(req.params.cursoId).toLowerCase());
+  if (!cursoId) return res.status(404).render('erro', { mensagem: 'Curso não encontrado.' });
+  res.locals.cursoId = cursoId; // o Express refaz req.params a cada rota: o id segue por aqui
+  return next();
+}
+
 router.get('/cursos/:cursoId', async (req, res) => {
+  const cursoId = res.locals.cursoId;
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
   // As três consultas saem juntas: "outros cursos" não depende do curso carregado.
   const [curso, cfgMap, outros] = await Promise.all([
-    catalogo(res, `curso:${req.params.cursoId}`, async () => {
+    catalogo(res, `curso:${cursoId}`, async () => {
       const c = await prisma.curso.findUnique({
-        where: { id: req.params.cursoId },
+        where: { id: cursoId },
         include: {
           turmas: {
             where: turmasAbertas(),
@@ -242,10 +334,10 @@ router.get('/cursos/:cursoId', async (req, res) => {
       return c;
     }),
     lerConfigMatricula(),
-    catalogo(res, `outros:${req.params.cursoId}`, async () => {
+    catalogo(res, `outros:${cursoId}`, async () => {
       // Outros cursos: os de turma aberta primeiro, como na vitrine.
       const lista = await prisma.curso.findMany({
-        where: { ...filtro, id: { not: req.params.cursoId } },
+        where: { ...filtro, id: { not: cursoId } },
         orderBy: { nome: 'asc' },
         include: {
           turmas: { where: turmasAbertas(), orderBy: { inicioPrevisto: 'asc' }, take: 1 },

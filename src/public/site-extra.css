@@ -2302,3 +2302,12 @@ body > section { flex: 1 0 auto; }
 
 
   .cx-nota.cx-nota-presenca { margin-top: 14px; border-left: 3px solid #cc0000; padding-left: 10px; }
+
+/* Minha conta → Inscrições: "Adicionar as aulas à agenda" (acima do .card-link-overlay, como o .ct-retomar) */
+.ct-agenda {
+  position: relative; z-index: 2; display: inline-flex; align-items: center; gap: 8px;
+  margin: 2px 0 12px; padding: 9px 14px; border: 1px solid var(--borda-2, #e2e2e2); border-radius: 999px;
+  font-size: 13px; font-weight: 600; color: #141414; text-decoration: none; background: #fff;
+}
+.ct-agenda i { color: #d9081f; }
+.ct-agenda:hover { border-color: #d9081f; }

@@ -429,9 +429,10 @@ const ESCOLA_LEVAR = process.env.ESCOLA_LEVAR
  *   parcelas     nº de parcelas, quando parcelado — opcional
  *   alimento     true se a turma pede o 1kg de alimento
  *   link         URL de "Minhas inscrições"
+ *   agenda       URL do .ics com as aulas ("Adicionar à agenda") — opcional
  */
 async function enviarEmailMatriculaConfirmada(email, nome, dados) {
-  const { curso, inicioTurma, aulas, valorPago, plano, parcelas, alimento, link } = dados;
+  const { curso, inicioTurma, aulas, valorPago, plano, parcelas, alimento, link, agenda } = dados;
 
   // Cronograma completo quando a turma tem as aulas cadastradas; senão, só
   // a data de início. Vale a pena listar: evita o aluno aparecer no dia
@@ -461,6 +462,7 @@ async function enviarEmailMatriculaConfirmada(email, nome, dados) {
       <div style="background:#eefaf5;border:1px solid #cfe9de;border-radius:10px;padding:16px 18px;margin:20px 0;">
         <strong style="display:block;margin-bottom:8px;color:#0a5c43;">Quando</strong>
         ${blocoAulas}
+        ${agenda ? `<a href="${agenda}" style="display:inline-block;margin-top:12px;color:#0a5c43;font-size:14px;font-weight:700;">Adicionar as aulas à agenda do celular</a>` : ''}
       </div>
 
       <div style="background:#f5f6f9;border:1px solid #e7ebf2;border-radius:10px;padding:16px 18px;margin:20px 0;">

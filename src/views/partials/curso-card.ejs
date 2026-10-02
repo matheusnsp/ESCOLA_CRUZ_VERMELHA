@@ -3,7 +3,7 @@
   var total = totalExibicao(curso, cfgMap);
 %>
 <article class="course-card">
-  <a class="card-link-overlay" href="/cursos/<%= curso.id %>" aria-label="Ver <%= curso.nome %>"></a>
+  <a class="card-link-overlay" href="<%= urlCurso(curso) %>" aria-label="Ver <%= curso.nome %>"></a>
   <% if (curso.imagemUrl) { %>
     <img src="<%= curso.imagemUrl %>" alt="<%= curso.nome %>" class="course-img">
   <% } else { %>
@@ -17,6 +17,6 @@
       <span class="price"><%= formatBRL(curso.precoAvista) %></span>
     </div>
     <p class="course-total">Total à vista (com matrícula): <strong><%= formatBRL(total) %></strong></p>
-    <a class="btn-buy" href="/cursos/<%= curso.id %>">Inscrever-se</a>
+    <a class="btn-buy" href="<%= urlCurso(curso) %>">Inscrever-se</a>
   </div>
 </article>
