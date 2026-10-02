@@ -1807,3 +1807,16 @@ a.mr-num:hover { border-color: var(--linha); }
 .vis-lista-tit small { font-family: inherit; font-size: 13px; font-weight: 600; color: var(--tinta-60); }
 @media (max-width: 640px) { .vis-corpo .adm-table th:nth-child(2), .vis-corpo .adm-table td:nth-child(2) { display: none; } }
 .vis-corpo .adm-table { min-width: 0 !important; width: 100%; }
+
+/* Matrícula rápida: ajustar pagamento de quem pagou o resto na escola */
+.mr-ajustado { flex-basis: 100%; display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; color: var(--tinta-60); }
+.mr-ajuste { flex-basis: 100%; border-top: 1px dashed var(--linha); padding-top: 10px; }
+.mr-ajuste summary { cursor: pointer; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; color: var(--vermelho-txt); list-style: none; }
+.mr-ajuste summary::-webkit-details-marker { display: none; }
+.mr-ajuste p { margin: 8px 0 10px; font-size: 12.5px; line-height: 1.5; color: var(--tinta-60); }
+.mr-ajuste-form { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; }
+.mr-ajuste-form label { display: grid; gap: 4px; font-size: 11.5px; font-weight: 700; color: var(--tinta-60); }
+.mr-ajuste-form input, .mr-ajuste-form select { height: 38px; font: inherit; font-size: 13.5px; padding: 0 10px; border: 1px solid var(--linha); border-radius: 10px; background: var(--campo); color: var(--tinta); }
+.mr-ajuste-form input { width: 120px; }
+.mr-ajuste-form .adm-btn { height: 38px; padding: 0 14px; }
+.mr-dobro { color: var(--alerta-tx); }
