@@ -207,7 +207,8 @@ router.get('/', async (req, res) => {
   });
 });
 
-router.get('/sobre', (req, res) => res.render('sobre'));
+// A página "Sobre" foi retirada: quem tiver o link antigo vai para a parte "A Escola" da home.
+router.get('/sobre', (req, res) => res.redirect(302, '/#escola'));
 // Não existe página própria de dúvidas (dava erro 500): as perguntas frequentes ficam na home.
 router.get('/duvidas', (req, res) => res.redirect(302, '/#duvidas'));
 
