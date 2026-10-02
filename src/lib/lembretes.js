@@ -70,7 +70,8 @@ async function montarValores(matricula) {
 
   const total = opcao ? opcao.total_amount / 100 : Number(valores.valorCurso);
   const valorParcela = opcao ? opcao.installment_amount / 100 : total;
-  const taxa = Number(valores.valorTaxaMatricula);
+  // O que a pessoa pagou de fato (matrícula rápida no cartão inclui a taxa de processamento).
+  const taxa = (await require('./matricula-rapida').taxaPaga(matricula)) || Number(valores.valorTaxaMatricula);
 
   return {
     numParcelas,

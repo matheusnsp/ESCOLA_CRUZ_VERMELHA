@@ -184,7 +184,8 @@ async function encaixar({ inscricaoId, turmaId, porUsuarioId, appUrl }) {
   });
   if (outraTurma) return { ok: false, msg: `${pessoa.nome} já tem matrícula numa turma desse curso pela escola.` };
   const valores = await calcularValores(turma.curso, 'PARCELADO', aluno.id);
-  const taxa = pago && pago.valor ? pago.valor : Number(valores.valorTaxaMatricula);
+  // O que a pessoa pagou de fato: no cartão, com a taxa de processamento (ex.: R$ 103,95 por R$ 99).
+  const taxa = pago && (pago.valorTotal || pago.valor) ? (pago.valorTotal || pago.valor) : Number(valores.valorTaxaMatricula);
   const confirmadaEm = pessoa.pagoEm ? new Date(pessoa.pagoEm) : new Date();
   const dados = {
     plano: 'PARCELADO', forma: 'CREDITO', // a taxa já foi paga; o curso a pessoa paga depois, pela escola
@@ -273,4 +274,24 @@ async function resumoPainel({ inicioHoje, inicioSemana, inicioMes, limiteMs = 40
   };
 }
 
-module.exports = { carregar, encaixar, situacaoPagamento, dataPago, resumoPainel };
+// Taxa de inscrição que a pessoa pagou de fato, para a tela de pagar o curso. Quem veio da
+// matrícula rápida pagou na Únicopag da instituição; no cartão o valor inclui a taxa de
+// processamento, que a matrícula pode ter guardado sem (encaixes antigos guardavam só a base).
+async function taxaPaga(matricula) {
+  const guardada = Number(matricula.valorTaxaMatricula) || null;
+  try {
+    const pg = await prisma.pagamento.findFirst({
+      where: { matriculaId: matricula.id, tipo: 'TAXA', status: 'PAGO', gateway: unicopag.conta('segunda').gateway },
+      orderBy: { criadoEm: 'desc' },
+    });
+    if (!pg || !pg.gatewayRef) return guardada;
+    const lista = await unicopag.listarTransacoes('segunda');
+    const t = lista.ok && lista.lista.find((x) => x.hash === pg.gatewayRef);
+    const total = t ? (t.valorTotal || t.valor) : null;
+    return total && total > (guardada || 0) ? total : guardada;
+  } catch (e) {
+    return guardada;
+  }
+}
+
+module.exports = { carregar, encaixar, situacaoPagamento, dataPago, resumoPainel, taxaPaga };
