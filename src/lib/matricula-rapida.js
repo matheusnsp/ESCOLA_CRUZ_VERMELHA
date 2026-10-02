@@ -111,7 +111,7 @@ async function carregar({ forcar = false } = {}) {
           p.encaixe = r.dobro ? { ...base, dobro: r.dobro } : { ...base, ...r.anotado };
         } catch (e) {
           console.error('[MATRICULA-RAPIDA] ligar com a escola falhou:', e.message);
-          p.encaixe = base;
+          p.encaixe = { ...base, erroLigar: String(e.message || e).split('\n').filter(Boolean).slice(-1)[0].slice(0, 200) };
         }
       } else if (m.taxaConfirmada || ['PAGO', 'PARCELADO'].includes(m.statusPagamento)) {
         p.encaixe = base; // pagou a inscrição pela escola; não há pagamento daqui para ligar
@@ -282,36 +282,35 @@ async function ligarComEscola(pessoa, pago, m) {
     gateway: segunda, gatewayRef: pago.hash, gatewayHash: pago.hash, gatewayStatus: pago.status,
   };
   const confirmadaEm = dataPago(pessoa.pagoEm) || new Date();
-  await prisma.$transaction(async (tx) => {
-    // Outra tela (ou outro serviço) pode ter ligado no mesmo instante: a anotação é a trava.
-    await tx.configuracao.create({ data: { chave: CHAVE(pessoa.inscricaoId), valor: JSON.stringify(anotado) } });
-    await tx.matricula.update({
+  // Tudo numa gravação em lote (uma ida ao banco). Transação interativa não: entre o Render e o
+  // banco ela passava do tempo-limite e falhava calada.
+  const ops = [
+    // A anotação vai primeiro e é a trava: se outra tela já ligou, a chave existe e nada é gravado.
+    prisma.configuracao.create({ data: { chave: CHAVE(pessoa.inscricaoId), valor: JSON.stringify(anotado) } }),
+    prisma.matricula.update({
       where: { id: m.id },
       data: {
         valorTaxaMatricula: taxa, valorCurso,
         taxaConfirmada: true, taxaConfirmadaEm: m.taxaConfirmadaEm || confirmadaEm,
       },
-    });
-    // Taxa da escola anulada: lançamento à mão é reaproveitado; cobrança online da escola que ficou
-    // em aberto (PIX gerado e não pago) é cancelada, para não ser paga de novo.
-    const pendentesOnline = m.pagamentos.filter((pg) => pg.tipo === 'TAXA' && pg.gateway && !['manual', segunda].includes(pg.gateway) && pg.status === 'PENDENTE').map((pg) => pg.id);
-    if (pendentesOnline.length) await tx.pagamento.updateMany({ where: { id: { in: pendentesOnline } }, data: { status: 'CANCELADO', gatewayStatus: 'cancelado:pago-pela-matricula-rapida' } });
-    const taxas = m.pagamentos.filter((pg) => pg.tipo === 'TAXA' && pg.gateway !== segunda && pg.status !== 'PENDENTE' && aMao(pg));
-    const jaLigada = m.pagamentos.find((pg) => pg.tipo === 'TAXA' && pg.gateway === segunda && pg.gatewayRef === pago.hash);
-    if (jaLigada) {
-      await tx.pagamento.update({ where: { id: jaLigada.id }, data: taxaDados });
-    } else if (taxas.length) {
-      await tx.pagamento.update({ where: { id: taxas[0].id }, data: taxaDados });
-    } else {
-      await tx.pagamento.create({ data: { matriculaId: m.id, ...taxaDados } });
-    }
-    // Lançamento de taxa à mão que sobrou (o pagamento daqui ocupou o lugar dele).
-    const sobra = taxas.slice(jaLigada ? 0 : 1).filter((pg) => pg.status !== 'CANCELADO').map((pg) => pg.id);
-    if (sobra.length) await tx.pagamento.updateMany({ where: { id: { in: sobra } }, data: { status: 'CANCELADO', gatewayStatus: 'manual:substituido-matricula-rapida' } });
-    // Curso lançado à mão: acompanha o valor do curso.
-    const cursoManual = m.pagamentos.filter((pg) => pg.tipo === 'CURSO' && aMao(pg)).map((pg) => pg.id);
-    if (cursoManual.length && !cursoOnline) await tx.pagamento.updateMany({ where: { id: { in: cursoManual } }, data: { valor: valorCurso } });
-  });
+    }),
+  ];
+  // Taxa da escola anulada: lançamento à mão é reaproveitado; cobrança online da escola que ficou
+  // em aberto (PIX gerado e não pago) é cancelada, para não ser paga de novo.
+  const pendentesOnline = m.pagamentos.filter((pg) => pg.tipo === 'TAXA' && pg.gateway && !['manual', segunda].includes(pg.gateway) && pg.status === 'PENDENTE').map((pg) => pg.id);
+  if (pendentesOnline.length) ops.push(prisma.pagamento.updateMany({ where: { id: { in: pendentesOnline } }, data: { status: 'CANCELADO', gatewayStatus: 'cancelado:pago-pela-matricula-rapida' } }));
+  const taxas = m.pagamentos.filter((pg) => pg.tipo === 'TAXA' && pg.gateway !== segunda && pg.status !== 'PENDENTE' && aMao(pg));
+  const jaLigada = m.pagamentos.find((pg) => pg.tipo === 'TAXA' && pg.gateway === segunda && pg.gatewayRef === pago.hash);
+  if (jaLigada) ops.push(prisma.pagamento.update({ where: { id: jaLigada.id }, data: taxaDados }));
+  else if (taxas.length) ops.push(prisma.pagamento.update({ where: { id: taxas[0].id }, data: taxaDados }));
+  else ops.push(prisma.pagamento.create({ data: { matriculaId: m.id, ...taxaDados } }));
+  // Lançamento de taxa à mão que sobrou (o pagamento daqui ocupou o lugar dele).
+  const sobra = taxas.slice(jaLigada ? 0 : 1).filter((pg) => pg.status !== 'CANCELADO').map((pg) => pg.id);
+  if (sobra.length) ops.push(prisma.pagamento.updateMany({ where: { id: { in: sobra } }, data: { status: 'CANCELADO', gatewayStatus: 'manual:substituido-matricula-rapida' } }));
+  // Curso lançado à mão: acompanha o valor do curso.
+  const cursoManual = m.pagamentos.filter((pg) => pg.tipo === 'CURSO' && aMao(pg)).map((pg) => pg.id);
+  if (cursoManual.length && !cursoOnline) ops.push(prisma.pagamento.updateMany({ where: { id: { in: cursoManual } }, data: { valor: valorCurso } }));
+  await prisma.$transaction(ops);
   console.log(`[MATRICULA-RAPIDA] inscrição ${pessoa.inscricaoId} ligada à matrícula ${m.id}: taxa ${taxa}, curso ${valorCurso} (antes ${anotado.antes.valorCurso}).`);
   return { anotado };
 }
