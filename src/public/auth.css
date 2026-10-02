@@ -221,6 +221,11 @@
   .auth-icone-info { font-size: 52px; color: var(--tinta-60); margin-bottom: 12px; }
   
   .auth-footer { text-align: center; font-size: 12px; color: var(--mut); padding: 24px 20px; }
+
+  /* aviso informativo dentro do formulário (ex.: senha inicial no cadastro) */
+  .auth-info { background: #f7f6f3; border: 1px solid var(--linha); border-radius: 12px; padding: 12px 14px; }
+  .auth-info p { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--tinta-60); }
+  .auth-info i { color: var(--vermelho); margin-right: 4px; }
   
   /* ===== Medidor de força de senha ========================= */
   .senha-forca { margin-top: 8px; }

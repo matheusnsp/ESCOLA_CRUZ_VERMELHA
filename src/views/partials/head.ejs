@@ -1,3 +1,8 @@
+<%_
+  // Telas de conta (entrar, criar conta, senha, avisos). No site do aluno ganham o layout com a foto
+  // da Escola ao lado (auth-aluno.css); o painel da secretaria usa os mesmos arquivos e fica igual.
+  var _aluno = !(typeof isAdmin !== 'undefined' && isAdmin);
+_%>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -10,7 +15,22 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="<%= asset('/auth.css') %>">
+<% if (_aluno) { %><link rel="stylesheet" href="<%= asset('/auth-aluno.css') %>"><% } %>
 
 <%- include('rastreamento') %>
 </head>
-<body>
+<body<%- _aluno ? ' class="aa"' : '' %>>
+<% if (_aluno) { %>
+<aside class="aa-lado">
+  <a class="aa-voltar" href="/"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar ao site</a>
+  <div>
+    <p class="aa-olho">Escola de Educação e Saúde CVB-RJ</p>
+    <p class="aa-titulo">Capacitação que prepara para <span>agir.</span></p>
+    <ul class="aa-lista">
+      <li><i class="fa-solid fa-award" aria-hidden="true"></i> Certificado da Cruz Vermelha Brasileira</li>
+      <li><i class="fa-solid fa-person-chalkboard" aria-hidden="true"></i> Aulas presenciais no Centro do Rio</li>
+      <li><i class="fa-regular fa-credit-card" aria-hidden="true"></i> PIX ou cartão, à vista ou parcelado</li>
+    </ul>
+  </div>
+</aside>
+<% } %>
