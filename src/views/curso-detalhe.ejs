@@ -78,7 +78,7 @@ function dataLonga(d) {
           <a class="v-btn v-btn-red v-btn-grande v-btn-bloco" href="<%= alvoCta %>"><%= textoCta %> <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
           <p class="v-curso-obs">PIX ou cartão, à vista ou parcelado. As parcelas aparecem na hora da inscrição.</p>
         <% } else { %>
-          <a class="v-btn v-btn-escuro v-btn-grande v-btn-bloco" href="<%= whats %>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Saber a próxima turma</a>
+          <a class="v-btn v-btn-whats v-btn-grande v-btn-bloco" href="<%= whats %>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Saber a próxima turma</a>
           <a class="v-curso-link" href="/cursos">Ver outros cursos <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
         <% } %>
       </aside>
@@ -110,7 +110,7 @@ function dataLonga(d) {
               <i class="fa-regular fa-calendar-xmark" aria-hidden="true"></i>
               Nenhuma turma aberta agora. Volte em breve para conferir as próximas datas ou fale com a secretaria pelo WhatsApp.
               <div class="v-vazio-acoes">
-                <a class="v-btn v-btn-escuro" href="<%= whats %>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Falar com a secretaria</a>
+                <a class="v-btn v-btn-whats" href="<%= whats %>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Falar com a secretaria</a>
                 <a class="v-btn v-btn-contorno" href="/cursos">Ver outros cursos</a>
               </div>
             </div>
@@ -181,7 +181,7 @@ function dataLonga(d) {
           <p class="v-kicker">Veja também</p>
           <h2>Outros cursos da Escola.</h2>
         </div>
-        <a class="v-btn v-btn-escuro v-btn-grande" href="/cursos">Ver todos os cursos <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+        <a class="v-btn v-btn-grande" href="/cursos">Ver todos os cursos <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
       </div>
       <div class="v-grade">
         <% outros.forEach(function (o) { %>
