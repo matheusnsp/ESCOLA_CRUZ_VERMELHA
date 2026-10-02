@@ -1,0 +1,37 @@
+<%# QR da pesquisa na sala de aula (lib/pesquisa.js): o aluno informa o CPF e cai na pesquisa dele. %>
+<%- include('partials/head', { titulo: 'Avaliar o curso' }) %>
+
+<main class="auth-wrap">
+  <div class="auth-card">
+
+    <div class="auth-brand">
+      <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro" class="auth-logo">
+      <div class="auth-brand-text">
+        <strong>ESCOLA DE EDUCAÇÃO</strong>
+        <span>E SAÚDE CVB-RJ</span>
+      </div>
+    </div>
+
+    <p class="pq-olho">Pesquisa de satisfação</p>
+    <h1>Avalie o curso</h1>
+    <p class="auth-sub">Informe o seu CPF para abrir a sua avaliação. Ele serve só para confirmar que você é aluno desta turma.</p>
+    <p class="pq-curso"><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i> <%= curso %></p>
+
+    <% if (erro) { %>
+      <div class="auth-erros" role="alert"><p><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></p></div>
+    <% } %>
+
+    <form method="POST" class="pq-form" novalidate>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label class="auth-field">
+        <span>CPF <span class="auth-opcional">(estrangeiro: número do passaporte)</span></span>
+        <%# Sem máscara: o passaporte tem letras. Pontos e traço do CPF são ignorados. %>
+        <input type="text" name="documento" value="<%= documento %>" autocomplete="off" autocapitalize="characters"
+               placeholder="000.000.000-00" maxlength="20" required autofocus>
+      </label>
+      <button type="submit" class="auth-btn">Continuar <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+    </form>
+  </div>
+</main>
+
+<%- include('partials/foot') %>

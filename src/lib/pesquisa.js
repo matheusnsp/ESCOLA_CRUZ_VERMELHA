@@ -5,6 +5,9 @@
 //     15 min no server.js). Só para quem pagou; só turmas que terminaram há até 2 dias (assim a
 //     primeira passada depois de publicar não manda pesquisa de turma antiga).
 //   - O link (/pesquisa/<matrícula>/<token>) não pede login: o token é um HMAC da matrícula.
+//   - QR da turma (/avaliar/<turma>/<token>): o professor mostra no fim da aula; o aluno informa o
+//     CPF (ou passaporte), o sistema confere se ele é aluno pago da turma e abre a pesquisa dele.
+//     Quem já respondeu (pelo QR ou pelo e-mail) não recebe o e-mail.
 //   - A resposta tem nota de 0 a 5, comentário e se o aluno autoriza publicar o comentário.
 //   - A secretaria vê tudo na aba Pesquisa (/pesquisa no painel) e aprova o que vai para o site;
 //     a seção "O que dizem os alunos" da home só aparece quando ela liga a opção.
@@ -34,6 +37,33 @@ function tokenValido(matriculaId, t) {
   const a = Buffer.from(token(matriculaId)), b = Buffer.from(String(t || ''));
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
+// QR da turma: um link só para a turma toda.
+function tokenTurma(turmaId) {
+  const segredo = process.env.SESSION_SECRET || 'escola';
+  return crypto.createHmac('sha256', segredo).update('pesquisa-turma:' + turmaId).digest('base64url').slice(0, 24);
+}
+function tokenTurmaValido(turmaId, t) {
+  const a = Buffer.from(tokenTurma(turmaId)), b = Buffer.from(String(t || ''));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+function linkTurma(turmaId, base) {
+  const b = (base || process.env.APP_URL || 'https://escola.cruzvermelhariodejaneiro.org').replace(/\/+$/, '');
+  return `${b}/avaliar/${turmaId}/${tokenTurma(turmaId)}`;
+}
+// Aluno pago da turma com esse CPF/CNPJ (só dígitos) ou passaporte. null se não achar.
+async function matriculaPorDocumento(turmaId, documento) {
+  const bruto = String(documento || '').trim().toUpperCase();
+  const digitos = bruto.replace(/\D/g, '');
+  const ou = [];
+  if (digitos.length >= 11) ou.push({ cpfCnpj: digitos });
+  if (/^[A-Z0-9]{5,20}$/.test(bruto.replace(/[\s.-]/g, ''))) ou.push({ passaporte: bruto.replace(/[\s.-]/g, '') });
+  if (!ou.length) return null;
+  return prisma.matricula.findFirst({
+    where: { turmaId, taxaConfirmada: true, statusPagamento: { in: ['PAGO', 'PARCELADO'] }, aluno: { OR: ou } },
+    select: { id: true },
+  });
+}
+
 function link(matriculaId) {
   const base = (process.env.APP_URL || 'https://escola.cruzvermelhariodejaneiro.org').replace(/\/+$/, '');
   return `${base}/pesquisa/${matriculaId}/${token(matriculaId)}`;
@@ -169,8 +199,12 @@ async function enviarPendentes({ simular = false } = {}) {
         where: { turmaId: turma.id, taxaConfirmada: true, statusPagamento: { in: ['PAGO', 'PARCELADO'] } },
         include: { aluno: { select: { nome: true, email: true } } },
       });
+      const respondidas = new Set((await prisma.configuracao.findMany({
+        where: { chave: { in: matriculas.map((m) => 'pesquisa:resp:' + m.id) } }, select: { chave: true },
+      })).map((c) => c.chave.slice('pesquisa:resp:'.length)));
       for (const m of matriculas) {
         if (!m.aluno || !m.aluno.email) continue;
+        if (respondidas.has(m.id)) continue; // já respondeu pelo QR da sala
         if (simular) { enviados.push(m.id); continue; }
         const chave = 'pesquisa:envio:' + m.id;
         try {
@@ -196,6 +230,6 @@ async function enviarPendentes({ simular = false } = {}) {
 }
 
 module.exports = {
-  token, tokenValido, link, fimDaTurma, lerConfig, salvarConfig, lerResposta, listarRespostas, contarEnvios,
+  token, tokenValido, link, tokenTurma, tokenTurmaValido, linkTurma, matriculaPorDocumento, fimDaTurma, lerConfig, salvarConfig, lerResposta, listarRespostas, contarEnvios,
   responder, mudarStatus, depoimentosDoSite, enviarPendentes, nomePublico, MAX_COMENTARIO, NOTA_MAX, ROTULOS,
 };

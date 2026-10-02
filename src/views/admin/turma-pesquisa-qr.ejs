@@ -1,0 +1,46 @@
+<%- include('head', { titulo: 'QR da pesquisa' }) %>
+<%- include('header', { ativo: 'turmas' }) %>
+
+<%
+  // QR da pesquisa de satisfação para o professor mostrar no fim da aula (lib/pesquisa.js). O aluno
+  // aponta a câmera, informa o CPF e responde. Imprimir deixa só o cartão na folha (admin.css).
+  function dataTurma(d) { var x = new Date(d), p = function (n) { return String(n).padStart(2, '0'); }; return p(x.getUTCDate()) + '/' + p(x.getUTCMonth() + 1) + '/' + x.getUTCFullYear(); }
+%>
+
+<div class="adm-h1-row qr-nao-imprime">
+  <h1 class="adm-h1">QR da pesquisa</h1>
+  <a href="/turmas" class="adm-link"><i class="fa-solid fa-arrow-left"></i> Voltar às turmas</a>
+</div>
+
+<div class="qr-pagina">
+  <div class="qr-cartao">
+    <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — RJ" class="qr-logo">
+    <p class="qr-olho">Pesquisa de satisfação</p>
+    <h2>Avalie o curso</h2>
+    <p class="qr-curso"><%= turma.curso.nome %><br><small>Turma de <%= dataTurma(turma.inicioPrevisto) %></small></p>
+    <div class="qr-codigo"><%- qrSvg %></div>
+    <p class="qr-passos">Aponte a câmera do celular · informe seu CPF · dê sua nota</p>
+  </div>
+
+  <div class="adm-box qr-acoes qr-nao-imprime">
+    <p class="pq-box-tit"><i class="fa-solid fa-chalkboard-user"></i>Para o professor</p>
+    <div class="qr-acoes-in">
+      <p>No fim da última aula, o professor mostra este QR (na tela, impresso ou no celular). Quem responder aqui não recebe o e-mail da pesquisa depois.</p>
+      <div class="qr-botoes">
+        <button type="button" class="adm-btn" id="qrImprimir"><i class="fa-solid fa-print"></i> Imprimir</button>
+        <a class="adm-btn adm-btn-out" href="/turmas/<%= turma.id %>/pesquisa-qr.png" download><i class="fa-solid fa-download"></i> Baixar imagem para o WhatsApp</a>
+      </div>
+      <label class="qr-link">
+        <span>Link da avaliação (o mesmo do QR)</span>
+        <input type="text" value="<%= link %>" readonly id="qrLink">
+      </label>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('qrImprimir').addEventListener('click', function () { window.print(); });
+  document.getElementById('qrLink').addEventListener('focus', function () { this.select(); });
+</script>
+
+<%- include('foot') %>
