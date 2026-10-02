@@ -1,6 +1,5 @@
 <%
-// Abas da seção Turmas (a tela de Turmas e a de Horários dos alunos). Horários saiu do menu e
-// virou a última aba daqui. Uso: include('abas-turmas', { aba, abas }) — abas (as listas por
+// Abas da seção Turmas (a tela de Turmas e a Matrícula rápida, que inclui o mapa de horários). Uso: include('abas-turmas', { aba, abas }) — abas (as listas por
 // status) só na tela de Turmas, para mostrar as contagens.
 const _ROT = [
   { id: 'por-comecar', rot: 'Por começar' },
@@ -17,6 +16,7 @@ const _contas = typeof abas !== 'undefined' && abas ? abas : null;
     </a>
   <% }) %>
   <% if (pode('turmas:gerenciar') || pode('painel:leitura')) { %>
-    <a href="/horarios" class="adm-aba adm-aba-sep <%= aba === 'horarios' ? 'on' : '' %>"><i class="fa-solid fa-clock"></i> Horários dos alunos</a>
+    <%# Matrícula rápida (site da instituição) junta quem se inscreveu lá, o pagamento e o mapa de horários. %>
+    <a href="/matricula-rapida" class="adm-aba adm-aba-sep <%= aba === 'horarios' || aba === 'matricula-rapida' ? 'on' : '' %>"><i class="fa-solid fa-bolt"></i> Matrícula rápida</a>
   <% } %>
 </nav>

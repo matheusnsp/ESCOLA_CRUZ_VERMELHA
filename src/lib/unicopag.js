@@ -7,9 +7,11 @@ const fetch = require('node-fetch');
 // (o pagamento é achado pelo hash). Variáveis no Render:
 //   principal: UNICOPAG_API_TOKEN,   SELLER_DOCUMENT,   UNICOPAG_NOME   (nome na tela, opcional)
 //   segunda:   UNICOPAG_API_TOKEN_2, SELLER_DOCUMENT_2, UNICOPAG_NOME_2 (nome na tela, opcional)
+// A segunda é a conta da matrícula rápida do site da instituição: a aba Matrícula rápida lê as
+// transações dela e o "Encaixar na turma" grava a taxa paga lá com gateway 'unicopag-2'.
 const CONTAS = {
   principal: { id: 'principal', gateway: 'unicopag', token: 'UNICOPAG_API_TOKEN', doc: 'SELLER_DOCUMENT', nome: 'UNICOPAG_NOME', padrao: 'Conta 1' },
-  segunda: { id: 'segunda', gateway: 'unicopag-2', token: 'UNICOPAG_API_TOKEN_2', doc: 'SELLER_DOCUMENT_2', nome: 'UNICOPAG_NOME_2', padrao: 'Conta 2' },
+  segunda: { id: 'segunda', gateway: 'unicopag-2', token: 'UNICOPAG_API_TOKEN_2', doc: 'SELLER_DOCUMENT_2', nome: 'UNICOPAG_NOME_2', padrao: 'Instituição (matrícula rápida)' },
 };
 function conta(id) {
   const c = CONTAS[id] || CONTAS.principal;
@@ -385,4 +387,85 @@ async function estornarTransacao(ref, contaId) {
   return { success: ok, body };
 }
 
-module.exports = { criarTransacao, consultarParcelamento, obterOpcaoParcelamento, estornarTransacao, conta, listarContas, contaDoGateway };
+// ── Consultas (mesma API e mesma autenticação por api_token das cobranças) ───────────────────
+const BASE = 'https://api.cloud.unicopag.com.br/public/v1';
+
+// Uma transação no formato da tela. Os nomes de campo seguem a Únicopag (payment_status,
+// payment_method, amount em centavos, customer, cart, metadata); o que não vier fica null.
+function transacaoDaApi(t) {
+  if (!t || typeof t !== 'object') return null;
+  const cliente = t.customer || {};
+  const item = (Array.isArray(t.cart) && t.cart[0]) || (Array.isArray(t.items) && t.items[0]) || {};
+  const centavos = (v) => (v === undefined || v === null || v === '' || Number.isNaN(Number(v)) ? null : Number(v) / 100);
+  return {
+    hash: String(t.hash || t.id || ''),
+    status: String(t.payment_status || t.status || '').toLowerCase() || null,
+    metodo: String(t.payment_method || '').toLowerCase() || null,
+    parcelas: Number(t.installments) || null,
+    valor: centavos(t.amount),
+    valorTotal: centavos(t.amount_total !== undefined ? t.amount_total : t.amount),
+    criadoEm: t.created_at || t.createdAt || null,
+    pagoEm: t.paid_at || t.approved_at || null,
+    nome: cliente.name || null,
+    email: cliente.email ? String(cliente.email).toLowerCase() : null,
+    documento: cliente.document ? apenasNumeros(cliente.document) : null,
+    telefone: cliente.phone_number ? apenasNumeros(cliente.phone_number) : null,
+    titulo: item.title || t.description || null,
+    pedido: (t.metadata && t.metadata.order_id) || null,
+  };
+}
+
+// Uma transação pelo hash (como o consultar-transacao.js). { status, raw } ou null.
+async function consultarTransacao(ref, contaId) {
+  const c = conta(contaId);
+  if (!c.token || !ref) return null;
+  try {
+    const resp = await fetch(`${BASE}/transactions/${encodeURIComponent(ref)}?api_token=${c.token}`, { headers: { Accept: 'application/json' } });
+    if (!resp.ok) return null;
+    const json = await resp.json();
+    const t = json.transaction || json.result || json;
+    return { status: String(t.payment_status || '').toLowerCase(), raw: t, transacao: transacaoDaApi(t) };
+  } catch (e) {
+    console.warn(`[UNICOPAG] consulta ${ref} (${c.id}) falhou:`, e.message);
+    return null;
+  }
+}
+
+// Todas as transações da conta (aba Matrícula rápida, com a conta da instituição). Lê página por
+// página (até 10 de 100) e para quando a página vem vazia ou repetida. Guardado 2 min em memória.
+// { ok: true, lista } ou { ok: false, erro: 'sem_chave' | 'chave' | 'formato' | 'gateway' }.
+const cacheTransacoes = new Map();
+async function listarTransacoes(contaId, { forcar = false } = {}) {
+  const c = conta(contaId);
+  if (!c.token) return { ok: false, erro: 'sem_chave' };
+  const guardado = cacheTransacoes.get(c.id);
+  if (!forcar && guardado && Date.now() - guardado.em < 2 * 60000) return guardado.r;
+  const lista = [];
+  const vistos = new Set();
+  try {
+    for (let pagina = 1; pagina <= 10; pagina++) {
+      const resp = await fetch(`${BASE}/transactions?api_token=${c.token}&page=${pagina}&per_page=100`, { headers: { Accept: 'application/json' } });
+      if (resp.status === 401 || resp.status === 403) return { ok: false, erro: 'chave' };
+      if (!resp.ok) { if (pagina === 1) return { ok: false, erro: 'gateway' }; break; }
+      const json = await resp.json();
+      const bruto = json.data || (json.result && (json.result.data || json.result)) || json.transactions || json;
+      const itens = Array.isArray(bruto) ? bruto : (bruto && Array.isArray(bruto.data) ? bruto.data : null);
+      if (!itens) { if (pagina === 1) return { ok: false, erro: 'formato' }; break; }
+      const novos = itens.map(transacaoDaApi).filter((t) => t && t.hash && !vistos.has(t.hash));
+      if (!novos.length) break;
+      novos.forEach((t) => { vistos.add(t.hash); lista.push(t); });
+      if (itens.length < 100) break;
+    }
+  } catch (e) {
+    console.warn(`[UNICOPAG] lista de transações (${c.id}) falhou:`, e.message);
+    return { ok: false, erro: 'gateway' };
+  }
+  const r = { ok: true, lista };
+  cacheTransacoes.set(c.id, { em: Date.now(), r });
+  return r;
+}
+
+module.exports = {
+  criarTransacao, consultarParcelamento, obterOpcaoParcelamento, estornarTransacao, conta, listarContas, contaDoGateway,
+  consultarTransacao, listarTransacoes,
+};
