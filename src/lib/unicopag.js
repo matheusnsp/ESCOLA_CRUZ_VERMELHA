@@ -431,38 +431,105 @@ async function consultarTransacao(ref, contaId) {
   }
 }
 
-// Todas as transações da conta (aba Matrícula rápida, com a conta da instituição). Lê página por
-// página (até 10 de 100) e para quando a página vem vazia ou repetida. Guardado 2 min em memória.
+// Todas as transações da conta (aba Matrícula rápida, com a conta da instituição).
 // { ok: true, lista } ou { ok: false, erro: 'sem_chave' | 'chave' | 'formato' | 'gateway' }.
-const cacheTransacoes = new Map();
-async function listarTransacoes(contaId, { forcar = false } = {}) {
-  const c = conta(contaId);
-  if (!c.token) return { ok: false, erro: 'sem_chave' };
-  const guardado = cacheTransacoes.get(c.id);
-  if (!forcar && guardado && Date.now() - guardado.em < 2 * 60000) return guardado.r;
+//
+// Ler a lista inteira na Únicopag demora (várias páginas), então a tela nunca espera por isso
+// mais de uma vez: a lista fica guardada em memória e, passados 2 min, quem abre a tela recebe a
+// guardada na hora enquanto uma nova é buscada por trás. Enquanto a aba estiver em uso (até 20 min
+// depois da última visita), a lista é renovada sozinha a cada 2 min.
+const FRESCA_MS = 2 * 60000;
+const VALIDA_MS = 60 * 60000;
+const cacheTransacoes = new Map(); // contaId -> { em, r }
+const buscando = new Map();        // contaId -> Promise
+const ultimoUso = new Map();       // contaId -> ms
+const renovadores = new Map();     // contaId -> interval
+
+function itensDaPagina(json) {
+  const bruto = json.data || (json.result && (json.result.data || json.result)) || json.transactions || json;
+  return Array.isArray(bruto) ? bruto : (bruto && Array.isArray(bruto.data) ? bruto.data : null);
+}
+function ultimaPagina(json) {
+  const fontes = [json, json.meta, json.pagination, json.result, json.data && !Array.isArray(json.data) ? json.data : null];
+  for (const f of fontes) {
+    if (!f || typeof f !== 'object') continue;
+    const n = Number(f.last_page || f.lastPage || f.total_pages || f.totalPages || f.pages);
+    if (n > 0) return n;
+  }
+  return null;
+}
+
+async function buscarTransacoes(c) {
+  const pagina = async (n) => {
+    const resp = await fetch(`${BASE}/transactions?api_token=${c.token}&page=${n}&per_page=100`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(15000) });
+    if (resp.status === 401 || resp.status === 403) return { erro: 'chave' };
+    if (!resp.ok) return { erro: 'gateway' };
+    const json = await resp.json();
+    const itens = itensDaPagina(json);
+    return itens ? { itens, ultima: ultimaPagina(json) } : { erro: 'formato' };
+  };
   const lista = [];
   const vistos = new Set();
+  const juntar = (itens) => {
+    const novos = itens.map(transacaoDaApi).filter((t) => t && t.hash && !vistos.has(t.hash));
+    novos.forEach((t) => { vistos.add(t.hash); lista.push(t); });
+    return novos.length;
+  };
   try {
-    for (let pagina = 1; pagina <= 10; pagina++) {
-      const resp = await fetch(`${BASE}/transactions?api_token=${c.token}&page=${pagina}&per_page=100`, { headers: { Accept: 'application/json' } });
-      if (resp.status === 401 || resp.status === 403) return { ok: false, erro: 'chave' };
-      if (!resp.ok) { if (pagina === 1) return { ok: false, erro: 'gateway' }; break; }
-      const json = await resp.json();
-      const bruto = json.data || (json.result && (json.result.data || json.result)) || json.transactions || json;
-      const itens = Array.isArray(bruto) ? bruto : (bruto && Array.isArray(bruto.data) ? bruto.data : null);
-      if (!itens) { if (pagina === 1) return { ok: false, erro: 'formato' }; break; }
-      const novos = itens.map(transacaoDaApi).filter((t) => t && t.hash && !vistos.has(t.hash));
-      if (!novos.length) break;
-      novos.forEach((t) => { vistos.add(t.hash); lista.push(t); });
-      if (itens.length < 100) break;
+    const p1 = await pagina(1);
+    if (p1.erro) return { ok: false, erro: p1.erro };
+    juntar(p1.itens);
+    if (p1.ultima && p1.ultima > 1) {
+      // A API diz quantas páginas há: as outras (até 10) vão juntas.
+      const resto = await Promise.all(Array.from({ length: Math.min(p1.ultima, 10) - 1 }, (_, k) => pagina(k + 2)));
+      resto.forEach((r) => { if (r.itens) juntar(r.itens); });
+    } else if (p1.itens.length) {
+      // Sem essa informação: página por página até vir vazia, repetida ou incompleta.
+      let tamanho = p1.itens.length;
+      for (let n = 2; n <= 10; n++) {
+        const r = await pagina(n);
+        if (!r.itens || !r.itens.length || !juntar(r.itens) || r.itens.length < tamanho) break;
+        tamanho = r.itens.length;
+      }
     }
   } catch (e) {
     console.warn(`[UNICOPAG] lista de transações (${c.id}) falhou:`, e.message);
     return { ok: false, erro: 'gateway' };
   }
-  const r = { ok: true, lista };
-  cacheTransacoes.set(c.id, { em: Date.now(), r });
-  return r;
+  return { ok: true, lista };
+}
+
+function renovar(c) {
+  if (buscando.has(c.id)) return buscando.get(c.id);
+  const p = buscarTransacoes(c).then((r) => {
+    // Uma falha passageira não apaga a lista boa que já estava guardada.
+    const antes = cacheTransacoes.get(c.id);
+    if (r.ok || !antes || !antes.r.ok || r.erro === 'chave') cacheTransacoes.set(c.id, { em: Date.now(), r });
+    return r.ok || !antes || !antes.r.ok || r.erro === 'chave' ? r : antes.r;
+  }).finally(() => buscando.delete(c.id));
+  buscando.set(c.id, p);
+  return p;
+}
+
+function manterQuente(c) {
+  ultimoUso.set(c.id, Date.now());
+  if (renovadores.has(c.id)) return;
+  const t = setInterval(() => {
+    if (Date.now() - (ultimoUso.get(c.id) || 0) > 20 * 60000) { clearInterval(t); renovadores.delete(c.id); return; }
+    renovar(c).catch(() => {});
+  }, FRESCA_MS);
+  if (t.unref) t.unref();
+  renovadores.set(c.id, t);
+}
+
+async function listarTransacoes(contaId, { forcar = false } = {}) {
+  const c = conta(contaId);
+  if (!c.token) return { ok: false, erro: 'sem_chave' };
+  manterQuente(c);
+  const guardado = cacheTransacoes.get(c.id);
+  if (forcar || !guardado || Date.now() - guardado.em > VALIDA_MS) return renovar(c);
+  if (Date.now() - guardado.em > FRESCA_MS) renovar(c).catch(() => {}); // devolve a guardada já
+  return guardado.r;
 }
 
 module.exports = {

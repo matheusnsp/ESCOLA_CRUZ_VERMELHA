@@ -3,11 +3,13 @@
 
 <%
   // Matrícula rápida (lib/matricula-rapida.js): quem pagou a inscrição no site da instituição, o
-  // pagamento na Únicopag da instituição e o encaixe na turma.
-  function dataBR(iso) { if (!iso) return '—'; var d = new Date(iso); return isNaN(d) ? '—' : d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }); }
+  // pagamento na Únicopag da instituição e o encaixe na turma. Um cartão por pessoa.
+  function dataBR(v) { var d = v instanceof Date ? v : (v ? new Date(v) : null); return d && !isNaN(d) ? d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'; }
   function diaTurma(d) { if (!d) return ''; var x = new Date(d), p = function (n) { return String(n).padStart(2, '0'); }; return p(x.getUTCDate()) + '/' + p(x.getUTCMonth() + 1) + '/' + x.getUTCFullYear(); }
   function isoDia(d) { var x = new Date(d); return x.toISOString().slice(0, 10); }
   function tel(t) { var d = String(t || '').replace(/\D/g, ''); return d.length === 11 ? '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7) : (d.length === 10 ? '(' + d.slice(0, 2) + ') ' + d.slice(2, 6) + '-' + d.slice(6) : t); }
+  function iniciais(n) { var p = String(n || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); }
+  function esperando(p) { var d = dataPago(p.pagoEm); if (!d) return null; return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000)); }
   var METODO = { pix: 'PIX', credit_card: 'Cartão', boleto: 'Boleto' };
   var SIT = { pago: 'Pago', pendente: 'Aguardando pagamento', recusado: 'Recusado / expirado', estornado: 'Estornado' };
   var podeEncaixar = pode('taxa:aprovar');
@@ -15,21 +17,10 @@
 
 <div class="adm-h1-row">
   <h1 class="adm-h1">Turmas</h1>
-  <% if (!erro) { %>
-    <div class="adm-acoes">
-      <a href="/matricula-rapida?<%= filtro.curso ? 'curso=' + encodeURIComponent(filtro.curso) + '&' : '' %><%= filtro.sit !== 'aguardando' ? 'sit=' + filtro.sit + '&' : '' %>atualizar=1" class="adm-btn adm-btn-neutro"><i class="fa-solid fa-rotate"></i> Atualizar</a>
-    </div>
-  <% } %>
 </div>
 
 <%- include('abas-turmas', { aba: 'matricula-rapida' }) %>
 <%- include('abas-matricula-rapida', { parte: 'inscritos' }) %>
-
-<ol class="mr-passos">
-  <li><span>1</span><div><b>A pessoa paga a inscrição</b><small>no site da instituição, sem criar conta</small></div></li>
-  <li><span>2</span><div><b>Sugere a turma e os horários</b><small>que aparecem aqui embaixo</small></div></li>
-  <li><span>3</span><div><b>Você encaixa na turma</b><small>ela ganha a conta e recebe o e-mail para pagar o curso</small></div></li>
-</ol>
 
 <% if (flash) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div><% } %>
 <% if (aviso) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= aviso %></div><% } %>
@@ -49,13 +40,28 @@
   </div>
 <% } else { %>
 
+  <!-- Resumo: o que é a aba e os três números -->
+  <section class="mr-topo">
+    <div class="mr-topo-txt">
+      <span class="mr-topo-ico"><i class="fa-solid fa-bolt"></i></span>
+      <div>
+        <h2>Matrícula rápida</h2>
+        <p>Quem pagou a inscrição no site da instituição, sem criar conta. A pessoa sugere a turma e os horários; você encaixa e ela recebe o e-mail para pagar o curso.</p>
+      </div>
+    </div>
+    <div class="mr-topo-nums">
+      <a href="/matricula-rapida?sit=aguardando" class="mr-num warn"><b><%= resumo.aguardando %></b><span>aguardando encaixe</span></a>
+      <a href="/matricula-rapida?sit=encaixados" class="mr-num ok"><b><%= resumo.encaixados %></b><span>encaixados</span></a>
+      <div class="mr-num"><b><%= d.pagamentosOk ? formatBRL(resumo.recebido) : '—' %></b><span><%= d.pagamentosOk ? resumo.pagos + ' inscrição(ões) paga(s)' : 'pagos na Únicopag' %></span></div>
+    </div>
+  </section>
+
   <% if (!d.pagamentosOk) { %>
     <div class="mr-aviso">
       <i class="fa-solid fa-circle-info"></i>
       <span>
         <% if (d.pagamentosErro === 'sem_chave') { %>
-          Os pagamentos da Únicopag ainda não aparecem: falta colocar a chave da conta da instituição no Render, na variável <code>UNICOPAG_API_TOKEN_2</code>.
-          A lista abaixo vem do site da instituição e já mostra quem pagou.
+          Os pagamentos da Únicopag ainda não aparecem: falta a chave da conta da instituição no Render (<code>UNICOPAG_API_TOKEN_2</code>). A lista vem do site da instituição e já mostra quem pagou.
         <% } else if (d.pagamentosErro === 'chave') { %>
           A Únicopag recusou a chave <code>UNICOPAG_API_TOKEN_2</code>. Confira o valor no Render.
         <% } else { %>
@@ -65,116 +71,121 @@
     </div>
   <% } %>
 
-  <div class="adm-cards c3">
-    <div class="adm-stat warn">
-      <span><%= resumo.aguardando %></span>
-      <small><i class="fa-solid fa-hourglass-half"></i> Aguardando encaixe</small>
-      <small class="adm-stat-sub">pagaram a inscrição e ainda não estão numa turma</small>
-    </div>
-    <div class="adm-stat ok">
-      <span><%= resumo.encaixados %></span>
-      <small><i class="fa-solid fa-user-check"></i> Encaixados</small>
-      <small class="adm-stat-sub">já estão numa turma da escola</small>
-    </div>
-    <div class="adm-stat">
-      <span><%= d.pagamentosOk ? formatBRL(resumo.recebido) : '—' %></span>
-      <small><i class="fa-solid fa-sack-dollar"></i> Inscrições pagas (Únicopag)</small>
-      <small class="adm-stat-sub"><%= d.pagamentosOk ? resumo.pagos + ' pagamento(s) · ' + d.soltas.length + ' tentativa(s) sem inscrição' : 'aparece com a chave da Únicopag' %></small>
-    </div>
-  </div>
-
-  <form class="mr-filtros" method="GET" action="/matricula-rapida">
-    <label>Curso
-      <select name="curso" class="mr-auto">
-        <option value="">Todos os cursos</option>
-        <% cursos.forEach(function (c) { %><option value="<%= c.chave %>" <%= filtro.curso === c.chave ? 'selected' : '' %>><%= c.nome %></option><% }) %>
-      </select>
+  <!-- Barra de filtros: busca, curso, situação e atualizar -->
+  <form class="mr-barra" method="GET" action="/matricula-rapida">
+    <input type="hidden" name="sit" value="<%= filtro.sit %>">
+    <label class="mr-busca">
+      <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+      <input type="search" id="mrBusca" placeholder="Buscar por nome, e-mail ou telefone" aria-label="Buscar" autocomplete="off">
     </label>
-    <div class="adm-abas mr-sit">
-      <% [['aguardando', 'Aguardando encaixe', resumo.aguardando], ['encaixados', 'Encaixados', resumo.encaixados], ['todos', 'Todos', resumo.todos]].forEach(function (a) { %>
-        <a href="/matricula-rapida?sit=<%= a[0] %><%= filtro.curso ? '&curso=' + encodeURIComponent(filtro.curso) : '' %>" class="adm-aba <%= filtro.sit === a[0] ? 'on' : '' %>"><%= a[1] %> <span class="adm-aba-num"><%= a[2] %></span></a>
+    <select name="curso" class="mr-auto" aria-label="Curso">
+      <option value="">Todos os cursos</option>
+      <% cursos.forEach(function (c) { %><option value="<%= c.chave %>" <%= filtro.curso === c.chave ? 'selected' : '' %>><%= c.nome %></option><% }) %>
+    </select>
+    <div class="mr-seg" role="tablist" aria-label="Situação">
+      <% [['aguardando', 'Aguardando', resumo.aguardando], ['encaixados', 'Encaixados', resumo.encaixados], ['todos', 'Todos', resumo.todos]].forEach(function (a) { %>
+        <a href="/matricula-rapida?sit=<%= a[0] %><%= filtro.curso ? '&curso=' + encodeURIComponent(filtro.curso) : '' %>" class="<%= filtro.sit === a[0] ? 'on' : '' %>" role="tab" aria-selected="<%= filtro.sit === a[0] %>"><%= a[1] %> <span><%= a[2] %></span></a>
       <% }) %>
     </div>
+    <a href="/matricula-rapida?<%= filtro.curso ? 'curso=' + encodeURIComponent(filtro.curso) + '&' : '' %>sit=<%= filtro.sit %>&atualizar=1" class="mr-atualizar" title="Buscar de novo no site e na Únicopag"><i class="fa-solid fa-rotate"></i><span> Atualizar</span></a>
     <noscript><button class="adm-btn adm-btn-sm">Filtrar</button></noscript>
   </form>
 
-  <div class="adm-box">
-    <% if (!lista.length) { %>
-      <p class="pq-vazio">Ninguém nesta lista.</p>
-    <% } else { %>
-      <div class="mr-lista">
-        <% lista.forEach(function (p) { %>
-          <%
-            var turmas = d.turmasPorCurso[p.cursoId] || [];
-            var sugerida = p.turmaInicio && turmas.find(function (t) { return isoDia(t.inicioPrevisto) === p.turmaInicio; });
-            var pg = p.pagamento;
-            var sit = pg ? situacao(pg.status) : null;
-          %>
-          <article class="mr-item">
-            <div class="mr-quem">
-              <b class="mr-nome"><%= p.nome || '(sem nome)' %></b>
+  <% if (!lista.length) { %>
+    <div class="mr-vazio">
+      <i class="fa-solid <%= filtro.sit === 'aguardando' ? 'fa-mug-hot' : 'fa-inbox' %>"></i>
+      <b><%= filtro.sit === 'aguardando' ? 'Ninguém esperando encaixe' : 'Ninguém nesta lista' %></b>
+      <small><%= filtro.sit === 'aguardando' ? 'Quem pagar a inscrição no site da instituição aparece aqui.' : 'Troque o curso ou a situação acima.' %></small>
+    </div>
+  <% } else { %>
+    <div class="mr-grade" id="mrGrade">
+      <% lista.forEach(function (p) { %>
+        <%
+          var turmas = d.turmasPorCurso[p.cursoId] || [];
+          var sugerida = p.turmaInicio && turmas.find(function (t) { return isoDia(t.inicioPrevisto) === p.turmaInicio; });
+          var pg = p.pagamento;
+          var sit = pg ? situacao(pg.status) : 'pago';
+          var dias = esperando(p);
+          var estado = p.encaixe ? 'ok' : 'espera';
+        %>
+        <article class="mr-card mr-card-<%= estado %>" data-busca="<%= [p.nome, p.email, p.telefone, tel(p.telefone)].join(' ').toLowerCase() %>">
+
+          <header class="mr-card-topo">
+            <span class="mr-avatar" aria-hidden="true"><%= iniciais(p.nome) %></span>
+            <div class="mr-card-quem">
+              <b><%= p.nome || '(sem nome)' %></b>
               <span class="mr-curso"><i class="fa-solid fa-graduation-cap"></i> <%= p.cursoNome %></span>
-              <% if (p.email) { %><small class="mr-linha"><i class="fa-regular fa-envelope"></i> <%= p.email %></small><% } %>
-              <% if (p.telefone) { %><a class="mr-linha mr-whats" href="https://wa.me/55<%= p.telefone %>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> <%= tel(p.telefone) %></a><% } %>
             </div>
+            <% if (p.encaixe) { %>
+              <span class="mr-estado ok"><i class="fa-solid fa-circle-check"></i> Encaixado(a)</span>
+            <% } else { %>
+              <span class="mr-estado espera <%= dias !== null && dias >= 3 ? 'atrasado' : '' %>"><i class="fa-regular fa-clock"></i> <%= dias === null ? 'Aguardando' : (dias === 0 ? 'Pagou hoje' : 'Esperando há ' + dias + (dias === 1 ? ' dia' : ' dias')) %></span>
+            <% } %>
+          </header>
 
-            <div class="mr-pag">
+          <div class="mr-card-meio">
+            <div class="mr-bloco">
               <span class="mr-rot">Inscrição</span>
-              <% if (pg) { %>
-                <b class="mr-valor"><%= formatBRL(pg.valorTotal || pg.valor || 0) %> <small><%= METODO[pg.metodo] || pg.metodo || '' %><%= pg.parcelas > 1 ? ' ' + pg.parcelas + 'x' : '' %></small></b>
-                <span class="mr-sitp mr-sitp-<%= sit %>"><%= SIT[sit] %></span>
-                <% if (pg.valorTotal && pg.valor && pg.valorTotal > pg.valor) { %><small>Cobriu a taxa de processamento</small><% } %>
-              <% } else { %>
-                <span class="mr-sitp mr-sitp-pago">Pago</span>
-              <% } %>
-              <small>Pago em <%= dataBR(p.pagoEm || (pg && pg.criadoEm)) %></small>
+              <div class="mr-valor">
+                <b><%= pg ? formatBRL(pg.valorTotal || pg.valor || 0) : 'Paga' %></b>
+                <% if (pg) { %><small><%= METODO[pg.metodo] || pg.metodo || '' %><%= pg.parcelas > 1 ? ' ' + pg.parcelas + 'x' : '' %></small><% } %>
+              </div>
+              <span class="mr-sitp mr-sitp-<%= sit %>"><%= SIT[sit] %></span>
+              <small>em <%= dataBR(dataPago(p.pagoEm) || (pg && pg.criadoEm)) %><% if (pg && pg.valorTotal && pg.valor && pg.valorTotal > pg.valor) { %> · cobriu a taxa de processamento<% } %></small>
             </div>
+            <div class="mr-bloco">
+              <span class="mr-rot">Contato</span>
+              <% if (p.email) { %><a class="mr-linha" href="mailto:<%= p.email %>"><i class="fa-regular fa-envelope"></i> <%= p.email %></a><% } %>
+              <% if (p.telefone) { %><a class="mr-linha mr-whats" href="https://wa.me/55<%= p.telefone %>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> <%= tel(p.telefone) %></a><% } %>
+              <% if (!p.email && !p.telefone) { %><small>Sem contato no site</small><% } %>
+            </div>
+          </div>
 
-            <div class="mr-sug">
-              <span class="mr-rot">Sugestão da pessoa</span>
+          <div class="mr-sug">
+            <span class="mr-rot">Sugestão da pessoa</span>
+            <div class="mr-sug-turma">
+              <i class="fa-regular fa-calendar"></i>
               <b><%= p.turmaInicio ? 'Turma de ' + p.turmaInicio.split('-').reverse().join('/') : 'Sem turma escolhida' %></b>
               <% if (p.respondeu && p.turmaServe) { %>
-                <span class="mr-serve mr-serve-<%= p.turmaServe %>"><%= p.turmaServe === 'sim' ? 'A data serve' : 'Precisa de outra data' %></span>
-              <% } %>
-              <% if (p.respondeu && p.horarios.length) { %>
-                <div class="mr-chips"><% p.horarios.forEach(function (h) { %><span><%= hs.slotTexto(h, R) %></span><% }) %></div>
-                <% if (p.observacao) { %><p class="mr-obs"><%= p.observacao %></p><% } %>
-              <% } else { %>
-                <small>Ainda não respondeu os horários</small>
+                <span class="mr-serve mr-serve-<%= p.turmaServe %>"><%= p.turmaServe === 'sim' ? 'a data serve' : 'precisa de outra data' %></span>
               <% } %>
             </div>
+            <% if (p.respondeu && p.horarios.length) { %>
+              <div class="mr-chips"><% p.horarios.forEach(function (h) { %><span><%= hs.slotTexto(h, R) %></span><% }) %></div>
+              <% if (p.observacao) { %><p class="mr-obs"><i class="fa-solid fa-quote-left"></i> <%= p.observacao %></p><% } %>
+            <% } else { %>
+              <small class="mr-sem-resp">Ainda não respondeu os horários</small>
+            <% } %>
+          </div>
 
-            <div class="mr-acao">
-              <% if (p.encaixe) { %>
-                <span class="mr-ok"><i class="fa-solid fa-circle-check"></i> Encaixado(a)</span>
-                <% if (p.encaixe.turma) { %><small>Turma de <%= diaTurma(p.encaixe.turma.inicioPrevisto) %></small><% } %>
-                <a href="/alunos/<%= p.encaixe.alunoId %>/matriculas" class="adm-link">Ver matrícula <i class="fa-solid fa-arrow-right"></i></a>
-              <% } else if (podeEncaixar) { %>
-                <% if (turmas.length) { %>
-                  <form method="POST" action="/matricula-rapida/<%= p.inscricaoId %>/encaixar" class="mr-form" data-confirmar="Encaixar <%= p.nome %> na turma escolhida? A pessoa ganha a conta na escola e recebe o e-mail para pagar o curso." data-botao="Encaixar">
-                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                    <select name="turmaId" aria-label="Turma para <%= p.nome %>">
-                      <% turmas.forEach(function (t) { %>
-                        <option value="<%= t.id %>" <%= sugerida && sugerida.id === t.id ? 'selected' : '' %>><%= diaTurma(t.inicioPrevisto) %><%= t.aulas[0] && t.aulas[0].horario ? ' · ' + t.aulas[0].horario : '' %> · <%= t._count.matriculas %>/<%= t.vagas %><%= sugerida && sugerida.id === t.id ? ' (sugerida)' : '' %></option>
-                      <% }) %>
-                    </select>
-                    <button class="adm-btn adm-btn-sm"><i class="fa-solid fa-right-to-bracket"></i> Encaixar na turma</button>
-                  </form>
-                <% } else { %>
-                  <div class="mr-semturma">
-                    <small>Nenhuma turma aberta deste curso.</small>
-                    <a href="/turmas/nova" class="adm-btn adm-btn-sm adm-btn-out"><i class="fa-solid fa-plus"></i> Criar turma</a>
-                  </div>
-                <% } %>
+          <footer class="mr-card-pe">
+            <% if (p.encaixe) { %>
+              <span class="mr-pe-txt"><i class="fa-solid fa-users"></i> <%= p.encaixe.turma ? 'Turma de ' + diaTurma(p.encaixe.turma.inicioPrevisto) : 'Na turma' %></span>
+              <a href="/alunos/<%= p.encaixe.alunoId %>/matriculas" class="mr-pe-link">Ver matrícula <i class="fa-solid fa-arrow-right"></i></a>
+            <% } else if (podeEncaixar) { %>
+              <% if (turmas.length) { %>
+                <form method="POST" action="/matricula-rapida/<%= p.inscricaoId %>/encaixar" class="mr-form" data-confirmar="Encaixar <%= p.nome %> na turma escolhida? A pessoa ganha a conta na escola e recebe o e-mail para pagar o curso." data-botao="Encaixar">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <select name="turmaId" aria-label="Turma para <%= p.nome %>">
+                    <% turmas.forEach(function (t) { %>
+                      <option value="<%= t.id %>" <%= sugerida && sugerida.id === t.id ? 'selected' : '' %>><%= sugerida && sugerida.id === t.id ? '★ ' : '' %><%= diaTurma(t.inicioPrevisto) %><%= t.aulas[0] && t.aulas[0].horario ? ' · ' + t.aulas[0].horario : '' %> · <%= t._count.matriculas %>/<%= t.vagas %> vagas</option>
+                    <% }) %>
+                  </select>
+                  <button class="adm-btn adm-btn-sm"><i class="fa-solid fa-right-to-bracket"></i> Encaixar</button>
+                </form>
               <% } else { %>
-                <small class="adm-mut">Aguardando encaixe</small>
+                <span class="mr-pe-txt"><i class="fa-solid fa-triangle-exclamation"></i> Nenhuma turma aberta deste curso</span>
+                <a href="/turmas/nova" class="mr-pe-btn"><i class="fa-solid fa-plus"></i> Criar turma</a>
               <% } %>
-            </div>
-          </article>
-        <% }) %>
-      </div>
-    <% } %>
-  </div>
+            <% } else { %>
+              <span class="mr-pe-txt"><i class="fa-regular fa-clock"></i> Aguardando a secretaria encaixar</span>
+            <% } %>
+          </footer>
+        </article>
+      <% }) %>
+    </div>
+    <p class="mr-vazio mr-sem-busca" id="mrSemBusca" hidden><i class="fa-solid fa-magnifying-glass"></i><b>Nada encontrado</b><small>Ninguém nesta lista com esse nome, e-mail ou telefone.</small></p>
+  <% } %>
 
   <% if (d.pagamentosOk && d.soltas.length && filtro.sit === 'todos') { %>
   <div class="adm-box mr-soltas">
@@ -202,6 +213,22 @@
 <script>
   // Trocar o curso já filtra.
   document.querySelectorAll('.mr-auto').forEach(function (s) { s.addEventListener('change', function () { s.form.submit(); }); });
+  // Busca na lista (na própria tela, sem recarregar).
+  (function () {
+    var campo = document.getElementById('mrBusca'), grade = document.getElementById('mrGrade'), nada = document.getElementById('mrSemBusca');
+    if (!campo) return;
+    campo.form.addEventListener('submit', function (e) { if (document.activeElement === campo) e.preventDefault(); });
+    if (!grade) { campo.disabled = true; return; }
+    var cards = grade.querySelectorAll('.mr-card');
+    campo.addEventListener('input', function () {
+      var q = campo.value.trim().toLowerCase(), qd = q.replace(/\D/g, ''), vistos = 0;
+      cards.forEach(function (c) {
+        var t = c.getAttribute('data-busca'), ok = !q || t.indexOf(q) >= 0 || (qd.length >= 4 && t.replace(/\D/g, '').indexOf(qd) >= 0);
+        c.hidden = !ok; if (ok) vistos++;
+      });
+      if (nada) nada.hidden = vistos > 0;
+    });
+  })();
 </script>
 
 <%- include('foot') %>

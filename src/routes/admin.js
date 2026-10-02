@@ -620,6 +620,14 @@ router.get('/', async (req, res) => {
 
   const inicioHoje = inicioDoDiaSP();
 
+  // Matrícula rápida (site da instituição): lida em paralelo com o banco, no máximo 4 s.
+  const diaMR = hojeSPStr();
+  const mrPromessa = matriculaRapida.resumoPainel({
+    inicioHoje,
+    inicioSemana: new Date(inicioHoje.getTime() - 6 * 86400000),
+    inicioMes: new Date(`${diaMR.slice(0, 8)}01T00:00:00-03:00`),
+  }).catch(() => ({ ok: false }));
+
   const cincoMinAtras = new Date(
     Date.now() - 5 * 60 * 1000
   );
@@ -734,12 +742,15 @@ router.get('/', async (req, res) => {
   const diaSP = hojeSPStr();
   const inicioMes = new Date(`${diaSP.slice(0, 8)}01T00:00:00-03:00`);
   const inicioSemana = new Date(inicioHoje.getTime() - 6 * 86400000);
+  const mr = await mrPromessa;
+  // Quem veio da matrícula rápida e já foi encaixado conta uma vez só: pela data em que pagou no site.
+  const semRapida = mr.ok && mr.matriculaIds.length ? { id: { notIn: mr.matriculaIds } } : {};
   const [
     matriculasHoje, matriculasSemana, cursoPagoMes, taxaSoMes,
     emAbertoLista, pararamAntes, reembolsos, proximasTurmas,
   ] = await Promise.all([
-    prisma.matricula.count({ where: { criadoEm: { gte: inicioHoje }, ...FILTRO_MATRICULA_FANTASMA } }),
-    prisma.matricula.count({ where: { criadoEm: { gte: inicioSemana }, ...FILTRO_MATRICULA_FANTASMA } }),
+    prisma.matricula.count({ where: { criadoEm: { gte: inicioHoje }, ...FILTRO_MATRICULA_FANTASMA, ...semRapida } }),
+    prisma.matricula.count({ where: { criadoEm: { gte: inicioSemana }, ...FILTRO_MATRICULA_FANTASMA, ...semRapida } }),
     prisma.matricula.findMany({
       where: { statusPagamento: { in: ['PAGO', 'PARCELADO'] }, confirmadaEm: { gte: inicioMes } },
       select: { valorCurso: true },
@@ -768,7 +779,15 @@ router.get('/', async (req, res) => {
   const pagProximas = await pagamentosPorTurma(proximasTurmas.map((t) => t.id));
   proximasTurmas.forEach((t) => { t.pag = pagProximas[t.id]; });
   const recebidoMes = cursoPagoMes.reduce((t, m) => t + Number(m.valorCurso), 0)
-    + taxaSoMes.reduce((t, m) => t + (Number(m.valorTaxaMatricula) || 100), 0);
+    + taxaSoMes.reduce((t, m) => t + (Number(m.valorTaxaMatricula) || 100), 0)
+    + (mr.ok ? mr.recebidoMes : 0);
+
+  // Últimas inscrições: as da escola e as da matrícula rápida ainda sem turma, por data.
+  const idsRapida = new Set(mr.ok ? mr.matriculaIds : []);
+  const ultimasMix = [
+    ...ultimas.map((m) => ({ tipo: 'escola', quando: new Date(m.criadoEm), m, rapida: idsRapida.has(m.id) })),
+    ...(mr.ok ? mr.recentes.slice(0, 6).map((r) => ({ tipo: 'rapida', quando: r.quando, r })) : []),
+  ].sort((x, y) => y.quando - x.quando).slice(0, 6);
 
   res.render('admin/dashboard', {
 
@@ -792,11 +811,12 @@ router.get('/', async (req, res) => {
       pararamAntes,
       reembolsos,
     },
+    mr,
     proximasTurmas,
 
     alunosHojeLista,
 
-    ultimas,
+    ultimas: ultimasMix,
 
     formatBRL,
 
@@ -1299,7 +1319,7 @@ router.get('/matricula-rapida', requirePermissao('turmas:gerenciar', 'painel:lei
   res.render('admin/matricula-rapida', {
     ...base, erro: null, d, lista, cursos,
     filtro: { sit, curso },
-    situacao: matriculaRapida.situacaoPagamento,
+    situacao: matriculaRapida.situacaoPagamento, dataPago: matriculaRapida.dataPago,
     hs: horariosSite, R: d.dados.rotulos,
     resumo: {
       aguardando: doCurso.filter((p) => !p.encaixe).length,

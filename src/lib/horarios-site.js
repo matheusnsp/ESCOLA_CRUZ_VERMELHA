@@ -44,16 +44,33 @@ function finalDaChave() {
 }
 
 let cache = null; // { em, dados }
+let buscandoAgora = null;
+const VALIDA_MS = 30 * 60 * 1000;
 
 // Busca no site. Devolve { ok: true, dados } ou { ok: false, erro } com uma frase para a secretaria.
-// Guarda por 1 minuto: abrir e filtrar a tela não gera uma chamada ao site a cada clique.
+// Guarda por 1 minuto: abrir e filtrar a tela não gera uma chamada ao site a cada clique. Depois
+// disso (até 30 min), devolve a guardada na hora e busca a nova por trás, para a tela não esperar.
 async function buscar({ forcar = false } = {}) {
   if (!configurado()) {
     return { ok: false, erro: 'nao_configurado' };
   }
-  if (!forcar && cache && Date.now() - cache.em < CACHE_MS) {
+  const idade = cache ? Date.now() - cache.em : Infinity;
+  if (!forcar && idade < CACHE_MS) {
     return { ok: true, dados: cache.dados };
   }
+  if (!forcar && idade < VALIDA_MS) {
+    buscarNoSite().catch(() => {});
+    return { ok: true, dados: cache.dados };
+  }
+  return buscarNoSite();
+}
+
+function buscarNoSite() {
+  if (!buscandoAgora) buscandoAgora = lerSite().finally(() => { buscandoAgora = null; });
+  return buscandoAgora;
+}
+
+async function lerSite() {
   const controle = new AbortController();
   const timer = setTimeout(() => controle.abort(), TEMPO_LIMITE_MS);
   try {
