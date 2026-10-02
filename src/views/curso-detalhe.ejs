@@ -78,7 +78,7 @@ function dataLonga(d) {
           <a class="v-btn v-btn-red v-btn-grande v-btn-bloco" href="<%= alvoCta %>"><%= textoCta %> <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
           <p class="v-curso-obs">PIX ou cartão, à vista ou parcelado. As parcelas aparecem na hora da inscrição.</p>
         <% } else { %>
-          <a class="v-btn v-btn-escuro v-btn-grande v-btn-bloco" href="<%= whats %>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Saber a próxima turma</a>
+          <a class="v-btn v-btn-red v-btn-grande v-btn-bloco" href="<%= whats %>" target="_blank" rel="noopener">Saber a próxima turma</a>
           <a class="v-curso-link" href="/cursos">Ver outros cursos <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
         <% } %>
       </aside>
@@ -110,7 +110,7 @@ function dataLonga(d) {
               <i class="fa-regular fa-calendar-xmark" aria-hidden="true"></i>
               Nenhuma turma aberta agora. Volte em breve para conferir as próximas datas ou fale com a secretaria pelo WhatsApp.
               <div class="v-vazio-acoes">
-                <a class="v-btn v-btn-escuro" href="<%= whats %>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Falar com a secretaria</a>
+                <a class="v-btn v-btn-red" href="<%= whats %>" target="_blank" rel="noopener">Falar com a secretaria</a>
                 <a class="v-btn v-btn-contorno" href="/cursos">Ver outros cursos</a>
               </div>
             </div>
@@ -145,7 +145,7 @@ function dataLonga(d) {
           <% if (temTurma) { %>
             <a class="v-btn v-btn-red v-btn-grande v-btn-bloco" href="<%= alvoCta %>"><%= textoCta %> <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
           <% } %>
-          <a class="v-invest-whats" href="<%= whats %>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Dúvidas? Fale com a secretaria</a>
+          <a class="v-invest-whats" href="<%= whats %>" target="_blank" rel="noopener">Dúvidas? Fale com a secretaria</a>
         </div>
       </aside>
     </div>

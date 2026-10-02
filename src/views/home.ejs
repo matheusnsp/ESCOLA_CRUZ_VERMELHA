@@ -4,13 +4,12 @@
   preloadImg: '/img/capa.webp',
   descricao: 'Cursos presenciais da Escola de Educação e Saúde da Cruz Vermelha Brasileira no Rio de Janeiro: primeiros socorros, formação profissional e saúde, com certificado.'
 }) %>
-<%- include('partials/site-header') %>
+<%- include('partials/site-header', { menuAtivo: 'inicio' }) %>
 
 <%
   var _taxaPadrao = Number((cfgMap && cfgMap['matricula_valor_padrao']) || 0);
   var _modoTaxa = (cfgMap && cfgMap['matricula_modo']) || 'POR_CURSO';
   var _larg = vitrine.larguras(cursos.length, true);
-  var _cats = vitrine.categoriasEmUso(cursos);
 %>
 
 <main>
@@ -20,7 +19,7 @@
     <div class="v-hero-grid">
       <div>
         <p class="v-olho">Formação presencial no Rio de Janeiro</p>
-        <h1>Capacitação que prepara para agir.</h1>
+        <h1>Capacitação que prepara para <span>agir.</span></h1>
         <p class="v-hero-copy">Cursos presenciais da Escola de Educação e Saúde da Cruz Vermelha Brasileira do Rio de Janeiro. Formação prática, responsabilidade e conhecimento para situações que exigem preparo.</p>
         <div class="v-hero-ctas">
           <a class="v-btn v-btn-red v-btn-grande" href="/cursos">Ver cursos disponíveis <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
@@ -65,7 +64,7 @@
       <div class="v-quick-item"><b><i class="fa-solid fa-person-chalkboard" aria-hidden="true"></i> Formação presencial</b><span>Aulas práticas na sede da Cruz Vermelha Brasileira do Rio de Janeiro.</span></div>
       <div class="v-quick-item"><b><i class="fa-solid fa-award" aria-hidden="true"></i> Certificação</b><span>Certificado da Cruz Vermelha ao concluir os requisitos do curso.</span></div>
       <div class="v-quick-item"><b><i class="fa-regular fa-calendar" aria-hidden="true"></i> Turmas e datas</b><span>Veja as turmas abertas e as datas antes de fazer sua inscrição.</span></div>
-      <div class="v-quick-item"><b><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Atendimento humano</b><span>A secretaria orienta pelo <a href="https://wa.me/5521999922864" target="_blank" rel="noopener">WhatsApp</a>, do primeiro contato à aula.</span></div>
+      <div class="v-quick-item"><b><i class="fa-solid fa-headset" aria-hidden="true"></i> Atendimento humano</b><span>A secretaria orienta pelo <a href="https://wa.me/5521999922864" target="_blank" rel="noopener">WhatsApp</a>, do primeiro contato à aula.</span></div>
     </div>
   </div>
 
@@ -74,7 +73,7 @@
     <div class="v-wrap">
       <div class="v-secao-head">
         <div>
-          <p class="v-kicker">Cursos disponíveis</p>
+          <p class="v-kicker">Cursos em destaque</p>
           <h2>Formação para cuidar, prevenir e responder.</h2>
         </div>
         <p>Turmas presenciais no Centro do Rio. Escolha o curso para ver as datas, a carga horária, os valores e fazer sua inscrição.</p>
@@ -86,21 +85,13 @@
           Nenhum curso disponível no momento. Novas capacitações são publicadas com frequência; volte em breve.
         </div>
       <% } else { %>
-        <% if (_cats.length >= 2) { %>
-          <div class="v-filtros" data-filtros="gradeHome" role="group" aria-label="Filtrar cursos por área">
-            <button type="button" class="v-chip" data-valor="" aria-pressed="true">Todos os cursos</button>
-            <% _cats.forEach(function (c) { %>
-              <button type="button" class="v-chip" data-valor="<%= c.nome %>" aria-pressed="false"><%= c.nome %></button>
-            <% }) %>
-          </div>
-        <% } %>
         <div class="v-grade" id="gradeHome">
           <% cursos.forEach(function (curso, i) { %>
             <%- include('partials/v-card', { curso: curso, largura: _larg[i], vitrine: vitrine, taxaExibicao: taxaExibicao, cfgMap: cfgMap }) %>
           <% }) %>
         </div>
         <% if (totalCursos > cursos.length) { %>
-          <div class="v-mais"><a class="v-btn v-btn-escuro v-btn-grande" href="/cursos">Ver todos os <%= totalCursos %> cursos <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
+          <div class="v-mais"><a class="v-btn v-btn-red v-btn-grande" href="/cursos">Ver todos os <%= totalCursos %> cursos <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
         <% } %>
       <% } %>
     </div>
@@ -173,7 +164,7 @@
         <p class="v-kicker">Perguntas frequentes</p>
         <h2>Antes de se inscrever.</h2>
         <p class="v-faq-intro">Não encontrou o que procura? Fale com a secretaria pelo WhatsApp.</p>
-        <a class="v-btn v-btn-escuro v-btn-grande" href="https://wa.me/5521999922864?text=Ol%C3%A1!%20Tenho%20uma%20d%C3%BAvida%20sobre%20os%20cursos%20da%20Escola." target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Falar com a secretaria</a>
+        <a class="v-btn v-btn-red v-btn-grande" href="https://wa.me/5521999922864?text=Ol%C3%A1!%20Tenho%20uma%20d%C3%BAvida%20sobre%20os%20cursos%20da%20Escola." target="_blank" rel="noopener">Falar com a secretaria</a>
       </div>
       <div class="v-faq-lista">
         <details open>

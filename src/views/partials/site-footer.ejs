@@ -1,37 +1,48 @@
   <footer class="v-rodape">
     <div class="v-wrap">
       <div class="v-rodape-grid">
-        <div>
-          <a class="v-rodape-logo" href="/" aria-label="Escola de Educação e Saúde CVB-RJ, página inicial">
-            <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro" loading="lazy">
+        <div class="v-rodape-marca">
+          <%# Mesmo logotipo do cabeçalho: emblema da CVB-RJ + nome da Escola. %>
+          <a href="/" class="logo-area" style="text-decoration:none;color:inherit;">
+            <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro" class="logo-img" loading="lazy">
+            <div class="brand-text">
+              <span class="brand-title">ESCOLA DE EDUCAÇÃO</span>
+              <span class="brand-subtitle">E SAÚDE CVB-RJ</span>
+            </div>
           </a>
           <p class="v-rodape-txt"><b>Escola de Educação e Saúde CVB-RJ.</b> Capacitação presencial para quem quer cuidar, prevenir e agir com responsabilidade.</p>
+          <a class="v-rodape-inst" href="https://cruzvermelhariodejaneiro.org/" target="_blank" rel="noopener">
+            <svg class="v-cruz" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z"/></svg>
+            Site da Cruz Vermelha RJ
+            <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+          </a>
         </div>
         <div>
-          <h4>Escola</h4>
-          <p>
-            <a href="/cursos">Cursos</a><br>
-            <a href="/#como">Como funciona</a><br>
-            <a href="/#escola">A Escola</a><br>
-            <a href="/#duvidas">Dúvidas</a><br>
-            <a href="https://cruzvermelhariodejaneiro.org/" target="_blank" rel="noopener">Cruz Vermelha RJ</a>
-          </p>
+          <h4>Navegação</h4>
+          <ul class="v-rodape-lista">
+            <li><a href="/">Início</a></li>
+            <li><a href="/cursos">Cursos</a></li>
+            <li><a href="/#como">Como funciona</a></li>
+            <li><a href="/#escola">A Escola</a></li>
+            <li><a href="/#duvidas">Dúvidas</a></li>
+          </ul>
         </div>
         <div>
           <h4>Contato</h4>
-          <p>
-            Praça da Cruz Vermelha, 10<br>
-            Centro · Rio de Janeiro<br>
-            <a href="https://wa.me/5521999922864" target="_blank" rel="noopener">WhatsApp (21) 99992-2864</a><br>
-            <a href="mailto:contato@cruzvermelhariodejaneiro.org">contato@cruzvermelhariodejaneiro.org</a>
-          </p>
+          <ul class="v-rodape-lista v-rodape-contato">
+            <li><i class="fa-solid fa-location-dot" aria-hidden="true"></i><span>Praça da Cruz Vermelha, 10<br>Centro · Rio de Janeiro</span></li>
+            <li><i class="fa-solid fa-phone" aria-hidden="true"></i><a href="https://wa.me/5521999922864" target="_blank" rel="noopener">(21) 99992-2864 · WhatsApp</a></li>
+            <li><i class="fa-regular fa-envelope" aria-hidden="true"></i><a href="mailto:contato@cruzvermelhariodejaneiro.org">contato@cruzvermelhariodejaneiro.org</a></li>
+          </ul>
         </div>
       </div>
       <div class="v-rodape-copy">
         <span>&copy; 2026 Cruz Vermelha Brasileira do Rio de Janeiro · Escola de Educação e Saúde CVB-RJ</span>
-        <span>Desenvolvido por Matheus Neves</span>
-        <a href="/arquivo/privacidade.pdf" target="_blank">Política de Privacidade</a>
-        <a href="#" data-cvrj-cookies>Preferências de cookies</a>
+        <div class="v-rodape-legal">
+          <a href="/arquivo/privacidade.pdf" target="_blank">Política de Privacidade</a>
+          <a href="#" data-cvrj-cookies>Preferências de cookies</a>
+          <span>Desenvolvido por Matheus Neves</span>
+        </div>
       </div>
     </div>
   </footer>
