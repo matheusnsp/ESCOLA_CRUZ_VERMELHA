@@ -85,6 +85,26 @@ async function carregar({ forcar = false } = {}) {
     p.pagamento = p.transacoes[0] || null;
     p.encaixe = anotados[String(p.inscricaoId)] || null;
   }
+  // Quem já tem matrícula no mesmo curso feita pela escola (pagou também lá, ou foi matriculado
+  // à mão): não espera encaixe. Liga pelo e-mail e pelo curso.
+  const semEncaixe = pessoas.filter((p) => !p.encaixe && p.email && p.cursoId);
+  if (semEncaixe.length) {
+    const naEscola = await prisma.matricula.findMany({
+      where: {
+        aluno: { email: { in: [...new Set(semEncaixe.map((p) => p.email.trim()))], mode: 'insensitive' } },
+        turma: { cursoId: { in: [...new Set(semEncaixe.map((p) => p.cursoId))] } },
+        OR: [{ taxaConfirmada: true }, { statusPagamento: { in: ['PAGO', 'PARCELADO'] } }],
+        statusPagamento: { notIn: ['CANCELADO', 'ESTORNADO'] },
+      },
+      orderBy: { criadoEm: 'desc' },
+      select: { id: true, alunoId: true, turmaId: true, aluno: { select: { email: true } }, turma: { select: { cursoId: true } } },
+    });
+    for (const p of semEncaixe) {
+      const m = naEscola.find((x) => x.turma.cursoId === p.cursoId && String(x.aluno.email).toLowerCase() === p.email.trim().toLowerCase());
+      if (m) p.encaixe = { matriculaId: m.id, turmaId: m.turmaId, alunoId: m.alunoId, naEscola: true };
+    }
+  }
+
   // Turmas dos encaixes (data e curso, para a tela)
   const idsTurma = [...new Set(pessoas.filter((p) => p.encaixe).map((p) => p.encaixe.turmaId))];
   const turmasEnc = idsTurma.length ? await prisma.turma.findMany({ where: { id: { in: idsTurma } }, select: { id: true, inicioPrevisto: true } }) : [];
@@ -155,6 +175,14 @@ async function encaixar({ inscricaoId, turmaId, porUsuarioId, appUrl }) {
   if (existente && !(existente.statusPagamento === 'PENDENTE' && !existente.taxaConfirmada)) {
     return { ok: false, msg: `${pessoa.nome} já está matriculado(a) nessa turma.` };
   }
+  const outraTurma = await prisma.matricula.findFirst({
+    where: {
+      alunoId: aluno.id, turma: { cursoId: turma.cursoId }, id: existente ? { not: existente.id } : undefined,
+      OR: [{ taxaConfirmada: true }, { statusPagamento: { in: ['PAGO', 'PARCELADO'] } }],
+      statusPagamento: { notIn: ['CANCELADO', 'ESTORNADO'] },
+    },
+  });
+  if (outraTurma) return { ok: false, msg: `${pessoa.nome} já tem matrícula numa turma desse curso pela escola.` };
   const valores = await calcularValores(turma.curso, 'PARCELADO', aluno.id);
   const taxa = pago && pago.valor ? pago.valor : Number(valores.valorTaxaMatricula);
   const confirmadaEm = pessoa.pagoEm ? new Date(pessoa.pagoEm) : new Date();
@@ -232,10 +260,13 @@ async function resumoPainel({ inicioHoje, inicioSemana, inicioMes, limiteMs = 40
     hoje: desde(inicioHoje).length,
     semana: desde(inicioSemana).length,
     aguardando: pessoas.filter((p) => !p.encaixe).length,
-    // Recebido no mês de quem ainda não foi encaixado (o encaixado já conta pela matrícula da escola).
-    recebidoMes: doMes.filter((p) => !p.encaixe).reduce((t, p) => t + valor(p), 0),
+    // Recebido no mês de quem não foi encaixado por aqui (o encaixado conta pela matrícula que o
+    // encaixe criou; quem também se matriculou pela escola pagou lá à parte, então conta).
+    recebidoMes: doMes.filter((p) => !p.encaixe || p.encaixe.naEscola).reduce((t, p) => t + valor(p), 0),
     mesCount: doMes.length,
+    // Matrículas da escola da mesma pessoa: o Painel não conta de novo nem lista duas vezes.
     matriculaIds: pessoas.filter((p) => p.encaixe && p.encaixe.matriculaId).map((p) => p.encaixe.matriculaId),
+    matriculaIdsEncaixe: pessoas.filter((p) => p.encaixe && p.encaixe.matriculaId && !p.encaixe.naEscola).map((p) => p.encaixe.matriculaId),
     recentes: pessoas.filter((p) => !p.encaixe && p.pagoData)
       .sort((a, b) => b.pagoData - a.pagoData)
       .map((p) => ({ nome: p.nome, curso: p.cursoNome, quando: p.pagoData, valor: valor(p) || null })),
