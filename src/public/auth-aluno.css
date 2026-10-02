@@ -1,0 +1,98 @@
+/* ============================================================
+   auth-aluno.css — telas de conta do SITE DO ALUNO (entrar, criar conta, senha e avisos).
+   Foto da Escola à esquerda e o formulário à direita; no celular a foto vira uma faixa no topo.
+   Carregado só no site do aluno (partials/head.ejs, body.aa). O painel da secretaria usa
+   os mesmos arquivos (auth.css) e continua igual. As regras começam com body.aa para valer
+   também sobre o admin.css, que essas telas carregam no fim da página.
+   ============================================================ */
+
+body.aa {
+  --vermelho: #d9081f;
+  --vermelho-esc: #b80016;
+  --vermelho-bg: #fff4f5;
+  --fonte: 'Inter', system-ui, -apple-system, sans-serif;
+  --fonte-t: 'Inter', system-ui, -apple-system, sans-serif;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  background: #fff;
+}
+
+/* ---------- lado da foto ---------- */
+body.aa .aa-lado {
+  grid-column: 1; grid-row: 1 / span 2;
+  position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 40px;
+  padding: 36px clamp(32px, 4.5vw, 72px) clamp(40px, 6vh, 64px);
+  color: #fff;
+  background-color: #111;
+  background-image:
+    linear-gradient(180deg, rgba(11, 11, 11, .55) 0%, rgba(11, 11, 11, .18) 34%, rgba(11, 11, 11, .9) 100%),
+    url('/img/capa.webp');
+  background-size: cover;
+  background-position: 62% center;
+}
+body.aa .aa-voltar {
+  align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .45); background: rgba(0, 0, 0, .2);
+  color: #fff; font-size: 13px; font-weight: 700; text-decoration: none;
+  transition: background .15s;
+}
+body.aa .aa-voltar:hover { background: rgba(255, 255, 255, .16); }
+body.aa .aa-olho {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 18px;
+  font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase;
+}
+body.aa .aa-olho::before { content: ""; width: 34px; height: 2px; background: var(--vermelho); }
+body.aa .aa-titulo {
+  margin: 0; max-width: 560px;
+  font-size: clamp(40px, 4.4vw, 66px); line-height: .94; letter-spacing: -.06em; font-weight: 800;
+}
+body.aa .aa-titulo span { color: var(--vermelho); }
+body.aa .aa-lista { list-style: none; display: grid; gap: 12px; margin: 28px 0 0; }
+body.aa .aa-lista li { display: flex; align-items: center; gap: 12px; font-size: 14.5px; color: #ececec; }
+body.aa .aa-lista i {
+  flex: none; width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 14px; color: #fff; background: rgba(255, 255, 255, .15);
+}
+
+/* ---------- lado do formulário ---------- */
+body.aa .auth-wrap { grid-column: 2; grid-row: 1; padding: 56px clamp(24px, 5vw, 80px); background: #fff; }
+body.aa .auth-card {
+  max-width: 440px; padding: 0; background: transparent;
+  border: 0; border-radius: 0; box-shadow: none;
+}
+body.aa .auth-card-wide { max-width: 580px; }
+body.aa .auth-brand { margin-bottom: 34px; padding-bottom: 0; border-bottom: 0; }
+body.aa .auth-card h1 { font-size: 40px; font-weight: 800; letter-spacing: -.05em; line-height: 1; margin-bottom: 10px; }
+body.aa .auth-sub { font-size: 15px; margin-bottom: 28px; }
+body.aa .auth-field input,
+body.aa .auth-field select { padding: 13px 15px; border-radius: 12px; border-color: #e4e1dc; background-color: #faf9f7; }
+body.aa .auth-field input:focus,
+body.aa .auth-field select:focus { background-color: #fff; box-shadow: 0 0 0 4px rgba(217, 8, 31, .1); }
+body.aa .auth-btn { padding: 15px; border-radius: 999px; font-weight: 800; }
+body.aa .auth-erros { border-radius: 12px; }
+body.aa .tp-btn { border-radius: 12px; }
+body.aa .adm-foot { grid-column: 2; grid-row: 2; padding: 18px 20px 24px; background: #fff; }
+
+/* ---------- tablet e celular: a foto vira uma faixa no topo ---------- */
+@media (max-width: 900px) {
+  body.aa { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+  body.aa .aa-lado {
+    grid-column: 1; grid-row: 1; position: relative; height: auto;
+    gap: 28px; justify-content: flex-start; padding: 20px 20px 60px;
+    background-position: 62% 35%;
+  }
+  body.aa .aa-olho { margin-bottom: 12px; }
+  body.aa .aa-titulo { font-size: 38px; }
+  body.aa .aa-lista { display: none; }
+  body.aa .auth-wrap {
+    grid-column: 1; grid-row: 2; position: relative; z-index: 1; align-items: flex-start;
+    margin-top: -30px; padding: 34px 20px 24px; border-radius: 26px 26px 0 0;
+  }
+  body.aa .auth-card { padding: 0; }
+  body.aa .auth-card h1 { font-size: 32px; }
+  body.aa .adm-foot { grid-column: 1; grid-row: 3; }
+}

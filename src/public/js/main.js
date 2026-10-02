@@ -151,3 +151,65 @@ if ('serviceWorker' in navigator) {
     if ((busca && busca.value) || (abertas && abertas.checked)) aplicar();
   });
 })();
+
+/* Menu do topo na home: o traço vermelho fica só no item da seção que está na tela.
+   Ao clicar, marca o item clicado; ao rolar a página, acompanha a seção. */
+(function () {
+  var menu = document.querySelector('.v-menu');
+  if (!menu || location.pathname !== '/') return;
+  var inicio = null, secoes = [];
+  menu.querySelectorAll('a').forEach(function (a) {
+    var href = a.getAttribute('href') || '';
+    if (href === '/') inicio = { a: a, secao: null };
+    else if (href.indexOf('/#') === 0) {
+      var el = document.getElementById(href.slice(2));
+      if (el) secoes.push({ a: a, secao: el });
+    }
+  });
+  if (!inicio && !secoes.length) return;
+  var itens = (inicio ? [inicio] : []).concat(secoes);
+  var travaAte = 0, agendado = false;
+  function marcar(item) {
+    itens.forEach(function (i) {
+      if (i === item) i.a.setAttribute('aria-current', i.secao ? 'location' : 'page');
+      else i.a.removeAttribute('aria-current');
+    });
+  }
+  function itemNaTela() {
+    var limite = (parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0) + 40;
+    var ativo = inicio;
+    secoes.forEach(function (i) { if (i.secao.getBoundingClientRect().top <= limite) ativo = i; });
+    // No fim da página a última seção pode não chegar ao topo: vale a última que aparece.
+    var noFim = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+    var ultima = secoes[secoes.length - 1];
+    if (noFim && ultima && ultima.secao.getBoundingClientRect().top < window.innerHeight) ativo = ultima;
+    return ativo;
+  }
+  function atualizar() {
+    if (agendado) return;
+    agendado = true;
+    requestAnimationFrame(function () {
+      agendado = false;
+      if (Date.now() < travaAte) return;
+      var i = itemNaTela();
+      if (i) marcar(i);
+    });
+  }
+  itens.forEach(function (i) {
+    i.a.addEventListener('click', function (e) {
+      marcar(i);
+      travaAte = Date.now() + 1000; // a rolagem suave passa pelas outras seções: não troca no caminho
+      if (!i.secao) { // "Início" na própria home: sobe sem recarregar
+        e.preventDefault();
+        window.scrollTo({ top: 0 });
+        history.replaceState(null, '', '/');
+      }
+    });
+  });
+  window.addEventListener('scroll', atualizar, { passive: true });
+  window.addEventListener('scrollend', function () { travaAte = 0; atualizar(); });
+  window.addEventListener('hashchange', atualizar);
+  window.addEventListener('load', atualizar);
+  atualizar();
+})();
+
