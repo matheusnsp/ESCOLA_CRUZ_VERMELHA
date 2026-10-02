@@ -32,6 +32,10 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
 }
 .v-topbar .v-wrap { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .v-topbar span:last-child { opacity: .78; }
+.v-topbar-inst { display: inline-flex; align-items: center; gap: 7px; color: #fff; text-decoration: none; }
+.v-topbar-inst i { font-size: 9px; opacity: .8; }
+.v-topbar-inst:hover { text-decoration: underline; text-underline-offset: 3px; }
+.v-topbar-curto { display: none; }
 
 /* ---------- cabeçalho (branco, logotipo de sempre) ---------- */
 .v-header {
@@ -469,6 +473,16 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
   border: 1px solid var(--v-red); color: var(--v-red); font-size: 13px; font-weight: 800; transition: background .15s, color .15s;
 }
 .v-cc:hover .v-cc-ver { background: var(--v-red); color: #fff; }
+/* Cards da mesma linha com os textos alinhados: cada parte (foto, área, título, descrição,
+   informações, turma e preço) ocupa uma linha da grade, com a altura da maior entre os cards. */
+@supports (grid-template-rows: subgrid) {
+  .v-cc { display: grid; grid-row: span 7; grid-template-rows: subgrid; row-gap: 0; }
+  .v-cc-corpo { display: grid; grid-row: span 6; grid-template-rows: subgrid; row-gap: 0; }
+  .v-cc-desc { align-self: start; }
+  .v-cc-info { align-self: start; }
+  .v-cc-turma { align-self: stretch; }
+  .v-cc-pe { align-self: end; }
+}
 
 /* ---------- página do curso ---------- */
 .v-curso-topo { position: relative; background: #111; color: #fff; overflow: hidden; }
@@ -586,7 +600,7 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
   .v-nav { gap: 18px; }
   .v-menu { gap: 18px; font-size: 13px; }
 }
-@media (max-width: 1180px) {
+@media (max-width: 1060px) {
   .v-menu { display: none; }
   .v-burger { display: grid; place-items: center; }
 }
@@ -620,6 +634,8 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
   :root { --v-header: 76px; }
   .v-wrap, .v-hero-grid { width: calc(100% - 32px); }
   .v-topbar { font-size: 9.5px; letter-spacing: .06em; }
+  .v-topbar-longo { display: none; }
+  .v-topbar-curto { display: inline; }
   .v-topbar span:last-child { display: none; }
   .v-so-pc, .v-user { display: none !important; }
   .v-nav { gap: 10px; }
