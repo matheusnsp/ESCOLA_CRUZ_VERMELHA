@@ -250,9 +250,14 @@ async function encaixar({ inscricaoId, turmaId, porUsuarioId, appUrl }) {
 //   - o curso segue cobrado como sempre (site, maquininha confirmada pela secretaria…).
 // Se a escola já recebeu a taxa online (ou o à vista online, que inclui a taxa), é pagamento em
 // dobro: não mexe e a tela avisa. Fica anotado em 'matricularapida:<inscrição>', com o "antes".
+// Lançado ou confirmado à mão pela secretaria: sem gateway, gateway 'manual', ou uma cobrança
+// online que não foi paga online e a secretaria confirmou ("Confirmar pagamento" marca
+// gatewayStatus 'manual:...'; ex.: pagou em outro banco ou na maquininha).
+const aMao = (pg) => !pg.gateway || pg.gateway === 'manual' || String(pg.gatewayStatus || '').startsWith('manual:');
+
 async function ligarComEscola(pessoa, pago, m) {
   const segunda = unicopag.conta('segunda').gateway;
-  const online = m.pagamentos.filter((pg) => pg.status === 'PAGO' && pg.gateway && !['manual', segunda].includes(pg.gateway));
+  const online = m.pagamentos.filter((pg) => pg.status === 'PAGO' && pg.gateway !== segunda && !aMao(pg));
   if (online.some((pg) => pg.tipo === 'TAXA' || m.plano === 'A_VISTA')) return { dobro: true };
 
   const taxa = pago.valorTotal || pago.valor;
@@ -281,9 +286,9 @@ async function ligarComEscola(pessoa, pago, m) {
     });
     // Taxa da escola anulada: lançamento à mão é reaproveitado; cobrança online da escola que ficou
     // em aberto (PIX gerado e não pago) é cancelada, para não ser paga de novo.
-    const pendentesOnline = m.pagamentos.filter((pg) => pg.tipo === 'TAXA' && pg.gateway && !['manual', segunda].includes(pg.gateway) && pg.status === 'PENDENTE').map((pg) => pg.id);
+    const pendentesOnline = m.pagamentos.filter((pg) => pg.tipo === 'TAXA' && pg.gateway !== segunda && !aMao(pg) && pg.status === 'PENDENTE').map((pg) => pg.id);
     if (pendentesOnline.length) await tx.pagamento.updateMany({ where: { id: { in: pendentesOnline } }, data: { status: 'CANCELADO', gatewayStatus: 'cancelado:pago-pela-matricula-rapida' } });
-    const taxas = m.pagamentos.filter((pg) => pg.tipo === 'TAXA' && (!pg.gateway || pg.gateway === 'manual'));
+    const taxas = m.pagamentos.filter((pg) => pg.tipo === 'TAXA' && pg.gateway !== segunda && aMao(pg));
     const jaLigada = m.pagamentos.find((pg) => pg.tipo === 'TAXA' && pg.gateway === segunda && pg.gatewayRef === pago.hash);
     if (jaLigada) {
       await tx.pagamento.update({ where: { id: jaLigada.id }, data: taxaDados });
@@ -296,7 +301,7 @@ async function ligarComEscola(pessoa, pago, m) {
     const sobra = taxas.slice(jaLigada ? 0 : 1).filter((pg) => pg.status !== 'CANCELADO').map((pg) => pg.id);
     if (sobra.length) await tx.pagamento.updateMany({ where: { id: { in: sobra } }, data: { status: 'CANCELADO', gatewayStatus: 'manual:substituido-matricula-rapida' } });
     // Curso lançado à mão: acompanha o valor do curso.
-    const cursoManual = m.pagamentos.filter((pg) => pg.tipo === 'CURSO' && (!pg.gateway || pg.gateway === 'manual')).map((pg) => pg.id);
+    const cursoManual = m.pagamentos.filter((pg) => pg.tipo === 'CURSO' && aMao(pg)).map((pg) => pg.id);
     if (cursoManual.length && !cursoOnline) await tx.pagamento.updateMany({ where: { id: { in: cursoManual } }, data: { valor: valorCurso } });
   });
   console.log(`[MATRICULA-RAPIDA] inscrição ${pessoa.inscricaoId} ligada à matrícula ${m.id}: taxa ${taxa}, curso ${valorCurso} (antes ${anotado.antes.valorCurso}).`);
