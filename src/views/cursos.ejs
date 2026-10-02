@@ -1,51 +1,215 @@
+<%_
+  var _cats = vitrine.categoriasEmUso(cursos);
+  var _agenda = vitrine.agenda(cursos, 8);
+  var _nTurmas = cursos.reduce(function (n, c) { return n + (c.turmas ? c.turmas.length : 0); }, 0);
+  var _abertos = cursos.filter(function (c) { return c.turmas && c.turmas.length; }).length;
+  // Mosaico do topo: a foto da Escola em destaque e duas fotos de cursos (os de turma aberta primeiro).
+  var _fotos = ['/img/capa.webp'].concat(cursos.filter(function (c) { return c.imagemUrl; }).slice(0, 2).map(function (c) { return c.imagemUrl; }));
+  if (_fotos.length < 3) _fotos.push('/img/sede-rj.webp');
+  var _prox = _agenda[0];
+  var _whats = 'https://wa.me/5521999922864?text=' + encodeURIComponent('Olá! Quero saber sobre as próximas turmas da Escola.');
+  var _modoTaxa = (cfgMap && cfgMap['matricula_modo']) || 'POR_CURSO';
+  var _contagem = cursos.length + (cursos.length === 1 ? ' curso' : ' cursos') + (_abertos ? ' · ' + _abertos + ' com inscrições abertas' : '');
+_%>
 <%- include('partials/site-head', {
   titulo: 'Cursos',
   bodyClass: 'v-claro',
+  preloadImg: '/img/capa.webp',
   descricao: 'Catálogo de cursos presenciais da Escola de Educação e Saúde da Cruz Vermelha Brasileira no Rio de Janeiro.'
 }) %>
 <%- include('partials/site-header', { menuAtivo: 'cursos' }) %>
 
-<%
-  var _cats = vitrine.categoriasEmUso(cursos);
-  var _abertos = cursos.filter(function (c) { return c.turmas && c.turmas.length; }).length;
-%>
-
 <main>
-  <section class="v-topo">
-    <div class="v-wrap">
-      <p class="v-olho">Escola de Educação e Saúde CVB-RJ</p>
-      <h1>Cursos disponíveis</h1>
-      <p>Capacitação presencial da Cruz Vermelha Brasileira no Centro do Rio. Escolha um curso, confira as turmas abertas e faça sua inscrição.</p>
+
+  <!-- ══ Topo claro com fotos ══════════════════════════════════════════ -->
+  <section class="v-cat-topo">
+    <div class="v-wrap v-cat-topo-grid">
+      <div class="v-cat-topo-txt">
+        <nav class="v-trilha" aria-label="Você está em">
+          <a href="/">Início</a>
+          <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+          <span aria-current="page">Cursos</span>
+        </nav>
+        <p class="v-olho">Escola de Educação e Saúde CVB-RJ</p>
+        <h1>Cursos disponíveis<span>.</span></h1>
+        <p class="v-cat-lead">Capacitação presencial da Cruz Vermelha Brasileira no Centro do Rio. Escolha um curso, confira as turmas abertas e faça sua inscrição.</p>
+        <div class="v-cat-ctas">
+          <% if (_agenda.length) { %>
+            <a class="v-btn v-btn-red v-btn-grande" href="#abertas">Ver turmas abertas <i class="fa-solid fa-arrow-down" aria-hidden="true"></i></a>
+          <% } %>
+          <a class="v-btn v-btn-contorno v-btn-grande" href="#todos">Todos os cursos</a>
+        </div>
+        <div class="v-cat-numeros">
+          <div><b><%= cursos.length %></b><span><%= cursos.length === 1 ? 'curso presencial' : 'cursos presenciais' %></span></div>
+          <% if (_nTurmas) { %>
+            <div><b><%= _nTurmas %></b><span><%= _nTurmas === 1 ? 'turma com inscrições abertas' : 'turmas com inscrições abertas' %></span></div>
+          <% } else { %>
+            <div><b><i class="fa-regular fa-calendar" aria-hidden="true"></i></b><span>novas turmas em breve</span></div>
+          <% } %>
+          <div><b><i class="fa-solid fa-award" aria-hidden="true"></i></b><span>certificado da Cruz Vermelha</span></div>
+        </div>
+      </div>
+
+      <div class="v-cat-mosaico">
+        <% _fotos.forEach(function (f) { %>
+          <div class="v-cat-foto"><img src="<%= f %>" alt=""></div>
+        <% }) %>
+        <% if (_prox) { var _pd = vitrine.dataTurma(_prox.turma.inicioPrevisto); %>
+          <a class="v-cat-prox" href="/cursos/<%= _prox.curso.id %>">
+            <div class="v-data"><b><%= _pd.dia %></b><span><%= _pd.mes %></span></div>
+            <div>
+              <small>Próxima turma</small>
+              <strong><%= _prox.curso.nome %></strong>
+              <em><span class="v-ponto-verde" aria-hidden="true"></span> Inscrições abertas</em>
+            </div>
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+          </a>
+        <% } else { %>
+          <a class="v-cat-prox" href="<%= _whats %>" target="_blank" rel="noopener">
+            <div class="v-data v-data-icone"><i class="fa-regular fa-calendar" aria-hidden="true"></i></div>
+            <div>
+              <small>Turmas</small>
+              <strong>Novas turmas em breve</strong>
+              <em>Fale com a secretaria</em>
+            </div>
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+          </a>
+        <% } %>
+      </div>
     </div>
   </section>
 
-  <section class="v-catalogo">
+  <!-- ══ Como funciona o pagamento (resumo) ════════════════════════════ -->
+  <div class="v-quick v-quick-cat">
+    <div class="v-wrap v-quick-grid">
+      <% if (_modoTaxa !== 'NENHUMA') { %>
+        <div class="v-quick-item"><b><i class="fa-solid fa-ticket" aria-hidden="true"></i> Taxa de inscrição</b><span>Reserva a sua vaga na turma escolhida.</span></div>
+      <% } else { %>
+        <div class="v-quick-item"><b><i class="fa-regular fa-calendar" aria-hidden="true"></i> Turmas e datas</b><span>Veja as datas de cada turma antes de se inscrever.</span></div>
+      <% } %>
+      <div class="v-quick-item"><b><i class="fa-regular fa-credit-card" aria-hidden="true"></i> Matrícula</b><span>É o valor do curso: à vista ou parcelado no cartão.</span></div>
+      <div class="v-quick-item"><b><i class="fa-solid fa-award" aria-hidden="true"></i> Certificado</b><span>Da Cruz Vermelha Brasileira, ao concluir o curso.</span></div>
+      <div class="v-quick-item"><b><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Dúvidas</b><span>A secretaria orienta pelo <a href="https://wa.me/5521999922864" target="_blank" rel="noopener">WhatsApp</a>.</span></div>
+    </div>
+  </div>
+
+  <% if (_agenda.length) { %>
+  <!-- ══ Turmas com inscrições abertas ═════════════════════════════════ -->
+  <section class="v-cat-abertas" id="abertas">
     <div class="v-wrap">
+      <div class="v-secao-head">
+        <div>
+          <p class="v-kicker">Inscrições abertas</p>
+          <h2>Próximas turmas.</h2>
+        </div>
+        <p>Da mais próxima para a mais distante. A taxa de inscrição reserva a sua vaga; a matrícula pode ser paga à vista ou parcelada.</p>
+      </div>
+      <div class="v-agenda">
+        <% _agenda.forEach(function (item) {
+             var c = item.curso, t = item.turma;
+             var d = vitrine.dataTurma(t.inicioPrevisto), q = vitrine.quando(t.inicioPrevisto);
+             var h = t.aulas && t.aulas[0] && t.aulas[0].horario;
+             var tx = Number(taxaExibicao(c, cfgMap)); %>
+          <article class="v-ag">
+            <div class="v-data"><b><%= d.dia %></b><span><%= d.mes %></span></div>
+            <div class="v-ag-foto">
+              <% if (c.imagemUrl) { %><img src="<%= c.imagemUrl %>" alt="" loading="lazy"><% } else { %><i class="fa-solid <%= vitrine.icone(c.categoria) %>" aria-hidden="true"></i><% } %>
+            </div>
+            <div class="v-ag-txt">
+              <h3><a href="/cursos/<%= c.id %>"><%= c.nome %></a></h3>
+              <div class="v-ag-meta">
+                <span class="v-ag-quando"><%= q.rotulo %> <b><%= q.valor %></b></span>
+                <% if (h) { %><span class="v-sem-quebra"><i class="fa-regular fa-clock" aria-hidden="true"></i> <%= h %></span><% } %>
+                <span><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i> <%= c.cargaHoraria %> horas</span>
+                <span><i class="fa-solid fa-location-dot" aria-hidden="true"></i> Centro do Rio</span>
+              </div>
+            </div>
+            <div class="v-preco">
+              <small>Matrícula à vista</small>
+              <b><%= vitrine.reais(c.precoAvista) %></b>
+              <% if (tx > 0) { %><em>+ <%= vitrine.reais(tx) %> de taxa de inscrição</em><% } %>
+            </div>
+            <a class="v-btn v-btn-red v-ag-btn" href="/inscrever/<%= t.id %>">Inscrever-se <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+          </article>
+        <% }) %>
+      </div>
+    </div>
+  </section>
+  <% } %>
+
+  <!-- ══ Todos os cursos ═══════════════════════════════════════════════ -->
+  <section class="v-cat-todos" id="todos">
+    <div class="v-wrap">
+      <div class="v-secao-head">
+        <div>
+          <p class="v-kicker">Catálogo completo</p>
+          <h2>Todos os cursos.</h2>
+        </div>
+        <p>Formações presenciais na sede da Cruz Vermelha, no Centro do Rio, com certificado ao concluir o curso.</p>
+      </div>
+
       <% if (!cursos.length) { %>
         <div class="v-vazio">
           <i class="fa-regular fa-folder-open" aria-hidden="true"></i>
           Nenhum curso disponível no momento. Novas capacitações são publicadas com frequência; volte em breve.
         </div>
       <% } else { %>
-        <div class="v-catalogo-barra">
+        <div class="v-cat-barra">
           <% if (_cats.length >= 2) { %>
             <div class="v-filtros" data-filtros="gradeCursos" role="group" aria-label="Filtrar cursos por área">
               <button type="button" class="v-chip" data-valor="" aria-pressed="true">Todos <span><%= cursos.length %></span></button>
               <% _cats.forEach(function (c) { %>
-                <button type="button" class="v-chip" data-valor="<%= c.nome %>" aria-pressed="false"><%= c.nome %> <span><%= c.n %></span></button>
+                <button type="button" class="v-chip" data-valor="<%= c.nome %>" aria-pressed="false"><i class="fa-solid <%= vitrine.icone(c.nome) %>" aria-hidden="true"></i> <%= c.nome %> <span><%= c.n %></span></button>
               <% }) %>
             </div>
-          <% } else { %><span></span><% } %>
-          <span class="v-catalogo-n"><%= cursos.length %> <%= cursos.length === 1 ? 'curso' : 'cursos' %><%= _abertos ? ' · ' + _abertos + ' com inscrições abertas' : '' %></span>
+          <% } %>
+          <label class="v-busca">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+            <span class="v-sr">Buscar curso</span>
+            <input type="search" placeholder="Buscar curso" autocomplete="off" data-busca="gradeCursos">
+          </label>
         </div>
-        <div class="v-grade v-grade-catalogo" id="gradeCursos">
+        <div class="v-cat-linha">
+          <p class="v-cat-conta" data-contagem="gradeCursos" data-padrao="<%= _contagem %>" aria-live="polite"><%= _contagem %></p>
+          <% if (_abertos && _abertos < cursos.length) { %>
+            <label class="v-so-abertas">
+              <input type="checkbox" data-so-abertas="gradeCursos">
+              <span class="v-switch" aria-hidden="true"></span>
+              Só com inscrições abertas
+            </label>
+          <% } %>
+        </div>
+        <div class="v-grade-cat" id="gradeCursos">
           <% cursos.forEach(function (curso) { %>
-            <%- include('partials/v-card', { curso: curso, largura: 4, vitrine: vitrine, taxaExibicao: taxaExibicao, cfgMap: cfgMap }) %>
+            <%- include('partials/v-card-cat', { curso: curso, vitrine: vitrine, taxaExibicao: taxaExibicao, cfgMap: cfgMap }) %>
           <% }) %>
+        </div>
+        <div class="v-vazio v-cat-nada" data-nada="gradeCursos" hidden>
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          Nenhum curso encontrado com esses filtros.
+          <div class="v-vazio-acoes"><button type="button" class="v-btn v-btn-contorno" data-limpar="gradeCursos">Limpar filtros</button></div>
         </div>
       <% } %>
     </div>
   </section>
+
+  <!-- ══ Ajuda ═════════════════════════════════════════════════════════ -->
+  <section class="v-cat-ajuda">
+    <div class="v-wrap">
+      <div class="v-ajuda">
+        <div>
+          <p class="v-kicker">Atendimento</p>
+          <h2>Não encontrou a turma que procura?</h2>
+          <p class="v-ajuda-txt">Fale com a secretaria pelo WhatsApp para saber quando abre a próxima turma do curso que você quer fazer.</p>
+        </div>
+        <div class="v-ajuda-acoes">
+          <a class="v-btn v-btn-claro v-btn-grande" href="<%= _whats %>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Falar com a secretaria</a>
+          <a class="v-btn v-btn-grande" href="/#como">Como funciona</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <%- include('partials/site-footer') %>

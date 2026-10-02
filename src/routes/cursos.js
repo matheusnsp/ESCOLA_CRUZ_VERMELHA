@@ -173,13 +173,19 @@ function catalogo(res, chave, carregar) {
 }
 
 // Cursos do catálogo público com a próxima turma aberta e a categoria (extras), já na ordem da
-// vitrine: turma aberta mais próxima primeiro.
-async function carregarVitrine(filtro) {
+// vitrine: turma aberta mais próxima primeiro. Com agenda (página /cursos), vêm até 6 turmas
+// abertas por curso, cada uma com a primeira aula (horário).
+async function carregarVitrine(filtro, { agenda = false } = {}) {
   const cursos = await prisma.curso.findMany({
     where: filtro,
     orderBy: { nome: 'asc' },
     include: {
-      turmas: { where: turmasAbertas(), orderBy: { inicioPrevisto: 'asc' }, take: 1 },
+      turmas: {
+        where: turmasAbertas(),
+        orderBy: { inicioPrevisto: 'asc' },
+        take: agenda ? 6 : 1,
+        ...(agenda ? { include: { aulas: { orderBy: { data: 'asc' }, take: 1 } } } : {}),
+      },
     },
   });
   await extras.anexar('curso', cursos);
@@ -207,7 +213,7 @@ router.get('/duvidas', (req, res) => res.render('duvidas'));
 router.get('/cursos', async (req, res) => {
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
   const [cursos, cfgMap] = await Promise.all([
-    catalogo(res, 'cursos', () => carregarVitrine(filtro)),
+    catalogo(res, 'cursos', () => carregarVitrine(filtro, { agenda: true })),
     lerConfigMatricula(),
   ]);
   res.render('cursos', { cursos, cfgMap, formatBRL, totalExibicao, taxaExibicao, vitrine });

@@ -84,19 +84,59 @@ if ('serviceWorker' in navigator) {
   if (user) document.addEventListener('click', function (e) { if (user.open && !user.contains(e.target)) user.open = false; });
 })();
 
-/* Filtro de cursos por categoria (home e /cursos) */
+/* Filtros da vitrine: área (home e /cursos); no catálogo também a busca e "só com inscrições abertas" */
 (function () {
-  document.querySelectorAll('[data-filtros]').forEach(function (barra) {
-    var grade = document.getElementById(barra.getAttribute('data-filtros'));
+  function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
+  var ids = {};
+  document.querySelectorAll('[data-filtros],[data-busca],[data-so-abertas]').forEach(function (el) {
+    ids[el.getAttribute('data-filtros') || el.getAttribute('data-busca') || el.getAttribute('data-so-abertas')] = true;
+  });
+  Object.keys(ids).forEach(function (id) {
+    var grade = document.getElementById(id);
     if (!grade) return;
-    var cards = grade.querySelectorAll('[data-cat]');
-    barra.querySelectorAll('.v-chip').forEach(function (chip) {
+    var cards = Array.prototype.map.call(grade.querySelectorAll('[data-cat]'), function (el) {
+      return { el: el, cat: el.getAttribute('data-cat'), aberta: el.getAttribute('data-aberta') === '1', texto: norm(el.getAttribute('data-texto') || el.textContent) };
+    });
+    var chips = document.querySelectorAll('[data-filtros="' + id + '"] .v-chip');
+    var busca = document.querySelector('[data-busca="' + id + '"]');
+    var abertas = document.querySelector('[data-so-abertas="' + id + '"]');
+    var nada = document.querySelector('[data-nada="' + id + '"]');
+    var conta = document.querySelector('[data-contagem="' + id + '"]');
+    var cat = '';
+    function aplicar() {
+      var q = busca ? norm(busca.value) : '';
+      var so = !!(abertas && abertas.checked);
+      var n = 0;
+      cards.forEach(function (c) {
+        var ok = (!cat || c.cat === cat) && (!so || c.aberta) && (!q || c.texto.indexOf(q) !== -1);
+        c.el.hidden = !ok;
+        if (ok) n++;
+      });
+      var filtrando = !!(cat || q || so);
+      grade.classList.toggle('v-grade-filtrada', filtrando);
+      if (nada) nada.hidden = n > 0;
+      if (conta) conta.textContent = filtrando ? (n === 1 ? '1 curso encontrado' : n + ' cursos encontrados') : conta.getAttribute('data-padrao');
+    }
+    chips.forEach(function (chip) {
       chip.addEventListener('click', function () {
-        var cat = chip.getAttribute('data-valor');
-        barra.querySelectorAll('.v-chip').forEach(function (c) { c.setAttribute('aria-pressed', c === chip ? 'true' : 'false'); });
-        grade.classList.toggle('v-grade-filtrada', !!cat);
-        cards.forEach(function (card) { card.hidden = !!cat && card.getAttribute('data-cat') !== cat; });
+        cat = chip.getAttribute('data-valor');
+        chips.forEach(function (c) { c.setAttribute('aria-pressed', c === chip ? 'true' : 'false'); });
+        aplicar();
       });
     });
+    if (busca) busca.addEventListener('input', aplicar);
+    if (abertas) abertas.addEventListener('change', aplicar);
+    document.querySelectorAll('[data-limpar="' + id + '"]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        cat = '';
+        chips.forEach(function (c) { c.setAttribute('aria-pressed', c.getAttribute('data-valor') === '' ? 'true' : 'false'); });
+        if (busca) busca.value = '';
+        if (abertas) abertas.checked = false;
+        aplicar();
+        if (busca) busca.focus();
+      });
+    });
+    // Ao voltar para a página, o navegador pode restaurar a busca ou o "só abertas".
+    if ((busca && busca.value) || (abertas && abertas.checked)) aplicar();
   });
 })();
