@@ -60,3 +60,43 @@ if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').catch(function () {});
     });
 }
+
+/* Cabeçalho novo (vitrine.css): menu do celular */
+(function () {
+  var header = document.querySelector('.v-header');
+  if (!header) return;
+  var botao = header.querySelector('.v-burger');
+  var gaveta = document.getElementById('vGaveta');
+  if (!botao || !gaveta) return;
+  function abrir(sim) {
+    gaveta.hidden = !sim;
+    botao.setAttribute('aria-expanded', sim ? 'true' : 'false');
+    botao.setAttribute('aria-label', sim ? 'Fechar menu' : 'Abrir menu');
+    var i = botao.querySelector('i');
+    if (i) i.className = sim ? 'fa-solid fa-xmark' : 'fa-solid fa-bars';
+  }
+  botao.addEventListener('click', function () { abrir(gaveta.hidden); });
+  gaveta.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', function () { abrir(false); }); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !gaveta.hidden) { abrir(false); botao.focus(); } });
+  window.addEventListener('resize', function () { if (window.innerWidth > 980) abrir(false); });
+  // Menu do aluno logado: fecha ao clicar fora.
+  var user = header.querySelector('.v-user');
+  if (user) document.addEventListener('click', function (e) { if (user.open && !user.contains(e.target)) user.open = false; });
+})();
+
+/* Filtro de cursos por categoria (home e /cursos) */
+(function () {
+  document.querySelectorAll('[data-filtros]').forEach(function (barra) {
+    var grade = document.getElementById(barra.getAttribute('data-filtros'));
+    if (!grade) return;
+    var cards = grade.querySelectorAll('[data-cat]');
+    barra.querySelectorAll('.v-chip').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        var cat = chip.getAttribute('data-valor');
+        barra.querySelectorAll('.v-chip').forEach(function (c) { c.setAttribute('aria-pressed', c === chip ? 'true' : 'false'); });
+        grade.classList.toggle('v-grade-filtrada', !!cat);
+        cards.forEach(function (card) { card.hidden = !!cat && card.getAttribute('data-cat') !== cat; });
+      });
+    });
+  });
+})();

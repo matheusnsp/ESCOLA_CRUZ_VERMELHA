@@ -19,6 +19,10 @@
 <% if (typeof cssExtra !== 'undefined') { %>
 <link rel="stylesheet" href="<%= asset(cssExtra) %>">
 <% } %>
+<%# Visual novo: faixa vermelha, cabeçalho e rodapé de todas as páginas + home e catálogo. %>
+<link rel="stylesheet" href="<%= asset('/vitrine.css') %>">
+<% if (typeof preloadImg !== 'undefined') { %><link rel="preload" as="image" href="<%= preloadImg %>"><% } %>
+<% if (typeof descricao !== 'undefined') { %><meta name="description" content="<%= descricao %>"><% } %>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,4 +31,4 @@
 
 <%- include('rastreamento') %>
 </head>
-<body>
+<body<%- typeof bodyClass !== 'undefined' ? ' class="' + bodyClass + '"' : '' %>>

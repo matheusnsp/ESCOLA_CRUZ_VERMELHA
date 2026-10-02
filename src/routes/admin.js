@@ -895,6 +895,7 @@ function backCursos(req, msg, tipo = 'ok') {
 // O formulário do curso mostra as assinaturas do certificado (lista de Modelos).
 router.use('/cursos', async (req, res, next) => {
   try { res.locals.certAjustes = await certificado.lerAjustes(); } catch (e) { res.locals.certAjustes = null; }
+  res.locals.categoriasCurso = require('../lib/vitrine').CATEGORIAS;
   next();
 });
 
@@ -931,6 +932,8 @@ function extrasCursoDoForm(body) {
     nomeCertificado: String(body.nomeCertificado || '').trim().slice(0, 120) || null,
     conteudoProgramatico: String(body.conteudoProgramatico || '').replace(/\r\n/g, '\n').trim().slice(0, 4000) || null,
     certificadoValidade: String(body.certificadoValidade || '').trim().slice(0, 120) || null,
+    // Área do curso (filtros do site). Valor fora da lista não é gravado.
+    categoria: require('../lib/vitrine').CATEGORIAS.includes(body.categoria) ? body.categoria : null,
   };
 }
 

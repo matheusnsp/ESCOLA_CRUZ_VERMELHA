@@ -43,6 +43,18 @@
     </select>
   </label>
 
+  <% if (typeof categoriasCurso !== 'undefined') { %>
+    <label>Área do curso
+      <select name="categoria">
+        <option value="">— sem área —</option>
+        <% categoriasCurso.forEach(function (cat) { %>
+          <option value="<%= cat %>" <%= c.categoria === cat ? 'selected' : '' %>><%= cat %></option>
+        <% }) %>
+      </select>
+      <small class="adm-hint">Usada nos filtros da lista de cursos do site.</small>
+    </label>
+  <% } %>
+
   <div class="full adm-foto-campo">
     <span class="adm-foto-rot">Foto do curso</span>
     <div class="adm-foto-linha">

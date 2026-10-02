@@ -1,0 +1,36 @@
+<%
+  // Card de curso da vitrine (home e /cursos). Espera: curso, largura (4|6|8|12), vitrine,
+  // taxaExibicao, cfgMap. O curso traz a próxima turma aberta em curso.turmas[0], se houver.
+  var _turma = curso.turmas && curso.turmas[0];
+  var _largo = largura >= 8;
+  var _taxa = Number(taxaExibicao(curso, cfgMap));
+%>
+<article class="v-card v-c<%= largura %><%= _largo ? ' v-wide' : '' %>" data-cat="<%= curso.categoria || '' %>">
+  <a class="v-card-link" href="/cursos/<%= curso.id %>" aria-label="<%= curso.nome %>: ver turmas e valores"></a>
+  <div class="v-card-img">
+    <% if (curso.imagemUrl) { %>
+      <img src="<%= curso.imagemUrl %>" alt="" loading="lazy">
+    <% } else { %>
+      <span class="v-card-semfoto"><i class="fa-solid fa-kit-medical" aria-hidden="true"></i></span>
+    <% } %>
+    <span class="v-status<%= _turma ? ' v-status-aberta' : '' %>"><%= _turma ? 'Inscrições abertas' : 'Turmas em breve' %></span>
+  </div>
+  <div class="v-card-corpo">
+    <h3><%= curso.nome %></h3>
+    <p><%= curso.descricao || 'Curso presencial da Escola de Educação e Saúde da Cruz Vermelha.' %></p>
+    <div class="v-meta">
+      <span><%= curso.cargaHoraria %> horas</span>
+      <% if (curso.escolaridadeMinima) { %><span><%= curso.escolaridadeMinima %></span><% } %>
+      <% if (_largo) { %><span>Presencial</span><% } %>
+      <% if (_turma) { %><span>Início <%= vitrine.dataTurma(_turma.inicioPrevisto).curta %></span><% } %>
+    </div>
+    <div class="v-card-pe">
+      <div class="v-preco">
+        <small>Matrícula à vista</small>
+        <b><%= vitrine.reais(curso.precoAvista) %></b>
+        <% if (_taxa > 0) { %><em>+ <%= vitrine.reais(_taxa) %> de taxa de inscrição</em><% } %>
+      </div>
+      <span class="v-seta" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></span>
+    </div>
+  </div>
+</article>
