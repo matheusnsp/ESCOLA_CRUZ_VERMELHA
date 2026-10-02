@@ -279,7 +279,11 @@ async function ligarComEscola(pessoa, pago, m) {
         taxaConfirmada: true, taxaConfirmadaEm: m.taxaConfirmadaEm || confirmadaEm,
       },
     });
-    const taxas = m.pagamentos.filter((pg) => pg.tipo === 'TAXA' && pg.gateway !== segunda);
+    // Taxa da escola anulada: lançamento à mão é reaproveitado; cobrança online da escola que ficou
+    // em aberto (PIX gerado e não pago) é cancelada, para não ser paga de novo.
+    const pendentesOnline = m.pagamentos.filter((pg) => pg.tipo === 'TAXA' && pg.gateway && !['manual', segunda].includes(pg.gateway) && pg.status === 'PENDENTE').map((pg) => pg.id);
+    if (pendentesOnline.length) await tx.pagamento.updateMany({ where: { id: { in: pendentesOnline } }, data: { status: 'CANCELADO', gatewayStatus: 'cancelado:pago-pela-matricula-rapida' } });
+    const taxas = m.pagamentos.filter((pg) => pg.tipo === 'TAXA' && (!pg.gateway || pg.gateway === 'manual'));
     const jaLigada = m.pagamentos.find((pg) => pg.tipo === 'TAXA' && pg.gateway === segunda && pg.gatewayRef === pago.hash);
     if (jaLigada) {
       await tx.pagamento.update({ where: { id: jaLigada.id }, data: taxaDados });
