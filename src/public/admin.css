@@ -1660,3 +1660,64 @@ button.adm-link { background: none; border: 0; padding: 4px 0; cursor: pointer; 
 }
 .qr-botoes a.adm-btn-out { color: var(--tinta); background: var(--card); border: 1px solid var(--linha); text-decoration: none; }
 .qr-botoes a.adm-btn-out:hover { border-color: var(--vermelho); color: var(--vermelho); }
+
+/* Matrícula rápida (admin/matricula-rapida.ejs) */
+.mr-sub { display: inline-flex; gap: 4px; padding: 4px; margin: 0 0 16px; border: 1px solid var(--linha); border-radius: 12px; background: var(--card); }
+.mr-sub a { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 9px; font-size: 13.5px; font-weight: 700; color: var(--tinta-60); text-decoration: none; }
+.mr-sub a.on { background: var(--vermelho-bg); color: var(--vermelho-txt); }
+.mr-aviso { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 16px; padding: 12px 16px; border-radius: 12px; background: var(--info-bg); color: var(--info-tx); font-size: 14px; line-height: 1.5; }
+.mr-filtros { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin: 18px 0 14px; }
+.mr-filtros label { display: grid; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--tinta-60); }
+.mr-filtros select { font: inherit; font-size: 14px; padding: 9px 12px; border: 1px solid var(--linha); border-radius: 10px; background: var(--campo); color: var(--tinta); min-width: 260px; }
+.mr-sit { margin: 0; }
+.mr-lista { display: grid; }
+.mr-item { display: grid; grid-template-columns: 1.3fr .9fr 1.1fr 1.3fr; gap: 18px; align-items: start; padding: 16px 20px; border-bottom: 1px solid var(--linha2); }
+.mr-item:last-child { border-bottom: 0; }
+.mr-quem, .mr-pag, .mr-sug, .mr-acao { display: grid; gap: 3px; min-width: 0; }
+.mr-quem b, .mr-pag b, .mr-sug b { color: var(--tinta); font-size: 14.5px; }
+.mr-item small { color: var(--tinta-60); font-size: 12.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.mr-item small a { color: inherit; }
+.mr-curso { margin-top: 4px; font-size: 12.5px; font-weight: 700; color: var(--vermelho-txt); }
+.mr-rot { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--mut); }
+.mr-obs { font-style: italic; }
+.mr-sitp { font-weight: 700; }
+.mr-sitp-pago { color: var(--ok-tx); }
+.mr-sitp-pendente { color: var(--alerta-tx); }
+.mr-sitp-recusado, .mr-sitp-estornado { color: var(--erro-tx); }
+.mr-form { display: grid; gap: 8px; margin: 0; }
+.mr-form select { font: inherit; font-size: 13.5px; padding: 8px 10px; border: 1px solid var(--linha); border-radius: 10px; background: var(--campo); color: var(--tinta); width: 100%; }
+.mr-ok { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--ok-tx); font-size: 13.5px; }
+.mr-soltas { margin-top: 18px; }
+.mr-soltas-intro { margin: 0; padding: 12px 24px 0; color: var(--tinta-60); font-size: 13.5px; }
+@media (max-width: 1100px) { .mr-item { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px) { .mr-item { grid-template-columns: 1fr; } .mr-filtros select { min-width: 0; width: 100%; } }
+
+/* Matrícula rápida: texto mais organizado */
+.mr-passos { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 18px; padding: 0; }
+.mr-passos li { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border: 1px solid var(--linha); border-radius: 14px; background: var(--card); }
+.mr-passos li > span { width: 26px; height: 26px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--vermelho); color: #fff; font-size: 13px; font-weight: 800; }
+.mr-passos b { display: block; font-size: 14px; color: var(--tinta); }
+.mr-passos small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--tinta-60); }
+.mr-nome { font-size: 15.5px !important; }
+.mr-curso { margin: 2px 0 6px; }
+.mr-linha { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--tinta-60); text-decoration: none; overflow-wrap: anywhere; }
+.mr-linha i { width: 14px; color: var(--mut); }
+.mr-whats { color: var(--ok-tx); font-weight: 600; }
+.mr-whats i { color: var(--ok-tx); }
+.mr-valor { display: flex; align-items: baseline; gap: 6px; }
+.mr-valor small { font-weight: 600; }
+.mr-sitp { justify-self: start; display: inline-block; margin: 3px 0; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--bg); }
+.mr-sitp-pago { background: var(--ok-bg); color: var(--ok-tx); }
+.mr-sitp-pendente { background: var(--alerta-bg); color: var(--alerta-tx); }
+.mr-sitp-recusado, .mr-sitp-estornado { background: var(--erro-bg); color: var(--erro-tx); }
+.mr-serve { justify-self: start; margin: 2px 0 4px; font-size: 12px; font-weight: 700; }
+.mr-serve-sim { color: var(--ok-tx); }
+.mr-serve-nao { color: var(--alerta-tx); }
+.mr-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+.mr-chips span { padding: 3px 9px; border-radius: 999px; background: var(--bg); border: 1px solid var(--linha); font-size: 12px; color: var(--tinta); white-space: nowrap; }
+.mr-obs { margin: 8px 0 0; padding: 8px 11px; border-left: 3px solid var(--linha); background: var(--bg); border-radius: 0 8px 8px 0; font-size: 12.5px; font-style: italic; color: var(--tinta-60); line-height: 1.45; }
+.mr-semturma { display: grid; gap: 8px; justify-items: start; padding: 12px; border: 1px dashed var(--linha); border-radius: 12px; }
+.mr-acao .adm-link i { font-size: .85em; margin-left: 3px; }
+@media (max-width: 900px) { .mr-passos { grid-template-columns: 1fr; } }
+.mr-semturma a.adm-btn-out { color: var(--tinta); background: var(--card); border: 1px solid var(--linha); text-decoration: none; }
+.mr-semturma a.adm-btn-out:hover { border-color: var(--vermelho); color: var(--vermelho); }

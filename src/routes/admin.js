@@ -7,6 +7,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
+const matriculaRapida = require('../lib/matricula-rapida');
 const pesquisa = require('../lib/pesquisa');
 const prisma = require('../db');
 const { verificarSenha, hashSenha } = require('../lib/password');
@@ -1283,6 +1284,40 @@ async function carregarHorarios(req) {
   const semResposta = dados.semResposta.filter(horariosSite.doCurso(cursoSel));
   return { dados, cursos, cursoSel, respostas, semResposta };
 }
+
+// ---------- Matrícula rápida (site da instituição; lib/matricula-rapida.js) ----------
+router.get('/matricula-rapida', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
+  const d = await matriculaRapida.carregar({ forcar: req.query.atualizar === '1' });
+  const base = { formatBRL, flash: req.query.ok || null, aviso: req.query.erro || null };
+  if (d.erro) return res.render('admin/matricula-rapida', { ...base, erro: d.erro, filtro: { sit: 'aguardando', curso: '' } });
+  const cursos = horariosSite.cursos({ respostas: d.pessoas.filter((p) => p.respondeu), semResposta: d.pessoas.filter((p) => !p.respondeu) });
+  const curso = cursos.some((c) => c.chave === req.query.curso) ? req.query.curso : '';
+  const doCurso = d.pessoas.filter(horariosSite.doCurso(curso));
+  const sit = ['aguardando', 'encaixados', 'todos'].includes(req.query.sit) ? req.query.sit : 'aguardando';
+  const lista = sit === 'todos' ? doCurso : doCurso.filter((p) => (sit === 'encaixados') === !!p.encaixe);
+  const pagas = d.pessoas.map((p) => p.pagamento).filter((pg) => pg && matriculaRapida.situacaoPagamento(pg.status) === 'pago');
+  res.render('admin/matricula-rapida', {
+    ...base, erro: null, d, lista, cursos,
+    filtro: { sit, curso },
+    situacao: matriculaRapida.situacaoPagamento,
+    hs: horariosSite, R: d.dados.rotulos,
+    resumo: {
+      aguardando: doCurso.filter((p) => !p.encaixe).length,
+      encaixados: doCurso.filter((p) => p.encaixe).length,
+      todos: doCurso.length,
+      pagos: pagas.length,
+      recebido: pagas.reduce((t, pg) => t + (pg.valorTotal || pg.valor || 0), 0),
+    },
+  });
+});
+
+router.post('/matricula-rapida/:inscricaoId/encaixar', requirePermissao('taxa:aprovar'), async (req, res) => {
+  const r = await matriculaRapida.encaixar({
+    inscricaoId: req.params.inscricaoId, turmaId: req.body.turmaId, porUsuarioId: req.session.usuarioId,
+  });
+  if (r.ok) await auditar(req, 'ENCAIXOU_MATRICULA_RAPIDA', 'Matricula', r.matriculaId, { inscricaoSite: req.params.inscricaoId, turmaId: req.body.turmaId });
+  res.redirect('/matricula-rapida?' + (r.ok ? 'ok=' : 'erro=') + encodeURIComponent(r.msg));
+});
 
 router.get('/horarios', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
   const h = await carregarHorarios(req);

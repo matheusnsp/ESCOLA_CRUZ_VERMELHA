@@ -536,7 +536,27 @@ async function enviarPesquisaSatisfacao(email, nome, { curso, link }) {
   await enviar(email, `Como foi o curso ${limpo(curso)}?`, html, `Pesquisa de satisfação (${curso})`, link);
 }
 
+// Matrícula rápida (site da instituição): a secretaria encaixou a pessoa numa turma. A inscrição já
+// está paga; falta criar a senha (conta nova) e pagar o valor do curso pela escola.
+async function enviarEncaixeMatriculaRapida(email, nome, { curso, inicio, link, criarSenha }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const html = moldura(
+    'Sua turma está confirmada',
+    limpo(nome),
+    `A sua inscrição em <strong>${limpo(curso)}</strong> já está paga, e você foi colocado na turma que começa em <strong>${limpo(inicio)}</strong>. `
+      + (criarSenha
+        ? 'Para acompanhar a matrícula e pagar o valor do curso, crie a sua senha no site da escola pelo botão abaixo.'
+        : 'Para acompanhar a matrícula e pagar o valor do curso, entre no site da escola pelo botão abaixo.'),
+    criarSenha ? 'Criar minha senha' : 'Ver minha matrícula',
+    link,
+    (criarSenha ? 'O link vale por 1 hora. Se passar disso, use "Esqueci minha senha" no site da escola com este e-mail. ' : '')
+      + 'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.'
+  );
+  await enviar(email, `Turma confirmada — ${limpo(curso)}`, html, `Matrícula rápida encaixada (${curso})`, link);
+}
+
 module.exports = {
+  enviarEncaixeMatriculaRapida,
   enviarPesquisaSatisfacao,
   enviarAvisoContas,
   enviarBoasVindasTurma,
