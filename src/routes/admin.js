@@ -785,7 +785,7 @@ router.get('/', async (req, res) => {
     + (mr.ok ? mr.recebidoMes : 0);
 
   // Últimas inscrições: as da escola e as da matrícula rápida ainda sem turma, por data.
-  const idsRapida = new Set(mr.ok ? mr.matriculaIds : []);
+  const idsRapida = new Set(mr.ok ? mr.matriculaIdsEncaixe : []);
   const ultimasMix = [
     ...ultimas.map((m) => ({ tipo: 'escola', quando: new Date(m.criadoEm), m, rapida: idsRapida.has(m.id) })),
     ...(mr.ok ? mr.recentes.slice(0, 6).map((r) => ({ tipo: 'rapida', quando: r.quando, r })) : []),

@@ -51,7 +51,7 @@
     </div>
     <div class="mr-topo-nums">
       <a href="/matricula-rapida?sit=aguardando" class="mr-num warn"><b><%= resumo.aguardando %></b><span>aguardando encaixe</span></a>
-      <a href="/matricula-rapida?sit=encaixados" class="mr-num ok"><b><%= resumo.encaixados %></b><span>encaixados</span></a>
+      <a href="/matricula-rapida?sit=encaixados" class="mr-num ok"><b><%= resumo.encaixados %></b><span>já em turma</span></a>
       <div class="mr-num"><b><%= d.pagamentosOk ? formatBRL(resumo.recebido) : '—' %></b><span><%= d.pagamentosOk ? resumo.pagos + ' inscrição(ões) paga(s)' : 'pagos na Únicopag' %></span></div>
     </div>
   </section>
@@ -83,7 +83,7 @@
       <% cursos.forEach(function (c) { %><option value="<%= c.chave %>" <%= filtro.curso === c.chave ? 'selected' : '' %>><%= c.nome %></option><% }) %>
     </select>
     <div class="mr-seg" role="tablist" aria-label="Situação">
-      <% [['aguardando', 'Aguardando', resumo.aguardando], ['encaixados', 'Encaixados', resumo.encaixados], ['todos', 'Todos', resumo.todos]].forEach(function (a) { %>
+      <% [['aguardando', 'Aguardando', resumo.aguardando], ['encaixados', 'Em turma', resumo.encaixados], ['todos', 'Todos', resumo.todos]].forEach(function (a) { %>
         <a href="/matricula-rapida?sit=<%= a[0] %><%= filtro.curso ? '&curso=' + encodeURIComponent(filtro.curso) : '' %>" class="<%= filtro.sit === a[0] ? 'on' : '' %>" role="tab" aria-selected="<%= filtro.sit === a[0] %>"><%= a[1] %> <span><%= a[2] %></span></a>
       <% }) %>
     </div>
@@ -117,7 +117,7 @@
               <span class="mr-curso"><i class="fa-solid fa-graduation-cap"></i> <%= p.cursoNome %></span>
             </div>
             <% if (p.encaixe) { %>
-              <span class="mr-estado ok"><i class="fa-solid fa-circle-check"></i> Encaixado(a)</span>
+              <span class="mr-estado ok"><i class="fa-solid fa-circle-check"></i> <%= p.encaixe.naEscola ? 'Já matriculado(a) na escola' : 'Encaixado(a)' %></span>
             <% } else { %>
               <span class="mr-estado espera <%= dias !== null && dias >= 3 ? 'atrasado' : '' %>"><i class="fa-regular fa-clock"></i> <%= dias === null ? 'Aguardando' : (dias === 0 ? 'Pagou hoje' : 'Esperando há ' + dias + (dias === 1 ? ' dia' : ' dias')) %></span>
             <% } %>
@@ -160,7 +160,7 @@
 
           <footer class="mr-card-pe">
             <% if (p.encaixe) { %>
-              <span class="mr-pe-txt"><i class="fa-solid fa-users"></i> <%= p.encaixe.turma ? 'Turma de ' + diaTurma(p.encaixe.turma.inicioPrevisto) : 'Na turma' %></span>
+              <span class="mr-pe-txt"><i class="fa-solid fa-users"></i> <%= p.encaixe.turma ? 'Turma de ' + diaTurma(p.encaixe.turma.inicioPrevisto) : 'Na turma' %><%= p.encaixe.naEscola ? ' · matriculou-se pelo site da escola' : '' %></span>
               <a href="/alunos/<%= p.encaixe.alunoId %>/matriculas" class="mr-pe-link">Ver matrícula <i class="fa-solid fa-arrow-right"></i></a>
             <% } else if (podeEncaixar) { %>
               <% if (turmas.length) { %>
