@@ -117,7 +117,7 @@
               <span class="mr-curso"><i class="fa-solid fa-graduation-cap"></i> <%= p.cursoNome %></span>
             </div>
             <% if (p.encaixe) { %>
-              <span class="mr-estado ok"><i class="fa-solid fa-circle-check"></i> <%= p.encaixe.naEscola ? 'Já matriculado(a) na escola' : 'Encaixado(a)' %></span>
+              <span class="mr-estado ok"><i class="fa-solid fa-circle-check"></i> <%= p.encaixe.naEscola || p.encaixe.ligado ? 'Já matriculado(a) na escola' : 'Encaixado(a)' %></span>
             <% } else { %>
               <span class="mr-estado espera <%= dias !== null && dias >= 3 ? 'atrasado' : '' %>"><i class="fa-regular fa-clock"></i> <%= dias === null ? 'Aguardando' : (dias === 0 ? 'Pagou hoje' : 'Esperando há ' + dias + (dias === 1 ? ' dia' : ' dias')) %></span>
             <% } %>
@@ -160,8 +160,13 @@
 
           <footer class="mr-card-pe">
             <% if (p.encaixe) { %>
-              <span class="mr-pe-txt"><i class="fa-solid fa-users"></i> <%= p.encaixe.turma ? 'Turma de ' + diaTurma(p.encaixe.turma.inicioPrevisto) : 'Na turma' %><%= p.encaixe.naEscola ? ' · matriculou-se pelo site da escola' : '' %></span>
+              <span class="mr-pe-txt"><i class="fa-solid fa-users"></i> <%= p.encaixe.turma ? 'Turma de ' + diaTurma(p.encaixe.turma.inicioPrevisto) : 'Na turma' %><%= p.encaixe.naEscola || p.encaixe.ligado ? ' · matriculou-se pelo site da escola' : '' %></span>
               <a href="/alunos/<%= p.encaixe.alunoId %>/matriculas" class="mr-pe-link">Ver matrícula <i class="fa-solid fa-arrow-right"></i></a>
+              <% if (p.encaixe.ligado) { %>
+                <span class="mr-ajustado"><i class="fa-solid fa-link"></i> Taxa paga aqui ligada à matrícula da escola: <%= formatBRL(p.encaixe.taxa || 0) %> de taxa + <%= formatBRL(p.encaixe.valorCurso || 0) %> de curso<%= p.encaixe.antes && p.encaixe.antes.valorCurso !== p.encaixe.valorCurso ? ' (antes estava ' + formatBRL(p.encaixe.antes.valorCurso) + ')' : '' %></span>
+              <% } else if (p.encaixe.dobro) { %>
+                <span class="mr-ajustado mr-dobro"><i class="fa-solid fa-triangle-exclamation"></i> Também pagou a inscrição online pela escola: confira se não pagou em dobro</span>
+              <% } %>
             <% } else if (podeEncaixar) { %>
               <% if (turmas.length) { %>
                 <form method="POST" action="/matricula-rapida/<%= p.inscricaoId %>/encaixar" class="mr-form" data-confirmar="Encaixar <%= p.nome %> na turma escolhida? A pessoa ganha a conta na escola e recebe o e-mail para pagar o curso." data-botao="Encaixar">

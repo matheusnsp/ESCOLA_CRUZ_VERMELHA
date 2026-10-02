@@ -1807,3 +1807,7 @@ a.mr-num:hover { border-color: var(--linha); }
 .vis-lista-tit small { font-family: inherit; font-size: 13px; font-weight: 600; color: var(--tinta-60); }
 @media (max-width: 640px) { .vis-corpo .adm-table th:nth-child(2), .vis-corpo .adm-table td:nth-child(2) { display: none; } }
 .vis-corpo .adm-table { min-width: 0 !important; width: 100%; }
+
+/* Matrícula rápida: taxa ligada à matrícula da escola / aviso de pagamento em dobro */
+.mr-ajustado { flex-basis: 100%; display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; color: var(--tinta-60); }
+.mr-dobro { color: var(--alerta-tx); }
