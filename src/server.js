@@ -95,6 +95,7 @@ app.locals.documentoAluno = function (u) {
 // Helper disponível em todas as views: endereço de CSS/JS com a versão do conteúdo
 // (<link href="<%= asset('/admin.css') %>">), para um deploy nunca deixar CSS velho no cache.
 app.locals.asset = require('./lib/assets').asset;
+app.locals.urlCurso = require('./lib/vitrine').urlCurso;
 
 // Cabecalhos de seguranca. A CSP libera apenas os CDNs que o site usa.
 const isProd = process.env.NODE_ENV === 'production';
@@ -288,6 +289,16 @@ app.use(async (req, res, next) => {
   return next();
 });
 
+// Endereço público da página (canonical, prévia do link no WhatsApp, sitemap, links do .ics): o
+// domínio por onde a pessoa entrou — o site responde pelos dois. Fora deles (local, onrender), APP_URL.
+const DOMINIOS_SITE = /(^|\.)(cruzvermelhariodejaneiro\.org|cursoscruzvermelha\.org)$/i;
+app.use((req, res, next) => {
+  const host = (req.hostname || '').toLowerCase();
+  res.locals.urlSite = DOMINIOS_SITE.test(host) ? 'https://' + host : (process.env.APP_URL || 'https://escola.cruzvermelhariodejaneiro.org').replace(/\/+$/, '');
+  res.locals.urlPagina = res.locals.urlSite + req.path;
+  return next();
+});
+
 // ---- Roteamento por contexto: site do ALUNO x painel da SECRETARIA ----
 const ADMIN_HOST = (process.env.ADMIN_HOST || 'secretaria').toLowerCase();
 const ADMIN_PORT = process.env.ADMIN_PORT ? Number(process.env.ADMIN_PORT) : null;
@@ -301,6 +312,10 @@ function isAdminReq(req) {
 
 // Site do aluno.
 const siteAluno = express.Router();
+// Buscadores: só as páginas públicas; o painel da secretaria fica fora de tudo.
+siteAluno.get('/robots.txt', (req, res) => res.type('text/plain').send(
+  'User-agent: *\nDisallow: /minha-conta\nDisallow: /inscrever/\nDisallow: /inscricao/\nDisallow: /completar-dados\n'
+  + 'Disallow: /turmas/\nDisallow: /compartilhar/\n\nSitemap: ' + res.locals.urlSite + '/sitemap.xml\n'));
 siteAluno.use(authRoutes);
 siteAluno.use(cursosRoutes);
 siteAluno.use(painelRoutes);
@@ -308,6 +323,7 @@ siteAluno.use((req, res) => res.status(404).render('erro', { mensagem: 'Página 
 
 // Painel da secretaria.
 const painelAdmin = express.Router();
+painelAdmin.get('/robots.txt', (req, res) => res.type('text/plain').send('User-agent: *\nDisallow: /\n'));
 painelAdmin.use(adminRoutes);
 painelAdmin.use((req, res) => res.status(404).render('admin/erro', { mensagem: 'Página não encontrada.' }));
 

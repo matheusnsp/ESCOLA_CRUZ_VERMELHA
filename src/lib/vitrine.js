@@ -91,4 +91,12 @@ function categoriasEmUso(cursos) {
   return ordem.filter((k) => conta.has(k)).map((k) => ({ nome: k, n: conta.get(k) }));
 }
 
-module.exports = { CATEGORIAS, icone, reais, dataTurma, quando, agenda, ordenar, larguras, categoriasEmUso };
+// Endereço do curso pelo nome: "Cuidador de Idosos (Curso Livre)" → /cursos/cuidador-de-idosos-curso-livre.
+// O link antigo com o id (/cursos/<uuid>) continua valendo: redireciona para este (routes/cursos.js).
+function slugCurso(nome) {
+  return String(nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'curso';
+}
+const urlCurso = (curso) => '/cursos/' + slugCurso(curso && curso.nome);
+
+module.exports = { CATEGORIAS, icone, reais, dataTurma, quando, agenda, ordenar, larguras, categoriasEmUso, slugCurso, urlCurso };

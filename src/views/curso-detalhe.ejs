@@ -2,7 +2,10 @@
   titulo: curso.nome,
   bodyClass: 'v-claro',
   preloadImg: curso.imagemUrl || undefined,
-  descricao: (curso.descricao || ('Curso presencial de ' + curso.nome + ' na Escola de Educação e Saúde da Cruz Vermelha Brasileira, no Rio de Janeiro.'))
+  imagemCompartilhar: curso.imagemUrl ? '/compartilhar/curso/' + curso.id + '.jpg' : undefined,
+  // resumo curto demais (ex.: "(+Lei Lucas)") não serve de descrição no Google/WhatsApp: vira complemento
+  descricao: (curso.descricao && curso.descricao.length >= 60) ? curso.descricao
+    : ('Curso presencial de ' + curso.nome + (curso.descricao ? ' ' + curso.descricao : '') + ' na Escola de Educação e Saúde da Cruz Vermelha Brasileira, no Centro do Rio de Janeiro. Com certificado.')
 }) %>
 <%- include('partials/site-header', { menuAtivo: 'cursos' }) %>
 

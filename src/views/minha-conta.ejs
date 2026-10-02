@@ -128,7 +128,7 @@
               %>
               <article class="ct-insc">
 
-                <a class="card-link-overlay" href="/cursos/<%= m.turma.curso.id %>"
+                <a class="card-link-overlay" href="<%= urlCurso(m.turma.curso) %>"
                    aria-label="Ver <%= m.turma.curso.nome %>"></a>
 
                 <div class="ct-insc-capa">
@@ -188,6 +188,13 @@
                       <%= m.retomada.rotulo %> <i class="fa-solid fa-arrow-right"></i>
                     </a>
                   </div>
+                  <% } %>
+
+                  <% if (!devolvido && ['ABERTA', 'CONFIRMADA'].indexOf(m.turma.status) !== -1) { %>
+                  <%# Arquivo .ics com as aulas (routes/cursos.js): abre no Google Agenda, iPhone e Outlook. %>
+                  <a class="ct-agenda" href="/turmas/<%= m.turmaId %>/agenda.ics">
+                    <i class="fa-regular fa-calendar-plus" aria-hidden="true"></i> Adicionar as aulas à agenda
+                  </a>
                   <% } %>
 
                   <div class="ct-insc-pe">

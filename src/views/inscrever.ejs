@@ -59,7 +59,7 @@ const _trilha = _totalPassos === 2
     <header class="chk-topo">
       <div class="chk-topo-linha">
         <% if (etapaAtual === 'escolha') { %>
-        <a href="/cursos/<%= curso.id %>" class="chk-voltar" aria-label="Voltar ao curso">
+        <a href="<%= urlCurso(curso) %>" class="chk-voltar" aria-label="Voltar ao curso">
           <i class="fa-solid fa-arrow-left"></i>
         </a>
         <% } else { %>

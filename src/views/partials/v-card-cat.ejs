@@ -8,7 +8,7 @@
   var _texto = [curso.nome, curso.descricao, curso.categoria].filter(Boolean).join(' ');
 %>
 <article class="v-cc" data-cat="<%= curso.categoria || '' %>" data-aberta="<%= _t ? '1' : '0' %>" data-texto="<%= _texto %>">
-  <a class="v-cc-link" href="/cursos/<%= curso.id %>" aria-label="<%= curso.nome %>: ver turmas e valores"></a>
+  <a class="v-cc-link" href="<%= urlCurso(curso) %>" aria-label="<%= curso.nome %>: ver turmas e valores"></a>
   <div class="v-cc-img">
     <% if (curso.imagemUrl) { %>
       <img src="<%= curso.imagemUrl %>" alt="" loading="lazy">

@@ -33,7 +33,7 @@
       </div>
 
       <% if (destaque) { var _t = destaque.turmas[0]; var _d = vitrine.dataTurma(_t.inicioPrevisto); var _tx = Number(taxaExibicao(destaque, cfgMap)); %>
-        <a class="v-destaque" href="/cursos/<%= destaque.id %>">
+        <a class="v-destaque" href="<%= urlCurso(destaque) %>">
           <span class="v-rotulo">Próxima turma em destaque</span>
           <h3><%= destaque.nome %></h3>
           <p><%= destaque.cargaHoraria %> horas<%= destaque.escolaridadeMinima ? ' · ' + destaque.escolaridadeMinima : '' %> · Presencial no Centro do Rio</p>

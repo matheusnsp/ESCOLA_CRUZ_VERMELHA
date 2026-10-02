@@ -77,7 +77,7 @@ _%>
               <% if (c.imagemUrl) { %><img src="<%= c.imagemUrl %>" alt="" loading="lazy"><% } else { %><i class="fa-solid <%= vitrine.icone(c.categoria) %>" aria-hidden="true"></i><% } %>
             </div>
             <div class="v-ag-txt">
-              <h3><a href="/cursos/<%= c.id %>"><%= c.nome %></a></h3>
+              <h3><a href="<%= urlCurso(c) %>"><%= c.nome %></a></h3>
               <div class="v-ag-meta">
                 <span class="v-ag-quando"><%= q.rotulo %> <b><%= q.valor %></b></span>
                 <% if (h) { %><span class="v-sem-quebra"><i class="fa-regular fa-clock" aria-hidden="true"></i> <%= h %></span><% } %>
