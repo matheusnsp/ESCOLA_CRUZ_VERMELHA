@@ -1,5 +1,34 @@
 const fetch = require('node-fetch');
 
+// ── Contas da Únicopag ────────────────────────────────────────────────────
+// A escola recebe em duas contas. Cada curso escolhe a sua na secretaria (extra do curso
+// "contaUnicopag"; sem escolha = principal). O Pagamento guarda por qual passou em `gateway`:
+// 'unicopag' (principal, como sempre foi) ou 'unicopag-2'. O webhook é o mesmo para as duas
+// (o pagamento é achado pelo hash). Variáveis no Render:
+//   principal: UNICOPAG_API_TOKEN,   SELLER_DOCUMENT,   UNICOPAG_NOME   (nome na tela, opcional)
+//   segunda:   UNICOPAG_API_TOKEN_2, SELLER_DOCUMENT_2, UNICOPAG_NOME_2 (nome na tela, opcional)
+const CONTAS = {
+  principal: { id: 'principal', gateway: 'unicopag', token: 'UNICOPAG_API_TOKEN', doc: 'SELLER_DOCUMENT', nome: 'UNICOPAG_NOME', padrao: 'Conta 1' },
+  segunda: { id: 'segunda', gateway: 'unicopag-2', token: 'UNICOPAG_API_TOKEN_2', doc: 'SELLER_DOCUMENT_2', nome: 'UNICOPAG_NOME_2', padrao: 'Conta 2' },
+};
+function conta(id) {
+  const c = CONTAS[id] || CONTAS.principal;
+  return {
+    id: c.id, gateway: c.gateway,
+    nome: (process.env[c.nome] || '').trim() || c.padrao,
+    token: (process.env[c.token] || '').trim(),
+    tokenVar: c.token,
+    sellerDoc: process.env[c.doc] || '',
+    configurada: !!(process.env[c.token] || '').trim(),
+  };
+}
+// Para telas: [{ id, nome, configurada }]
+function listarContas() {
+  return Object.keys(CONTAS).map((id) => { const c = conta(id); return { id: c.id, nome: c.nome, configurada: c.configurada }; });
+}
+// Conta de um Pagamento já feito ('unicopag-2' → segunda; o resto → principal).
+const contaDoGateway = (gateway) => (gateway === CONTAS.segunda.gateway ? 'segunda' : 'principal');
+
 /**
  * Sanitiza strings deixando apenas números
  */
@@ -23,10 +52,11 @@ function apenasNumeros(valor) {
  */
 
 
-async function consultarParcelamento(amountCentavos) {
-  const token = process.env.UNICOPAG_API_TOKEN;
+async function consultarParcelamento(amountCentavos, contaId) {
+  const c = conta(contaId);
+  const token = c.token;
   if (!token) {
-    console.warn('[PARCELAMENTO] UNICOPAG_API_TOKEN não configurado.');
+    console.warn(`[PARCELAMENTO] ${c.tokenVar} não configurado.`);
     return null;
   }
 
@@ -51,8 +81,8 @@ async function consultarParcelamento(amountCentavos) {
  * Retorna a opção de parcelamento (com juros) para um número específico de parcelas.
  * Se não encontrar ou a consulta falhar, retorna null — quem chamar deve decidir o fallback.
  */
-async function obterOpcaoParcelamento(amountCentavos, numeroParcelas) {
-  const opcoes = await consultarParcelamento(amountCentavos);
+async function obterOpcaoParcelamento(amountCentavos, numeroParcelas, contaId) {
+  const opcoes = await consultarParcelamento(amountCentavos, contaId);
   if (!opcoes) return null;
   return opcoes.find((o) => o.installments === numeroParcelas) || null;
 }
@@ -64,11 +94,13 @@ async function obterOpcaoParcelamento(amountCentavos, numeroParcelas) {
  * @param {string} params.tipoPagamento - 'TAXA' ou 'CURSO'. Usado apenas para
  *   logging/clareza; a lógica de negócio de qual é qual fica na rota, não aqui.
  */
-async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno, dadosCartao, tipoPagamento }) {
-  const token = process.env.UNICOPAG_API_TOKEN;
+async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno, dadosCartao, tipoPagamento, conta: contaId }) {
+  const c = conta(contaId);
+  const token = c.token;
 
+  // Sem a chave da conta escolhida, não cobra (cair na outra conta mandaria o dinheiro para o lugar errado).
   if (!token) {
-    throw new Error('Chave UNICOPAG_API_TOKEN não configurada no ambiente (.env)');
+    throw new Error(`Chave ${c.tokenVar} não configurada no ambiente (.env)`);
   }
 
   const isCredito = forma === 'CREDITO';
@@ -97,7 +129,7 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
     // Data de cadastro do aluno, se veio no objeto; senão, agora.
     const cadastroCliente = aluno.criadoEm ? new Date(aluno.criadoEm) : agora;
     // CNPJ da escola (vendedor). Configurável por env; fallback para o CNPJ da CVB-RJ.
-    const sellerDoc = apenasNumeros(process.env.SELLER_DOCUMENT || '');
+    const sellerDoc = apenasNumeros(c.sellerDoc);
 
     const metadataCartao = {
       order_id: String(matriculaId),
@@ -178,7 +210,7 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
     };
   }
 
-  console.log(`[MONITORAMENTO CARTÃO] ➡️ 1. Enviando Transação. Matrícula Original: ${matriculaId} | Tipo: ${tipoPagamento || 'N/A'} | Método: ${isCredito ? 'credit_card' : 'pix'}`);
+  console.log(`[MONITORAMENTO CARTÃO] ➡️ 1. Enviando Transação. Matrícula Original: ${matriculaId} | Tipo: ${tipoPagamento || 'N/A'} | Conta: ${c.id} | Método: ${isCredito ? 'credit_card' : 'pix'}`);
 
   const fetchOptions = {
     method: 'POST',
@@ -220,6 +252,7 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
 
     return {
       success: true,
+      gateway: c.gateway, // grava em Pagamento.gateway: diz em qual conta caiu
 
       id: result.id || null,
       hash: result.hash || null,
@@ -257,6 +290,7 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
 
   return {
     success: true,
+    gateway: c.gateway,
 
     id: result.id || null,
     hash: result.hash || null,
@@ -286,11 +320,12 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
  * @param {string} ref - id/hash da transação (o gatewayRef/gatewayHash salvo no Pagamento).
  * @returns {Promise<{success: boolean, body: object}>} - formato que o admin.js espera.
  */
-async function estornarTransacao(ref) {
-  const token = process.env.UNICOPAG_API_TOKEN;
+async function estornarTransacao(ref, contaId) {
+  const c = conta(contaId);
+  const token = c.token;
 
   if (!token) {
-    console.error('[REFUND] UNICOPAG_API_TOKEN não configurado.');
+    console.error(`[REFUND] ${c.tokenVar} não configurado.`);
     return { success: false, body: { message: 'Gateway não configurado (token ausente).' } };
   }
   if (!ref) {
@@ -350,4 +385,4 @@ async function estornarTransacao(ref) {
   return { success: ok, body };
 }
 
-module.exports = { criarTransacao, consultarParcelamento, obterOpcaoParcelamento, estornarTransacao };
+module.exports = { criarTransacao, consultarParcelamento, obterOpcaoParcelamento, estornarTransacao, conta, listarContas, contaDoGateway };
