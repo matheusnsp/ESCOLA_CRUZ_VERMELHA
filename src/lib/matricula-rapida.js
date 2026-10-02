@@ -198,4 +198,48 @@ async function encaixar({ inscricaoId, turmaId, porUsuarioId, appUrl }) {
   };
 }
 
-module.exports = { carregar, encaixar, situacaoPagamento };
+// Data do pagamento no site. Sem fuso ("2026-09-29 14:00:00"), é hora de Brasília.
+function dataPago(v) {
+  if (!v) return null;
+  const s = String(v).trim();
+  const d = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/.test(s) ? new Date(s.replace(' ', 'T') + '-03:00') : new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// Para o Painel: inscrições da matrícula rápida no dia, na semana e no mês, quem espera encaixe e
+// as mais recentes. O Painel não espera mais que `limiteMs` pelo site e pela Únicopag: passou
+// disso, mostra sem esses números ({ ok: false }). Quem já foi encaixado vira matrícula da
+// escola; `matriculaIds` deixa o Painel não contar a mesma pessoa duas vezes.
+async function resumoPainel({ inicioHoje, inicioSemana, inicioMes, limiteMs = 4000 } = {}) {
+  let timer;
+  const tempo = new Promise((r) => { timer = setTimeout(() => r({ erro: 'tempo' }), limiteMs); });
+  let d;
+  try {
+    d = await Promise.race([carregar(), tempo]);
+  } catch (e) {
+    d = { erro: e.message };
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!d || d.erro) return { ok: false };
+  const pessoas = d.pessoas.map((p) => ({ ...p, pagoData: dataPago(p.pagoEm) }));
+  const desde = (ini) => pessoas.filter((p) => p.pagoData && p.pagoData >= ini);
+  const valor = (p) => (p.pagamento && situacaoPagamento(p.pagamento.status) === 'pago' ? (p.pagamento.valorTotal || p.pagamento.valor || 0) : 0);
+  const doMes = desde(inicioMes);
+  return {
+    ok: true,
+    pagamentosOk: d.pagamentosOk,
+    hoje: desde(inicioHoje).length,
+    semana: desde(inicioSemana).length,
+    aguardando: pessoas.filter((p) => !p.encaixe).length,
+    // Recebido no mês de quem ainda não foi encaixado (o encaixado já conta pela matrícula da escola).
+    recebidoMes: doMes.filter((p) => !p.encaixe).reduce((t, p) => t + valor(p), 0),
+    mesCount: doMes.length,
+    matriculaIds: pessoas.filter((p) => p.encaixe && p.encaixe.matriculaId).map((p) => p.encaixe.matriculaId),
+    recentes: pessoas.filter((p) => !p.encaixe && p.pagoData)
+      .sort((a, b) => b.pagoData - a.pagoData)
+      .map((p) => ({ nome: p.nome, curso: p.cursoNome, quando: p.pagoData, valor: valor(p) || null })),
+  };
+}
+
+module.exports = { carregar, encaixar, situacaoPagamento, dataPago, resumoPainel };

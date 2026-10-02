@@ -9,7 +9,10 @@
   const podeMatriculas = pode('doacao:confirmar') || pode('financeiro:aprovar') || pode('financeiro:leitura');
   const podeTurmas = pode('turmas:gerenciar') || pode('painel:leitura');
   const podeAlunos = pode('aluno:gerenciar') || pode('painel:leitura');
-  const temAgir = podePend || podeDinheiro;
+  const podeRapida = podeTurmas && mr.ok;
+  const temAgir = podePend || podeDinheiro || podeRapida;
+  const inscHoje = hoje.matriculasHoje + (mr.ok ? mr.hoje : 0);
+  const inscSemana = hoje.matriculasSemana + (mr.ok ? mr.semana : 0);
   const hojeTxt = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Sao_Paulo' });
   function dataUTC(d) { const x = new Date(d); const p = n => String(n).padStart(2, '0'); return p(x.getUTCDate()) + '/' + p(x.getUTCMonth() + 1); }
 %>
@@ -27,15 +30,15 @@
 <!-- ═══ O dia em números ═════════════════════════════════════════════════ -->
 <div class="adm-cards <%= podeDinheiro ? 'c3' : (podePend ? 'c2' : 'c1') %>">
   <<%= podeMatriculas ? 'a' : 'div' %><% if (podeMatriculas) { %> href="/inscricoes"<% } %> class="adm-stat <%= podeMatriculas ? 'adm-stat-clicavel' : '' %>">
-    <span><%= hoje.matriculasHoje %></span>
+    <span><%= inscHoje %></span>
     <small><i class="fa-solid fa-user-plus"></i> Inscrições hoje</small>
-    <small class="adm-stat-sub"><%= hoje.matriculasSemana %> nos últimos 7 dias</small>
+    <small class="adm-stat-sub"><%= inscSemana %> nos últimos 7 dias<% if (mr.ok && mr.semana) { %> · <%= mr.semana %> pela matrícula rápida<% } %></small>
   </<%= podeMatriculas ? 'a' : 'div' %>>
   <% if (podeDinheiro) { %>
   <a href="/financeiro" class="adm-stat ok adm-stat-clicavel">
     <span><%= formatBRL(hoje.recebidoMes) %></span>
     <small><i class="fa-solid fa-sack-dollar"></i> Recebido em <%= hoje.mesNome %></small>
-    <small class="adm-stat-sub">matrículas e inscrições confirmadas no mês</small>
+    <small class="adm-stat-sub">matrículas e inscrições confirmadas no mês<%= mr.ok && mr.recebidoMes ? ', com a matrícula rápida' : '' %></small>
   </a>
   <% } %>
   <% if (podeDinheiro || podePend) { %>
@@ -95,6 +98,12 @@
       <h2><i class="fa-solid fa-list-check"></i> Para agir</h2>
     </div>
     <ul class="adm-agir">
+      <% if (podeRapida) { %>
+      <li><a href="/matricula-rapida">
+        <span class="adm-agir-num <%= mr.aguardando ? 'warn' : '' %>"><%= mr.aguardando %></span>
+        <span><b>Matrícula rápida sem turma</b><small class="adm-mut">pagaram no site da instituição, falta encaixar</small></span>
+        <i class="fa-solid fa-chevron-right"></i></a></li>
+      <% } %>
       <% if (podePend) { %>
       <li><a href="/pendentes?aba=com-taxa">
         <span class="adm-agir-num <%= hoje.emAbertoCount ? 'warn' : '' %>"><%= hoje.emAbertoCount %></span>
@@ -333,14 +342,30 @@
 
       <tbody>
 
-        <% ultimas.forEach(function(m){ %>
+        <% ultimas.forEach(function(u){ var m = u.m, r = u.r; %>
 
           <tr>
+
+          <% if (u.tipo === 'rapida') { %>
+
+            <td>
+              <<%= podeTurmas ? 'a href="/matricula-rapida"' : 'span' %> class="adm-link-aluno"><strong><%= r.nome || '(sem nome)' %></strong></<%= podeTurmas ? 'a' : 'span' %>>
+              <span class="adm-tag-rapida" title="Inscrição pelo site da instituição"><i class="fa-solid fa-bolt"></i> Matrícula rápida</span>
+            </td>
+
+            <td><%= r.curso %></td>
+
+            <td><%= r.valor ? formatBRL(r.valor) : '—' %></td>
+
+            <td><span class="adm-pill-espera">Inscrição paga · sem turma</span></td>
+
+          <% } else { %>
 
             <td>
               <a href="/alunos/<%= m.aluno.id %>/matriculas" class="adm-link-aluno">
                 <strong><%= m.aluno.nome %></strong>
               </a>
+              <% if (u.rapida) { %><span class="adm-tag-rapida" title="Veio da matrícula rápida"><i class="fa-solid fa-bolt"></i> Matrícula rápida</span><% } %>
             </td>
 
             <td>
@@ -355,8 +380,10 @@
               <%- statusMatricula(m) %>
             </td>
 
+          <% } %>
+
             <td>
-              <%= new Date(m.criadoEm).toLocaleDateString('pt-BR', {
+              <%= u.quando.toLocaleDateString('pt-BR', {
                 timeZone: 'America/Sao_Paulo'
               }) %>
             </td>
