@@ -623,6 +623,8 @@ html { scroll-padding-top: calc(var(--v-header) - 30px); }
 }
 @media (max-width: 980px) {
   .v-topbar span:last-child { display: none; }
+  /* sem o endereço, o link da instituição fica sozinho na faixa vermelha: centralizado */
+  .v-topbar .v-wrap { justify-content: center; }
   .v-escola-mapa { height: 440px; }
   .v-mapa-info { right: 20px; width: 300px; padding: 24px 24px 26px; }
   .v-hero-grid { grid-template-columns: 1fr; gap: 40px; }
