@@ -103,7 +103,8 @@ if ('serviceWorker' in navigator) {
       });
     }
   }
-  function abrir(sim) {
+  // pelo teclado (Enter/Espaço no botão) o foco entra no menu; pelo toque não, senão o 1º item ganha o contorno de foco
+  function abrir(sim, peloTeclado) {
     if (sim === aberto()) return;
     botao.setAttribute('aria-expanded', sim ? 'true' : 'false');
     botao.setAttribute('aria-label', sim ? 'Fechar menu' : 'Abrir menu');
@@ -122,7 +123,7 @@ if ('serviceWorker' in navigator) {
       gaveta.hidden = false;
       gaveta.scrollTop = 0;
       var primeiro = focaveis()[1];
-      if (primeiro) primeiro.focus({ preventScroll: true });
+      if (primeiro && peloTeclado) primeiro.focus({ preventScroll: true });
     } else {
       // destrava a rolagem já (um link de seção precisa rolar a página); o painel some com um fade curto
       raiz.classList.remove('v-menu-aberto');
@@ -138,9 +139,12 @@ if ('serviceWorker' in navigator) {
   }
   // o toque/clique não dá foco ao botão (o foco faria a página pular por causa do cabeçalho sticky)
   botao.addEventListener('mousedown', function (e) { e.preventDefault(); });
-  botao.addEventListener('click', function () {
-    if (!aberto()) { abrir(true); return; }
-    abrir(false); botao.focus({ preventScroll: true });
+  botao.addEventListener('click', function (e) {
+    var teclado = e.detail === 0; // clique gerado por Enter/Espaço
+    if (!aberto()) { abrir(true, teclado); return; }
+    var focoNoMenu = gaveta.contains(document.activeElement);
+    abrir(false);
+    if (teclado || focoNoMenu) botao.focus({ preventScroll: true });
   });
   // se a página rolar mesmo assim (leitor de tela, iOS antigo), o painel acompanha o cabeçalho
   window.addEventListener('scroll', function () { if (aberto()) medir(); }, { passive: true });
