@@ -1,0 +1,48 @@
+<%
+  // Card do catálogo (/cursos). Espera: curso, vitrine, taxaExibicao, cfgMap. As turmas abertas
+  // vêm em curso.turmas (a mais próxima primeiro), cada uma com a primeira aula em aulas[0].
+  var _turmas = curso.turmas || [];
+  var _t = _turmas[0];
+  var _taxa = Number(taxaExibicao(curso, cfgMap));
+  var _icone = vitrine.icone(curso.categoria);
+  var _texto = [curso.nome, curso.descricao, curso.categoria].filter(Boolean).join(' ');
+%>
+<article class="v-cc" data-cat="<%= curso.categoria || '' %>" data-aberta="<%= _t ? '1' : '0' %>" data-texto="<%= _texto %>">
+  <a class="v-cc-link" href="/cursos/<%= curso.id %>" aria-label="<%= curso.nome %>: ver turmas e valores"></a>
+  <div class="v-cc-img">
+    <% if (curso.imagemUrl) { %>
+      <img src="<%= curso.imagemUrl %>" alt="" loading="lazy">
+    <% } else { %>
+      <span class="v-cc-semfoto"><i class="fa-solid <%= _icone %>" aria-hidden="true"></i></span>
+    <% } %>
+    <span class="v-status<%= _t ? ' v-status-aberta' : '' %>"><%= _t ? 'Inscrições abertas' : 'Turmas em breve' %></span>
+  </div>
+  <div class="v-cc-corpo">
+    <p class="v-cc-area"><i class="fa-solid <%= _icone %>" aria-hidden="true"></i> <%= curso.categoria || 'Curso presencial' %></p>
+    <h3><%= curso.nome %></h3>
+    <p class="v-cc-desc"><%= curso.descricao || 'Curso presencial da Escola de Educação e Saúde da Cruz Vermelha.' %></p>
+    <ul class="v-cc-info">
+      <li><i class="fa-regular fa-clock" aria-hidden="true"></i> <%= curso.cargaHoraria %> horas</li>
+      <% if (curso.escolaridadeMinima) { %><li><i class="fa-solid fa-user-graduate" aria-hidden="true"></i> <%= curso.escolaridadeMinima %></li><% } %>
+    </ul>
+    <% if (_t) { var _d = vitrine.dataTurma(_t.inicioPrevisto); var _h = _t.aulas && _t.aulas[0] && _t.aulas[0].horario; %>
+      <div class="v-cc-turma v-cc-turma-aberta">
+        <i class="fa-regular fa-calendar-check" aria-hidden="true"></i>
+        <span><b>Próxima turma: <%= _d.dia %> de <%= _d.mes %></b><% if (_h) { %> · <span class="v-sem-quebra"><%= _h %></span><% } %><% if (_turmas.length > 1) { %><br><%= _turmas.length %> turmas com inscrições abertas<% } %></span>
+      </div>
+    <% } else { %>
+      <div class="v-cc-turma">
+        <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+        <span><b>Nova turma em breve.</b> Fale com a secretaria para saber a data.</span>
+      </div>
+    <% } %>
+    <div class="v-cc-pe">
+      <div class="v-preco">
+        <small>Matrícula à vista</small>
+        <b><%= vitrine.reais(curso.precoAvista) %></b>
+        <% if (_taxa > 0) { %><em>+ <%= vitrine.reais(_taxa) %> de taxa de inscrição</em><% } %>
+      </div>
+      <span class="v-cc-ver" aria-hidden="true">Ver curso <i class="fa-solid fa-arrow-right"></i></span>
+    </div>
+  </div>
+</article>

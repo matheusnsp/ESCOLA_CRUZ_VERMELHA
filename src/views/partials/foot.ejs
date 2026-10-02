@@ -1,7 +1,7 @@
 
 </main>
 <link rel="stylesheet" href="<%= asset('/admin.css') %>">
-<footer class="adm-foot">Painel da Secretaria · uso interno · Cruz Vermelha Brasileira</footer>
+<footer class="adm-foot"><%= typeof isAdmin !== 'undefined' && isAdmin ? 'Painel da Secretaria · uso interno' : 'Escola de Educação e Saúde CVB-RJ' %> · Cruz Vermelha Brasileira</footer>
 <script src="<%= asset('/js/admin-idle.js') %>"></script>
 </body>
 </html>

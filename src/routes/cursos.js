@@ -7,9 +7,12 @@ const {
   formatBRL,
   lerConfigMatricula,
   totalExibicao,
+  taxaExibicao,
 } = require('../lib/matricula');
 const { criarTransacao, obterOpcaoParcelamento } = require('../lib/unicopag');
 const cacheRapido = require('../lib/cache-rapido');
+const extras = require('../lib/extras');
+const vitrine = require('../lib/vitrine');
 
 const router = express.Router();
 
@@ -169,67 +172,87 @@ function catalogo(res, chave, carregar) {
   return cacheRapido.doCatalogo(chave, carregar);
 }
 
+// Cursos do catálogo público com a próxima turma aberta e a categoria (extras), já na ordem da
+// vitrine: turma aberta mais próxima primeiro. Com agenda (página /cursos), vêm até 6 turmas
+// abertas por curso, cada uma com a primeira aula (horário).
+async function carregarVitrine(filtro, { agenda = false } = {}) {
+  const cursos = await prisma.curso.findMany({
+    where: filtro,
+    orderBy: { nome: 'asc' },
+    include: {
+      turmas: {
+        where: turmasAbertas(),
+        orderBy: { inicioPrevisto: 'asc' },
+        take: agenda ? 6 : 1,
+        ...(agenda ? { include: { aulas: { orderBy: { data: 'asc' }, take: 1 } } } : {}),
+      },
+    },
+  });
+  await extras.anexar('curso', cursos);
+  return vitrine.ordenar(cursos);
+}
+
+const HOME_MAX_CURSOS = 8;
+
 router.get('/', async (req, res) => {
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
-  const [[cursos, total], cfgMap] = await Promise.all([
-    catalogo(res, 'home', () => Promise.all([
-      prisma.curso.findMany({
-        where: filtro,
-        orderBy: { nome: 'asc' },
-        take: 9, // o carrossel precisa de mais que as 3 colunas visíveis pra ter o que rodar
-        include: {
-          turmas: { where: turmasAbertas(), orderBy: { inicioPrevisto: 'asc' }, take: 1 },
-        },
-      }),
-      prisma.curso.count({ where: filtro }),
-    ])),
+  const [todos, cfgMap] = await Promise.all([
+    catalogo(res, 'home', () => carregarVitrine(filtro)),
     lerConfigMatricula(),
   ]);
-  res.render('home', { cursos, cfgMap, temMais: total > cursos.length, formatBRL, totalExibicao });
+  const cursos = todos.slice(0, HOME_MAX_CURSOS);
+  res.render('home', {
+    cursos, totalCursos: todos.length, cfgMap, formatBRL, totalExibicao, taxaExibicao, vitrine,
+    destaque: cursos.find((c) => c.turmas && c.turmas.length) || null,
+  });
 });
 
-router.get('/sobre', (req, res) => res.render('sobre'));
-router.get('/duvidas', (req, res) => res.render('duvidas'));
+// A página "Sobre" foi retirada: quem tiver o link antigo vai para a parte "A Escola" da home.
+router.get('/sobre', (req, res) => res.redirect(302, '/#escola'));
+// Não existe página própria de dúvidas (dava erro 500): as perguntas frequentes ficam na home.
+router.get('/duvidas', (req, res) => res.redirect(302, '/#duvidas'));
 
 router.get('/cursos', async (req, res) => {
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
   const [cursos, cfgMap] = await Promise.all([
-    catalogo(res, 'cursos', () => prisma.curso.findMany({
-      where: filtro,
-      orderBy: { nome: 'asc' },
-      include: {
-        turmas: { where: turmasAbertas(), orderBy: { inicioPrevisto: 'asc' }, take: 1 },
-      },
-    })),
+    catalogo(res, 'cursos', () => carregarVitrine(filtro, { agenda: true })),
     lerConfigMatricula(),
   ]);
-  res.render('cursos', { cursos, cfgMap, formatBRL, totalExibicao });
+  res.render('cursos', { cursos, cfgMap, formatBRL, totalExibicao, taxaExibicao, vitrine });
 });
 
 router.get('/cursos/:cursoId', async (req, res) => {
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
   // As três consultas saem juntas: "outros cursos" não depende do curso carregado.
   const [curso, cfgMap, outros] = await Promise.all([
-    catalogo(res, `curso:${req.params.cursoId}`, () => prisma.curso.findUnique({
-      where: { id: req.params.cursoId },
-      include: {
-        turmas: {
-          where: turmasAbertas(),
-          orderBy: { inicioPrevisto: 'asc' },
-          include: { aulas: { orderBy: { data: 'asc' }, take: 1 } },
+    catalogo(res, `curso:${req.params.cursoId}`, async () => {
+      const c = await prisma.curso.findUnique({
+        where: { id: req.params.cursoId },
+        include: {
+          turmas: {
+            where: turmasAbertas(),
+            orderBy: { inicioPrevisto: 'asc' },
+            include: { aulas: { orderBy: { data: 'asc' }, take: 1 } },
+          },
+          faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] },
         },
-        faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] },
-      },
-    })),
+      });
+      if (c) await extras.anexar('curso', [c]);
+      return c;
+    }),
     lerConfigMatricula(),
-    catalogo(res, `outros:${req.params.cursoId}`, () => prisma.curso.findMany({
-      where: { ...filtro, id: { not: req.params.cursoId } },
-      orderBy: { nome: 'asc' },
-      take: 3,
-      include: {
-        turmas: { where: turmasAbertas(), orderBy: { inicioPrevisto: 'asc' }, take: 1 },
-      },
-    })),
+    catalogo(res, `outros:${req.params.cursoId}`, async () => {
+      // Outros cursos: os de turma aberta primeiro, como na vitrine.
+      const lista = await prisma.curso.findMany({
+        where: { ...filtro, id: { not: req.params.cursoId } },
+        orderBy: { nome: 'asc' },
+        include: {
+          turmas: { where: turmasAbertas(), orderBy: { inicioPrevisto: 'asc' }, take: 1 },
+        },
+      });
+      await extras.anexar('curso', lista);
+      return vitrine.ordenar(lista).slice(0, 3);
+    }),
   ]);
 
   // Curso inativo só é visível para o papel DEV (permite testar antes de publicar).
@@ -243,6 +266,8 @@ router.get('/cursos/:cursoId', async (req, res) => {
     formatBRL,
     total: totalExibicao(curso, cfgMap),
     totalExibicao,
+    taxaExibicao,
+    vitrine,
     cfgMap,
   });
 });
