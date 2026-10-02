@@ -1587,3 +1587,25 @@ button.adm-link { background: none; border: 0; padding: 4px 0; cursor: pointer; 
 .adm-cp-tipos .adm-cert-opcao input[type="radio"] { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--vermelho); flex-shrink: 0; }
 .adm-cp-tipos .adm-cert-opcao:has(input:checked) { border-color: var(--vermelho); background: var(--vermelho-bg); }
 .adm-cp-form label > span > small.adm-mut { font-weight: 500; }
+
+/* Pesquisa de satisfação (admin/pesquisa.ejs) */
+.pq-site { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; padding: 18px 22px; }
+.pq-site-txt strong i { color: #d9081f; margin-right: 6px; }
+.pq-site-txt p { margin: 6px 0 0; color: #555; }
+.pq-on { color: #16a369; }
+.pq-off { color: #b80016; }
+.pq-lista { display: grid; gap: 14px; }
+.pq-resp { border: 1px solid #e4e1dc; border-radius: 14px; padding: 16px 18px; background: #fff; }
+.pq-resp-topo { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; }
+.pq-resp-topo small { display: block; margin-top: 2px; }
+.pq-nota-badge { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 18px; background: #f4f2ef; color: #141414; }
+.pq-nota-badge.boa { background: #e7f7ee; color: #12804f; }
+.pq-nota-badge.ruim { background: #fdecee; color: #b80016; }
+.pq-status { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #f4f2ef; color: #555; white-space: nowrap; }
+.pq-status-aprovada { background: #e7f7ee; color: #12804f; }
+.pq-status-oculta { background: #eee; color: #777; }
+.pq-coment { margin: 14px 0 0; padding: 12px 14px; border-left: 3px solid #d9081f; background: #faf9f7; border-radius: 0 10px 10px 0; white-space: pre-line; line-height: 1.55; }
+.pq-sem { margin: 12px 0 0; }
+.pq-resp-pe { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+.pq-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.pq-acoes form { margin: 0; }

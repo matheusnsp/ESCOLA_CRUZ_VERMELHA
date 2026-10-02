@@ -7,6 +7,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
+const pesquisa = require('../lib/pesquisa');
 const prisma = require('../db');
 const { verificarSenha, hashSenha } = require('../lib/password');
 const { criarCodigo2fa, codigo2faRecente, verificarCodigo2fa, consumirToken, criarTokenDesbloqueio, verificarTokenDesbloqueio, criarTokenReset, verificarTokenReset } = require('../lib/tokens');
@@ -1410,6 +1411,52 @@ router.post('/modelos', requirePermissao('turmas:gerenciar'), async (req, res) =
   await auditar(req, 'EDITOU_MODELOS', 'Configuracao', null, null);
   const voltar = VOLTAR_MODELOS.test(String(req.body.voltar || '')) ? req.body.voltar : '';
   res.redirect('/modelos?ok=' + encodeURIComponent('Modelos salvos.') + (voltar ? '&voltar=' + encodeURIComponent(voltar) : ''));
+});
+
+// ---------- Pesquisa de satisfação (lib/pesquisa.js) ----------
+// Respostas da pesquisa enviada no fim de cada turma; aprovar o que vai para o site e ligar ou
+// desligar a seção "O que dizem os alunos" da página inicial.
+router.get('/pesquisa', requirePermissao('pesquisa:gerenciar', 'painel:leitura'), async (req, res) => {
+  const [todas, config, enviadas] = await Promise.all([pesquisa.listarRespostas(), pesquisa.lerConfig(), pesquisa.contarEnvios()]);
+  const autorizadas = todas.filter((r) => r.autoriza && r.comentario);
+  const abas = [
+    { id: 'aguardando', rot: 'Aguardando aprovação', lista: autorizadas.filter((r) => r.status === 'nova') },
+    { id: 'aprovadas', rot: 'No site', lista: todas.filter((r) => r.status === 'aprovada') },
+    { id: 'ocultas', rot: 'Ocultas', lista: todas.filter((r) => r.status === 'oculta') },
+    { id: 'todas', rot: 'Todas as respostas', lista: todas },
+  ];
+  const aba = abas.find((a) => a.id === req.query.aba) || (abas[0].lista.length ? abas[0] : abas[3]);
+  const soma = todas.reduce((t, r) => t + r.nota, 0);
+  const grupos = {};
+  for (const r of todas) { const g = grupos[r.curso] || (grupos[r.curso] = { curso: r.curso, total: 0, soma: 0 }); g.total++; g.soma += r.nota; }
+  res.render('admin/pesquisa', {
+    config,
+    flash: req.query.ok || null,
+    aba: aba.id,
+    abas: abas.map((a) => ({ id: a.id, rot: a.rot, n: a.lista.length })),
+    lista: aba.lista,
+    porCurso: Object.values(grupos).map((g) => ({ ...g, media: g.soma / g.total })).sort((a, b) => b.total - a.total),
+    resumo: {
+      total: todas.length, enviadas: Math.max(enviadas, todas.length), media: todas.length ? soma / todas.length : 0,
+      promotores: todas.filter((r) => r.nota >= 9).length, detratores: todas.filter((r) => r.nota <= 6).length,
+      aprovadas: abas[1].lista.length, aguardando: abas[0].lista.length,
+    },
+  });
+});
+
+router.post('/pesquisa/site', requirePermissao('pesquisa:gerenciar'), async (req, res) => {
+  const mostrar = req.body.mostrar === '1';
+  await pesquisa.salvarConfig({ mostrarNoSite: mostrar });
+  await auditar(req, mostrar ? 'PESQUISA_MOSTROU_NO_SITE' : 'PESQUISA_OCULTOU_DO_SITE', 'Configuracao', 'pesquisa_config', null);
+  res.redirect('/pesquisa?ok=' + encodeURIComponent(mostrar ? 'A seção de depoimentos agora aparece no site.' : 'A seção de depoimentos foi ocultada do site.'));
+});
+
+router.post('/pesquisa/:matriculaId/:acao(aprovar|ocultar)', requirePermissao('pesquisa:gerenciar'), async (req, res) => {
+  const status = req.params.acao === 'aprovar' ? 'aprovada' : 'oculta';
+  const feito = await pesquisa.mudarStatus(req.params.matriculaId, status, req.session.usuarioId);
+  if (feito) await auditar(req, status === 'aprovada' ? 'PESQUISA_APROVOU' : 'PESQUISA_OCULTOU', 'Matricula', req.params.matriculaId, null);
+  const aba = ['aguardando', 'aprovadas', 'ocultas', 'todas'].includes(req.body.aba) ? req.body.aba : 'aguardando';
+  res.redirect(`/pesquisa?aba=${aba}&ok=` + encodeURIComponent(!feito ? 'Esta resposta não pode ir para o site.' : status === 'aprovada' ? 'Depoimento aprovado para o site.' : 'Depoimento fora do site.'));
 });
 
 // ---------- Certificados ----------

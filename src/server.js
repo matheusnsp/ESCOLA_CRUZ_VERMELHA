@@ -360,6 +360,8 @@ setInterval(concluirTurmasPassadas, 60 * 60 * 1000).unref();
 require('./lib/lembretes').agendarLembretes(30);
 // Boas-vindas de quem pagou depois de a secretaria liberar a mensagem da turma (lib/boas-vindas.js).
 setInterval(() => require('./lib/boas-vindas').enviarPendentes(), 15 * 60 * 1000).unref();
+// Pesquisa de satisfação: e-mail logo depois da última aula de cada turma (lib/pesquisa.js).
+setInterval(() => require('./lib/pesquisa').enviarPendentes(), 15 * 60 * 1000).unref();
 
 const port = process.env.PORT || 3000;
 

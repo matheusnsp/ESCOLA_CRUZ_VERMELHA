@@ -1,0 +1,62 @@
+<%# Pesquisa de satisfação (lib/pesquisa.js). Abre pelo link do e-mail, sem login. %>
+<%- include('partials/head', { titulo: 'Pesquisa de satisfação' }) %>
+
+<main class="auth-wrap">
+  <div class="auth-card">
+
+    <div class="auth-brand">
+      <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro" class="auth-logo">
+      <div class="auth-brand-text">
+        <strong>ESCOLA DE EDUCAÇÃO</strong>
+        <span>E SAÚDE CVB-RJ</span>
+      </div>
+    </div>
+
+    <% if (respondida) { %>
+      <div class="pq-obrigado">
+        <i class="fa-solid fa-heart" aria-hidden="true"></i>
+        <h1>Obrigado, <%= nome %>!</h1>
+        <p class="auth-sub">Recebemos a sua avaliação de <strong><%= curso %></strong>. Ela ajuda a melhorar as próximas turmas.</p>
+        <a href="/cursos" class="auth-btn auth-btn-link">Ver outros cursos</a>
+      </div>
+    <% } else { %>
+      <h1>Como foi o curso?</h1>
+      <p class="auth-sub">Olá, <%= nome %>! Conta pra gente como foi <strong><%= curso %></strong>. Leva menos de 1 minuto.</p>
+
+      <% if (erro) { %>
+        <div class="auth-erros" role="alert"><p><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></p></div>
+      <% } %>
+
+      <form method="POST" class="pq-form" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <fieldset class="pq-notas">
+          <legend>De 0 a 10, quanto você recomendaria este curso a um amigo?</legend>
+          <div class="pq-escala">
+            <% for (var n = 0; n <= 10; n++) { %>
+              <label class="pq-nota">
+                <input type="radio" name="nota" value="<%= n %>" <%= String(valores.nota) === String(n) ? 'checked' : '' %> required>
+                <span><%= n %></span>
+              </label>
+            <% } %>
+          </div>
+          <div class="pq-legenda" aria-hidden="true"><span>Não recomendaria</span><span>Recomendaria muito</span></div>
+        </fieldset>
+
+        <label class="auth-field">
+          <span>Conte como foi <span class="auth-opcional">(opcional)</span></span>
+          <textarea name="comentario" rows="5" maxlength="<%= max %>" placeholder="O que você mais gostou? O que podemos melhorar?"><%= valores.comentario || '' %></textarea>
+        </label>
+
+        <label class="auth-check">
+          <input type="checkbox" name="autoriza" value="1" <%= valores.autoriza ? 'checked' : '' %>>
+          <span>Autorizo publicar meu comentário no site da escola, com meu primeiro nome (ex.: <%= nomePublico %>).</span>
+        </label>
+
+        <button type="submit" class="auth-btn">Enviar avaliação</button>
+      </form>
+    <% } %>
+  </div>
+</main>
+
+<%- include('partials/foot') %>
