@@ -67,26 +67,56 @@
     </div>
   </div>
 
+  <%# Menu do celular em tela cheia (até 1060 px): ocupa tudo abaixo do cabeçalho; abre/fecha em main.js. %>
+  <%
+    var _itens = [
+      { href: '/', nome: 'Início', ativo: _ativo === 'inicio' },
+      { href: '/cursos', nome: 'Cursos', ativo: _ativo === 'cursos' },
+      { href: '/#como', nome: 'Como funciona' },
+      { href: '/#escola', nome: 'Quem somos' },
+      { href: '/#duvidas', nome: 'Dúvidas' }
+    ];
+  %>
   <div class="v-gaveta" id="vGaveta" hidden>
     <div class="v-wrap v-gaveta-in">
-      <a href="/"><i class="fa-solid fa-house"></i> Início</a>
-      <a href="/cursos"><i class="fa-solid fa-graduation-cap"></i> Cursos</a>
-      <a href="/#como"><i class="fa-solid fa-list-ol"></i> Como funciona</a>
-      <a href="/#escola"><i class="fa-solid fa-users"></i> Quem somos</a>
-      <a href="/#duvidas"><i class="fa-solid fa-circle-question"></i> Dúvidas</a>
-      <% if (_logado) { %>
-        <a href="/minha-conta?sec=inscricoes"><i class="fa-solid fa-user"></i> Minhas inscrições</a>
-        <a href="/minha-conta?sec=dados"><i class="fa-solid fa-id-card"></i> Meus dados</a>
-        <form method="POST" action="/logout">
-          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-          <button type="submit"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair</button>
-        </form>
-      <% } else { %>
-        <div class="v-gaveta-acoes">
-          <a class="v-btn v-btn-contorno" href="/login">Entrar</a>
-          <a class="v-btn v-btn-red" href="/cadastro">Criar conta</a>
-        </div>
-      <% } %>
+      <nav class="v-gaveta-nav" aria-label="Menu">
+        <p class="v-gaveta-rotulo" aria-hidden="true">Menu</p>
+        <ul>
+          <% _itens.forEach(function (it, n) { %>
+            <li><a href="<%= it.href %>"<%- it.ativo ? ' aria-current="page"' : '' %>>
+              <span class="v-gaveta-num" aria-hidden="true"><%= ('0' + (n + 1)).slice(-2) %></span>
+              <span class="v-gaveta-nome"><%= it.nome %></span>
+            </a></li>
+          <% }) %>
+        </ul>
+      </nav>
+
+      <div class="v-gaveta-pe">
+        <% if (_logado) { %>
+          <div class="v-gaveta-conta">
+            <p class="v-gaveta-ola"><span class="v-gaveta-avatar" aria-hidden="true"><%= (usuario.nome || '?').trim().charAt(0).toUpperCase() %></span>
+              <span>Olá, <b><%= (usuario.nome || '').split(' ')[0] %></b><small>Sua área do aluno</small></span></p>
+            <a href="/minha-conta?sec=inscricoes"><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i> Minhas inscrições</a>
+            <a href="/minha-conta?sec=dados"><i class="fa-solid fa-id-card" aria-hidden="true"></i> Meus dados</a>
+            <form method="POST" action="/logout">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button type="submit"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> Sair</button>
+            </form>
+          </div>
+        <% } else { %>
+          <p class="v-gaveta-titulo">Área do aluno</p>
+          <div class="v-gaveta-acoes">
+            <a class="v-btn v-btn-contorno" href="/login">Entrar</a>
+            <a class="v-btn v-btn-red" href="/cadastro">Criar conta</a>
+          </div>
+        <% } %>
+        <a class="v-gaveta-wpp" href="https://wa.me/5521999922864" target="_blank" rel="noopener">
+          <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+          <span><small>Secretaria no WhatsApp</small><b>(21) 99992-2864</b></span>
+          <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+        </a>
+        <p class="v-gaveta-end"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> Praça da Cruz Vermelha, 10 · Centro</p>
+      </div>
     </div>
   </div>
 </header>
