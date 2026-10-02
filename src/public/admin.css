@@ -1802,3 +1802,8 @@ a.mr-num:hover { border-color: var(--linha); }
 .vis-corpo { padding: 20px 24px 22px !important; }
 .vis-sub { display: block; margin-top: 4px; font-size: 13px; color: var(--tinta-60); }
 @media (max-width: 640px) { .vis-corpo { padding: 16px !important; } }
+.vis-lista-tit { margin: 22px 0 10px; font-family: var(--fonte-t); font-size: 15px; color: var(--tinta); }
+.vis-corpo .adm-table { border: 1px solid var(--linha2); border-radius: 12px; overflow: hidden; }
+.vis-lista-tit small { font-family: inherit; font-size: 13px; font-weight: 600; color: var(--tinta-60); }
+@media (max-width: 640px) { .vis-corpo .adm-table th:nth-child(2), .vis-corpo .adm-table td:nth-child(2) { display: none; } }
+.vis-corpo .adm-table { min-width: 0 !important; width: 100%; }

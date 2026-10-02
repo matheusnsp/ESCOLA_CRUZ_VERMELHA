@@ -629,6 +629,7 @@ router.get('/', async (req, res) => {
     inicioMes: new Date(`${diaMR.slice(0, 8)}01T00:00:00-03:00`),
   }).catch(() => ({ ok: false }));
   const visitasPromessa = visitasSite.resumo().catch(() => null); // visitantes sem login (lib/visitas.js)
+  const visitasAlunosPromessa = visitasSite.resumoAlunos().catch(() => null); // alunos logados no site, por dia
 
   const cincoMinAtras = new Date(
     Date.now() - 5 * 60 * 1000
@@ -815,6 +816,7 @@ router.get('/', async (req, res) => {
     },
     mr,
     visitas: await visitasPromessa,
+    visitasAlunos: await visitasAlunosPromessa,
     proximasTurmas,
 
     alunosHojeLista,
