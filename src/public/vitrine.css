@@ -18,6 +18,10 @@
 
 body.v-claro { background: var(--v-bg); color: var(--v-ink); }
 
+/* Links do menu para seções (#como, #escola, #duvidas): a seção para logo abaixo do cabeçalho fixo. */
+html { scroll-padding-top: calc(var(--v-header) - 30px); }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
 .v-wrap { width: min(1240px, calc(100% - 48px)); margin: 0 auto; }
 
 /* ---------- faixa vermelha ---------- */
@@ -41,9 +45,15 @@ body.v-claro { background: var(--v-bg); color: var(--v-ink); }
 .v-nav .logo-area { min-width: 0; }
 
 .v-menu { display: flex; gap: 28px; font-size: 13.5px; font-weight: 650; }
-.v-menu a { color: #3a3a3a; text-decoration: none; transition: color .15s; }
+.v-menu a { position: relative; padding-bottom: 4px; color: #3a3a3a; text-decoration: none; transition: color .2s; }
+/* Efeito do menu antigo: o link fica vermelho e um traço vermelho cresce embaixo dele. */
+.v-menu a::after {
+  content: ""; position: absolute; left: 0; bottom: -2px; width: 0; height: 2px; background: var(--v-red); transition: width .2s;
+}
 .v-menu a:hover { color: var(--v-red); }
-.v-menu a[aria-current="page"] { color: var(--v-ink); box-shadow: inset 0 -2px 0 var(--v-red); padding-bottom: 4px; }
+.v-menu a:hover::after, .v-menu a[aria-current="page"]::after { width: 100%; }
+.v-menu a[aria-current="page"] { color: var(--v-ink); }
+.v-cruz { width: 11px; height: 11px; flex: none; fill: var(--v-red); }
 
 .v-acoes { display: flex; gap: 10px; align-items: center; }
 
@@ -129,7 +139,7 @@ body.v-claro { background: var(--v-bg); color: var(--v-ink); }
 
 /* ---------- hero da home ---------- */
 .v-hero {
-  position: relative; min-height: 700px; color: #fff;
+  position: relative; min-height: 640px; min-height: clamp(560px, calc(100svh - 126px), 760px); color: #fff;
   display: flex; align-items: flex-end; overflow: hidden;
   background-color: #111;
   background-image:
@@ -142,7 +152,7 @@ body.v-claro { background: var(--v-bg); color: var(--v-ink); }
   background: linear-gradient(transparent, var(--v-bg));
 }
 .v-hero-grid {
-  position: relative; z-index: 2; padding: 120px 0 130px; width: min(1240px, calc(100% - 48px)); margin: 0 auto;
+  position: relative; z-index: 2; padding: clamp(40px, 8vh, 96px) 0 112px; width: min(1240px, calc(100% - 48px)); margin: 0 auto;
   display: grid; grid-template-columns: 1fr .72fr; gap: 70px; align-items: end;
 }
 .v-olho {
@@ -151,12 +161,13 @@ body.v-claro { background: var(--v-bg); color: var(--v-ink); }
 }
 .v-olho::before { content: ""; width: 34px; height: 2px; background: var(--v-red); }
 .v-hero h1 {
-  font-size: clamp(54px, 7vw, 100px); line-height: .92; letter-spacing: -.062em; font-weight: 800;
-  margin: 24px 0 26px; max-width: 760px; color: #fff;
+  font-size: clamp(54px, min(6.2vw, 11vh), 88px); line-height: .92; letter-spacing: -.062em; font-weight: 800;
+  margin: 18px 0 22px; max-width: 760px; color: #fff;
 }
+.v-hero h1 span { color: var(--v-red); }
 .v-hero-copy { font-size: 19px; line-height: 1.62; color: #e6e6e6; max-width: 640px; margin: 0; }
-.v-hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 32px; }
-.v-hero-trust { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 32px; font-size: 12.5px; color: #d8d8d8; }
+.v-hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+.v-hero-trust { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 24px; font-size: 12.5px; color: #d8d8d8; }
 .v-hero-trust span { display: flex; gap: 8px; align-items: center; }
 .v-hero-trust i {
   width: 20px; height: 20px; border-radius: 50%; background: rgba(255, 255, 255, .14);
@@ -317,10 +328,10 @@ body.v-claro { background: var(--v-bg); color: var(--v-ink); }
 .v-faq-lista details:last-child { border-bottom: 1px solid var(--v-line); }
 .v-faq-lista summary {
   list-style: none; display: flex; justify-content: space-between; gap: 20px; cursor: pointer;
-  font-weight: 750; font-size: 15.5px; color: var(--v-ink);
+  font-weight: 750; font-size: 15.5px; color: var(--v-red);
 }
 .v-faq-lista summary::-webkit-details-marker { display: none; }
-.v-faq-lista summary::after { content: "+"; font-size: 22px; font-weight: 400; line-height: 1; }
+.v-faq-lista summary::after { content: "+"; font-size: 22px; font-weight: 400; line-height: 1; color: var(--v-red); }
 .v-faq-lista details[open] summary::after { content: "–"; }
 .v-faq-lista p { color: #6f6f6f; line-height: 1.65; font-size: 14px; max-width: 760px; margin: 14px 0 0; }
 
@@ -346,7 +357,6 @@ body.v-claro { background: var(--v-bg); color: var(--v-ink); }
 .v-cat-lead { font-size: 17px; line-height: 1.6; color: #555; max-width: 620px; margin: 0 0 30px; }
 
 /* turmas com inscrições abertas */
-.v-cat-abertas, .v-cat-todos { scroll-margin-top: calc(var(--v-header) + 12px); }
 .v-cat-abertas { padding: 56px 0 0; }
 .v-agenda { display: grid; gap: 12px; }
 .v-ag {
@@ -541,7 +551,6 @@ body.v-claro { background: var(--v-bg); color: var(--v-ink); }
 .v-invest-total b { color: var(--v-red); font-size: 22px; font-weight: 800; letter-spacing: -.03em; }
 .v-invest-obs { font-size: 12.5px; color: #8a8a8a; line-height: 1.6; margin: 6px 0 18px; }
 .v-invest-whats { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; font-weight: 700; color: #2b2b2b; text-decoration: none; }
-.v-invest-whats i { color: #16a34a; font-size: 16px; }
 .v-invest-whats:hover { color: var(--v-red); }
 
 .v-curso-faq { padding-top: 0; }
@@ -551,29 +560,38 @@ body.v-claro { background: var(--v-bg); color: var(--v-ink); }
 .v-barra-cel { display: none; }
 
 /* ---------- rodapé ---------- */
-.v-rodape { background: #fff; color: var(--v-ink); padding: 58px 0 30px; margin-top: auto; border-top: 1px solid var(--v-line); }
-.v-rodape-grid { display: grid; grid-template-columns: 1.4fr .7fr .9fr; gap: 60px; }
-.v-rodape p, .v-rodape a { color: #5f5f5f; font-size: 13px; line-height: 1.9; text-decoration: none; }
-.v-rodape a:hover { color: var(--v-red); }
-.v-rodape h4 { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--v-red); margin: 6px 0 12px; font-weight: 800; }
-.v-rodape-logo { display: inline-block; }
-.v-rodape-logo img { height: 62px; width: auto; display: block; }
-.v-rodape-txt { max-width: 430px; margin: 22px 0 0; }
-.v-rodape-txt b { color: var(--v-ink); font-weight: 700; }
-.v-rodape-copy {
-  border-top: 1px solid var(--v-line); margin-top: 42px; padding-top: 20px; color: #8a8a8a; font-size: 11.5px;
-  display: flex; flex-wrap: wrap; gap: 8px 18px;
+.v-rodape { background: #fff; color: var(--v-ink); padding: 56px 0 0; margin-top: auto; border-top: 1px solid var(--v-line); }
+.v-rodape-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, .8fr) minmax(0, 1.1fr); gap: 56px; align-items: start; }
+.v-rodape .logo-area { display: inline-flex; }
+.v-rodape-txt { max-width: 400px; margin: 16px 0 0; font-size: 13.5px; line-height: 1.65; color: #5f5f5f; }
+.v-rodape-inst {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; padding: 10px 15px; border-radius: 999px;
+  border: 1px solid var(--v-line); font-size: 12.5px; font-weight: 750; color: var(--v-ink); text-decoration: none;
+  transition: border-color .15s, color .15s;
 }
-.v-rodape-copy a { font-size: 11.5px; color: #5f5f5f; line-height: 1.5; }
+.v-rodape-inst:hover { border-color: var(--v-red); color: var(--v-red); }
+.v-rodape-inst i { font-size: 10px; color: #9a958d; }
+.v-rodape h4 { margin: 2px 0 16px; font-size: 10.5px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; color: var(--v-red); }
+.v-rodape-lista { list-style: none; display: grid; gap: 10px; margin: 0; padding: 0; }
+.v-rodape-lista a, .v-rodape-lista span { font-size: 13.5px; line-height: 1.5; color: #4f4f4f; text-decoration: none; }
+.v-rodape-lista a:hover { color: var(--v-red); }
+.v-rodape-contato li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 10px; align-items: start; }
+.v-rodape-contato i { margin-top: 4px; font-size: 12.5px; text-align: center; color: var(--v-red); }
+.v-rodape .footer-bottom { margin-top: 44px; }
+/* o botão flutuante do WhatsApp (home) não cobre os links da faixa final */
+@media (min-width: 601px) and (max-width: 1400px) { body:has(.wpp-float) .v-rodape .footer-inner { padding-inline: 72px; } }
 
 /* ---------- responsivo ---------- */
-@media (max-width: 1100px) {
-  .v-menu { gap: 20px; }
+@media (max-width: 1360px) {
+  .v-nav { gap: 18px; }
+  .v-menu { gap: 18px; font-size: 13px; }
+}
+@media (max-width: 1180px) {
+  .v-menu { display: none; }
+  .v-burger { display: grid; place-items: center; }
 }
 @media (max-width: 980px) {
   .v-topbar span:last-child { display: none; }
-  .v-menu { display: none; }
-  .v-burger { display: grid; place-items: center; }
   .v-hero-grid { grid-template-columns: 1fr; gap: 40px; }
   .v-destaque { max-width: 520px; margin-bottom: 0; }
   .v-quick-grid { grid-template-columns: 1fr 1fr; }
@@ -653,6 +671,7 @@ body.v-claro { background: var(--v-bg); color: var(--v-ink); }
   .v-cat-linha { flex-direction: column; align-items: flex-start; gap: 12px; }
   .v-grade-cat { grid-template-columns: 1fr; }
   .v-rodape-grid { grid-template-columns: 1fr; gap: 30px; }
+  body:has(.wpp-float) .v-rodape .footer-bottom { padding-bottom: 96px; }
   .v-curso-topo::before { background: linear-gradient(180deg, rgba(11, 11, 11, .55) 0%, rgba(11, 11, 11, .82) 45%, rgba(11, 11, 11, .92) 100%); }
   .v-voltar { margin-bottom: 26px; }
   .v-curso-titulo h1 { font-size: 40px; }
@@ -670,7 +689,7 @@ body.v-claro { background: var(--v-bg); color: var(--v-ink); }
   }
   .v-barra-cel small { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #7d7d7d; font-weight: 700; }
   .v-barra-cel b { font-size: 20px; font-weight: 800; letter-spacing: -.03em; color: var(--v-ink); }
-  body:has(.v-barra-cel) .v-rodape { padding-bottom: 110px; }
+  body:has(.v-barra-cel) .v-rodape .footer-bottom { padding-bottom: 110px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .v-card, .v-destaque, .v-seta { transition: none; }

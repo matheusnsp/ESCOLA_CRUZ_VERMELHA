@@ -2,7 +2,7 @@
   // Cabeçalho do site do aluno: branco, com o logotipo oficial igual ao de sempre (classes
   // logo-area/logo-img/brand-* de style.css e site-extra.css). O resto em public/vitrine.css.
   // Uso: include('partials/site-header')                          → todas as páginas
-  //      include('partials/site-header', { menuAtivo: 'cursos' }) → marca o item do menu
+  //      include('partials/site-header', { menuAtivo: 'inicio' }) → marca o item do menu (os cursos ficam no botão "Ver cursos")
   var _ativo = typeof menuAtivo !== 'undefined' ? menuAtivo : '';
   var _logado = typeof usuario !== 'undefined' && usuario;
 %>
@@ -36,10 +36,11 @@
     </a>
 
     <nav class="v-menu" aria-label="Principal">
-      <a href="/cursos"<%- _ativo === 'cursos' ? ' aria-current="page"' : '' %>>Cursos</a>
+      <a href="/"<%- _ativo === 'inicio' ? ' aria-current="page"' : '' %>>Início</a>
       <a href="/#como">Como funciona</a>
       <a href="/#escola">A Escola</a>
       <a href="/#duvidas">Dúvidas</a>
+      <a href="https://cruzvermelhariodejaneiro.org/" target="_blank" rel="noopener" title="Site da Cruz Vermelha Brasileira – RJ">Instituição</a>
     </nav>
 
     <div class="v-acoes">
@@ -68,10 +69,12 @@
 
   <div class="v-gaveta" id="vGaveta" hidden>
     <div class="v-wrap v-gaveta-in">
+      <a href="/"><i class="fa-solid fa-house"></i> Início</a>
       <a href="/cursos"><i class="fa-solid fa-graduation-cap"></i> Cursos</a>
       <a href="/#como"><i class="fa-solid fa-list-ol"></i> Como funciona</a>
       <a href="/#escola"><i class="fa-solid fa-building"></i> A Escola</a>
       <a href="/#duvidas"><i class="fa-solid fa-circle-question"></i> Dúvidas</a>
+      <a href="https://cruzvermelhariodejaneiro.org/" target="_blank" rel="noopener"><i class="fa-solid fa-building-columns"></i> Instituição</a>
       <% if (_logado) { %>
         <a href="/minha-conta?sec=inscricoes"><i class="fa-solid fa-user"></i> Minhas inscrições</a>
         <a href="/minha-conta?sec=dados"><i class="fa-solid fa-id-card"></i> Meus dados</a>

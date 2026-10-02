@@ -192,7 +192,8 @@ async function carregarVitrine(filtro, { agenda = false } = {}) {
   return vitrine.ordenar(cursos);
 }
 
-const HOME_MAX_CURSOS = 8;
+// A home mostra só alguns cursos em destaque; a lista completa fica em /cursos.
+const HOME_MAX_CURSOS = 4;
 
 router.get('/', async (req, res) => {
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
