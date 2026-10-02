@@ -43,11 +43,6 @@
             <% } %>
           </div>
           <div class="pq-legenda" aria-hidden="true"><span><%= rotulos[0] %></span><span><%= rotulos[rotulos.length - 1] %></span></div>
-          <%# O nome da nota escolhida aparece aqui (CSS :has em auth.css, sem script). %>
-          <p class="pq-rotulo" aria-hidden="true">
-            <span class="pq-dica">Toque em um número de 0 a 5</span>
-            <% rotulos.forEach(function (r, i) { %><span data-n="<%= i %>"><%= i %> · <%= r %></span><% }) %>
-          </p>
         </fieldset>
 
         <div class="pq-bloco">

@@ -474,16 +474,6 @@
 .pq-nota input:checked + span { background: #d9081f; border-color: #d9081f; color: #fff; transform: translateY(-2px); box-shadow: 0 8px 18px rgba(217, 8, 31, .25); }
 .pq-nota input:focus-visible + span { outline: 2px solid #d9081f; outline-offset: 3px; }
 .pq-legenda { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: #7a746b; }
-.pq-rotulo { margin: 10px 0 0; min-height: 22px; text-align: center; font-size: 14px; font-weight: 700; color: #d9081f; }
-.pq-rotulo span { display: none; }
-.pq-rotulo .pq-dica { display: inline; font-weight: 500; color: #7a746b; }
-.pq-form:has(.pq-nota input:checked) .pq-rotulo .pq-dica { display: none; }
-.pq-form:has(.pq-nota input[value="0"]:checked) .pq-rotulo [data-n="0"] { display: inline; }
-.pq-form:has(.pq-nota input[value="1"]:checked) .pq-rotulo [data-n="1"] { display: inline; }
-.pq-form:has(.pq-nota input[value="2"]:checked) .pq-rotulo [data-n="2"] { display: inline; }
-.pq-form:has(.pq-nota input[value="3"]:checked) .pq-rotulo [data-n="3"] { display: inline; }
-.pq-form:has(.pq-nota input[value="4"]:checked) .pq-rotulo [data-n="4"] { display: inline; }
-.pq-form:has(.pq-nota input[value="5"]:checked) .pq-rotulo [data-n="5"] { display: inline; }
 .pq-form textarea {
   display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; line-height: 1.5;
   padding: 14px 16px; border: 1.5px solid #ddd8d0; border-radius: 14px; resize: vertical; background: #fff; color: #141414;
