@@ -111,3 +111,21 @@ Sem disco/volume persistente, o sistema de arquivos é reiniciado a cada deploy 
 imagens enviadas pela secretaria seriam perdidas. Por isso o `UPLOADS_DIR` + disco.
 Para escala maior no futuro, o ideal é migrar para armazenamento de objetos
 (Cloudinary, S3, Vercel Blob) — mas para começar, o disco persistente resolve.
+
+## HTTPS obrigatório (proteção contra SSL stripping)
+
+- **Redirecionamento:** `src/middleware/https.js`, ligado no começo de `src/server.js`. Em produção,
+  toda requisição que o proxy (Cloudflare/Render) informa como `http` recebe 301 (GET/HEAD) ou 308
+  (POST e outros) para o mesmo endereço em `https`. Localhost e `NODE_ENV` diferente de
+  `production` não são afetados. Desligar numa emergência: variável `FORCAR_HTTPS=0` no Render.
+- **HSTS:** `Strict-Transport-Security: max-age=31536000; includeSubDomains` (helmet, em `server.js`),
+  só em produção. Sem `preload`.
+- **Cookies:** `escola.sid` (sessão) e o cookie do 2FA saem com `HttpOnly; Secure; SameSite=Lax` em produção.
+- **Links de e-mail:** se `APP_URL`/`ADMIN_URL` estiverem com `http://` em produção, o servidor usa `https://`.
+
+Como testar:
+
+    curl -sI http://escola.cruzvermelhariodejaneiro.org/cursos      # 301 → https://...
+    curl -sI -X POST http://secretaria.cursoscruzvermelha.org/login # 301/308 → https://...
+    curl -sI https://escola.cruzvermelhariodejaneiro.org/ | grep -i strict-transport
+    curl -sI https://secretaria.cursoscruzvermelha.org/login | grep -i set-cookie   # HttpOnly; Secure; SameSite=Lax
