@@ -14,14 +14,16 @@
 
     <% if (respondida) { %>
       <div class="pq-obrigado">
-        <i class="fa-solid fa-heart" aria-hidden="true"></i>
+        <span class="pq-obrigado-ico"><i class="fa-solid fa-heart" aria-hidden="true"></i></span>
         <h1>Obrigado, <%= nome %>!</h1>
         <p class="auth-sub">Recebemos a sua avaliação de <strong><%= curso %></strong>. Ela ajuda a melhorar as próximas turmas.</p>
         <a href="/cursos" class="auth-btn auth-btn-link">Ver outros cursos</a>
       </div>
     <% } else { %>
+      <p class="pq-olho">Pesquisa de satisfação</p>
       <h1>Como foi o curso?</h1>
-      <p class="auth-sub">Olá, <%= nome %>! Conta pra gente como foi <strong><%= curso %></strong>. Leva menos de 1 minuto.</p>
+      <p class="auth-sub">Olá, <%= nome %>! Sua opinião ajuda a melhorar as próximas turmas. Leva menos de 1 minuto.</p>
+      <p class="pq-curso"><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i> <%= curso %></p>
 
       <% if (erro) { %>
         <div class="auth-erros" role="alert"><p><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></p></div>
@@ -30,30 +32,38 @@
       <form method="POST" class="pq-form" novalidate>
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-        <fieldset class="pq-notas">
-          <legend>De 0 a 10, quanto você recomendaria este curso a um amigo?</legend>
+        <fieldset class="pq-bloco">
+          <legend><span class="pq-passo">1</span> Que nota você dá para o curso?</legend>
           <div class="pq-escala">
-            <% for (var n = 0; n <= 10; n++) { %>
+            <% for (var n = 0; n < rotulos.length; n++) { %>
               <label class="pq-nota">
-                <input type="radio" name="nota" value="<%= n %>" <%= String(valores.nota) === String(n) ? 'checked' : '' %> required>
+                <input type="radio" name="nota" value="<%= n %>" aria-label="<%= n %> — <%= rotulos[n] %>" <%= String(valores.nota) === String(n) ? 'checked' : '' %> required>
                 <span><%= n %></span>
               </label>
             <% } %>
           </div>
-          <div class="pq-legenda" aria-hidden="true"><span>Não recomendaria</span><span>Recomendaria muito</span></div>
+          <div class="pq-legenda" aria-hidden="true"><span><%= rotulos[0] %></span><span><%= rotulos[rotulos.length - 1] %></span></div>
+          <%# O nome da nota escolhida aparece aqui (CSS :has em auth.css, sem script). %>
+          <p class="pq-rotulo" aria-hidden="true">
+            <span class="pq-dica">Toque em um número de 0 a 5</span>
+            <% rotulos.forEach(function (r, i) { %><span data-n="<%= i %>"><%= i %> · <%= r %></span><% }) %>
+          </p>
         </fieldset>
 
-        <label class="auth-field">
-          <span>Conte como foi <span class="auth-opcional">(opcional)</span></span>
-          <textarea name="comentario" rows="5" maxlength="<%= max %>" placeholder="O que você mais gostou? O que podemos melhorar?"><%= valores.comentario || '' %></textarea>
-        </label>
+        <div class="pq-bloco">
+          <label class="pq-label" for="pqComentario"><span class="pq-passo">2</span> Conte como foi <span class="auth-opcional">(opcional)</span></label>
+          <textarea id="pqComentario" name="comentario" rows="5" maxlength="<%= max %>" placeholder="O que você mais gostou? O que podemos melhorar?"><%= valores.comentario || '' %></textarea>
+        </div>
 
-        <label class="auth-check">
+        <label class="pq-autoriza">
           <input type="checkbox" name="autoriza" value="1" <%= valores.autoriza ? 'checked' : '' %>>
-          <span>Autorizo publicar meu comentário no site da escola, com meu primeiro nome (ex.: <%= nomePublico %>).</span>
+          <span>
+            <b>Pode publicar meu comentário no site da escola</b>
+            <small>Aparece só com o seu primeiro nome, assim: <%= nomePublico %></small>
+          </span>
         </label>
 
-        <button type="submit" class="auth-btn">Enviar avaliação</button>
+        <button type="submit" class="auth-btn">Enviar avaliação <i class="fa-solid fa-paper-plane" aria-hidden="true"></i></button>
       </form>
     <% } %>
   </div>

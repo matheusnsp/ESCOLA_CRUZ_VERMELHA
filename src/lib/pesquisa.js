@@ -5,7 +5,7 @@
 //     15 min no server.js). Só para quem pagou; só turmas que terminaram há até 2 dias (assim a
 //     primeira passada depois de publicar não manda pesquisa de turma antiga).
 //   - O link (/pesquisa/<matrícula>/<token>) não pede login: o token é um HMAC da matrícula.
-//   - A resposta tem nota de 0 a 10, comentário e se o aluno autoriza publicar o comentário.
+//   - A resposta tem nota de 0 a 5, comentário e se o aluno autoriza publicar o comentário.
 //   - A secretaria vê tudo na aba Pesquisa (/pesquisa no painel) e aprova o que vai para o site;
 //     a seção "O que dizem os alunos" da home só aparece quando ela liga a opção.
 //
@@ -22,6 +22,8 @@ const { horas } = require('./agenda');
 const JANELA_MS = 2 * 24 * 3600000;   // pesquisa de turma que terminou há mais que isso não sai
 const ESPERA_MS = 30 * 60000;         // espera depois do fim da última aula
 const MAX_COMENTARIO = 600;
+const NOTA_MAX = 5;                   // escala de 0 a 5
+const ROTULOS = ['Muito ruim', 'Ruim', 'Regular', 'Bom', 'Muito bom', 'Excelente'];
 
 // ── link ────────────────────────────────────────────────────────────────
 function token(matriculaId) {
@@ -92,7 +94,7 @@ function nomePublico(nome) {
 // Grava a resposta (uma por matrícula). Devolve false se já tinha resposta.
 async function responder(matricula, { nota, comentario, autoriza }) {
   const n = Math.round(Number(nota));
-  if (!(n >= 0 && n <= 10)) throw new Error('nota');
+  if (!(n >= 0 && n <= NOTA_MAX)) throw new Error('nota');
   const texto = String(comentario || '').replace(/\s+\n/g, '\n').trim().slice(0, MAX_COMENTARIO);
   const valor = JSON.stringify({
     nota: n,
@@ -195,5 +197,5 @@ async function enviarPendentes({ simular = false } = {}) {
 
 module.exports = {
   token, tokenValido, link, fimDaTurma, lerConfig, salvarConfig, lerResposta, listarRespostas, contarEnvios,
-  responder, mudarStatus, depoimentosDoSite, enviarPendentes, nomePublico, MAX_COMENTARIO,
+  responder, mudarStatus, depoimentosDoSite, enviarPendentes, nomePublico, MAX_COMENTARIO, NOTA_MAX, ROTULOS,
 };

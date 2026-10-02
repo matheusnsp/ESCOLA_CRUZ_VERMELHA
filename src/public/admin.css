@@ -1588,24 +1588,47 @@ button.adm-link { background: none; border: 0; padding: 4px 0; cursor: pointer; 
 .adm-cp-tipos .adm-cert-opcao:has(input:checked) { border-color: var(--vermelho); background: var(--vermelho-bg); }
 .adm-cp-form label > span > small.adm-mut { font-weight: 500; }
 
-/* Pesquisa de satisfação (admin/pesquisa.ejs) */
-.pq-site { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; padding: 18px 22px; }
-.pq-site-txt strong i { color: #d9081f; margin-right: 6px; }
-.pq-site-txt p { margin: 6px 0 0; color: #555; }
-.pq-on { color: #16a369; }
-.pq-off { color: #b80016; }
-.pq-lista { display: grid; gap: 14px; }
-.pq-resp { border: 1px solid #e4e1dc; border-radius: 14px; padding: 16px 18px; background: #fff; }
+/* Pesquisa de satisfação (admin/pesquisa.ejs). Só tokens do tema: vale no claro e no escuro. */
+.pq-pagina { display: grid; gap: 18px; }
+.pq-pagina > .adm-cards, .pq-pagina > .adm-abas { margin: 0; }
+.pq-site { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; padding: 20px 24px; }
+.pq-site-txt { display: flex; gap: 14px; align-items: flex-start; min-width: 0; flex: 1; }
+.pq-site-ico { width: 40px; height: 40px; border-radius: 12px; flex: none; display: grid; place-items: center; background: var(--vermelho-bg); color: var(--vermelho-txt); }
+.pq-site-txt strong { display: block; color: var(--tinta); }
+.pq-site-txt p { margin: 4px 0 0; color: var(--tinta-60); font-size: 14px; line-height: 1.5; }
+.pq-estado { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: .04em; }
+.pq-estado.on { background: var(--ok-bg); color: var(--ok-tx); }
+.pq-estado.off { background: var(--erro-bg); color: var(--erro-tx); }
+.pq-box-tit { margin: 0; padding: 16px 24px; border-bottom: 1px solid var(--linha2); font-weight: 700; color: var(--tinta); }
+.pq-box-tit i { color: var(--vermelho); margin-right: 8px; }
+.pq-media { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; color: var(--tinta); }
+.pq-estrelas { color: #f2a900; font-size: 12px; letter-spacing: 1px; white-space: nowrap; }
+.pq-estrelas .apagada { color: var(--linha); }
+.pq-lista { display: grid; gap: 12px; padding: 16px; }
+.pq-resp { border: 1px solid var(--linha); border-radius: 14px; padding: 16px 18px; background: var(--card); }
 .pq-resp-topo { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; }
-.pq-resp-topo small { display: block; margin-top: 2px; }
-.pq-nota-badge { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 18px; background: #f4f2ef; color: #141414; }
-.pq-nota-badge.boa { background: #e7f7ee; color: #12804f; }
-.pq-nota-badge.ruim { background: #fdecee; color: #b80016; }
-.pq-status { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #f4f2ef; color: #555; white-space: nowrap; }
-.pq-status-aprovada { background: #e7f7ee; color: #12804f; }
-.pq-status-oculta { background: #eee; color: #777; }
-.pq-coment { margin: 14px 0 0; padding: 12px 14px; border-left: 3px solid #d9081f; background: #faf9f7; border-radius: 0 10px 10px 0; white-space: pre-line; line-height: 1.55; }
-.pq-sem { margin: 12px 0 0; }
-.pq-resp-pe { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+.pq-resp-topo b { color: var(--tinta); }
+.pq-resp-topo small { display: block; margin-top: 2px; color: var(--mut); }
+.pq-nota-badge { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; line-height: 1; font-weight: 800; font-size: 19px; background: var(--bg); color: var(--tinta); }
+.pq-nota-badge small { font-size: 10px; font-weight: 700; color: var(--mut); margin-top: 2px; }
+.pq-nota-badge.boa { background: var(--ok-bg); color: var(--ok-tx); }
+.pq-nota-badge.ruim { background: var(--erro-bg); color: var(--erro-tx); }
+.pq-status { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--alerta-bg); color: var(--alerta-tx); white-space: nowrap; }
+.pq-status-aprovada { background: var(--ok-bg); color: var(--ok-tx); }
+.pq-status-oculta { background: var(--bg); color: var(--mut); }
+.pq-coment { margin: 14px 0 0; padding: 12px 16px; border-left: 3px solid var(--vermelho); background: var(--bg); border-radius: 0 10px 10px 0; color: var(--tinta); white-space: pre-line; line-height: 1.55; }
+.pq-sem { margin: 12px 0 0; color: var(--mut); font-size: 14px; font-style: italic; }
+.pq-resp-pe { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--linha2); }
+.pq-quem { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13.5px; color: var(--tinta-60); }
+.pq-aluno { color: var(--tinta); font-weight: 700; text-decoration: none; }
+.pq-aluno:hover { color: var(--vermelho); text-decoration: underline; }
+.pq-autz { display: inline-flex; align-items: center; gap: 6px; }
+.pq-autz.sim i { color: var(--ok-tx); }
+.pq-autz.nao i { color: var(--mut); }
 .pq-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
 .pq-acoes form { margin: 0; }
+.pq-vazio { padding: 28px 24px; margin: 0; color: var(--tinta-60); text-align: center; }
+@media (max-width: 640px) {
+  .pq-resp-topo { grid-template-columns: auto 1fr; }
+  .pq-resp-topo .pq-status { grid-column: 1 / -1; justify-self: start; }
+}

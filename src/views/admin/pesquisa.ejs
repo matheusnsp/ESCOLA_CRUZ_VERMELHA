@@ -3,11 +3,13 @@
 
 <%
   // Pesquisa de satisfação (lib/pesquisa.js): o e-mail sai sozinho depois da última aula de cada
-  // turma; aqui ficam as respostas. Só comentário com autorização do aluno pode ir para o site, e
-  // a seção "O que dizem os alunos" da home só aparece com o botão ligado.
+  // turma; aqui ficam as respostas (nota de 0 a 5). Só comentário com autorização do aluno pode ir
+  // para o site, e a seção "O que dizem os alunos" da home só aparece com o botão ligado.
   function dataBR(d) { return d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'; }
   function dataTurma(d) { if (!d) return ''; var x = new Date(d), p = function (n) { return String(n).padStart(2, '0'); }; return p(x.getUTCDate()) + '/' + p(x.getUTCMonth() + 1) + '/' + x.getUTCFullYear(); }
-  var rotulo = { nova: 'Aguardando', aprovada: 'No site', oculta: 'Oculta' };
+  function decimal(n) { return n.toFixed(1).replace('.', ','); }
+  function estrelas(n) { var r = Math.round(n), h = ''; for (var i = 1; i <= 5; i++) h += '<i class="fa-solid fa-star' + (i <= r ? '' : ' apagada') + '"></i>'; return '<span class="pq-estrelas" aria-hidden="true">' + h + '</span>'; }
+  var rotulo = { nova: 'Aguardando', aprovada: 'No site', oculta: 'Fora do site' };
   var podeMexer = pode('pesquisa:gerenciar');
 %>
 
@@ -18,104 +20,122 @@
 
 <% if (flash) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div><% } %>
 
-<div class="adm-cards c3">
-  <div class="adm-stat">
-    <span><%= resumo.total %></span>
-    <small><i class="fa-solid fa-comment-dots"></i> Respostas</small>
-    <small class="adm-stat-sub"><%= resumo.enviadas %> pesquisa(s) enviada(s)<%= resumo.enviadas ? ' · ' + Math.round(resumo.total * 100 / resumo.enviadas) + '% responderam' : '' %></small>
-  </div>
-  <div class="adm-stat ok">
-    <span><%= resumo.total ? resumo.media.toFixed(1).replace('.', ',') : '—' %></span>
-    <small><i class="fa-solid fa-star"></i> Nota média (0 a 10)</small>
-    <small class="adm-stat-sub"><%= resumo.total ? resumo.promotores + ' deram 9 ou 10 · ' + resumo.detratores + ' deram 0 a 6' : 'sem respostas ainda' %></small>
-  </div>
-  <div class="adm-stat <%= config.mostrarNoSite ? 'ok' : '' %>">
-    <span><%= resumo.aprovadas %></span>
-    <small><i class="fa-solid fa-globe"></i> Depoimentos aprovados</small>
-    <small class="adm-stat-sub"><%= resumo.aguardando %> comentário(s) autorizado(s) aguardando você</small>
-  </div>
-</div>
+<div class="pq-pagina">
 
-<div class="adm-box pq-site">
-  <div class="pq-site-txt">
-    <strong><i class="fa-solid fa-house"></i> Seção "O que dizem os alunos" no site da escola</strong>
-    <% if (config.mostrarNoSite) { %>
-      <p>Está <b class="pq-on">VISÍVEL</b><%= resumo.aprovadas ? '' : ', mas ainda não aparece: nenhum depoimento foi aprovado' %>. Mostra até 6 depoimentos aprovados, os mais recentes.</p>
-    <% } else { %>
-      <p>Está <b class="pq-off">OCULTA</b>. Os depoimentos aprovados só aparecem na página inicial quando você mostrar a seção.</p>
+  <div class="adm-cards c3">
+    <div class="adm-stat">
+      <span><%= resumo.total %></span>
+      <small><i class="fa-solid fa-comment-dots"></i> Respostas</small>
+      <small class="adm-stat-sub"><%= resumo.enviadas %> enviada(s)<%= resumo.enviadas ? ' · ' + Math.round(resumo.total * 100 / resumo.enviadas) + '% responderam' : '' %></small>
+    </div>
+    <div class="adm-stat ok">
+      <span><%= resumo.total ? decimal(resumo.media) : '—' %></span>
+      <small><i class="fa-solid fa-star"></i> Nota média (0 a 5)</small>
+      <small class="adm-stat-sub"><%= resumo.total ? resumo.promotores + ' deram 4 ou 5 · ' + resumo.detratores + ' deram 0 a 2' : 'sem respostas ainda' %></small>
+    </div>
+    <div class="adm-stat <%= resumo.aguardando ? 'warn' : 'ok' %>">
+      <span><%= resumo.aprovadas %></span>
+      <small><i class="fa-solid fa-globe"></i> Depoimentos no site</small>
+      <small class="adm-stat-sub"><%= resumo.aguardando ? resumo.aguardando + ' aguardando a sua aprovação' : 'nenhum aguardando aprovação' %></small>
+    </div>
+  </div>
+
+  <div class="adm-box pq-site">
+    <div class="pq-site-txt">
+      <span class="pq-site-ico"><i class="fa-solid fa-house"></i></span>
+      <div>
+        <strong>Seção "O que dizem os alunos" na página inicial</strong>
+        <% if (config.mostrarNoSite) { %>
+          <p><span class="pq-estado on">VISÍVEL</span>
+            <%= resumo.aprovadas ? ' Mostra até 6 depoimentos aprovados, os mais recentes.' : ' Mas ainda não aparece: nenhum depoimento foi aprovado.' %></p>
+        <% } else { %>
+          <p><span class="pq-estado off">OCULTA</span> Os depoimentos aprovados só aparecem no site quando você mostrar a seção.</p>
+        <% } %>
+      </div>
+    </div>
+    <% if (podeMexer) { %>
+      <form method="POST" action="/pesquisa/site">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="mostrar" value="<%= config.mostrarNoSite ? '0' : '1' %>">
+        <button class="adm-btn <%= config.mostrarNoSite ? 'adm-btn-out' : '' %>">
+          <i class="fa-solid <%= config.mostrarNoSite ? 'fa-eye-slash' : 'fa-eye' %>"></i> <%= config.mostrarNoSite ? 'Ocultar do site' : 'Mostrar no site' %>
+        </button>
+      </form>
     <% } %>
   </div>
-  <% if (podeMexer) { %>
-    <form method="POST" action="/pesquisa/site">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <input type="hidden" name="mostrar" value="<%= config.mostrarNoSite ? '0' : '1' %>">
-      <button class="adm-btn <%= config.mostrarNoSite ? 'adm-btn-out' : '' %>"><%= config.mostrarNoSite ? 'Ocultar do site' : 'Mostrar no site' %></button>
-    </form>
+
+  <% if (porCurso.length) { %>
+  <div class="adm-box">
+    <p class="pq-box-tit"><i class="fa-solid fa-chart-simple"></i>Nota média por curso</p>
+    <table class="adm-table">
+      <thead><tr><th>Curso</th><th>Respostas</th><th>Nota média</th></tr></thead>
+      <tbody>
+        <% porCurso.forEach(function (c) { %>
+          <tr><td><%= c.curso %></td><td><%= c.total %></td><td><span class="pq-media"><%= decimal(c.media) %> <%- estrelas(c.media) %></span></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
   <% } %>
-</div>
 
-<% if (porCurso.length) { %>
-<div class="adm-box">
-  <p class="adm-box-intro"><i class="fa-solid fa-chart-simple"></i> Nota média por curso</p>
-  <table class="adm-table">
-    <thead><tr><th>Curso</th><th>Respostas</th><th>Nota média</th></tr></thead>
-    <tbody>
-      <% porCurso.forEach(function (c) { %>
-        <tr><td><%= c.curso %></td><td><%= c.total %></td><td><b><%= c.media.toFixed(1).replace('.', ',') %></b></td></tr>
-      <% }) %>
-    </tbody>
-  </table>
-</div>
-<% } %>
-
-<div class="adm-abas">
-  <% abas.forEach(function (a) { %>
-    <a href="/pesquisa?aba=<%= a.id %>" class="adm-aba <%= aba === a.id ? 'on' : '' %>"><%= a.rot %> <span class="adm-aba-num"><%= a.n %></span></a>
-  <% }) %>
-</div>
-
-<div class="adm-box">
-  <% if (!lista.length) { %>
-    <p class="adm-vazio"><%= resumo.total ? 'Nada nesta aba.' : 'Ainda não chegou nenhuma resposta. A pesquisa sai sozinha por e-mail no fim de cada turma.' %></p>
-  <% } else { %>
-    <div class="pq-lista">
-      <% lista.forEach(function (r) { %>
-        <article class="pq-resp">
-          <div class="pq-resp-topo">
-            <span class="pq-nota-badge <%= r.nota >= 9 ? 'boa' : (r.nota <= 6 ? 'ruim' : '') %>"><%= r.nota %></span>
-            <div>
-              <b><%= r.curso %></b>
-              <small class="adm-mut">turma de <%= dataTurma(r.inicioTurma) %> · respondida em <%= dataBR(r.respondidaEm) %></small>
-            </div>
-            <span class="pq-status pq-status-<%= r.status %>"><%= rotulo[r.status] || r.status %></span>
-          </div>
-          <% if (r.comentario) { %>
-            <blockquote class="pq-coment"><%= r.comentario %></blockquote>
-          <% } else { %>
-            <p class="adm-mut pq-sem">Sem comentário, só a nota.</p>
-          <% } %>
-          <div class="pq-resp-pe">
-            <span class="adm-mut">
-              <a href="/alunos/<%= r.alunoId %>/matriculas"><%= r.nome %></a>
-              <% if (r.comentario) { %>
-                · <% if (r.autoriza) { %><i class="fa-solid fa-check"></i> autorizou publicar como "<%= r.nomePublico %>"<% } else { %><i class="fa-solid fa-lock"></i> não autorizou publicar<% } %>
-              <% } %>
-            </span>
-            <% if (podeMexer && r.comentario && r.autoriza) { %>
-              <div class="pq-acoes">
-                <% if (r.status !== 'aprovada') { %>
-                  <form method="POST" action="/pesquisa/<%= r.matriculaId %>/aprovar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="aba" value="<%= aba %>"><button class="adm-btn adm-btn-sm adm-btn-ok"><i class="fa-solid fa-check"></i> Aprovar para o site</button></form>
-                <% } %>
-                <% if (r.status !== 'oculta') { %>
-                  <form method="POST" action="/pesquisa/<%= r.matriculaId %>/ocultar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="aba" value="<%= aba %>"><button class="adm-btn adm-btn-sm adm-btn-out"><i class="fa-solid fa-eye-slash"></i> <%= r.status === 'aprovada' ? 'Tirar do site' : 'Não publicar' %></button></form>
-                <% } %>
-              </div>
-            <% } %>
-          </div>
-        </article>
+  <div>
+    <div class="adm-abas">
+      <% abas.forEach(function (a) { %>
+        <a href="/pesquisa?aba=<%= a.id %>" class="adm-aba <%= aba === a.id ? 'on' : '' %>"><%= a.rot %> <span class="adm-aba-num"><%= a.n %></span></a>
       <% }) %>
     </div>
-  <% } %>
+
+    <div class="adm-box">
+      <% if (!lista.length) { %>
+        <p class="pq-vazio"><%= resumo.total ? 'Nada nesta aba.' : 'Ainda não chegou nenhuma resposta. A pesquisa sai sozinha por e-mail no fim de cada turma.' %></p>
+      <% } else { %>
+        <div class="pq-lista">
+          <% lista.forEach(function (r) { %>
+            <article class="pq-resp">
+              <div class="pq-resp-topo">
+                <span class="pq-nota-badge <%= r.nota >= 4 ? 'boa' : (r.nota <= 2 ? 'ruim' : '') %>" title="Nota <%= r.nota %> de 5"><span><%= r.nota %><small>/5</small></span></span>
+                <div>
+                  <b><%= r.curso %></b>
+                  <small>Turma de <%= dataTurma(r.inicioTurma) %> · respondida em <%= dataBR(r.respondidaEm) %></small>
+                </div>
+                <span class="pq-status pq-status-<%= r.status %>"><%= rotulo[r.status] || r.status %></span>
+              </div>
+
+              <% if (r.comentario) { %>
+                <blockquote class="pq-coment"><%= r.comentario %></blockquote>
+              <% } else { %>
+                <p class="pq-sem">Sem comentário, só a nota.</p>
+              <% } %>
+
+              <div class="pq-resp-pe">
+                <div class="pq-quem">
+                  <a class="pq-aluno" href="/alunos/<%= r.alunoId %>/matriculas"><%= r.nome %></a>
+                  <% if (r.comentario) { %>
+                    <% if (r.autoriza) { %>
+                      <span class="pq-autz sim"><i class="fa-solid fa-circle-check"></i> Autorizou publicar como "<%= r.nomePublico %>"</span>
+                    <% } else { %>
+                      <span class="pq-autz nao"><i class="fa-solid fa-lock"></i> Não autorizou publicar</span>
+                    <% } %>
+                  <% } %>
+                </div>
+                <% if (podeMexer && r.comentario && r.autoriza) { %>
+                  <div class="pq-acoes">
+                    <% if (r.status !== 'aprovada') { %>
+                      <form method="POST" action="/pesquisa/<%= r.matriculaId %>/aprovar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="aba" value="<%= aba %>"><button class="adm-btn adm-btn-sm adm-btn-ok"><i class="fa-solid fa-check"></i> Aprovar para o site</button></form>
+                    <% } %>
+                    <% if (r.status !== 'oculta') { %>
+                      <form method="POST" action="/pesquisa/<%= r.matriculaId %>/ocultar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="aba" value="<%= aba %>"><button class="adm-btn adm-btn-sm adm-btn-out"><i class="fa-solid fa-eye-slash"></i> <%= r.status === 'aprovada' ? 'Tirar do site' : 'Não publicar' %></button></form>
+                    <% } %>
+                  </div>
+                <% } %>
+              </div>
+            </article>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
 </div>
 
 <%- include('foot') %>

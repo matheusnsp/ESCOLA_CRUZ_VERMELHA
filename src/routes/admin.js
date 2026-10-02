@@ -1438,7 +1438,7 @@ router.get('/pesquisa', requirePermissao('pesquisa:gerenciar', 'painel:leitura')
     porCurso: Object.values(grupos).map((g) => ({ ...g, media: g.soma / g.total })).sort((a, b) => b.total - a.total),
     resumo: {
       total: todas.length, enviadas: Math.max(enviadas, todas.length), media: todas.length ? soma / todas.length : 0,
-      promotores: todas.filter((r) => r.nota >= 9).length, detratores: todas.filter((r) => r.nota <= 6).length,
+      promotores: todas.filter((r) => r.nota >= 4).length, detratores: todas.filter((r) => r.nota <= 2).length,
       aprovadas: abas[1].lista.length, aguardando: abas[0].lista.length,
     },
   });

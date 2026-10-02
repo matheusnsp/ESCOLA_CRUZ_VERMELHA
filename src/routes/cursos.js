@@ -242,7 +242,7 @@ function telaPesquisa(res, m, extra) {
   res.set('X-Robots-Tag', 'noindex');
   return res.render('pesquisa', {
     nome: String(m.aluno.nome).split(' ')[0], nomePublico: pesquisa.nomePublico(m.aluno.nome), curso: m.turma.curso.nome,
-    max: pesquisa.MAX_COMENTARIO, respondida: false, erro: null, valores: {}, ...extra,
+    max: pesquisa.MAX_COMENTARIO, rotulos: pesquisa.ROTULOS, respondida: false, erro: null, valores: {}, ...extra,
   });
 }
 router.get('/pesquisa/:matriculaId/:token', (req, res, next) => (async () => {
@@ -255,8 +255,8 @@ router.post('/pesquisa/:matriculaId/:token', (req, res, next) => (async () => {
   if (!m) return res.status(404).render('erro', { mensagem: 'Link da pesquisa inválido. Confira se copiou o endereço inteiro do e-mail.' });
   const valores = { nota: req.body.nota, comentario: req.body.comentario, autoriza: req.body.autoriza === '1' };
   const nota = Number(valores.nota);
-  if (valores.nota === undefined || valores.nota === '' || !(nota >= 0 && nota <= 10)) {
-    return telaPesquisa(res.status(400), m, { erro: 'Escolha uma nota de 0 a 10.', valores });
+  if (valores.nota === undefined || valores.nota === '' || !(nota >= 0 && nota <= pesquisa.NOTA_MAX)) {
+    return telaPesquisa(res.status(400), m, { erro: 'Escolha uma nota de 0 a 5.', valores });
   }
   await pesquisa.responder(m, valores); // segunda resposta para a mesma matrícula é ignorada
   return res.redirect(303, req.originalUrl);
