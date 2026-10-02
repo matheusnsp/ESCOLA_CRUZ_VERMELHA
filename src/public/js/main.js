@@ -78,7 +78,7 @@ if ('serviceWorker' in navigator) {
   botao.addEventListener('click', function () { abrir(gaveta.hidden); });
   gaveta.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', function () { abrir(false); }); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !gaveta.hidden) { abrir(false); botao.focus(); } });
-  window.addEventListener('resize', function () { if (window.innerWidth > 1180) abrir(false); });
+  window.addEventListener('resize', function () { if (window.innerWidth > 1060) abrir(false); });
   // Menu do aluno logado: fecha ao clicar fora.
   var user = header.querySelector('.v-user');
   if (user) document.addEventListener('click', function (e) { if (user.open && !user.contains(e.target)) user.open = false; });
