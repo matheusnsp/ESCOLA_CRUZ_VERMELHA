@@ -208,7 +208,8 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/sobre', (req, res) => res.render('sobre'));
-router.get('/duvidas', (req, res) => res.render('duvidas'));
+// Não existe página própria de dúvidas (dava erro 500): as perguntas frequentes ficam na home.
+router.get('/duvidas', (req, res) => res.redirect(302, '/#duvidas'));
 
 router.get('/cursos', async (req, res) => {
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
