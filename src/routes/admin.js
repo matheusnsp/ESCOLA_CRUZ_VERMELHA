@@ -8,6 +8,7 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 const matriculaRapida = require('../lib/matricula-rapida');
+const visitasSite = require('../lib/visitas');
 const pesquisa = require('../lib/pesquisa');
 const prisma = require('../db');
 const { verificarSenha, hashSenha } = require('../lib/password');
@@ -627,6 +628,7 @@ router.get('/', async (req, res) => {
     inicioSemana: new Date(inicioHoje.getTime() - 6 * 86400000),
     inicioMes: new Date(`${diaMR.slice(0, 8)}01T00:00:00-03:00`),
   }).catch(() => ({ ok: false }));
+  const visitasPromessa = visitasSite.resumo().catch(() => null); // visitantes sem login (lib/visitas.js)
 
   const cincoMinAtras = new Date(
     Date.now() - 5 * 60 * 1000
@@ -812,6 +814,7 @@ router.get('/', async (req, res) => {
       reembolsos,
     },
     mr,
+    visitas: await visitasPromessa,
     proximasTurmas,
 
     alunosHojeLista,

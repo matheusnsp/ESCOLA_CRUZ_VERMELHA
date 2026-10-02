@@ -24,6 +24,7 @@
   <div class="adm-painel-agora">
     <button type="button" class="adm-pend-btn" id="cardAlunosOnline"><span class="adm-ponto-on"></span> <b id="alunosOnline"><%= stats.alunosOnline %></b> online agora</button>
     <button type="button" class="adm-pend-btn" id="cardAlunosHoje"><i class="fa-solid fa-right-to-bracket"></i> <b><%= stats.alunosHoje %></b> entraram hoje</button>
+    <% if (visitas) { %><button type="button" class="adm-pend-btn" id="cardVisitas" title="Pessoas sem login que abriram o site hoje"><i class="fa-regular fa-eye"></i> <b><%= visitas.hoje %></b> visitantes hoje</button><% } %>
   </div>
 </div>
 
@@ -238,6 +239,38 @@
 
 </div>
 
+
+<% if (visitas) { var maxV = Math.max(1, ...visitas.dias.map(function (d) { return d.unicos; })); %>
+<div id="modalVisitas" class="adm-modal-overlay">
+  <div class="adm-modal">
+    <div class="adm-modal-head">
+      <div>
+        <h2>Visitantes do site</h2>
+        <small class="vis-sub">pessoas sem login (quem tem login aparece em "online agora" e "entraram hoje")</small>
+      </div>
+      <button type="button" id="fecharModalVisitas" class="adm-modal-close" aria-label="Fechar">&times;</button>
+    </div>
+    <div class="adm-modal-body vis-corpo">
+      <div class="vis-nums">
+        <div><b><%= visitas.agora %></b><span>no site agora</span></div>
+        <div><b><%= visitas.hoje %></b><span>visitantes hoje</span></div>
+        <div><b><%= visitas.paginasHoje %></b><span>páginas abertas hoje</span></div>
+        <div><b><%= visitas.semana %></b><span>nos últimos 7 dias</span></div>
+      </div>
+      <ul class="vis-dias">
+        <% visitas.dias.forEach(function (d, i) { var dt = new Date(d.dia + 'T12:00:00-03:00'); %>
+          <li class="<%= i === 6 ? 'hoje' : '' %>">
+            <span class="vis-dia"><%= i === 6 ? 'Hoje' : dt.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' }).replace('.', '') %></span>
+            <span class="vis-barra"><span style="width: <%= Math.round(d.unicos / maxV * 100) %>%"></span></span>
+            <b><%= d.unicos %></b>
+          </li>
+        <% }) %>
+      </ul>
+      <p class="vis-nota">Contagem anônima, sem cookie e sem guardar IP; robôs e buscadores ficam de fora. O número é aproximado.</p>
+    </div>
+  </div>
+</div>
+<% } %>
 
 <!-- ========================================================= -->
 <!-- Modal: alunos online agora -->
@@ -608,6 +641,17 @@
     }
 
   });
+
+
+  /* Modal: visitantes do site */
+  const cardVisitas = document.getElementById('cardVisitas');
+  const modalVisitas = document.getElementById('modalVisitas');
+  if (cardVisitas && modalVisitas) {
+    cardVisitas.addEventListener('click', () => modalVisitas.classList.add('aberto'));
+    document.getElementById('fecharModalVisitas').addEventListener('click', () => modalVisitas.classList.remove('aberto'));
+    modalVisitas.addEventListener('click', (e) => { if (e.target === modalVisitas) modalVisitas.classList.remove('aberto'); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modalVisitas.classList.remove('aberto'); });
+  }
 
 
   /* =========================================================
