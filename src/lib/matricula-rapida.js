@@ -260,9 +260,23 @@ const pagoNoGateway = (pg) => !!pg.gateway && pg.gateway !== 'manual'
   && SUCESSO_GATEWAY.includes(String(pg.gatewayStatus || '').toLowerCase().replace(/^reconciliado:/, ''));
 const aMao = (pg) => !pagoNoGateway(pg);
 
+// O aviso (postback) do pagamento feito na instituição pode chegar ao webhook da escola: sem um hash
+// conhecido, ele casa por e-mail + valor base (R$ 99) com a taxa que a pessoa deixou em aberto no
+// site da escola e a marca como paga. É o MESMO dinheiro: reconhece pelo hash da transação, gravado
+// no pagamento (gatewayRef/gatewayHash) ou na resposta do aviso (gatewayResponse).
+function mesmaTransacao(pg, hash) {
+  if (!hash) return false;
+  if (pg.gatewayRef === hash || pg.gatewayHash === hash) return true;
+  const r = pg.gatewayResponse && typeof pg.gatewayResponse === 'object' ? pg.gatewayResponse : null;
+  if (!r) return false;
+  const t = r.transaction || r.result || r;
+  return [t && t.hash, t && t.id, r.hash, r.id].some((v) => v != null && String(v) === String(hash));
+}
+
 async function ligarComEscola(pessoa, pago, m) {
   const segunda = unicopag.conta('segunda').gateway;
-  const online = m.pagamentos.filter((pg) => pg.status === 'PAGO' && pg.gateway !== segunda && !aMao(pg));
+  const doAqui = m.pagamentos.filter((pg) => pg.gateway !== segunda && mesmaTransacao(pg, pago.hash));
+  const online = m.pagamentos.filter((pg) => pg.status === 'PAGO' && pg.gateway !== segunda && !aMao(pg) && !doAqui.includes(pg));
   const emDobro = online.filter((pg) => pg.tipo === 'TAXA' || m.plano === 'A_VISTA');
   if (emDobro.length) {
     return { dobro: emDobro.map((pg) => ({ tipo: pg.tipo, valor: Number(pg.valor), metodo: pg.metodo, status: pg.gatewayStatus, em: pg.criadoEm })) };
@@ -297,10 +311,12 @@ async function ligarComEscola(pessoa, pago, m) {
   ];
   // Taxa da escola anulada: lançamento à mão é reaproveitado; cobrança online da escola que ficou
   // em aberto (PIX gerado e não pago) é cancelada, para não ser paga de novo.
-  const pendentesOnline = m.pagamentos.filter((pg) => pg.tipo === 'TAXA' && pg.gateway && !['manual', segunda].includes(pg.gateway) && pg.status === 'PENDENTE').map((pg) => pg.id);
+  const pendentesOnline = m.pagamentos.filter((pg) => pg.tipo === 'TAXA' && pg.gateway && !['manual', segunda].includes(pg.gateway) && pg.status === 'PENDENTE' && !doAqui.includes(pg)).map((pg) => pg.id);
   if (pendentesOnline.length) ops.push(prisma.pagamento.updateMany({ where: { id: { in: pendentesOnline } }, data: { status: 'CANCELADO', gatewayStatus: 'cancelado:pago-pela-matricula-rapida' } }));
-  const taxas = m.pagamentos.filter((pg) => pg.tipo === 'TAXA' && pg.gateway !== segunda && pg.status !== 'PENDENTE' && aMao(pg));
-  const jaLigada = m.pagamentos.find((pg) => pg.tipo === 'TAXA' && pg.gateway === segunda && pg.gatewayRef === pago.hash);
+  const taxas = m.pagamentos.filter((pg) => pg.tipo === 'TAXA' && pg.gateway !== segunda && pg.status !== 'PENDENTE' && aMao(pg) && !doAqui.includes(pg));
+  // Já ligada: a taxa com o hash daqui (gravada por um batimento anterior ou casada pelo webhook).
+  const jaLigada = m.pagamentos.find((pg) => pg.tipo === 'TAXA' && pg.gateway === segunda && pg.gatewayRef === pago.hash)
+    || doAqui.find((pg) => pg.tipo === 'TAXA');
   if (jaLigada) ops.push(prisma.pagamento.update({ where: { id: jaLigada.id }, data: taxaDados }));
   else if (taxas.length) ops.push(prisma.pagamento.update({ where: { id: taxas[0].id }, data: taxaDados }));
   else ops.push(prisma.pagamento.create({ data: { matriculaId: m.id, ...taxaDados } }));

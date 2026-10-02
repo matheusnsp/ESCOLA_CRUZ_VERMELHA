@@ -2,6 +2,7 @@ const express = require('express');
 const prisma = require('../db');
 const { enviarEmailMatriculaConfirmada } = require('../lib/email');
 const { formatBRL } = require('../lib/matricula');
+const unicopag = require('../lib/unicopag');
 
 const router = express.Router();
 
@@ -146,6 +147,17 @@ router.post('/webhook/unicopag', express.json(), async (req, res) => {
     //    (a linha PENDENTE já existe; só falta o ref). Casa por e-mail do
     //    cliente + valor BASE + PENDENTE mais recente.
     if (!pagamento && emailCliente) {
+      // Aviso de um pagamento feito na instituição (matrícula rápida, outra conta da Únicopag): não
+      // é desta escola. Sem esta checagem ele casava por e-mail + R$ 99 com a taxa que a pessoa
+      // deixou em aberto aqui e a marcava paga (contando o mesmo dinheiro duas vezes). Quem liga
+      // esse pagamento à matrícula da escola é o batimento de lib/matricula-rapida.js.
+      if (hash && unicopag.conta('segunda').token) {
+        const lista = await unicopag.listarTransacoes('segunda', { forcar: true });
+        if (lista.ok && lista.lista.some((t) => t.hash === hash)) {
+          console.log(`[WEBHOOK] Aviso da conta da instituição (matrícula rápida), ignorado aqui. hash=${hash}`);
+          return res.json({ ok: true, info: 'transação da conta da instituição' });
+        }
+      }
       const aluno = await prisma.usuario.findUnique({ where: { email: emailCliente } });
       if (aluno) {
         pagamento = await prisma.pagamento.findFirst({
