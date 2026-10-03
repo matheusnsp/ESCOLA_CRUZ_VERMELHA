@@ -23,7 +23,8 @@ function contaDoPagamento(pg) {
 
 const centavos = (n) => Math.round(Number(n || 0) * 100) / 100;
 
-// Partes do dinheiro recebido de uma matrícula: [{ conta, valor }]. pagamentos = os Pagamento dela.
+// Partes do dinheiro recebido de uma matrícula: [{ conta, valor, parte }]. pagamentos = os Pagamento
+// dela. parte: 'taxa' (só a inscrição), 'curso' (só a matrícula) ou 'tudo' (as duas na mesma conta).
 function partesRecebidas(m, pagamentos) {
   const pagos = (pagamentos || []).filter((pg) => pg.status === 'PAGO');
   const taxaPg = pagos.find((pg) => pg.tipo === 'TAXA');
@@ -35,19 +36,22 @@ function partesRecebidas(m, pagamentos) {
   if (['PAGO', 'PARCELADO'].includes(m.statusPagamento)) {
     const total = centavos(m.valorCurso);
     // À vista pelo site da escola: uma cobrança só (curso + taxa), sem pagamento de taxa separado.
-    if (!taxaPg || !taxa) return [{ conta: contaCurso, valor: total }];
-    const partes = [{ conta: contaTaxa, valor: Math.min(taxa, total) }, { conta: contaCurso, valor: centavos(total - Math.min(taxa, total)) }];
+    if (!taxaPg || !taxa) return [{ conta: contaCurso, valor: total, parte: 'tudo' }];
+    const partes = [{ conta: contaTaxa, valor: Math.min(taxa, total), parte: 'taxa' }, { conta: contaCurso, valor: centavos(total - Math.min(taxa, total)), parte: 'curso' }];
     return juntar(partes);
   }
-  if (m.taxaConfirmada) return [{ conta: contaTaxa, valor: taxa || 100 }];
+  if (m.taxaConfirmada) return [{ conta: contaTaxa, valor: taxa || 100, parte: 'taxa' }];
   return [];
 }
 
 // Soma partes da mesma conta e tira as zeradas.
 function juntar(partes) {
   const soma = {};
-  for (const p of partes) soma[p.conta] = centavos((soma[p.conta] || 0) + p.valor);
-  return Object.entries(soma).filter(([, v]) => v > 0).map(([conta, valor]) => ({ conta, valor }));
+  for (const p of partes) {
+    const j = soma[p.conta];
+    soma[p.conta] = j ? { conta: p.conta, valor: centavos(j.valor + p.valor), parte: 'tudo' } : { ...p };
+  }
+  return Object.values(soma).filter((p) => p.valor > 0);
 }
 
 // Nome de cada conta na tela. A principal sem UNICOPAG_NOME no Render aparece como "Escola (site)".

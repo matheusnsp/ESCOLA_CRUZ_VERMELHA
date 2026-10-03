@@ -2000,8 +2000,16 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
   // Com o filtro de conta, cada linha mostra só o que entrou naquela conta (e some se não entrou nada).
   if (contaFiltro !== 'todas') {
     for (let i = pagamentos.length - 1; i >= 0; i--) {
-      const naConta = pagamentos[i].partes.filter((pt) => pt.conta === contaFiltro).reduce((t, pt) => t + pt.valor, 0);
-      if (!naConta) pagamentos.splice(i, 1); else pagamentos[i].valor = naConta;
+      const doFiltro = pagamentos[i].partes.filter((pt) => pt.conta === contaFiltro);
+      const naConta = doFiltro.reduce((t, pt) => t + pt.valor, 0);
+      if (!naConta) { pagamentos.splice(i, 1); continue; }
+      pagamentos[i].valor = naConta;
+      // Só uma parte da matrícula entrou nesta conta: a etiqueta diz qual, e o resto onde entrou.
+      const parte = doFiltro.length === 1 ? doFiltro[0].parte : 'tudo';
+      if (pagamentos[i].tipo === 'curso' && parte !== 'tudo') {
+        pagamentos[i].parteConta = parte;
+        pagamentos[i].resto = pagamentos[i].partes.filter((pt) => pt.conta !== contaFiltro);
+      }
     }
   }
   pagamentos.sort((x, y) => new Date(y.data || 0) - new Date(x.data || 0));

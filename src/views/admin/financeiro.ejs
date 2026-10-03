@@ -162,10 +162,14 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
           </td>
           <td><%= m.turma.curso.nome %></td>
           <td>
-            <span class="badge <%= BADGE[p.tipo] %>"><%= ROTULO[p.tipo] %></span>
+            <% if (p.parteConta) { %>
+              <span class="badge ok"><%= p.parteConta === 'taxa' ? 'Inscrição' : 'Matrícula' %></span>
+            <% } else { %>
+              <span class="badge <%= BADGE[p.tipo] %>"><%= ROTULO[p.tipo] %></span>
+            <% } %>
             <% if (p.tipo !== 'estornado' && m.forma) { %><br><small class="adm-mut"><%= m.forma === 'PIX' ? 'PIX' : 'Cartão' %><%= m.statusPagamento === 'PARCELADO' ? ' · parcelado' : '' %></small><% } %>
             <% if (p.tipo === 'estornado') { %><br><small class="adm-mut"><%= motivos[m.id] || 'Motivo não informado' %></small><% } %>
-            <% if (p.partes && p.partes.length) { %><small class="fin-onde"><%- p.partes.map(function (pt) { return '<span class="fin-onde-' + pt.conta + '">' + String(nomesContas[pt.conta]).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }) + (p.partes.length > 1 ? ' ' + formatBRL(pt.valor) : '') + '</span>'; }).join(' + ') %></small><% } %>
+            <% if (p.parteConta) { %><small class="fin-onde">matrícula paga · <%= p.parteConta === 'taxa' ? 'a matrícula' : 'a inscrição' %> entrou em <%= p.resto.map(function (pt) { return nomesContas[pt.conta] + ' (' + formatBRL(pt.valor) + ')'; }).join(' e ') %></small><% } else if (p.partes && p.partes.length) { %><small class="fin-onde"><%- p.partes.map(function (pt) { return '<span class="fin-onde-' + pt.conta + '">' + String(nomesContas[pt.conta]).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }) + (p.partes.length > 1 ? ' ' + formatBRL(pt.valor) : '') + '</span>'; }).join(' + ') %></small><% } %>
           </td>
           <td><%= dataBR(p.data) %></td>
           <td><strong><%= formatBRL(p.valor) %></strong></td>
@@ -174,7 +178,9 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
               // Estorno devolve dinheiro e é irreversível: só Financeiro e Dev.
               // O Coordenador vê a linha, mas não a ação.
             %>
-            <% if (p.tipo === 'curso' && pode('financeiro:reembolsar')) { %>
+            <% if (p.parteConta) { %>
+              <span class="adm-mut" title="Esta linha mostra só uma parte. Para estornar, veja todas as contas.">—</span>
+            <% } else if (p.tipo === 'curso' && pode('financeiro:reembolsar')) { %>
               <% if (m.forma === 'PIX') { %>
                 <span class="adm-aviso-cel"
                       title="Reembolsos de PIX precisam ser feitos manualmente pelo painel da Únicopag">
