@@ -573,17 +573,17 @@ router.use(async (req, res, next) => {
 
 router.use(requireAdmin);
 
-// Valor de uma matrícula nas listas (Painel, Inscrições, página do aluno). Quem veio da matrícula
-// rápida pagou a taxa na instituição: o valor mostrado é o curso + essa taxa (ex.: R$ 150 +
-// R$ 103,95). As demais seguem como sempre.
+// Valor de uma matrícula nas listas (Painel, Inscrições, página do aluno): o valorCurso, que é o
+// total (curso + taxa). Quem veio da matrícula rápida pagou a taxa na instituição; a lista marca
+// e mostra a divisão ao passar o mouse.
 router.use(async (req, res, next) => {
   let ids = new Set();
   try { ids = await matriculaRapida.idsMatriculas(); } catch (e) { /* sem a lista, mostra como sempre */ }
   res.locals.valorMatricula = (m) => {
-    const curso = Number(m.valorCurso) || 0;
-    if (!ids.has(m.id)) return { total: curso, rapida: false };
+    const total = Number(m.valorCurso) || 0;
+    if (!ids.has(m.id)) return { total, rapida: false };
     const taxa = Number(m.valorTaxaMatricula) || 0;
-    return { total: curso + taxa, curso, taxa, rapida: true };
+    return { total, curso: Math.round((total - taxa) * 100) / 100, taxa, rapida: true };
   };
   next();
 });

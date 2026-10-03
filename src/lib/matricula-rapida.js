@@ -79,6 +79,7 @@ async function carregar({ forcar = false } = {}) {
     return minhas;
   };
   const anotados = await encaixes();
+  await corrigirTotais(anotados).catch((e) => console.error('[MATRICULA-RAPIDA] correção dos totais:', e.message));
   const ordem = [...pessoas].sort((a, b) => (b.email ? 1 : 0) - (a.email ? 1 : 0)); // quem tem e-mail escolhe primeiro
   for (const p of ordem) {
     p.transacoes = doPessoa(p);
@@ -203,7 +204,8 @@ async function encaixar({ inscricaoId, turmaId, porUsuarioId, appUrl }) {
   const confirmadaEm = pessoa.pagoEm ? new Date(pessoa.pagoEm) : new Date();
   const dados = {
     plano: 'PARCELADO', forma: 'CREDITO', // a taxa já foi paga; o curso a pessoa paga depois, pela escola
-    valorCurso: valores.valorCurso, valorTaxaMatricula: taxa,
+    // Como em toda matrícula da escola (routes/cursos.js), valorCurso é o TOTAL: curso + taxa.
+    valorCurso: Math.round((Number(valores.valorCurso) + Number(taxa)) * 100) / 100, valorTaxaMatricula: taxa,
     statusPagamento: 'PENDENTE',
     taxaConfirmada: true, taxaConfirmadaPor: porUsuarioId, taxaConfirmadaEm: Number.isNaN(confirmadaEm.getTime()) ? new Date() : confirmadaEm,
   };
@@ -221,7 +223,7 @@ async function encaixar({ inscricaoId, turmaId, porUsuarioId, appUrl }) {
     },
   });
   await prisma.configuracao.create({
-    data: { chave: CHAVE(inscricaoId), valor: JSON.stringify({ matriculaId: matricula.id, turmaId: turma.id, alunoId: aluno.id, por: porUsuarioId, em: new Date().toISOString(), contaCriada: criada }) },
+    data: { chave: CHAVE(inscricaoId), valor: JSON.stringify({ matriculaId: matricula.id, turmaId: turma.id, alunoId: aluno.id, por: porUsuarioId, em: new Date().toISOString(), contaCriada: criada, totalComTaxa: true }) },
   });
 
   // E-mail: criar a senha (conta nova sem CPF), ou entrar (conta que já existia / senha pelo CPF).
@@ -285,10 +287,13 @@ async function ligarComEscola(pessoa, pago, m) {
   const taxa = pago.valorTotal || pago.valor;
   const valores = await calcularValores(m.turma.curso, m.plano === 'PARCELADO' ? 'PARCELADO' : 'A_VISTA', m.alunoId);
   const cursoOnline = online.some((pg) => pg.tipo === 'CURSO');
-  const valorCurso = cursoOnline ? Number(m.valorCurso) : Number(valores.valorCurso);
+  // valorCurso (o curso) é o anotado e o dos lançamentos de curso à mão; a matrícula guarda o TOTAL
+  // (curso + taxa), como toda matrícula da escola (routes/cursos.js grava valorCurso: total).
+  const valorCurso = Number(valores.valorCurso);
+  const totalMatricula = cursoOnline ? Number(m.valorCurso) : Math.round((valorCurso + Number(taxa)) * 100) / 100;
   const anotado = {
     matriculaId: m.id, turmaId: m.turmaId, alunoId: m.alunoId, por: 'automatico', em: new Date().toISOString(),
-    ligado: true, taxa, valorCurso,
+    ligado: true, taxa, valorCurso, total: totalMatricula, totalComTaxa: true,
     antes: { valorCurso: Number(m.valorCurso), valorTaxa: Number(m.valorTaxaMatricula), taxaConfirmada: m.taxaConfirmada, status: m.statusPagamento },
   };
   const taxaDados = {
@@ -304,7 +309,7 @@ async function ligarComEscola(pessoa, pago, m) {
     prisma.matricula.update({
       where: { id: m.id },
       data: {
-        valorTaxaMatricula: taxa, valorCurso,
+        valorTaxaMatricula: taxa, valorCurso: totalMatricula,
         taxaConfirmada: true, taxaConfirmadaEm: m.taxaConfirmadaEm || confirmadaEm,
       },
     }),
@@ -329,6 +334,35 @@ async function ligarComEscola(pessoa, pago, m) {
   await prisma.$transaction(ops);
   console.log(`[MATRICULA-RAPIDA] inscrição ${pessoa.inscricaoId} ligada à matrícula ${m.id}: taxa ${taxa}, curso ${valorCurso} (antes ${anotado.antes.valorCurso}).`);
   return { anotado };
+}
+
+// Correção única: encaixes e batimentos antigos gravaram na matrícula só o curso (ex.: R$ 150), mas a
+// escola guarda o total (curso + taxa). Soma a taxa uma vez e marca a anotação (totalComTaxa).
+async function corrigirTotais(anotados) {
+  const pendentes = Object.entries(anotados).filter(([, a]) => a && a.matriculaId && !a.totalComTaxa);
+  if (!pendentes.length) return;
+  const mats = await prisma.matricula.findMany({
+    where: { id: { in: pendentes.map(([, a]) => a.matriculaId) } },
+    select: { id: true, valorCurso: true, valorTaxaMatricula: true },
+  });
+  const porId = Object.fromEntries(mats.map((x) => [x.id, x]));
+  for (const [inscricaoId, a] of pendentes) {
+    const m = porId[a.matriculaId];
+    if (!m) continue;
+    const curso = Number(m.valorCurso), taxa = Number(m.valorTaxaMatricula) || 0;
+    // Só soma se a matrícula ainda está com o valor só do curso que o encaixe/batimento gravou.
+    const soCurso = a.ligado ? Math.abs(curso - Number(a.valorCurso)) < 0.005 : true;
+    const novo = { ...a, totalComTaxa: true, ...(soCurso && taxa ? { total: Math.round((curso + taxa) * 100) / 100 } : {}) };
+    const ops = [prisma.configuracao.update({ where: { chave: CHAVE(inscricaoId) }, data: { valor: JSON.stringify(novo) } })];
+    if (soCurso && taxa) ops.push(prisma.matricula.update({ where: { id: m.id }, data: { valorCurso: novo.total } }));
+    try {
+      await prisma.$transaction(ops);
+      anotados[inscricaoId] = novo;
+      if (soCurso && taxa) console.log(`[MATRICULA-RAPIDA] matrícula ${m.id}: valor ${curso} -> ${novo.total} (curso + taxa).`);
+    } catch (e) {
+      console.error('[MATRICULA-RAPIDA] correção do total falhou:', e.message);
+    }
+  }
 }
 
 // Data do pagamento no site. Sem fuso ("2026-09-29 14:00:00"), é hora de Brasília.
