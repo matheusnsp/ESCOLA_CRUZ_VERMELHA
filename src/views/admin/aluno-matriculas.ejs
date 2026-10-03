@@ -167,7 +167,7 @@
 
               <% if (m.taxaConfirmada) { %>
 
-                <% var _vm = valorMatricula(m); %><%= formatBRL(_vm.total) %><% if (_vm.rapida) { %><small class="adm-valor-det">curso <%= formatBRL(_vm.curso) %> + taxa <%= formatBRL(_vm.taxa) %></small><% } %>
+                <% var _vm = valorMatricula(m); %><% if (_vm.rapida) { %><span class="adm-valor-mr" title="Curso <%= formatBRL(_vm.curso) %> + taxa <%= formatBRL(_vm.taxa) %> paga na matrícula rápida"><%= formatBRL(_vm.total) %></span><% } else { %><%= formatBRL(_vm.total) %><% } %>
 
               <% } else { %>
 
