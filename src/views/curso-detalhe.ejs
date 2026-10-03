@@ -3,9 +3,16 @@
   bodyClass: 'v-claro',
   preloadImg: curso.imagemUrl || undefined,
   imagemCompartilhar: curso.imagemUrl ? '/compartilhar/curso/' + curso.id + '.jpg' : undefined,
-  // resumo curto demais (ex.: "(+Lei Lucas)") não serve de descrição no Google/WhatsApp: vira complemento
-  descricao: (curso.descricao && curso.descricao.length >= 60) ? curso.descricao
-    : ('Curso presencial de ' + curso.nome + (curso.descricao ? ' ' + curso.descricao : '') + ' na Escola de Educação e Saúde da Cruz Vermelha Brasileira, no Centro do Rio de Janeiro. Com certificado.')
+  // Resumo curto demais não serve sozinho de descrição no Google/WhatsApp. Se for um complemento do
+  // nome (ex.: "(+Lei Lucas)"), fica junto do nome; se for uma frase (ex.: "Técnica de acesso venoso
+  // periférico com segurança."), vem primeiro, com o resto depois do ponto.
+  descricao: (function (d) {
+    var lugar = 'na Escola de Educação e Saúde da Cruz Vermelha Brasileira, no Centro do Rio de Janeiro. Com certificado.';
+    d = String(d || '').trim();
+    if (d.length >= 60) return d;
+    if (!d || d.charAt(0) === '(') return 'Curso presencial de ' + curso.nome + (d ? ' ' + d : '') + ' ' + lugar;
+    return d.replace(/[.!…\s]+$/, '') + '. Curso presencial de ' + curso.nome + ' ' + lugar;
+  })(curso.descricao)
 }) %>
 <%- include('partials/site-header', { menuAtivo: 'cursos' }) %>
 
