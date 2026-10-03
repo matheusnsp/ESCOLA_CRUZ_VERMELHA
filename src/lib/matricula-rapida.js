@@ -408,7 +408,7 @@ async function resumoPainel({ inicioHoje, inicioSemana, inicioMes, limiteMs = 40
     matriculaIdsEncaixe: pessoas.filter((p) => p.encaixe && p.encaixe.matriculaId && !p.encaixe.naEscola).map((p) => p.encaixe.matriculaId),
     recentes: pessoas.filter((p) => !p.encaixe && p.pagoData)
       .sort((a, b) => b.pagoData - a.pagoData)
-      .map((p) => ({ nome: p.nome, curso: p.cursoNome, quando: p.pagoData, valor: valor(p) || null })),
+      .map((p) => ({ nome: p.nome, email: p.email || '', curso: p.cursoNome, quando: p.pagoData, valor: valor(p) || null, metodo: p.pagamento ? p.pagamento.metodo : null })),
   };
 }
 
@@ -444,4 +444,4 @@ async function idsMatriculas() {
   return ids;
 }
 
-module.exports = { idsMatriculas, carregar, encaixar, situacaoPagamento, dataPago, resumoPainel, taxaPaga };
+module.exports = { idsMatriculas, carregar, encaixar, situacaoPagamento, dataPago, resumoPainel, taxaPaga, pagoNoGateway };

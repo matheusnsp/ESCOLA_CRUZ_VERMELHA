@@ -43,6 +43,40 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
 <% if (flash) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div><% } %>
 <% if (erro)  { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
 
+<!-- ═══ Recebido por conta (lib/financeiro-contas.js): só o total de cada conta ═══ -->
+<%
+  var CONTAS_FIN = ['principal', 'segunda', 'manual'];
+  var ICONE_CONTA = { principal: 'fa-globe', segunda: 'fa-bolt', manual: 'fa-cash-register' };
+  var DICA_CONTA = {
+    principal: 'pago online no site da escola',
+    segunda: 'inscrições da matrícula rápida, no site da instituição',
+    manual: 'maquininha ou PIX direto, confirmado pela secretaria',
+  };
+%>
+<div class="fin-contas-tit">
+  <h2><i class="fa-solid fa-building-columns"></i> Recebido por conta</h2>
+  <span>Escolha uma conta para ver o total dela</span>
+</div>
+<div class="fin-contas" role="tablist" aria-label="Escolher a conta">
+  <a href="/financeiro" class="fin-conta <%= contaFiltro === 'todas' ? 'on' : '' %>" role="tab" aria-selected="<%= contaFiltro === 'todas' %>">
+    <small><i class="fa-solid fa-layer-group"></i> Todas as contas</small>
+    <b><%= formatBRL(recebidoPorConta.principal + recebidoPorConta.segunda + recebidoPorConta.manual) %></b>
+    <span>recebido no total</span>
+    <em class="fin-conta-acao"><%- contaFiltro === 'todas' ? '<i class="fa-solid fa-circle-check"></i> Mostrando' : 'Ver todas →' %></em>
+  </a>
+  <% CONTAS_FIN.forEach(function (id) { %>
+    <a href="/financeiro?conta=<%= id %>" class="fin-conta <%= contaFiltro === id ? 'on' : '' %>" role="tab" aria-selected="<%= contaFiltro === id %>">
+      <small><i class="fa-solid <%= ICONE_CONTA[id] %>"></i> <%= nomesContas[id] %></small>
+      <b><%= formatBRL(recebidoPorConta[id]) %></b>
+      <span><%= DICA_CONTA[id] %></span>
+      <em class="fin-conta-acao"><%- contaFiltro === id ? '<i class="fa-solid fa-circle-check"></i> Mostrando' : 'Ver só esta →' %></em>
+    </a>
+  <% }) %>
+</div>
+<% if (contaFiltro !== 'todas') { %>
+  <p class="fin-filtro-aviso"><i class="fa-solid fa-filter"></i> Conta <b><%= nomesContas[contaFiltro] %></b>: o total está acima<%= reembolsosPendentesLista.length ? ' e os reembolsos a fazer são só dela' : '' %>. O resumo e os pagamentos abaixo são de todas as contas. <a href="/financeiro">Ver todas</a></p>
+<% } %>
+
 <!-- ═══ Resumo ═══════════════════════════════════════════════════════════ -->
 <div class="adm-cards c3">
   <div class="adm-stat ok">
