@@ -385,7 +385,7 @@
 
             <td><%= r.valor ? formatBRL(r.valor) : '—' %></td>
 
-            <td><span class="adm-pill-espera">Inscrição paga · sem turma</span></td>
+            <td><span class="badge pend" title="Pagou a inscrição na matrícula rápida; falta encaixar numa turma">SEM TURMA</span></td>
 
           <% } else { %>
 
@@ -393,7 +393,7 @@
               <a href="/alunos/<%= m.aluno.id %>/matriculas" class="adm-link-aluno">
                 <strong><%= m.aluno.nome %></strong>
               </a>
-              <% if (u.rapida) { %><span class="adm-tag-rapida" title="Veio da matrícula rápida"><i class="fa-solid fa-bolt"></i> Matrícula rápida</span><% } %>
+              <% if (u.rapida || valorMatricula(m).rapida) { %><span class="adm-tag-rapida" title="Taxa de inscrição paga na matrícula rápida (site da instituição)"><i class="fa-solid fa-bolt"></i> Matrícula rápida</span><% } %>
             </td>
 
             <td>
