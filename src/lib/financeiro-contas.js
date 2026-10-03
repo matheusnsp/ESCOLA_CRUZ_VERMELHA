@@ -3,7 +3,7 @@
 // Financeiro por conta: onde entrou o dinheiro de cada matrícula. Três "contas":
 //   principal  Únicopag da escola (pagamento online pelo site da escola)
 //   segunda    Únicopag da instituição (matrícula rápida)
-//   manual     recebido na secretaria (maquininha, PIX direto, dinheiro, outro banco) e confirmado à mão
+//   manual     recebido na secretaria (maquininha, PIX direto, outro banco) e confirmado à mão
 //
 // Uma matrícula pode ter dinheiro em duas contas: na matrícula rápida, a taxa entra na instituição e o
 // curso, na escola. Por isso o valor é dividido em partes (taxa e curso), cada uma na sua conta.

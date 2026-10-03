@@ -50,20 +50,26 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
   var DICA_CONTA = {
     principal: 'pago online no site da escola',
     segunda: 'inscrições da matrícula rápida, no site da instituição',
-    manual: 'maquininha, PIX direto ou dinheiro, confirmado pela secretaria',
+    manual: 'maquininha ou PIX direto, confirmado pela secretaria',
   };
 %>
-<div class="fin-contas">
-  <a href="/financeiro" class="fin-conta <%= contaFiltro === 'todas' ? 'on' : '' %>">
+<div class="fin-contas-tit">
+  <h2><i class="fa-solid fa-building-columns"></i> Recebido por conta</h2>
+  <span>Toque numa conta para ver só o que entrou nela</span>
+</div>
+<div class="fin-contas" role="tablist" aria-label="Escolher a conta">
+  <a href="/financeiro" class="fin-conta <%= contaFiltro === 'todas' ? 'on' : '' %>" role="tab" aria-selected="<%= contaFiltro === 'todas' %>">
     <small><i class="fa-solid fa-layer-group"></i> Todas as contas</small>
     <b><%= formatBRL(recebidoPorConta.principal + recebidoPorConta.segunda + recebidoPorConta.manual) %></b>
     <span>recebido no total</span>
+    <em class="fin-conta-acao"><%- contaFiltro === 'todas' ? '<i class="fa-solid fa-circle-check"></i> Mostrando' : 'Ver todas →' %></em>
   </a>
   <% CONTAS_FIN.forEach(function (id) { %>
-    <a href="/financeiro?conta=<%= id %>" class="fin-conta <%= contaFiltro === id ? 'on' : '' %>">
+    <a href="/financeiro?conta=<%= id %>" class="fin-conta <%= contaFiltro === id ? 'on' : '' %>" role="tab" aria-selected="<%= contaFiltro === id %>">
       <small><i class="fa-solid <%= ICONE_CONTA[id] %>"></i> <%= nomesContas[id] %></small>
       <b><%= formatBRL(recebidoPorConta[id]) %></b>
       <span><%= DICA_CONTA[id] %></span>
+      <em class="fin-conta-acao"><%- contaFiltro === id ? '<i class="fa-solid fa-circle-check"></i> Mostrando' : 'Ver só esta →' %></em>
     </a>
   <% }) %>
 </div>
