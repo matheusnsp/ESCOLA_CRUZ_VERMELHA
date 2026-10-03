@@ -57,18 +57,28 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
   <h2><i class="fa-solid fa-building-columns"></i> Recebido por conta</h2>
   <span>Escolha uma conta para ver o total e filtrar os pagamentos</span>
 </div>
+<%
+  var mesTotal = mesPorConta.principal + mesPorConta.segunda + mesPorConta.manual;
+  var geralTotal = recebidoPorConta.principal + recebidoPorConta.segunda + recebidoPorConta.manual;
+  var qtdTotal = qtdPorConta.principal + qtdPorConta.segunda + qtdPorConta.manual;
+  function pct(v) { return mesTotal > 0 ? Math.round(v / mesTotal * 100) : 0; }
+%>
 <div class="fin-contas" role="tablist" aria-label="Escolher a conta">
   <a href="/financeiro" class="fin-conta <%= contaFiltro === 'todas' ? 'on' : '' %>" role="tab" aria-selected="<%= contaFiltro === 'todas' %>">
     <small><i class="fa-solid fa-layer-group"></i> Todas as contas</small>
-    <b><%= formatBRL(recebidoPorConta.principal + recebidoPorConta.segunda + recebidoPorConta.manual) %></b>
-    <span>recebido no total</span>
+    <b><%= formatBRL(mesTotal) %></b>
+    <span class="fin-conta-mes">recebido em <%= mesNomeFin %></span>
+    <span class="fin-conta-barra"><span style="width: 100%"></span></span>
+    <span class="fin-conta-geral"><%= formatBRL(geralTotal) %> no total</span>
     <em class="fin-conta-acao"><%- contaFiltro === 'todas' ? '<i class="fa-solid fa-circle-check"></i> Mostrando' : 'Ver todas →' %></em>
   </a>
   <% CONTAS_FIN.forEach(function (id) { %>
-    <a href="/financeiro?conta=<%= id %>" class="fin-conta <%= contaFiltro === id ? 'on' : '' %>" role="tab" aria-selected="<%= contaFiltro === id %>">
+    <a href="/financeiro?conta=<%= id %>" class="fin-conta <%= contaFiltro === id ? 'on' : '' %>" role="tab" aria-selected="<%= contaFiltro === id %>" title="<%= DICA_CONTA[id] %>">
       <small><i class="fa-solid <%= ICONE_CONTA[id] %>"></i> <%= nomesContas[id] %></small>
-      <b><%= formatBRL(recebidoPorConta[id]) %></b>
-      <span><%= DICA_CONTA[id] %></span>
+      <b><%= formatBRL(mesPorConta[id]) %></b>
+      <span class="fin-conta-mes"><%= pct(mesPorConta[id]) %>% do recebido em <%= mesNomeFin %></span>
+      <span class="fin-conta-barra"><span style="width: <%= pct(mesPorConta[id]) %>%"></span></span>
+      <span class="fin-conta-geral"><%= formatBRL(recebidoPorConta[id]) %> no total · <%= qtdPorConta[id] %> pagamento<%= qtdPorConta[id] === 1 ? '' : 's' %></span>
       <em class="fin-conta-acao"><%- contaFiltro === id ? '<i class="fa-solid fa-circle-check"></i> Mostrando' : 'Ver só esta →' %></em>
     </a>
   <% }) %>

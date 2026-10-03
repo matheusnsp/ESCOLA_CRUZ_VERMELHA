@@ -61,4 +61,13 @@ function nomesDasContas() {
   return nomes;
 }
 
-module.exports = { CONTAS, contaDoPagamento, partesRecebidas, nomesDasContas };
+// Partes com a data em que cada uma entrou: taxa = taxaConfirmadaEm; curso ou tudo = confirmadaEm
+// (ou, sem ela, taxaConfirmadaEm).
+function partesComData(m, pagamentos) {
+  return partesRecebidas(m, pagamentos).map((p) => ({
+    ...p,
+    em: p.parte === 'taxa' ? (m.taxaConfirmadaEm || m.confirmadaEm || m.criadoEm) : (m.confirmadaEm || m.taxaConfirmadaEm || m.criadoEm),
+  }));
+}
+
+module.exports = { CONTAS, contaDoPagamento, partesRecebidas, partesComData, nomesDasContas };

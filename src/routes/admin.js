@@ -1926,16 +1926,38 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
   const pagsPorMat = new Map();
   for (const pg of pagsFin) { if (!pagsPorMat.has(pg.matriculaId)) pagsPorMat.set(pg.matriculaId, []); pagsPorMat.get(pg.matriculaId).push(pg); }
   const partesDe = (m) => financeiroContas.partesRecebidas(m, pagsPorMat.get(m.id));
+  // Por conta: total desde sempre, o do mês (cartões do topo) e quantas matrículas pagaram nela.
+  const inicioMesFin = new Date(`${hojeSPStr().slice(0, 8)}01T00:00:00-03:00`);
   const recebidoPorConta = { principal: 0, segunda: 0, manual: 0 };
+  const mesPorConta = { principal: 0, segunda: 0, manual: 0 };
+  const qtdPorConta = { principal: 0, segunda: 0, manual: 0 };
   const comDinheiro = new Map();
   [...taxaPagaLista, ...matriculaGeradaLista].forEach((m) => comDinheiro.set(m.id, m));
-  for (const m of comDinheiro.values()) for (const p of partesDe(m)) recebidoPorConta[p.conta] += p.valor;
+  for (const m of comDinheiro.values()) {
+    const contasDaMat = new Set();
+    for (const p of financeiroContas.partesComData(m, pagsPorMat.get(m.id))) {
+      recebidoPorConta[p.conta] += p.valor;
+      if (p.em && new Date(p.em) >= inicioMesFin) mesPorConta[p.conta] += p.valor;
+      contasDaMat.add(p.conta);
+    }
+    contasDaMat.forEach((c) => { qtdPorConta[c] += 1; });
+  }
   try {
     const agoraFin = new Date();
     const mr = await matriculaRapida.resumoPainel({ inicioHoje: agoraFin, inicioSemana: agoraFin, inicioMes: agoraFin });
-    if (mr.ok) recebidoPorConta.segunda += mr.recentes.filter((r) => r.valor > 0).reduce((t, r) => t + r.valor, 0);
+    if (mr.ok) {
+      for (const r of mr.recentes.filter((x) => x.valor > 0)) {
+        recebidoPorConta.segunda += r.valor;
+        qtdPorConta.segunda += 1;
+        if (r.quando && new Date(r.quando) >= inicioMesFin) mesPorConta.segunda += r.valor;
+      }
+    }
   } catch (e) { /* sem a matrícula rápida, os cartões mostram só o da escola */ }
-  Object.keys(recebidoPorConta).forEach((k) => { recebidoPorConta[k] = Math.round(recebidoPorConta[k] * 100) / 100; });
+  for (const k of Object.keys(recebidoPorConta)) {
+    recebidoPorConta[k] = Math.round(recebidoPorConta[k] * 100) / 100;
+    mesPorConta[k] = Math.round(mesPorConta[k] * 100) / 100;
+  }
+  const mesNomeFin = new Date(`${hojeSPStr()}T12:00:00-03:00`).toLocaleDateString('pt-BR', { month: 'long', timeZone: 'America/Sao_Paulo' });
   const contaFiltro = financeiroContas.CONTAS.includes(req.query.conta) ? req.query.conta : 'todas';
   // Conta escolhida: a parte de baixo mostra só as matrículas que tiveram dinheiro naquela conta,
   // com o mesmo cálculo de sempre (valor e etiqueta de cada linha não mudam). Quem pagou parte numa
@@ -2015,6 +2037,9 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
   res.render('admin/financeiro', {
     contaFiltro,
     recebidoPorConta,
+    mesPorConta,
+    qtdPorConta,
+    mesNomeFin,
     nomesContas: financeiroContas.nomesDasContas(),
     formatBRL,
     codigoMatricula,
