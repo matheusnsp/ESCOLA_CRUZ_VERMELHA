@@ -1871,27 +1871,6 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
   const motivos = mapaMotivosEstorno(logsEstorno);
   const TAXA_MATRICULA_PADRAO = 100;
 
-  // ── Por conta (lib/financeiro-contas.js): onde entrou o dinheiro de cada matrícula ──
-  // Escola (Únicopag do site), Instituição (Únicopag da matrícula rápida) ou na secretaria. A
-  // matrícula rápida divide: taxa na instituição, curso na escola. Entra também quem pagou a
-  // inscrição na matrícula rápida e ainda não foi encaixado (o dinheiro já está na instituição).
-  const idsComDinheiro = [...new Set([...taxaPagaLista, ...matriculaGeradaLista].map((m) => m.id))];
-  const pagsFin = idsComDinheiro.length ? await prisma.pagamento.findMany({
-    where: { matriculaId: { in: idsComDinheiro } },
-    select: { matriculaId: true, tipo: true, gateway: true, gatewayStatus: true, status: true, criadoEm: true },
-    orderBy: { criadoEm: 'desc' },
-  }) : [];
-  const pagsPorMat = new Map();
-  for (const pg of pagsFin) { if (!pagsPorMat.has(pg.matriculaId)) pagsPorMat.set(pg.matriculaId, []); pagsPorMat.get(pg.matriculaId).push(pg); }
-  const partesDe = (m) => financeiroContas.partesRecebidas(m, pagsPorMat.get(m.id));
-  let soltasMR = [];
-  try {
-    const agoraFin = new Date();
-    const mr = await matriculaRapida.resumoPainel({ inicioHoje: agoraFin, inicioSemana: agoraFin, inicioMes: agoraFin });
-    if (mr.ok) soltasMR = mr.recentes.filter((r) => r.valor > 0);
-  } catch (e) { /* sem a matrícula rápida, o Financeiro mostra só o da escola */ }
-  const contaFiltro = financeiroContas.CONTAS.includes(req.query.conta) ? req.query.conta : 'todas';
-
   const pendentesLista = [
     ...taxaPendenteLista.map((m) => ({
       m,
@@ -1914,7 +1893,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     })),
   ].sort((a, b) => b.desde - a.desde);
 
-  const reembolsosPendentesLista = await prisma.matricula.findMany({
+  let reembolsosPendentesLista = await prisma.matricula.findMany({
     where: {
       diferencaTransferencia: {
         lt: 0,
@@ -1932,6 +1911,39 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
       },
     },
   });
+
+  // ── Recebido por conta (lib/financeiro-contas.js), só para os cartões do topo. O resumo e a
+  // lista de pagamentos abaixo seguem como sempre (todas as contas). A matrícula rápida divide:
+  // taxa na instituição, curso na escola ou na secretaria; entra também quem pagou a inscrição
+  // na matrícula rápida e ainda não foi encaixado (o dinheiro já está na instituição).
+  const idsFin = [...new Set([...taxaPagaLista, ...matriculaGeradaLista, ...reembolsosPendentesLista].map((m) => m.id))];
+  const pagsFin = idsFin.length ? await prisma.pagamento.findMany({
+    where: { matriculaId: { in: idsFin } },
+    select: { matriculaId: true, tipo: true, gateway: true, gatewayStatus: true, status: true, criadoEm: true },
+    orderBy: { criadoEm: 'desc' },
+  }) : [];
+  const pagsPorMat = new Map();
+  for (const pg of pagsFin) { if (!pagsPorMat.has(pg.matriculaId)) pagsPorMat.set(pg.matriculaId, []); pagsPorMat.get(pg.matriculaId).push(pg); }
+  const partesDe = (m) => financeiroContas.partesRecebidas(m, pagsPorMat.get(m.id));
+  const recebidoPorConta = { principal: 0, segunda: 0, manual: 0 };
+  const comDinheiro = new Map();
+  [...taxaPagaLista, ...matriculaGeradaLista].forEach((m) => comDinheiro.set(m.id, m));
+  for (const m of comDinheiro.values()) for (const p of partesDe(m)) recebidoPorConta[p.conta] += p.valor;
+  try {
+    const agoraFin = new Date();
+    const mr = await matriculaRapida.resumoPainel({ inicioHoje: agoraFin, inicioSemana: agoraFin, inicioMes: agoraFin });
+    if (mr.ok) recebidoPorConta.segunda += mr.recentes.filter((r) => r.valor > 0).reduce((t, r) => t + r.valor, 0);
+  } catch (e) { /* sem a matrícula rápida, os cartões mostram só o da escola */ }
+  Object.keys(recebidoPorConta).forEach((k) => { recebidoPorConta[k] = Math.round(recebidoPorConta[k] * 100) / 100; });
+  const contaFiltro = financeiroContas.CONTAS.includes(req.query.conta) ? req.query.conta : 'todas';
+  // Reembolsos a fazer: com uma conta escolhida, só os de quem pagou nela (a maior parte do dinheiro).
+  if (contaFiltro !== 'todas') {
+    reembolsosPendentesLista = reembolsosPendentesLista.filter((m) => {
+      const partes = partesDe({ ...m, statusPagamento: ['PAGO', 'PARCELADO'].includes(m.statusPagamento) ? m.statusPagamento : 'PAGO' });
+      const maior = partes.sort((x, y) => y.valor - x.valor)[0];
+      return maior && maior.conta === contaFiltro;
+    });
+  }
 
   const totalAReembolsar = reembolsosPendentesLista.reduce(
     (s, m) => s + Math.abs(Number(m.diferencaTransferencia)),
@@ -1956,19 +1968,9 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     0
   );
 
-  const totalRecebidoEscola =
+  const totalRecebido =
     matriculaGeradaLista.reduce((s, m) => s + Number(m.valorCurso), 0) +
     totalTaxaSemMatricula;
-
-  // Recebido por conta: as partes de cada matrícula com dinheiro + as inscrições sem turma.
-  const recebidoPorConta = { principal: 0, segunda: 0, manual: 0 };
-  const comDinheiro = new Map();
-  [...taxaPagaLista, ...matriculaGeradaLista].forEach((m) => comDinheiro.set(m.id, m));
-  for (const m of comDinheiro.values()) for (const p of partesDe(m)) recebidoPorConta[p.conta] += p.valor;
-  const totalSoltasMR = soltasMR.reduce((t, r) => t + r.valor, 0);
-  recebidoPorConta.segunda += totalSoltasMR;
-  Object.keys(recebidoPorConta).forEach((k) => { recebidoPorConta[k] = Math.round(recebidoPorConta[k] * 100) / 100; });
-  const totalRecebido = contaFiltro === 'todas' ? totalRecebidoEscola + totalSoltasMR : recebidoPorConta[contaFiltro];
 
   const totalPendente = cursoPendenteLista.reduce((s, m) => s + valorEmAberto(m), 0);
 
@@ -1990,36 +1992,12 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
       return { m, tipo: 'curso', valor: Number(m.valorCurso), data: m.confirmadaEm || m.taxaConfirmadaEm };
     }
     return { m, tipo: 'taxa', valor: Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO, data: m.taxaConfirmadaEm };
-  });
-  // Inscrições pagas na matrícula rápida ainda sem turma (sem matrícula na escola).
-  soltasMR.forEach((r, i) => pagamentos.push({
-    m: { id: 'mr-' + i, mrSolta: true, aluno: { nome: r.nome || '(sem nome)', email: r.email || '' }, turma: { curso: { nome: r.curso || '—' } }, forma: r.metodo === 'pix' ? 'PIX' : (r.metodo ? 'CREDITO' : null), statusPagamento: 'PENDENTE' },
-    tipo: 'taxa', valor: r.valor, data: r.quando, partes: [{ conta: 'segunda', valor: r.valor }],
-  }));
-  pagamentos.forEach((p) => { if (!p.partes) p.partes = p.tipo === 'estornado' ? [] : partesDe(p.m); });
-  // Com o filtro de conta, cada linha mostra só o que entrou naquela conta (e some se não entrou nada).
-  if (contaFiltro !== 'todas') {
-    for (let i = pagamentos.length - 1; i >= 0; i--) {
-      const doFiltro = pagamentos[i].partes.filter((pt) => pt.conta === contaFiltro);
-      const naConta = doFiltro.reduce((t, pt) => t + pt.valor, 0);
-      if (!naConta) { pagamentos.splice(i, 1); continue; }
-      pagamentos[i].valor = naConta;
-      // Só uma parte da matrícula entrou nesta conta: a etiqueta diz qual, e o resto onde entrou.
-      const parte = doFiltro.length === 1 ? doFiltro[0].parte : 'tudo';
-      if (pagamentos[i].tipo === 'curso' && parte !== 'tudo') {
-        pagamentos[i].parteConta = parte;
-        pagamentos[i].resto = pagamentos[i].partes.filter((pt) => pt.conta !== contaFiltro);
-      }
-    }
-  }
-  pagamentos.sort((x, y) => new Date(y.data || 0) - new Date(x.data || 0));
+  }).sort((x, y) => new Date(y.data || 0) - new Date(x.data || 0));
 
   res.render('admin/financeiro', {
     contaFiltro,
     recebidoPorConta,
     nomesContas: financeiroContas.nomesDasContas(),
-    totalSoltasMR,
-    qtdSoltasMR: soltasMR.length,
     formatBRL,
     codigoMatricula,
     motivos,
