@@ -1814,3 +1814,19 @@ a.mr-num:hover { border-color: var(--linha); }
 .mr-dobro-det { flex-basis: 100%; font-size: 12px; color: var(--tinta-60); padding-left: 22px; }
 .adm-valor-mr { white-space: nowrap; cursor: help; text-decoration: underline dotted var(--linha); text-underline-offset: 4px; }
 .adm-valor-de { display: block; font-size: 11.5px; color: var(--mut); white-space: nowrap; }
+
+/* Financeiro: recebido por conta (Escola / Instituição / Na secretaria) e filtro */
+.fin-contas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0 0 14px; }
+.fin-conta { display: grid; gap: 3px; padding: 14px 16px; border: 1px solid var(--linha); border-radius: 14px; background: var(--card); color: var(--tinta); text-decoration: none; transition: border-color .12s; }
+.fin-conta:hover { border-color: var(--vermelho); }
+.fin-conta.on { border-color: var(--vermelho); box-shadow: inset 0 0 0 1px var(--vermelho); background: var(--vermelho-bg); }
+.fin-conta small { font-size: 11.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--mut); }
+.fin-conta small i { color: var(--vermelho); margin-right: 3px; }
+.fin-conta b { font-family: var(--fonte-t); font-size: 21px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.fin-conta span { font-size: 12.5px; color: var(--tinta-60); line-height: 1.35; }
+.fin-filtro-aviso { margin: 0 0 16px; padding: 10px 14px; border-radius: 10px; background: var(--info-bg); color: var(--info-tx); font-size: 14px; }
+.fin-filtro-aviso a { color: inherit; font-weight: 700; }
+.fin-onde { display: block; margin-top: 3px; font-size: 11.5px; color: var(--tinta-60); }
+.fin-onde span { white-space: nowrap; }
+.fin-onde-segunda { color: var(--vermelho-txt); font-weight: 600; }
+@media (max-width: 900px) { .fin-contas { grid-template-columns: 1fr 1fr; } }

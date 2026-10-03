@@ -43,12 +43,40 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
 <% if (flash) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div><% } %>
 <% if (erro)  { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
 
+<!-- ═══ Por conta: onde o dinheiro entrou (lib/financeiro-contas.js) ════════ -->
+<%
+  var CONTAS_FIN = ['principal', 'segunda', 'manual'];
+  var ICONE_CONTA = { principal: 'fa-globe', segunda: 'fa-bolt', manual: 'fa-cash-register' };
+  var DICA_CONTA = {
+    principal: 'pago online no site da escola',
+    segunda: 'inscrições da matrícula rápida, no site da instituição',
+    manual: 'maquininha, PIX direto ou dinheiro, confirmado pela secretaria',
+  };
+%>
+<div class="fin-contas">
+  <a href="/financeiro" class="fin-conta <%= contaFiltro === 'todas' ? 'on' : '' %>">
+    <small><i class="fa-solid fa-layer-group"></i> Todas as contas</small>
+    <b><%= formatBRL(recebidoPorConta.principal + recebidoPorConta.segunda + recebidoPorConta.manual) %></b>
+    <span>recebido no total</span>
+  </a>
+  <% CONTAS_FIN.forEach(function (id) { %>
+    <a href="/financeiro?conta=<%= id %>" class="fin-conta <%= contaFiltro === id ? 'on' : '' %>">
+      <small><i class="fa-solid <%= ICONE_CONTA[id] %>"></i> <%= nomesContas[id] %></small>
+      <b><%= formatBRL(recebidoPorConta[id]) %></b>
+      <span><%= DICA_CONTA[id] %></span>
+    </a>
+  <% }) %>
+</div>
+<% if (contaFiltro !== 'todas') { %>
+  <p class="fin-filtro-aviso"><i class="fa-solid fa-filter"></i> Mostrando só o que entrou em <b><%= nomesContas[contaFiltro] %></b>. A receber e Estornado são de todas as contas. <a href="/financeiro">Ver todas</a></p>
+<% } %>
+
 <!-- ═══ Resumo ═══════════════════════════════════════════════════════════ -->
 <div class="adm-cards c3">
   <div class="adm-stat ok">
     <span><%= formatBRL(stats.totalRecebido) %></span>
     <small><i class="fa-solid fa-sack-dollar"></i> Recebido</small>
-    <small class="adm-stat-sub"><%= conta.curso %> matrícula(s) paga(s) · <%= conta.taxa %> só com a inscrição</small>
+    <small class="adm-stat-sub"><%= conta.curso %> matrícula(s) paga(s) · <%= conta.taxa %> só com a inscrição<%= contaFiltro === 'todas' && qtdSoltasMR ? ' (' + qtdSoltasMR + ' da matrícula rápida sem turma)' : '' %></small>
   </div>
   <a class="adm-stat warn adm-stat-link" href="/pendentes">
     <span><%= formatBRL(stats.totalPendente) %></span>
@@ -124,13 +152,14 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
           <td>
             <strong><%= m.aluno.nome %></strong>
             <% if (p.tipo === 'curso') { %><br><span class="badge mut"><%= codigoMatricula(m) %></span><% } %>
-            <% if (valorMatricula(m).rapida) { %><span class="adm-tag-rapida" title="Taxa de inscrição paga na matrícula rápida (site da instituição)"><i class="fa-solid fa-bolt"></i> Matrícula rápida</span><% } %>
+            <% if (m.mrSolta) { %><span class="adm-tag-rapida" title="Pagou a inscrição na matrícula rápida; ainda não foi encaixado numa turma"><i class="fa-solid fa-bolt"></i> Matrícula rápida · sem turma</span><% } else if (valorMatricula(m).rapida) { %><span class="adm-tag-rapida" title="Taxa de inscrição paga na matrícula rápida (site da instituição)"><i class="fa-solid fa-bolt"></i> Matrícula rápida</span><% } %>
           </td>
           <td><%= m.turma.curso.nome %></td>
           <td>
             <span class="badge <%= BADGE[p.tipo] %>"><%= ROTULO[p.tipo] %></span>
             <% if (p.tipo !== 'estornado' && m.forma) { %><br><small class="adm-mut"><%= m.forma === 'PIX' ? 'PIX' : 'Cartão' %><%= m.statusPagamento === 'PARCELADO' ? ' · parcelado' : '' %></small><% } %>
             <% if (p.tipo === 'estornado') { %><br><small class="adm-mut"><%= motivos[m.id] || 'Motivo não informado' %></small><% } %>
+            <% if (p.partes && p.partes.length) { %><small class="fin-onde"><%- p.partes.map(function (pt) { return '<span class="fin-onde-' + pt.conta + '">' + String(nomesContas[pt.conta]).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }) + (p.partes.length > 1 ? ' ' + formatBRL(pt.valor) : '') + '</span>'; }).join(' + ') %></small><% } %>
           </td>
           <td><%= dataBR(p.data) %></td>
           <td><strong><%= formatBRL(p.valor) %></strong></td>
