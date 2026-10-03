@@ -398,4 +398,16 @@ async function taxaPaga(matricula) {
   }
 }
 
-module.exports = { carregar, encaixar, situacaoPagamento, dataPago, resumoPainel, taxaPaga };
+// Matrículas da escola que vieram da matrícula rápida (encaixe) ou foram ligadas a ela (batimento).
+// Nas listas da secretaria o valor delas aparece somado: curso + taxa paga na instituição.
+// Guardado 30 s: as telas consultam a cada abertura.
+let idsCache = null;
+async function idsMatriculas() {
+  if (idsCache && Date.now() - idsCache.em < 30000) return idsCache.ids;
+  const cfgs = await prisma.configuracao.findMany({ where: { chave: { startsWith: 'matricularapida:' } } });
+  const ids = new Set(cfgs.map((c) => ler(c.valor).matriculaId).filter(Boolean));
+  idsCache = { em: Date.now(), ids };
+  return ids;
+}
+
+module.exports = { idsMatriculas, carregar, encaixar, situacaoPagamento, dataPago, resumoPainel, taxaPaga };

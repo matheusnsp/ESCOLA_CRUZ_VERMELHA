@@ -573,6 +573,21 @@ router.use(async (req, res, next) => {
 
 router.use(requireAdmin);
 
+// Valor de uma matrícula nas listas (Painel, Inscrições, página do aluno). Quem veio da matrícula
+// rápida pagou a taxa na instituição: o valor mostrado é o curso + essa taxa (ex.: R$ 150 +
+// R$ 103,95). As demais seguem como sempre.
+router.use(async (req, res, next) => {
+  let ids = new Set();
+  try { ids = await matriculaRapida.idsMatriculas(); } catch (e) { /* sem a lista, mostra como sempre */ }
+  res.locals.valorMatricula = (m) => {
+    const curso = Number(m.valorCurso) || 0;
+    if (!ids.has(m.id)) return { total: curso, rapida: false };
+    const taxa = Number(m.valorTaxaMatricula) || 0;
+    return { total: curso + taxa, curso, taxa, rapida: true };
+  };
+  next();
+});
+
 // Qualquer ação da secretaria (POST) pode mudar o catálogo público ou banir alguém: limpa o
 // cache curto do site (lib/cache-rapido.js) quando a resposta sai, para aparecer na hora.
 router.use((req, res, next) => {

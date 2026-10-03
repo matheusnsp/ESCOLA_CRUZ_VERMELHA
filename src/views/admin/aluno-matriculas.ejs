@@ -167,7 +167,7 @@
 
               <% if (m.taxaConfirmada) { %>
 
-                <%= formatBRL(Number(m.valorCurso)) %>
+                <% var _vm = valorMatricula(m); %><%= formatBRL(_vm.total) %><% if (_vm.rapida) { %><small class="adm-valor-det">curso <%= formatBRL(_vm.curso) %> + taxa <%= formatBRL(_vm.taxa) %></small><% } %>
 
               <% } else { %>
 
