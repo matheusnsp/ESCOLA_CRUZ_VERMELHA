@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const matriculaRapida = require('../lib/matricula-rapida');
 const visitasSite = require('../lib/visitas');
 const financeiroContas = require('../lib/financeiro-contas');
+const { contaDoGateway: unicopagContaDoGateway } = require('../lib/unicopag');
 const pesquisa = require('../lib/pesquisa');
 const prisma = require('../db');
 const { verificarSenha, hashSenha } = require('../lib/password');
@@ -1820,7 +1821,7 @@ function valorEmAberto(m) {
 }
 
 router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:leitura'), async (req, res) => {
-  const [
+  let [
     taxaPagaLista,
     matriculaGeradaLista,
     taxaPendenteLista,
@@ -1916,7 +1917,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
   // lista de pagamentos abaixo seguem como sempre (todas as contas). A matrícula rápida divide:
   // taxa na instituição, curso na escola ou na secretaria; entra também quem pagou a inscrição
   // na matrícula rápida e ainda não foi encaixado (o dinheiro já está na instituição).
-  const idsFin = [...new Set([...taxaPagaLista, ...matriculaGeradaLista, ...reembolsosPendentesLista].map((m) => m.id))];
+  const idsFin = [...new Set([...taxaPagaLista, ...matriculaGeradaLista, ...reembolsosPendentesLista, ...cursoPendenteLista, ...estornos].map((m) => m.id))];
   const pagsFin = idsFin.length ? await prisma.pagamento.findMany({
     where: { matriculaId: { in: idsFin } },
     select: { matriculaId: true, tipo: true, gateway: true, gatewayStatus: true, status: true, criadoEm: true },
@@ -1925,17 +1926,56 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
   const pagsPorMat = new Map();
   for (const pg of pagsFin) { if (!pagsPorMat.has(pg.matriculaId)) pagsPorMat.set(pg.matriculaId, []); pagsPorMat.get(pg.matriculaId).push(pg); }
   const partesDe = (m) => financeiroContas.partesRecebidas(m, pagsPorMat.get(m.id));
+  // Por conta: total desde sempre, o do mês (cartões do topo) e quantas matrículas pagaram nela.
+  const inicioMesFin = new Date(`${hojeSPStr().slice(0, 8)}01T00:00:00-03:00`);
   const recebidoPorConta = { principal: 0, segunda: 0, manual: 0 };
+  const mesPorConta = { principal: 0, segunda: 0, manual: 0 };
+  const qtdPorConta = { principal: 0, segunda: 0, manual: 0 };
   const comDinheiro = new Map();
   [...taxaPagaLista, ...matriculaGeradaLista].forEach((m) => comDinheiro.set(m.id, m));
-  for (const m of comDinheiro.values()) for (const p of partesDe(m)) recebidoPorConta[p.conta] += p.valor;
+  for (const m of comDinheiro.values()) {
+    const contasDaMat = new Set();
+    for (const p of financeiroContas.partesComData(m, pagsPorMat.get(m.id))) {
+      recebidoPorConta[p.conta] += p.valor;
+      if (p.em && new Date(p.em) >= inicioMesFin) mesPorConta[p.conta] += p.valor;
+      contasDaMat.add(p.conta);
+    }
+    contasDaMat.forEach((c) => { qtdPorConta[c] += 1; });
+  }
   try {
     const agoraFin = new Date();
     const mr = await matriculaRapida.resumoPainel({ inicioHoje: agoraFin, inicioSemana: agoraFin, inicioMes: agoraFin });
-    if (mr.ok) recebidoPorConta.segunda += mr.recentes.filter((r) => r.valor > 0).reduce((t, r) => t + r.valor, 0);
+    if (mr.ok) {
+      for (const r of mr.recentes.filter((x) => x.valor > 0)) {
+        recebidoPorConta.segunda += r.valor;
+        qtdPorConta.segunda += 1;
+        if (r.quando && new Date(r.quando) >= inicioMesFin) mesPorConta.segunda += r.valor;
+      }
+    }
   } catch (e) { /* sem a matrícula rápida, os cartões mostram só o da escola */ }
-  Object.keys(recebidoPorConta).forEach((k) => { recebidoPorConta[k] = Math.round(recebidoPorConta[k] * 100) / 100; });
+  for (const k of Object.keys(recebidoPorConta)) {
+    recebidoPorConta[k] = Math.round(recebidoPorConta[k] * 100) / 100;
+    mesPorConta[k] = Math.round(mesPorConta[k] * 100) / 100;
+  }
+  const mesNomeFin = new Date(`${hojeSPStr()}T12:00:00-03:00`).toLocaleDateString('pt-BR', { month: 'long', timeZone: 'America/Sao_Paulo' });
   const contaFiltro = financeiroContas.CONTAS.includes(req.query.conta) ? req.query.conta : 'todas';
+  // Conta escolhida: a parte de baixo mostra só as matrículas que tiveram dinheiro naquela conta,
+  // com o mesmo cálculo de sempre (valor e etiqueta de cada linha não mudam). Quem pagou parte numa
+  // conta e parte em outra (matrícula rápida) aparece nas duas, com o valor total.
+  if (contaFiltro !== 'todas') {
+    const tocou = (m) => partesDe(m).some((pt) => pt.conta === contaFiltro);
+    const contaDoEstorno = (m) => {
+      const pg = (pagsPorMat.get(m.id) || []).find((x) => x.status === 'ESTORNADO') || (pagsPorMat.get(m.id) || [])[0];
+      if (!pg || !pg.gateway || pg.gateway === 'manual' || String(pg.gatewayStatus || '').startsWith('manual:')) return 'manual';
+      return unicopagContaDoGateway(pg.gateway);
+    };
+    taxaPagaLista = taxaPagaLista.filter(tocou);
+    matriculaGeradaLista = matriculaGeradaLista.filter(tocou);
+    cursoPendenteLista = cursoPendenteLista.filter(tocou);
+    estornos = estornos.filter((m) => contaDoEstorno(m) === contaFiltro);
+    const pendIds = new Set(cursoPendenteLista.map((m) => m.id));
+    for (let i = pendentesLista.length - 1; i >= 0; i--) if (!pendIds.has(pendentesLista[i].m.id)) pendentesLista.splice(i, 1);
+  }
   // Reembolsos a fazer: com uma conta escolhida, só os de quem pagou nela (a maior parte do dinheiro).
   if (contaFiltro !== 'todas') {
     reembolsosPendentesLista = reembolsosPendentesLista.filter((m) => {
@@ -1997,6 +2037,9 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
   res.render('admin/financeiro', {
     contaFiltro,
     recebidoPorConta,
+    mesPorConta,
+    qtdPorConta,
+    mesNomeFin,
     nomesContas: financeiroContas.nomesDasContas(),
     formatBRL,
     codigoMatricula,
