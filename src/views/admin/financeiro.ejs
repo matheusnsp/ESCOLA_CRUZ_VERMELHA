@@ -124,6 +124,7 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
           <td>
             <strong><%= m.aluno.nome %></strong>
             <% if (p.tipo === 'curso') { %><br><span class="badge mut"><%= codigoMatricula(m) %></span><% } %>
+            <% if (valorMatricula(m).rapida) { %><span class="adm-tag-rapida" title="Taxa de inscrição paga na matrícula rápida (site da instituição)"><i class="fa-solid fa-bolt"></i> Matrícula rápida</span><% } %>
           </td>
           <td><%= m.turma.curso.nome %></td>
           <td>

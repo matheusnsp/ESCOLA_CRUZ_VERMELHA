@@ -362,7 +362,7 @@
         <tr>
           <th>Aluno</th>
           <th>Curso</th>
-          <th>Valor</th>
+          <th>Pago</th>
           <th>Status</th>
           <th>Quando</th>
         </tr>
@@ -385,7 +385,7 @@
 
             <td><%= r.valor ? formatBRL(r.valor) : '—' %></td>
 
-            <td><span class="adm-pill-espera">Inscrição paga · sem turma</span></td>
+            <td><span class="badge pend" title="Pagou só a inscrição (na matrícula rápida); falta pagar a matrícula">PENDENTE</span><small class="adm-valor-de" title="Ainda não foi encaixado numa turma: Turmas → Matrícula rápida">sem turma · falta encaixar</small></td>
 
           <% } else { %>
 
@@ -393,7 +393,7 @@
               <a href="/alunos/<%= m.aluno.id %>/matriculas" class="adm-link-aluno">
                 <strong><%= m.aluno.nome %></strong>
               </a>
-              <% if (u.rapida) { %><span class="adm-tag-rapida" title="Veio da matrícula rápida"><i class="fa-solid fa-bolt"></i> Matrícula rápida</span><% } %>
+              <% if (u.rapida || valorMatricula(m).rapida) { %><span class="adm-tag-rapida" title="Taxa de inscrição paga na matrícula rápida (site da instituição)"><i class="fa-solid fa-bolt"></i> Matrícula rápida</span><% } %>
             </td>
 
             <td>
@@ -401,7 +401,15 @@
             </td>
 
             <td>
-              <% var _vm = valorMatricula(m); %><% if (_vm.rapida) { %><span class="adm-valor-mr" title="Curso <%= formatBRL(_vm.curso) %> + taxa <%= formatBRL(_vm.taxa) %> paga na matrícula rápida"><%= formatBRL(_vm.total) %></span><% } else { %><%= formatBRL(_vm.total) %><% } %>
+              <%
+                // O que já entrou, como no Financeiro: matrícula paga = total; só a inscrição paga =
+                // a taxa, com o total da matrícula embaixo.
+                var _vm = valorMatricula(m);
+                var _soTaxa = m.statusPagamento === 'PENDENTE' && m.taxaConfirmada;
+                var _pago = _soTaxa ? (Number(m.valorTaxaMatricula) || 0) : _vm.total;
+              %>
+              <span class="<%= _vm.rapida ? 'adm-valor-mr' : '' %>"<% if (_vm.rapida) { %> title="Curso <%= formatBRL(_vm.curso) %> + taxa <%= formatBRL(_vm.taxa) %> paga na matrícula rápida"<% } %>><%= formatBRL(_pago) %></span>
+              <% if (_soTaxa) { %><small class="adm-valor-de">de <%= formatBRL(_vm.total) %></small><% } %>
             </td>
 
             <td>
