@@ -1,8 +1,8 @@
 // Envia UM e-mail de teste, com dados de exemplo, pro endereço abaixo.
 //
 // Uso, na RAIZ do projeto:
-//   node testar-emails.js              -> matrícula confirmada (padrão)
-//   node testar-emails.js boasvindas   -> boas-vindas + confirmação
+//   node scripts/testar-emails.js              -> matrícula confirmada (padrão)
+//   node scripts/testar-emails.js boasvindas   -> boas-vindas + confirmação
 //
 // Apague o arquivo depois:  rm testar-emails.js
 require('dotenv').config();
@@ -13,7 +13,7 @@ const NOME    = 'Matheus';
 const {
   enviarEmailConfirmacao,
   enviarEmailMatriculaConfirmada,
-} = require('./src/lib/email');
+} = require('../src/lib/email');
 
 const APP_URL = (process.env.APP_URL || 'http://localhost:3000').replace(/\/+$/, '');
 

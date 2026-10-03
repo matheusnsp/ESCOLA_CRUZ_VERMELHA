@@ -1,5 +1,6 @@
+// Uso, na RAIZ do projeto: node scripts/criar-cursos-teste.js (só no banco local)
 require('dotenv').config({ path: '.env.dev' });
-const p = require('./src/db');
+const p = require('../src/db');
 
 (async () => {
   // limpa cursos de teste anteriores
