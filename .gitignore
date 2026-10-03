@@ -11,3 +11,9 @@ src/public/uploads/*
 /storage/
 # Anexos das Contas a pagar em desenvolvimento (notas, boletos, recibos): fora do versionamento
 /privado/
+
+# Listas geradas com dados de alunos (nome, e-mail, telefone) e cópias de segurança de arquivos:
+# ficam só no computador de quem gerou, nunca no Git.
+lista-*.html
+*.bak
+*.bak-*
