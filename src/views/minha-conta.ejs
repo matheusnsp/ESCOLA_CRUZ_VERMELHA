@@ -398,8 +398,10 @@
 
           <div class="ct-card">
             <p class="ct-grupo-nota" style="margin-bottom:18px;">
-              Esta ação é permanente e remove seus dados. Não é possível excluir
-              com inscrições ativas.
+              Esta ação é permanente: apaga o seu e-mail, telefone, endereço, senha e os
+              outros dados da conta. Se você já pagou algum curso, guardamos só o nome e o
+              documento junto dos registros de pagamento e do certificado, porque a lei manda.
+              Não é possível excluir com inscrição em andamento.
             </p>
 
             <% if (erro) { %>
@@ -409,7 +411,7 @@
             <% if (matriculasAtivas > 0) { %>
               <div class="ct-bloqueio">
                 <i class="fa-solid fa-lock"></i>
-                Você tem <%= matriculasAtivas %> inscrição(ões) ativa(s). Resolva
+                Você tem <%= matriculasAtivas %> inscrição(ões) em andamento. Fale
                 com a secretaria antes de excluir.
               </div>
             <% } else { %>
