@@ -72,7 +72,7 @@
   function apagarCookiesDeMedicao(estatistica, marketing) {
     var nomes = document.cookie.split(';').map(function (c) { return c.split('=')[0].trim(); });
     nomes.forEach(function (n) {
-      var ehEstatistica = n === '_ga' || n.indexOf('_ga_') === 0 || n === '_gid' || n.indexOf('_gat') === 0;
+      var ehEstatistica = n === '_ga' || n.indexOf('_ga_') === 0 || n === '_gid' || n.indexOf('_gat') === 0 || n === 'cvrj_origem';
       var ehMarketing = n === '_fbp' || n === '_fbc';
       if ((ehEstatistica && !estatistica) || (ehMarketing && !marketing)) {
         ['', location.hostname, DOMINIO].forEach(function (d) {

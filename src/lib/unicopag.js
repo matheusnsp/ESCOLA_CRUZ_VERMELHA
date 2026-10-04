@@ -93,10 +93,11 @@ async function obterOpcaoParcelamento(amountCentavos, numeroParcelas, contaId) {
  * Cria uma transação transparente na Únicopag (Pix ou Crédito)
  *
  * @param {Object} params
+ * @param {object} [params.origem] - utm_* da visita (lib/origem-da-visita.js), vão no metadata.
  * @param {string} params.tipoPagamento - 'TAXA' ou 'CURSO'. Usado apenas para
  *   logging/clareza; a lógica de negócio de qual é qual fica na rota, não aqui.
  */
-async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno, dadosCartao, tipoPagamento, conta: contaId }) {
+async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno, dadosCartao, tipoPagamento, conta: contaId, origem }) {
   const c = conta(contaId);
   const token = c.token;
 
@@ -141,6 +142,8 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
       number_paid_proposals: 0,
     };
     if (sellerDoc) metadataCartao.seller_document = sellerDoc;
+    // De qual campanha veio a inscrição (lib/origem-da-visita.js): o site principal manda do mesmo jeito.
+    Object.assign(metadataCartao, origem || {});
 
     payload = {
       amount: amountCentavos,
@@ -187,7 +190,9 @@ async function criarTransacao({ matriculaId, nomeCurso, valorTotal, forma, aluno
       installments: 1,
       postback_url: `${appUrl}/webhook/unicopag`,
       metadata: {
-        order_id: String(matriculaId)
+        order_id: String(matriculaId),
+        // De qual campanha veio a inscrição (lib/origem-da-visita.js): o site principal manda do mesmo jeito.
+        ...(origem || {}),
       },
       customer: {
         name:         aluno.nome,

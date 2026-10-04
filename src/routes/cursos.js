@@ -10,6 +10,7 @@ const {
   taxaExibicao,
 } = require('../lib/matricula');
 const { criarTransacao, obterOpcaoParcelamento } = require('../lib/unicopag');
+const { lerOrigem } = require('../lib/origem-da-visita');
 const cacheRapido = require('../lib/cache-rapido');
 const extras = require('../lib/extras');
 const vitrine = require('../lib/vitrine');
@@ -687,6 +688,7 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
         aluno: { ...aluno, cidade: aluno.cidade || 'Rio de Janeiro' },
         dadosCartao: null,
         tipoPagamento: 'CURSO',
+        origem: lerOrigem(req),
       });
 
       const gatewayRef = String(resultadoGateway.gatewayRef || resultadoGateway.id || resultadoGateway.hash || matricula.id);
@@ -909,6 +911,7 @@ router.post('/inscrever/:turmaId/pagar-taxa', requireLogin, async (req, res) => 
       aluno: { ...aluno, cidade: aluno.cidade || 'Rio de Janeiro' },
       dadosCartao: null,
       tipoPagamento: 'TAXA',
+      origem: lerOrigem(req),
     });
 
     const gatewayRef = String(resultadoGateway.gatewayRef || resultadoGateway.id || resultadoGateway.hash || matricula.id);
@@ -1281,6 +1284,7 @@ router.post('/inscricao/cartao/:matriculaId', requireLogin, async (req, res) => 
       aluno: { ...aluno, cidade: aluno.cidade || 'Rio de Janeiro' },
       dadosCartao: { numero, titular, mesExpiracao, anoExpiracao, cvv, parcelas: cobranca.numParcelas },
       tipoPagamento: cobranca.tipo,
+      origem: lerOrigem(req),
     });
 
     const gatewayRef = String(resultadoGateway.gatewayRef || resultadoGateway.id || resultadoGateway.hash || matricula.id);
