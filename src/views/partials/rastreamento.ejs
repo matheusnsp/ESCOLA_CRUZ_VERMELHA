@@ -63,9 +63,20 @@ fbq('track', 'PageView');
       baixados[src] = 1;
       var s = document.createElement('script'); s.async = true; s.src = src; document.head.appendChild(s);
     }
+    // De qual campanha a pessoa veio: as utm_* do endereço ficam no cookie cvrj_origem (7 dias), e a
+    // cobrança na Únicopag leva a origem no metadata (lib/origem-da-visita.js). Só com estatística;
+    // página sem utm não apaga a origem de antes. O aviso de cookies apaga o cookie se a permissão sair.
+    function guardarOrigem() {
+      var campos = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+      var busca = new URLSearchParams(location.search), partes = [];
+      campos.forEach(function (k) { var v = busca.get(k); if (v) partes.push(k + '=' + encodeURIComponent(v.slice(0, 160))); });
+      if (!partes.length) return;
+      document.cookie = 'cvrj_origem=' + encodeURIComponent(partes.join('&')) + '; Max-Age=604800; Path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
+    }
     function aplicar(c) {
       c = c || ler();
       if (!c) return;
+      if (c.estatistica) { try { guardarOrigem(); } catch (e) { /* cookie bloqueado: segue sem origem */ } }
       window['ga-disable-G-HDYZZ5JZHF'] = !c.estatistica;
       gtag('consent', 'update', {
         analytics_storage: c.estatistica ? 'granted' : 'denied',
