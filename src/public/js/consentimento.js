@@ -28,8 +28,8 @@
   var VERSAO = '1';
   var VALIDADE_S = 365 * 24 * 60 * 60;
   var DOMINIO = /(^|\.)cruzvermelhariodejaneiro\.org$/i.test(location.hostname) ? '.cruzvermelhariodejaneiro.org' : '';
-  // A Política de Cookies mora no site principal.
-  var URL_POLITICA = 'https://cruzvermelhariodejaneiro.org/cookies/';
+  // A parte de cookies da Política de Privacidade da Escola (/privacidade).
+  var URL_POLITICA = '/privacidade#cookies';
 
   var T = {
     titulo: 'Sua privacidade',

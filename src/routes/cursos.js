@@ -318,7 +318,7 @@ router.get('/turmas/:turmaId/agenda.ics', (req, res, next) => (async () => {
 router.get('/sitemap.xml', (req, res, next) => (async () => {
   const cursos = await catalogo(res, 'sitemap', () => prisma.curso.findMany({ where: { ativo: true }, select: { nome: true }, orderBy: { nome: 'asc' } }));
   const base = res.locals.urlSite;
-  const urls = ['/', '/cursos'].concat(cursos.map(vitrine.urlCurso));
+  const urls = ['/', '/cursos', '/privacidade'].concat(cursos.map(vitrine.urlCurso));
   const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   res.set('Content-Type', 'application/xml; charset=utf-8');
   res.set('Cache-Control', 'public, max-age=3600');

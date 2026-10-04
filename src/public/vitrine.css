@@ -862,3 +862,52 @@ html.v-menu-aberto .v-acoes .v-so-pc, html.v-menu-aberto .v-acoes .v-user { disp
   .v-card, .v-destaque, .v-seta { transition: none; }
   .v-card:hover, .v-destaque:hover { transform: none; }
 }
+
+/* ══ Política de Privacidade (/privacidade) ══════════════════════════ */
+.v-priv-grid { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 56px; align-items: start; }
+.v-priv-indice { position: sticky; top: 96px; display: flex; flex-direction: column; gap: 2px; }
+.v-priv-indice a { color: #5f5f5f; text-decoration: none; font-size: 14px; font-weight: 650; padding: 7px 0 7px 12px; border-left: 2px solid var(--v-line); }
+.v-priv-indice a:hover { color: var(--v-red); border-left-color: var(--v-red); }
+.v-priv-indice .v-priv-pdf { margin-top: 14px; border-left: 0; padding-left: 0; color: var(--v-red); }
+.v-priv-texto { max-width: 780px; }
+.v-priv-texto > .v-prosa + .v-bloco { margin-top: 48px; padding-top: 48px; border-top: 1px solid var(--v-line); }
+.v-priv-texto .v-bloco h2 { font-size: clamp(26px, 2.6vw, 34px); margin-bottom: 18px; }
+.v-priv-ficha { display: flex; flex-direction: column; gap: 4px; background: #fff; border: 1px solid var(--v-line); border-left: 4px solid var(--v-red); border-radius: 14px; padding: 20px 24px; margin: 0 0 20px; font-size: 15px; line-height: 1.55; color: #4a4a4a; }
+.v-priv-ficha b { color: var(--v-ink); }
+.v-priv-usos { display: grid; gap: 14px; margin: 4px 0 24px; }
+.v-priv-uso { background: #fff; border: 1px solid var(--v-line); border-radius: 14px; padding: 20px 24px; }
+.v-priv-uso h3 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; color: var(--v-ink); margin: 0 0 12px; }
+.v-priv-uso dl { display: grid; grid-template-columns: 110px 1fr; gap: 8px 16px; margin: 0; }
+.v-priv-uso dt { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .1em; color: var(--v-red); padding-top: 4px; }
+.v-priv-uso dd { margin: 0; font-size: 15px; line-height: 1.6; color: #4a4a4a; }
+.v-priv-marcas { margin: 0 0 18px; padding-left: 20px; }
+.v-priv-marcas li { font-size: 15.5px; line-height: 1.65; color: #4a4a4a; margin: 0 0 8px; }
+.v-priv-marcas b { color: var(--v-ink); }
+.v-priv-termo-caixa { background: #fff; border: 1px solid var(--v-line); border-radius: 14px; margin: 8px 0 0; }
+.v-priv-termo-caixa summary { cursor: pointer; padding: 16px 22px; font-weight: 800; color: var(--v-ink); }
+.v-priv-termo-caixa[open] summary { border-bottom: 1px solid var(--v-line); }
+.v-priv-termo-caixa .v-priv-termo { padding: 4px 22px 18px; }
+.v-priv-texto a { color: var(--v-red); font-weight: 650; }
+.v-priv-texto .v-btn { color: var(--v-ink); margin-top: 8px; }
+.v-priv-tabela { border: 1px solid var(--v-line); border-radius: 14px; overflow: hidden; background: #fff; }
+.v-priv-linha { display: grid; grid-template-columns: 130px 1fr 150px; gap: 16px; padding: 14px 18px; font-size: 14.5px; line-height: 1.5; color: #4a4a4a; }
+.v-priv-linha + .v-priv-linha { border-top: 1px solid var(--v-line); }
+.v-priv-cab { background: #f6f4f1; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .1em; color: #707070; }
+.v-priv-obs { font-size: 14.5px; color: #5f5f5f; line-height: 1.6; margin: 16px 0 0; }
+.v-priv-termo h3 { font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; color: var(--v-ink); margin: 30px 0 10px; }
+.v-priv-lista { list-style: none; margin: 0 0 16px; padding: 0; }
+.v-priv-lista li { font-size: 15.5px; line-height: 1.6; color: #4a4a4a; padding: 3px 0 3px 46px; text-indent: -46px; }
+.v-priv-lista li span { display: inline-block; width: 46px; text-indent: 0; color: #8a8a8a; font-weight: 700; }
+@media (max-width: 860px) {
+  .v-priv-grid { grid-template-columns: 1fr; gap: 28px; }
+  .v-priv-indice { position: static; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+  .v-priv-indice .v-kicker { width: 100%; margin: 0; }
+  .v-priv-indice a { border: 1px solid var(--v-line); border-radius: 999px; padding: 6px 12px; font-size: 13px; background: #fff; }
+  .v-priv-indice .v-priv-pdf { margin-top: 0; padding: 6px 12px; border: 1px solid var(--v-line); }
+  .v-priv-uso { padding: 18px; }
+  .v-priv-uso dl { grid-template-columns: 1fr; gap: 2px; }
+  .v-priv-uso dt { padding-top: 10px; }
+  .v-priv-ficha { padding: 18px; }
+  .v-priv-linha { grid-template-columns: 1fr; gap: 4px; }
+  .v-priv-cab { display: none; }
+}

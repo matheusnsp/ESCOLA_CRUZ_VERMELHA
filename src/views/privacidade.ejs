@@ -1,0 +1,301 @@
+<%- include('partials/site-head', {
+  titulo: 'Política de Privacidade',
+  bodyClass: 'v-claro',
+  descricao: 'Como a Escola de Educação e Saúde da Cruz Vermelha Brasileira no Rio de Janeiro coleta, usa e protege os seus dados pessoais, conforme a LGPD (Lei nº 13.709/2018).'
+}) %>
+<%- include('partials/site-header', { menuAtivo: '' }) %>
+
+<%
+// Segue a estrutura da Política de Privacidade do site da instituição
+// (cruzvermelhariodejaneiro.org/privacidade/): quem cuida, dados por finalidade com a base legal,
+// compartilhamento, transferência para fora do Brasil, cookies, prazos, segurança e direitos.
+// Cada item foi conferido contra o código desta plataforma; ao mudar o que o sistema coleta ou
+// para onde manda, atualize a lista USOS e a data ATUALIZADA.
+// No fim vai o Termo de Ciência e Tratamento de Dados Pessoais da instituição, transcrito do
+// /arquivo/privacidade.pdf. Se o jurídico mudar o termo, troque o PDF e a lista CLAUSULAS juntos.
+var ATUALIZADA = '4 de outubro de 2026';
+var USOS = [
+  ['Conta na plataforma', 'Nome completo, e-mail, celular, CPF (ou, para estrangeiros, passaporte e país de origem), RG, endereço, escolaridade e gênero; a senha, guardada cifrada (ninguém da Escola consegue lê-la); e o registro do aceite desta política, com a data e a versão.',
+    'Identificar você, fazer a matrícula, falar com você sobre o curso e a turma e emitir o certificado.',
+    'Execução de contrato e dos procedimentos que o antecedem, a seu pedido (art. 7º, V); cumprimento de obrigação legal (art. 7º, II).'],
+  ['Inscrição e pagamento', 'Curso, turma, plano (à vista ou parcelado), valores, parcelas, forma de pagamento, situação do pagamento e o código da transação na empresa de pagamento, com a resposta dela (que pode trazer a bandeira e os últimos dígitos do cartão).',
+    'Reservar a vaga, cobrar a taxa de inscrição e o curso, confirmar o pagamento, fazer estornos e reembolsos e prestar contas na contabilidade.',
+    'Execução de contrato (art. 7º, V); cumprimento de obrigação legal, na guarda dos registros de pagamento (art. 7º, II).'],
+  ['E-mails da Escola', 'Nome, e-mail e os dados da inscrição que cada mensagem precisa.',
+    'Confirmar o e-mail e trocar a senha; confirmar a matrícula (com o arquivo para pôr as aulas na agenda); lembrar de pagamento pendente e da véspera da turma; mandar as boas-vindas da turma e a pesquisa de satisfação no fim do curso.',
+    'Execução de contrato (art. 7º, V) e legítimo interesse em acompanhar a inscrição até o fim (art. 7º, IX).'],
+  ['Inscrição pelo site da instituição', 'Quem paga a inscrição em cruzvermelhariodejaneiro.org/matricula-cursos-presenciais: nome, e-mail, telefone, curso, os dias e horários respondidos lá e a transação na conta de pagamento da instituição.',
+    'A secretaria colocar a pessoa numa turma. Nessa hora a plataforma cria a conta (ou usa a que já existe com o mesmo e-mail) e manda o e-mail para criar a senha e pagar o curso. O que acontece no site da instituição segue a política de lá.',
+    'Execução de contrato e dos procedimentos que o antecedem, a seu pedido (art. 7º, V).'],
+  ['Certificado', 'Nome, curso, carga horária, turma e data de emissão, e o número de livro e registro.',
+    'Emitir o certificado impresso. O certificado é registrado no sistema da filial (Palácio Virtual), que gera o código do QR; quem tem o certificado em mãos pode conferir pelo código se ele é verdadeiro, e a conferência mostra o nome, o curso e a data.',
+    'Execução de contrato (art. 7º, V) e exercício regular de direitos (art. 7º, VI).'],
+  ['Pesquisa de satisfação', 'Nota, comentário e se você autoriza publicar o comentário. Pelo QR da sala, o CPF (ou passaporte), só para conferir que você é aluno da turma.',
+    'Melhorar os cursos. O comentário só vai para o site se você autorizar e a secretaria aprovar, e aparece só com o primeiro nome e a inicial do sobrenome (ex.: “Maria S.”) e o curso.',
+    'Legítimo interesse em melhorar o serviço (art. 7º, IX); a publicação, consentimento (art. 7º, I).'],
+  ['Contagem de visitas', 'Sem cookie e sem guardar o endereço IP: cada visitante vira um código embaralhado que muda todo dia e não permite chegar até você. De quem está conectado, conta só que a conta abriu o site naquele dia. Robôs ficam de fora.',
+    'Saber quantas pessoas abrem o site por dia.',
+    'Legítimo interesse (art. 7º, IX).'],
+  ['Segurança da conta', 'Tentativas de login erradas, bloqueios, data do último acesso e da última atividade, e o registro das ações da secretaria sobre a sua inscrição (quem fez o quê e quando).',
+    'Barrar quem tenta adivinhar senhas, proteger a conta e saber quem mexeu em cada inscrição.',
+    'Legítimo interesse (art. 7º, IX) e prevenção à fraude.'],
+  ['Estatística de visitas (Google Analytics), só com a sua permissão', 'Páginas vistas, origem da visita, dados técnicos do navegador e do aparelho, cidade aproximada e o identificador do cookie.',
+    'Entender quais páginas são lidas, para melhorar o site. Usa a mesma conta do site da instituição, para a visita que passa de um site para o outro contar uma vez só.',
+    'Consentimento (art. 7º, I), dado no aviso de cookies.'],
+  ['Marketing (Pixel da Meta), só com a sua permissão', 'As páginas vistas, com os cookies da Meta no seu navegador.',
+    'Medir o alcance das campanhas de divulgação no Facebook e no Instagram.',
+    'Consentimento (art. 7º, I), dado no aviso de cookies, que você pode retirar a qualquer momento. Recusar não muda nada na sua inscrição.']
+];
+var CLAUSULAS = [
+  ['Cláusula primeira – Do objeto', [
+    '1.1. O presente Termo tem por finalidade informar ao CONTRATANTE, ao ALUNO e, quando aplicável, ao seu representante legal, as condições de coleta, utilização, armazenamento, compartilhamento, proteção e eliminação de dados pessoais tratados pela CONTRATADA durante a prestação dos serviços educacionais.'
+  ]],
+  ['Cláusula segunda – Dos dados coletados', [
+    '2.1. Poderão ser coletados e tratados, conforme a necessidade:',
+    ['nome completo;', 'CPF;', 'RG;', 'data de nascimento;', 'nacionalidade;', 'endereço;', 'telefone;', 'e-mail;', 'fotografia;', 'imagem e voz, quando necessárias às atividades educacionais ou à segurança institucional;', 'dados financeiros para emissão de cobranças;', 'dados acadêmicos;', 'registros de frequência, notas e avaliações;', 'registros de acesso às plataformas digitais;', 'demais informações indispensáveis à execução do contrato.']
+  ]],
+  ['Cláusula terceira – Dos dados sensíveis', [
+    '3.1. Quando indispensáveis ao atendimento das necessidades educacionais, poderão ser tratados dados pessoais sensíveis relacionados à saúde, deficiência, acessibilidade, alimentação especial, restrições médicas ou outras informações estritamente necessárias ao adequado atendimento do aluno, observadas as hipóteses legais previstas na LGPD.'
+  ]],
+  ['Cláusula quarta – Das finalidades', [
+    '4.1. Os dados pessoais serão tratados para:',
+    ['Realização da matrícula;', 'Execução do contrato;', 'Gestão acadêmica;', 'Emissão de certificados;', 'Comunicação institucional;', 'Cobrança;', 'Cumprimento de obrigações legais;', 'Utilização de plataformas digitais;', 'Atendimento às exigências do Ministério da Educação e demais órgãos públicos;', 'Segurança patrimonial;', 'Prevenção à fraude;', 'Exercício regular de direitos.']
+  ]],
+  ['Cláusula quinta – Do compartilhamento', [
+    '5.1. Os dados poderão ser compartilhados, quando necessário, com:',
+    ['Órgãos públicos;', 'Instituições financeiras;', 'Empresas de tecnologia;', 'Plataformas educacionais;', 'Empresas de armazenamento em nuvem;', 'Escritórios de advocacia;', 'Empresas de cobrança;', 'Empresas responsáveis pela emissão de certificados;', 'Autoridades judiciais e administrativas.']
+  ]],
+  ['Cláusula sexta – Das bases legais', [
+    '6.1. O tratamento dos dados pessoais será realizado com fundamento nas bases legais previstas na LGPD, especialmente:',
+    ['Execução de contrato;', 'Cumprimento de obrigação legal ou regulatória;', 'Exercício regular de direitos;', 'Proteção do crédito;', 'Tutela da saúde, quando aplicável;', 'Legítimo interesse da CONTRATADA, observados os direitos e liberdades fundamentais do titular;', 'consentimento, quando exigido por lei.']
+  ]],
+  ['Cláusula sétima – Da segurança dos dados', [
+    '7.1. A CONTRATADA adotará medidas técnicas, administrativas e organizacionais destinadas à proteção dos dados pessoais contra acesso não autorizado, destruição, perda, alteração, comunicação ou qualquer forma de tratamento inadequado.'
+  ]],
+  ['Cláusula oitava – Do prazo de armazenamento', [
+    '8.1. Os dados permanecerão armazenados durante a vigência da relação contratual e, após seu encerramento, pelo prazo necessário ao cumprimento de obrigações legais, regulatórias, fiscais, contábeis, educacionais e ao exercício regular de direitos.'
+  ]],
+  ['Cláusula nona – Dos direitos do titular', [
+    '9.1. O titular poderá exercer, a qualquer tempo:',
+    ['confirmação da existência do tratamento;', 'acesso aos dados;', 'correção de informações;', 'anonimização;', 'bloqueio;', 'eliminação, quando cabível;', 'portabilidade;', 'informação sobre compartilhamento;', 'oposição ao tratamento nas hipóteses previstas em lei;', 'revogação do consentimento, quando essa for a base legal aplicável.']
+  ]],
+  ['Cláusula décima – Da imagem e da voz', [
+    '10.1. A utilização de imagem, voz e gravações para fins exclusivamente acadêmicos, pedagógicos, administrativos, de segurança e documentação das atividades educacionais poderá ocorrer nas hipóteses autorizadas pela legislação aplicável.',
+    '10.2. A utilização de imagem ou voz para fins publicitários, institucionais, promocionais ou de divulgação externa dependerá de autorização específica do titular ou de seu representante legal, quando exigida pela legislação.'
+  ]],
+  ['Cláusula décima primeira – Das plataformas digitais', [
+    '11.1. O CONTRATANTE declara ciência de que a CONTRATADA poderá utilizar plataformas digitais, sistemas em nuvem, ambientes virtuais de aprendizagem, videoconferências, aplicativos e demais tecnologias necessárias à prestação dos serviços.'
+  ]],
+  ['Cláusula décima segunda – Da inteligência artificial', [
+    '12.1. A CONTRATADA poderá utilizar ferramentas de inteligência artificial e automação para otimização de processos acadêmicos e administrativos, observando os princípios da finalidade, necessidade, transparência, segurança e não discriminação.'
+  ]],
+  ['Cláusula décima terceira – Do encarregado pelo tratamento de dados', [
+    '13.1. As solicitações relacionadas aos dados pessoais poderão ser encaminhadas ao Encarregado pelo Tratamento de Dados (DPO), por meio dos canais oficiais disponibilizados pela CONTRATADA, que responderá nos prazos previstos na legislação.'
+  ]],
+  ['Cláusula décima quarta – Da responsabilidade', [
+    '14.1. As partes comprometem-se a observar a confidencialidade das informações obtidas em razão deste Termo, respondendo por eventuais danos decorrentes de tratamento ilícito de dados pessoais, na forma da legislação vigente.'
+  ]],
+  ['Cláusula décima quinta – Das disposições finais', [
+    '15.1. Este Termo integra o Contrato de Prestação de Serviços Educacionais, produzindo efeitos durante toda a relação contratual e após seu término, enquanto subsistirem obrigações legais de guarda ou interesse jurídico legítimo.'
+  ]]
+];
+var ROMANOS = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV'];
+%>
+
+<main>
+  <section class="v-cat-topo">
+    <div class="v-wrap">
+      <nav class="v-trilha" aria-label="Você está em">
+        <a href="/">Início</a>
+        <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+        <span aria-current="page">Política de Privacidade</span>
+      </nav>
+      <h1>Política de Privacidade<span>.</span></h1>
+      <p class="v-cat-lead">Atualizada em <%= ATUALIZADA %>.</p>
+    </div>
+  </section>
+
+  <section class="v-secao v-priv">
+    <div class="v-wrap v-priv-grid">
+      <nav class="v-priv-indice" aria-label="Nesta página">
+        <p class="v-kicker">Nesta página</p>
+        <a href="#quem">Quem cuida dos seus dados</a>
+        <a href="#dados">Que dados tratamos</a>
+        <a href="#compartilhamento">Com quem compartilhamos</a>
+        <a href="#exterior">Fora do Brasil</a>
+        <a href="#cookies">Cookies</a>
+        <a href="#prazos">Por quanto tempo</a>
+        <a href="#seguranca">Segurança</a>
+        <a href="#direitos">Seus direitos</a>
+        <a href="#termo">Termo de ciência</a>
+        <a href="#mudancas">Mudanças</a>
+        <a class="v-priv-pdf" href="/arquivo/privacidade.pdf" target="_blank" rel="noopener"><i class="fa-regular fa-file-pdf" aria-hidden="true"></i> Termo em PDF</a>
+      </nav>
+
+      <div class="v-priv-texto">
+        <div class="v-prosa">
+          <p>Esta política explica, em linguagem direta, quais dados pessoais a plataforma da Escola de Educação e Saúde CVB-RJ trata, para que servem, com quem são compartilhados, por quanto tempo ficam guardados e como você exerce os seus direitos. Ela segue a Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018, a LGPD).</p>
+          <p>Vale para escola.cursoscruzvermelha.org e escola.cruzvermelhariodejaneiro.org: o catálogo de cursos, a conta do aluno, a inscrição e o pagamento. O site da instituição (cruzvermelhariodejaneiro.org), inclusive a página de matrícula de lá, tem a <a href="https://cruzvermelhariodejaneiro.org/privacidade/" target="_blank" rel="noopener">política de privacidade própria</a>.</p>
+        </div>
+
+        <div class="v-bloco" id="quem">
+          <h2>Quem cuida dos seus dados</h2>
+          <div class="v-prosa">
+            <p>A controladora dos dados, que decide como eles são tratados, é a filial abaixo, por meio da sua Escola de Educação e Saúde.</p>
+          </div>
+          <div class="v-priv-ficha">
+            <b>Cruz Vermelha Brasileira — Filial do Estado do Rio de Janeiro</b>
+            <span>CNPJ 08.560.973/0001-97</span>
+            <span>Praça da Cruz Vermelha, 10 — Centro, Rio de Janeiro/RJ, CEP 20230-130</span>
+            <span>E-mail: <a href="mailto:contato@cruzvermelhariodejaneiro.org?subject=Privacidade">contato@cruzvermelhariodejaneiro.org</a></span>
+          </div>
+          <div class="v-prosa">
+            <p><strong>Canal de privacidade:</strong> para qualquer assunto sobre os seus dados, escreva para <a href="mailto:contato@cruzvermelhariodejaneiro.org?subject=Privacidade">contato@cruzvermelhariodejaneiro.org</a> com o assunto “Privacidade”. Enquanto não houver encarregado nomeado, este é o canal de comunicação com os titulares e com a Autoridade Nacional de Proteção de Dados (ANPD), como permite o art. 11 da Resolução CD/ANPD nº 2/2022 aos agentes de tratamento de pequeno porte.</p>
+          </div>
+        </div>
+
+        <div class="v-bloco" id="dados">
+          <h2>Que dados tratamos, para quê e com que base legal</h2>
+          <div class="v-prosa">
+            <p>Cada tela pede só o necessário para o que ela faz. A base legal é a hipótese da LGPD (art. 7º) que autoriza cada uso.</p>
+          </div>
+          <div class="v-priv-usos">
+            <% USOS.forEach(function (u) { %>
+              <section class="v-priv-uso">
+                <h3><%= u[0] %></h3>
+                <dl>
+                  <dt>Dados</dt><dd><%= u[1] %></dd>
+                  <dt>Para quê</dt><dd><%= u[2] %></dd>
+                  <dt>Base legal</dt><dd><%= u[3] %></dd>
+                </dl>
+              </section>
+            <% }) %>
+          </div>
+          <div class="v-prosa">
+            <p>O pagamento é processado pela Únicopag. O número do cartão, a validade e o código de segurança passam pelo nosso servidor só a caminho dela, no momento do pagamento, e não são gravados.</p>
+            <p>Não pedimos dados sensíveis (como saúde, religião ou origem racial) em nenhuma tela do site e não tomamos decisões automatizadas com base nos seus dados. O site não é dirigido a crianças: se um adolescente for se matricular, a inscrição deve ser feita com o acompanhamento do responsável legal.</p>
+          </div>
+        </div>
+
+        <div class="v-bloco" id="compartilhamento">
+          <h2>Com quem os dados são compartilhados</h2>
+          <div class="v-prosa">
+            <p>Só com quem precisa deles para o serviço funcionar, e cada um recebe apenas a parte necessária:</p>
+          </div>
+          <ul class="v-priv-marcas">
+            <li><b>Únicopag</b>, que processa os pagamentos: nome, CPF, e-mail, telefone e endereço e, no cartão, os dados do cartão.</li>
+            <li><b>Render</b>, que hospeda a plataforma.</li>
+            <li><b>Supabase</b>, que guarda o banco de dados da plataforma e as imagens dos cursos.</li>
+            <li><b>Cloudflare</b>, por onde passa o acesso ao site, para protegê-lo contra ataques e deixá-lo mais rápido.</li>
+            <li><b>Resend</b>, que envia os e-mails da Escola.</li>
+            <li><b>Palácio Virtual</b>, o sistema da própria filial: nome, curso, carga horária e data de cada certificado, para gerar o código de conferência.</li>
+            <li><b>Site da instituição</b> (cruzvermelhariodejaneiro.org): a plataforma lê de lá as inscrições pagas e os horários respondidos, para a secretaria montar as turmas.</li>
+            <li><b>Google e Meta</b>, pelas ferramentas de estatística e de marketing, só com a sua permissão. O Google também entrega as fontes do site (Google Fonts) e, para isso, recebe o endereço IP de quem abre a página, sem cookies.</li>
+            <li><b>Autoridades públicas</b>, quando a lei ou uma ordem judicial exigir.</li>
+          </ul>
+          <div class="v-prosa">
+            <p><strong>Não vendemos dados pessoais, a ninguém, em hipótese alguma.</strong></p>
+          </div>
+        </div>
+
+        <div class="v-bloco" id="exterior">
+          <h2>Transferência para fora do Brasil</h2>
+          <div class="v-prosa">
+            <p>Alguns desses fornecedores guardam ou processam dados fora do Brasil, como nos Estados Unidos e na União Europeia (Render, Supabase, Cloudflare, Resend, Google e Meta). Essas transferências seguem o art. 33 da LGPD e a regulamentação da ANPD: apoiam-se nas garantias contratuais oferecidas pelos fornecedores e, no caso das ferramentas de estatística e de marketing, também no seu consentimento, dado no aviso de cookies.</p>
+          </div>
+        </div>
+
+        <div class="v-bloco" id="cookies">
+          <h2>Cookies</h2>
+          <div class="v-prosa">
+            <p>Usamos cookies necessários para o site funcionar e, só com a sua permissão, cookies de estatística e de marketing.</p>
+          </div>
+          <div class="v-priv-tabela" role="table" aria-label="Cookies do site">
+            <div role="row" class="v-priv-linha v-priv-cab"><span role="columnheader">Tipo</span><span role="columnheader">Para quê</span><span role="columnheader">Quando</span></div>
+            <div role="row" class="v-priv-linha"><span role="cell"><b>Necessários</b></span><span role="cell"><b>escola.sid</b>: mantém você conectado à conta (até 90 dias, ou até sair). <b>cvrj_consentimento</b>: guarda a sua escolha sobre cookies.</span><span role="cell">Sempre</span></div>
+            <div role="row" class="v-priv-linha"><span role="cell"><b>Estatística</b></span><span role="cell">Google Analytics (cookies _ga): conta as visitas e mostra quais páginas são lidas, sem identificar você pelo nome.</span><span role="cell">Só se você permitir</span></div>
+            <div role="row" class="v-priv-linha"><span role="cell"><b>Marketing</b></span><span role="cell">Pixel da Meta (cookie _fbp): mede o alcance das campanhas no Facebook e no Instagram.</span><span role="cell">Só se você permitir</span></div>
+          </div>
+          <p class="v-priv-obs">Sem a sua permissão, os códigos do Google e da Meta nem são carregados. Você pode mudar a sua escolha quando quiser em <a href="#" data-cvrj-cookies>Preferências de cookies</a>, aqui ou no rodapé.</p>
+        </div>
+
+        <div class="v-bloco" id="prazos">
+          <h2>Por quanto tempo guardamos</h2>
+          <ul class="v-priv-marcas">
+            <li><b>Conta, inscrições e pagamentos:</b> enquanto a conta existir. Você pode excluir a conta em <a href="/minha-conta">Minha conta</a> quando não tiver inscrição em andamento; aí a conta e o histórico de inscrições dela são apagados.</li>
+            <li><b>Certificados:</b> o registro do certificado e o código de conferência ficam guardados para que o certificado possa ser conferido a qualquer tempo.</li>
+            <li><b>Respostas da pesquisa:</b> enquanto forem úteis para avaliar os cursos; o comentário publicado sai do site se você pedir.</li>
+            <li><b>Sessão de login:</b> até 90 dias, ou até você sair.</li>
+            <li><b>Contagem de visitas:</b> só o total de cada dia; o código do visitante não é gravado e muda todo dia.</li>
+            <li><b>Cookies:</b> pelo prazo de cada um, conforme a tabela acima e as regras do Google e da Meta.</li>
+          </ul>
+          <div class="v-prosa">
+            <p>Terminado o prazo, os dados são apagados ou anonimizados, salvo quando a lei mandar guardar.</p>
+          </div>
+        </div>
+
+        <div class="v-bloco" id="seguranca">
+          <h2>Segurança</h2>
+          <div class="v-prosa">
+            <p>O site só funciona por conexão segura (HTTPS). As senhas são guardadas cifradas e precisam ser fortes; o login é bloqueado depois de tentativas erradas seguidas. Os dados ficam em banco de dados com acesso restrito à secretaria, e cada pessoa da equipe só vê o que o papel dela permite. Nenhum sistema é infalível: se acontecer um incidente de segurança que possa causar risco ou dano relevante, avisamos você e a ANPD, como manda o art. 48 da LGPD.</p>
+          </div>
+        </div>
+
+        <div class="v-bloco" id="direitos">
+          <h2>Seus direitos</h2>
+          <div class="v-prosa">
+            <p>A LGPD (art. 18) garante que você pode pedir, a qualquer momento:</p>
+          </div>
+          <ul class="v-priv-marcas">
+            <li>a confirmação de que tratamos os seus dados e o acesso a eles;</li>
+            <li>a correção de dados incompletos, inexatos ou desatualizados;</li>
+            <li>a anonimização, o bloqueio ou a eliminação de dados desnecessários, excessivos ou tratados em desacordo com a lei;</li>
+            <li>a portabilidade dos dados a outro fornecedor;</li>
+            <li>a eliminação dos dados tratados com o seu consentimento e a revogação desse consentimento;</li>
+            <li>a informação sobre com quem compartilhamos os seus dados e sobre a possibilidade de não dar o consentimento, e o que acontece se não der;</li>
+            <li>a oposição a um tratamento que descumpra a lei.</li>
+          </ul>
+          <div class="v-prosa">
+            <p>Boa parte disso você faz sozinho em <a href="/minha-conta">Minha conta</a>: ver e corrigir os seus dados e excluir a conta.</p>
+            <p>Para o resto, escreva para <a href="mailto:contato@cruzvermelhariodejaneiro.org?subject=Privacidade">contato@cruzvermelhariodejaneiro.org</a> com o assunto “Privacidade”, ou fale com a secretaria pelo WhatsApp <a href="https://wa.me/5521999922864" target="_blank" rel="noopener">(21) 99992-2864</a>. Podemos pedir uma informação para confirmar que o pedido é seu. A confirmação e o acesso aos dados, em declaração completa, saem em até 15 dias (art. 19 da LGPD). Alguns dados podem precisar ser guardados mesmo depois de um pedido de exclusão, para cumprir obrigação legal, como os registros de pagamento.</p>
+            <p>Se achar que o seu pedido não foi atendido, você pode reclamar à Autoridade Nacional de Proteção de Dados, em <a href="https://www.gov.br/anpd" target="_blank" rel="noopener">gov.br/anpd</a>.</p>
+          </div>
+        </div>
+
+        <div class="v-bloco" id="termo">
+          <h2>Termo de Ciência e Tratamento de Dados Pessoais</h2>
+          <div class="v-prosa">
+            <p>O contrato de matrícula, aceito na inscrição, tem uma cláusula sobre LGPD. A instituição tem também um termo próprio sobre dados pessoais dos alunos, que integra o Contrato de Prestação de Serviços Educacionais. O texto completo está abaixo e <a href="/arquivo/privacidade.pdf" target="_blank" rel="noopener">em PDF</a>.</p>
+          </div>
+          <details class="v-priv-termo-caixa">
+            <summary>Ler o termo completo</summary>
+            <div class="v-prosa v-priv-termo">
+              <p>Pelo presente instrumento, de um lado, a CONTRATADA, instituição prestadora de serviços educacionais, e, de outro, o CONTRATANTE, aluno ou seu representante legal, resolvem firmar o presente TERMO DE CIÊNCIA E TRATAMENTO DE DADOS PESSOAIS, que será regido pela Lei nº 13.709/2018 (LGPD), pelo Código Civil, pelo Código de Defesa do Consumidor e pelas demais normas aplicáveis.</p>
+              <% CLAUSULAS.forEach(function (c) { %>
+                <h3><%= c[0] %></h3>
+                <% c[1].forEach(function (parte) { %>
+                  <% if (Array.isArray(parte)) { %>
+                    <ol class="v-priv-lista">
+                      <% parte.forEach(function (item, i) { %><li><span><%= c[0].indexOf('direitos') >= 0 ? String.fromCharCode(97 + i) + ')' : ROMANOS[i] + ' –' %></span> <%= item %></li><% }) %>
+                    </ol>
+                  <% } else { %>
+                    <p><%= parte %></p>
+                  <% } %>
+                <% }) %>
+              <% }) %>
+            </div>
+          </details>
+        </div>
+
+        <div class="v-bloco" id="mudancas">
+          <h2>Mudanças nesta política</h2>
+          <div class="v-prosa">
+            <p>Quando esta política mudar, a data no topo muda junto. Mudanças relevantes são avisadas no site e, para quem tem conta, por e-mail.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<%- include('partials/site-footer') %>
