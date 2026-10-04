@@ -44,7 +44,12 @@ var USOS = [
     'Consentimento (art. 7º, I), dado no aviso de cookies.'],
   ['Marketing (Pixel da Meta), só com a sua permissão', 'As páginas vistas, com os cookies da Meta no seu navegador.',
     'Medir o alcance das campanhas de divulgação no Facebook e no Instagram.',
-    'Consentimento (art. 7º, I), dado no aviso de cookies, que você pode retirar a qualquer momento. Recusar não muda nada na sua inscrição.']
+    'Consentimento (art. 7º, I), dado no aviso de cookies, que você pode retirar a qualquer momento. Recusar não muda nada na sua inscrição.'],
+  // Quem envia é a Redação, o sistema interno da filial, que lê os pagamentos da Únicopag
+  // (redacao-cruzvermelhariodejaneiro: lib/escola/conversoes.ts e conversoes-servidor.ts), não esta plataforma.
+  ['Compras avisadas à Meta (API de Conversões)', 'Quando um pagamento é confirmado: o valor, o curso e a data e, transformados em código (hash) antes de sair, o seu nome, e-mail e telefone. O CPF não é enviado.',
+    'Medir o resultado das campanhas de divulgação no Facebook e no Instagram: a Meta compara o código com o das contas dela e conta a inscrição para o anúncio que a trouxe, sem receber esses dados em texto.',
+    'Legítimo interesse em medir as campanhas (art. 7º, IX). Você pode se opor a qualquer momento pelos canais de “Seus direitos”, e a oposição não muda nada na sua inscrição.']
 ];
 var CLAUSULAS = [
   ['Cláusula primeira – Do objeto', [
@@ -190,7 +195,7 @@ var ROMANOS = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XI
             <li><b>Resend</b>, que envia os e-mails da Escola.</li>
             <li><b>Palácio Virtual</b>, o sistema da própria filial: nome, curso, carga horária e data de cada certificado, para gerar o código de conferência.</li>
             <li><b>Site da instituição</b> (cruzvermelhariodejaneiro.org): a plataforma lê de lá as inscrições pagas e os horários respondidos, para a secretaria montar as turmas.</li>
-            <li><b>Google e Meta</b>, pelas ferramentas de estatística e de marketing, só com a sua permissão. O Google também entrega as fontes do site (Google Fonts) e, para isso, recebe o endereço IP de quem abre a página, sem cookies.</li>
+            <li><b>Google e Meta</b>, pelas ferramentas de estatística e de marketing, só com a sua permissão. A Meta também recebe, de cada pagamento confirmado, o valor e o curso, com o nome, o e-mail e o telefone em código (hash), para medir as campanhas (veja “Compras avisadas à Meta”, acima). O Google também entrega as fontes do site (Google Fonts) e, para isso, recebe o endereço IP de quem abre a página, sem cookies.</li>
             <li><b>Autoridades públicas</b>, quando a lei ou uma ordem judicial exigir.</li>
           </ul>
           <div class="v-prosa">

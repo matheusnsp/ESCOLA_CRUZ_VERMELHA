@@ -44,7 +44,9 @@ n.callMethod.apply(n,arguments):n.queue.push(arguments)};
 if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
 n.queue=[]}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
-fbq('consent', 'revoke');
+// Sem fbq('consent', 'revoke') antes do init: o fbevents.js só é baixado com consentimento, e um revoke
+// na fila travava o Pixel (o grant do aplicar() ficava atrás na mesma fila e nenhum evento saía, nem de
+// quem aceitou). O mesmo defeito foi corrigido no site principal em 02/10/2026; aqui, em 04/10/2026.
 fbq('init', '2224500131617302');
 fbq('track', 'PageView');
 </script>
