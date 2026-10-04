@@ -420,7 +420,7 @@ async function consultarTransacao(ref, contaId) {
   const c = conta(contaId);
   if (!c.token || !ref) return null;
   try {
-    const resp = await fetch(`${BASE}/transactions/${encodeURIComponent(ref)}?api_token=${c.token}`, { headers: { Accept: 'application/json' } });
+    const resp = await fetch(`${BASE}/transactions/${encodeURIComponent(ref)}?api_token=${c.token}`, { headers: { Accept: 'application/json' }, timeout: 15000 });
     if (!resp.ok) return null;
     const json = await resp.json();
     const t = json.transaction || json.result || json;
