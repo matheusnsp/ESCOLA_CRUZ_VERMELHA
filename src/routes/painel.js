@@ -269,12 +269,8 @@ router.post('/conta/excluir', requireLogin, async (req, res) => {
   }
 });
 
-// Política de Privacidade (pública). O texto definitivo deve vir do jurídico/DPO.
-router.get('/privacidade', (req, res) => {
-  res.render('em-breve', {
-    titulo: 'Política de Privacidade',
-    recurso: 'A Política de Privacidade definitiva deve ser redigida com o jurídico/DPO da instituição.',
-  });
-});
+// Política de Privacidade (pública): o que este site faz com os dados + o Termo de LGPD da
+// instituição (o mesmo texto de /arquivo/privacidade.pdf).
+router.get('/privacidade', (req, res) => res.render('privacidade'));
 
 module.exports = router;
