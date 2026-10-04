@@ -366,6 +366,9 @@ require('./lib/lembretes').agendarLembretes(30);
 setInterval(() => require('./lib/boas-vindas').enviarPendentes(), 15 * 60 * 1000).unref();
 // Pesquisa de satisfação: e-mail logo depois da última aula de cada turma (lib/pesquisa.js).
 setInterval(() => require('./lib/pesquisa').enviarPendentes(), 15 * 60 * 1000).unref();
+// Reconciliação com a Únicopag (lib/reconciliacao.js): a cada 15 min, pergunta a situação dos
+// pagamentos pendentes cujo aviso se perdeu. Só um dos serviços faz cada passada.
+require('./lib/reconciliacao').agendar();
 
 const port = process.env.PORT || 3000;
 
