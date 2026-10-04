@@ -1,102 +1,110 @@
-# Escola de Capacitação — Cruz Vermelha Brasileira (RJ)
+# Plataforma da Escola — Cruz Vermelha Brasileira (RJ)
 
-Backend e área autenticada. Esta primeira fatia entrega o **esquema do banco** e o
-**cadastro do aluno** já funcionando, com toda a lógica sensível no servidor.
+Site do aluno e painel da secretaria da Escola de Educação e Saúde CVB-RJ, num app só.
+
+| Endereço | O que é |
+|---|---|
+| escola.cursoscruzvermelha.org (e escola.cruzvermelhariodejaneiro.org) | Site do aluno: cursos, conta, inscrição e pagamento |
+| secretaria.cursoscruzvermelha.org | Painel da secretaria (mesmo app, escolhido pelo subdomínio) |
+
+Roda no **Render** (publica a `main` sozinho e roda `prisma migrate deploy` no build), com o banco
+**Postgres no Supabase**, compartilhado pelos 3 serviços do Render. Como colocar no ar e a lista de
+variáveis: [DEPLOY.md](DEPLOY.md).
 
 ## Stack
 
-- **Node.js + Express** — servidor
-- **EJS** — páginas renderizadas no servidor (sem etapa de build)
-- **PostgreSQL + Prisma** — banco e ORM (queries parametrizadas → sem SQL injection)
-- **express-session + connect-pg-simple** — sessão em cookie `httpOnly`, guardada no Postgres
-- **argon2** — hash de senha (argon2id)
-- **Zod** — validação de entrada no servidor
-- **helmet** — cabeçalhos de segurança (+ CSP)
-- **express-rate-limit** — limite de tentativas
-- **CSRF** — token de sessão (synchronizer token), sem dependência extra
+- **Node.js + Express**, páginas **EJS** renderizadas no servidor (sem etapa de build)
+- **PostgreSQL + Prisma** (queries parametrizadas)
+- **express-session + connect-pg-simple**: sessão em cookie `httpOnly`, guardada no Postgres
+- **argon2id** para senhas, **zxcvbn** no servidor para a força da senha
+- **Zod** na validação, **helmet** (+ CSP), **express-rate-limit**, CSRF por token de sessão
+- **Únicopag** (PIX e cartão, duas contas), **Resend** (e-mails), **Supabase Storage** (fotos dos cursos)
 
-## Pré-requisitos
+## Como rodar no computador
 
-- Node.js 20 ou superior
-- PostgreSQL rodando e um banco vazio criado
-
-## Como rodar (passo a passo)
+Precisa de Node.js 20+ e de um Postgres com um banco vazio.
 
 ```bash
-# 1. Instalar dependências
 npm install
-
-# 2. Configurar variáveis de ambiente
-cp .env.example .env
-#    edite o .env: DATABASE_URL, SESSION_SECRET (gere com: openssl rand -hex 32),
-#    e a senha do admin (SEED_ADMIN_SENHA)
-
-# 3. Criar as tabelas no banco
-npm run db:migrate
-
-# 4. Popular dados iniciais (config de matrícula, admin e cursos)
-npm run db:seed
-
-# 5. Subir o servidor
+# crie o .env com pelo menos DATABASE_URL e SESSION_SECRET (openssl rand -hex 32);
+# para o primeiro acesso da secretaria: SEED_ADMIN_EMAIL, SEED_ADMIN_SENHA
+npm run db:migrate      # cria as tabelas
+npm run db:seed         # configuração inicial e o usuário da secretaria (SEED_EXEMPLO=true: cursos de exemplo)
 npm run dev
 ```
 
-Acesse `http://localhost:3000/cadastro`.
+O site do aluno abre em `http://localhost:3000`. Com `ADMIN_PORT=3001` no `.env`, o painel abre em
+`http://localhost:3001` (em produção o painel é pelo subdomínio `secretaria.`; não defina
+`ADMIN_PORT` lá).
 
-## O que já funciona
+Sem `RESEND_API_KEY`, os e-mails (confirmação, senha, lembretes) não saem: aparecem no terminal.
 
-- `GET/POST /cadastro` — cria o aluno (validação, hash argon2id, papel ALUNO, consentimento LGPD). A conta nasce **não confirmada** e dispara um e-mail de confirmação.
-- `GET /confirmar-email` — ativa a conta a partir do link (token de uso único, expira em 24h)
-- `GET/POST /reenviar-confirmacao` — reenvia o link de confirmação
-- `GET/POST /login` — autentica com sessão; **bloqueia o login enquanto o e-mail não for confirmado**; mensagem genérica e proteção anti-enumeração por timing; regenera a sessão no sucesso
-- `POST /logout` — encerra a sessão
-- `GET/POST /esqueci-senha` — envia link de redefinição; resposta sempre igual
-- `GET/POST /redefinir-senha` — token de uso único, com hash no banco e expiração de 1 hora
-- `GET /minha-conta` — área do aluno: lista as inscrições com status (exige login)
-- `GET /cursos` — vitrine pública de cursos e turmas abertas
-- `GET/POST /inscrever/:turmaId` — inscrição em uma turma (exige login); calcula curso + taxa de matrícula no servidor e cria a matrícula como PENDENTE
-- `GET /admin` — painel da secretaria (exige login **e** papel SECRETARIA)
-- Site institucional servido em `/`
+## O que o sistema faz
 
-Senhas passam por avaliação de força no **servidor** (biblioteca `zxcvbn`, exige
-nível "Boa"), com uma barra de força no navegador como espelho visual.
-Todas as rotas que mudam estado exigem token CSRF e passam por rate limiting.
+**Site do aluno** (`src/routes/cursos.js`, `auth.js`, `painel.js`)
+- Início, catálogo `/cursos` e página de cada curso, com as turmas abertas.
+- Conta: cadastro com confirmação por e-mail, login, troca e recuperação de senha, Minha conta
+  (inscrições, dados, segurança, excluir conta).
+- Inscrição numa turma e pagamento pela Únicopag, à vista ou parcelado (taxa de inscrição e
+  curso em cobranças separadas), por PIX ou cartão.
+- Pesquisa de satisfação no fim do curso, arquivo de agenda (.ics), Política de Privacidade
+  (`/privacidade`), aviso de cookies.
 
-> Observação: como o login agora exige e-mail confirmado, contas de aluno criadas
-> antes desta etapa ficam bloqueadas. Para testar, crie uma conta nova. A conta da
-> secretaria (do seed) já nasce confirmada.
+**Painel da secretaria** (`src/routes/admin.js`, `contas.js`)
+- Painel inicial, Cursos, Turmas (com boas-vindas, notas, certificados e QR da pesquisa),
+  Inscrições, Alunos, Pendentes (quem parou no meio), Horários (respostas do site da instituição),
+  Matrícula rápida, Financeiro (por conta da Únicopag, com Excel, PDF e OFX), Contas a pagar,
+  Pesquisa, Modelos de texto, Banimentos e Permissões por papel.
+- Papéis: SECRETARIA, COORDENADOR, FINANCEIRO, CONSULTA e DEV; ALUNO é quem usa o site. As
+  permissões de cada papel são editáveis no painel.
 
-### Sobre o e-mail (Resend)
+**Pagamento** (`src/lib/unicopag.js`, `src/routes/webhook.js`, `src/lib/status-pagamento.js`)
+- Cada cobrança leva o endereço do aviso (`postback_url` = `APP_URL/webhook/unicopag`); não é
+  preciso configurar webhook no painel da Únicopag.
+- Duas contas: a da escola (`UNICOPAG_API_TOKEN`) cobra no site; a da instituição
+  (`UNICOPAG_API_TOKEN_2`) só é lida, para a matrícula rápida. O Pagamento guarda a conta em
+  `gateway` (`unicopag`, `unicopag-2` ou `manual`).
 
-Em desenvolvimento, deixe `RESEND_API_KEY` em branco no `.env`: os links (confirmação
-e redefinição) são **impressos no console**. Para enviar de verdade, o Resend exige
-um domínio verificado; para testes rápidos, use `EMAIL_REMETENTE="... <onboarding@resend.dev>"`
-e envie para o e-mail da sua própria conta Resend.
+**Integrações**
+- Site da instituição (cruzvermelhariodejaneiro.org): a aba Horários e a Matrícula rápida leem de
+  lá quem pagou a inscrição e os dias e horários escolhidos (`SITE_HORARIOS_TOKEN`).
+- Palácio Virtual (sistema da filial): registra cada certificado e devolve o código do QR de
+  conferência (`REDACAO_URL`, `REDACAO_ESCOLA_TOKEN`).
 
-## Taxa de matrícula (configurável e removível)
+## Rotinas automáticas (`src/server.js`)
 
-A regra fica na tabela `Configuracao`, sem precisar mexer no código:
+Rodam nos 3 serviços; cada uma se protege para não repetir o efeito.
+
+| Rotina | Quando | O que faz |
+|---|---|---|
+| Concluir turmas (`lib/concluir-turmas.js`) | ao subir e a cada hora | turma confirmada vira concluída no dia seguinte à última aula |
+| Lembretes (`lib/lembretes.js`) | a cada 30 min | e-mail para quem pagou só a taxa: 1 h depois, 3 dias antes e na véspera |
+| Boas-vindas (`lib/boas-vindas.js`) | a cada 15 min | mensagem da turma para quem pagou depois de a secretaria liberar |
+| Pesquisa (`lib/pesquisa.js`) | a cada 15 min | e-mail da pesquisa logo depois da última aula |
+| Reconciliação (`lib/reconciliacao.js`) | a cada 15 min | pergunta à Únicopag, na conta certa, a situação dos pagamentos pendentes dos últimos 7 dias cujo aviso se perdeu, e aplica a mesma regra do webhook |
+| Visitas (`lib/visitas.js`) | a cada minuto | grava a contagem anônima de visitas do dia |
+
+## Taxa de inscrição
+
+Na tabela `Configuracao`, sem mexer no código:
 
 - `matricula_modo` = `POR_CURSO` (padrão) · `POR_ALUNO` · `NENHUMA`
-- `matricula_valor_padrao` = `100.00`
+- `matricula_valor_padrao` = `99.00` (desde 30/09/2026; antes era 100,00)
 
-Além disso, cada curso pode ter sua própria `taxaMatricula` (sobrepõe o padrão).
-Para remover a taxa, mude o modo para `NENHUMA` ou zere o valor.
+Cada curso pode ter a sua `taxaMatricula`, que vale no lugar do padrão.
 
-## Próximas fatias
+A tabela `Configuracao` também guarda extras que não pediram coluna nova (contas a pagar,
+pesquisa, boas-vindas, visitas, matrícula rápida, extras de curso e turma): o banco é de produção e
+as migrações só acrescentam.
 
-1. Turmas + inscrição/matrícula
-2. Pagamento via gateway (Pix/cartão) + **webhook** que confirma e libera a vaga
-3. Confirmação manual (dinheiro presencial + entrega do 1 kg de alimento)
-4. Verificação de e-mail no cadastro
-5. Área do aluno completa e painel da secretaria (com log de auditoria)
+## Scripts
 
-## Pontos a alinhar antes de publicar
-
-- **Política de Privacidade** real, redigida com o jurídico/DPO (a rota `/privacidade` é um placeholder).
-- A mensagem "acesso imediato" da home não vale para os cursos presenciais com data fixa nem para o pagamento em dinheiro — revisar o texto.
-- Logo oficial, fotos, estatísticas e depoimentos reais (hoje são placeholders).
-- Revisão de segurança humana (autenticação + pagamento + controle de acesso) antes do ar.
-# ESCOLA_CRUZ_VERMELHA
-# ESCOLA_CRUZ_VERMELHA
-# ESCOLA_CRUZ_VERMELHA
+| Comando | Para quê |
+|---|---|
+| `npm run db:deploy` | aplica as migrações (o Render faz no build) |
+| `npm run db:seed` | configuração inicial e o usuário da secretaria |
+| `npm run db:seed:limpar` | apaga os cursos de exemplo do seed |
+| `npm run admin:desbloquear` | desbloqueia o acesso da secretaria |
+| `node scripts/consultar-transacao.js <hash>` | mostra o detalhe de uma transação na Únicopag (motivo de recusa) |
+| `node scripts/testar-emails.js [modelo]` | manda um e-mail de teste |
+| `node scripts/criar-cursos-teste.js` | cria cursos de teste (só no banco local) |

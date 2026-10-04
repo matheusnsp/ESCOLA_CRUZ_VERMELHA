@@ -69,6 +69,12 @@ Plataformas de servidor persistente são o encaixe natural. Abaixo, os dois cami
 | `EMAIL_REMETENTE`   | e-mail remetente verificado na Resend                                     |
 | `SITE_HORARIOS_TOKEN` | aba **Horários** do painel: chave para ler o questionário de dias e horários no site. Mesmo nome e mesmo valor do `api/config-escola.php` do site (32 caracteres ou mais). Sem ela, a aba avisa que falta configurar; com valor diferente, mostra os 4 últimos caracteres da chave em uso para comparar. `ESCOLA_HORARIOS_TOKEN` também vale, se a outra não existir |
 | `SITE_HORARIOS_URL` | opcional; padrão `https://cruzvermelhariodejaneiro.org/matricula-cursos-presenciais/api/escola-horarios.php` |
+| `UNICOPAG_API_TOKEN` | chave da conta da Únicopag da escola (cobranças do site) |
+| `UNICOPAG_API_TOKEN_2` | chave da conta da instituição: só leitura, para a aba Matrícula rápida e para a reconciliação desses pagamentos |
+| `UNICOPAG_NOME` / `UNICOPAG_NOME_2` | opcionais; nome de cada conta no Financeiro |
+| `SELLER_DOCUMENT` / `SELLER_DOCUMENT_2` | opcionais; CNPJ de cada conta, enviado nas cobranças de cartão (antifraude) |
+| `REDACAO_URL` / `REDACAO_ESCOLA_TOKEN` | registro dos certificados no Palácio Virtual (código do QR) |
+| `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` / `SUPABASE_BUCKET` | fotos dos cursos no Supabase Storage |
 | `SEED_ADMIN_EMAIL`  | e-mail do primeiro acesso da secretaria                                   |
 | `SEED_ADMIN_SENHA`  | senha forte do primeiro acesso (troque depois)                            |
 
