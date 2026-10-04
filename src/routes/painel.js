@@ -6,6 +6,7 @@ const { verificarSenha } = require('../lib/password');
 const { mascarar } = require('../lib/documento');
 const { perfilSchema, ESCOLARIDADES, SITUACOES_ESCOLARIDADE, GENEROS, UFS } = require('../lib/validation');
 const { precisaTrocarSenha } = require('../lib/seguranca');
+const excluirConta = require('../lib/excluir-conta');
 
 const router = express.Router();
 
@@ -113,9 +114,7 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
       orderBy: { criadoEm: 'desc' },
       include: { turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } },
     }),
-    prisma.matricula.count({
-      where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' }, ...FILTRO_MATRICULA_FANTASMA },
-    }),
+    excluirConta.contarEmAndamento(usuario.id),
     precisaTrocarSenha(usuario.id),
   ]);
 
@@ -156,7 +155,7 @@ router.post('/conta/dados', requireLogin, async (req, res) => {
   if (!resultado.success) {
     const [matriculas, matriculasAtivas, senhaPrecisaTrocar] = await Promise.all([
       prisma.matricula.findMany({ where: { alunoId: usuario.id, ...FILTRO_MATRICULA_FANTASMA }, orderBy: { criadoEm: 'desc' }, include: { turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } } }),
-      prisma.matricula.count({ where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' }, ...FILTRO_MATRICULA_FANTASMA } }),
+      excluirConta.contarEmAndamento(usuario.id),
       precisaTrocarSenha(usuario.id),
     ]);
     // Tela de erro de validação: o botão de retomada não é o foco aqui, mas
@@ -192,7 +191,7 @@ router.post('/conta/dados', requireLogin, async (req, res) => {
 // Compatibilidade: /conta agora é a seção "dados" do painel.
 router.get('/conta', requireLogin, (req, res) => res.redirect('/minha-conta?sec=dados'));
 
-// Excluir conta — exige senha; bloqueia se houver matrícula ativa.
+// Excluir conta — exige senha; bloqueia se houver inscrição em andamento.
 router.post('/conta/excluir', requireLogin, async (req, res) => {
   const usuario = await prisma.usuario.findUnique({ where: { id: req.session.usuarioId } });
   if (!usuario) {
@@ -207,9 +206,7 @@ router.post('/conta/excluir', requireLogin, async (req, res) => {
         orderBy: { criadoEm: 'desc' },
         include: { turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } },
       }),
-      prisma.matricula.count({
-        where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' }, ...FILTRO_MATRICULA_FANTASMA },
-      }),
+      excluirConta.contarEmAndamento(usuario.id),
       precisaTrocarSenha(usuario.id),
     ]);
     const matriculasComRetomada = matriculas.map((m) => ({ ...m, retomada: calcularRetomada(m) }));
@@ -232,36 +229,20 @@ router.post('/conta/excluir', requireLogin, async (req, res) => {
     return reRender('Senha incorreta. A conta não foi excluída.');
   }
 
-  // Bloqueia se houver matrícula ativa (não cancelada) — matrículas "fantasma"
-  // (nunca pagas) não contam pra esse bloqueio, ver FILTRO_MATRICULA_FANTASMA.
-  const ativas = await prisma.matricula.count({
-    where: { alunoId: usuario.id, statusPagamento: { not: 'CANCELADO' }, ...FILTRO_MATRICULA_FANTASMA },
-  });
+  // Bloqueia só com inscrição em andamento (lib/excluir-conta.js): curso concluído, cancelado ou
+  // estornado não impede.
+  const ativas = await excluirConta.contarEmAndamento(usuario.id);
   if (ativas > 0) {
-    return reRender('Você tem inscrições ativas. Cancele-as com a secretaria antes de excluir a conta.');
+    return reRender('Você tem inscrições em andamento. Fale com a secretaria antes de excluir a conta.');
   }
 
   try {
-    // Remove dados ligados ao usuário e o usuário, numa transação.
-    // 💡 Nota: aqui removemos TODAS as matrículas do aluno, inclusive as
-    // "fantasma" que ficam escondidas na tela — não faz sentido deixar lixo
-    // órfão no banco só porque não aparecia na tela.
-    const matriculas = await prisma.matricula.findMany({
-      where: { alunoId: usuario.id },
-      select: { id: true },
-    });
-    const ids = matriculas.map((m) => m.id);
-
-    await prisma.$transaction([
-      prisma.pagamento.deleteMany({ where: { matriculaId: { in: ids } } }),
-      prisma.matricula.deleteMany({ where: { alunoId: usuario.id } }),
-      prisma.tokenAuth.deleteMany({ where: { usuarioId: usuario.id } }),
-      prisma.usuario.delete({ where: { id: usuario.id } }),
-    ]);
+    // Apaga a conta; se houver pagamento a guardar por lei, anonimiza (ver lib/excluir-conta.js).
+    const resultado = await excluirConta.excluir(usuario);
 
     return req.session.destroy(() => {
       res.clearCookie('escola.sid');
-      res.render('conta-excluida');
+      res.render('conta-excluida', { anonimizada: resultado === 'anonimizada' });
     });
   } catch (err) {
     console.error('Erro ao excluir conta:', err);

@@ -96,6 +96,8 @@ function espelharNoTerminal(email, subject, descricaoDev, link) {
 }
 
 async function enviar(email, subject, html, descricaoDev, link) {
+  // Conta excluída e anonimizada (lib/excluir-conta.js): endereço .invalid, nunca entrega.
+  if (/@excluida\.invalid$/i.test(String(email || ''))) return;
   // Espelha SEMPRE, e antes de tentar entregar: se o Resend recusar, o dado
   // já está no terminal.
   espelharNoTerminal(email, subject, descricaoDev, link);

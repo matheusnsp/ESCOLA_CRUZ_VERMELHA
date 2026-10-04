@@ -43,6 +43,7 @@ const asyncHandler = require('../lib/asyncHandler');
       typeof h === 'function' && h.constructor.name === 'AsyncFunction' ? asyncHandler(h) : h));
 });
 
+const excluirConta = require('../lib/excluir-conta');
 const POLITICA_VERSAO = '2026-10-04'; // data da Política de Privacidade em vigor (views/privacidade.ejs)
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
 
@@ -118,23 +119,31 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
 
   try {
     const senhaHash = await hashSenha(senhaPadrao);
-    const usuario = await prisma.usuario.create({
-      data: {
-        nome, email, tipoDocumento,
-        cpfCnpj: tipoDocumento === 'PASSAPORTE' ? null : cpfCnpjNormalizado,
-        passaporte: tipoDocumento === 'PASSAPORTE' ? passaporte : null,
-        paisOrigem: tipoDocumento === 'PASSAPORTE' ? (paisOrigem || null) : null,
-        rg: rg || null,
-        celular: celular || null,
-        escolaridade: escolaridade || null,
-        escolaridadeSituacao: escolaridadeSituacao || null,
-        senhaHash,
-        papel: 'ALUNO',
-        emailVerificado: false,
-        consentimentoLgpdEm: new Date(),
-        consentimentoVersao: POLITICA_VERSAO,
-      },
+    const dados = {
+      nome, email, tipoDocumento,
+      cpfCnpj: tipoDocumento === 'PASSAPORTE' ? null : cpfCnpjNormalizado,
+      passaporte: tipoDocumento === 'PASSAPORTE' ? passaporte : null,
+      paisOrigem: tipoDocumento === 'PASSAPORTE' ? (paisOrigem || null) : null,
+      rg: rg || null,
+      celular: celular || null,
+      escolaridade: escolaridade || null,
+      escolaridadeSituacao: escolaridadeSituacao || null,
+      senhaHash,
+      papel: 'ALUNO',
+      emailVerificado: false,
+      consentimentoLgpdEm: new Date(),
+      consentimentoVersao: POLITICA_VERSAO,
+    };
+    // Quem excluiu a conta e ficou com ela anonimizada (lib/excluir-conta.js: guarda nome e
+    // documento por causa dos pagamentos) volta para a MESMA conta ao se cadastrar de novo com o
+    // mesmo documento: o histórico continua ligado à pessoa e o CPF único não barra o cadastro.
+    const antiga = await prisma.usuario.findFirst({
+      where: tipoDocumento === 'PASSAPORTE' ? { passaporte } : { cpfCnpj: cpfCnpjNormalizado },
+      select: { id: true, email: true },
     });
+    const usuario = antiga && excluirConta.ehAnonimo(antiga.email)
+      ? await prisma.usuario.update({ where: { id: antiga.id }, data: { ...dados, bloqueioTotal: false } })
+      : await prisma.usuario.create({ data: dados });
 
     try { await enviarConfirmacao(usuario); } catch (e) {
       console.error('[Cadastro] Falha ao enviar e-mail de confirmação:', e.message);
