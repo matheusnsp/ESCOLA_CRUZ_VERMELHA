@@ -870,9 +870,23 @@ html.v-menu-aberto .v-acoes .v-so-pc, html.v-menu-aberto .v-acoes .v-user { disp
 .v-priv-indice a:hover { color: var(--v-red); border-left-color: var(--v-red); }
 .v-priv-indice .v-priv-pdf { margin-top: 14px; border-left: 0; padding-left: 0; color: var(--v-red); }
 .v-priv-texto { max-width: 780px; }
-.v-priv-resumo { background: #fff; border: 1px solid var(--v-line); border-left: 4px solid var(--v-red); border-radius: 14px; padding: 24px 28px; margin-bottom: 56px; }
-.v-priv-resumo ul { margin: 0; padding-left: 20px; }
-.v-priv-resumo li { font-size: 15.5px; line-height: 1.6; color: #3d3d3d; margin: 6px 0; }
+.v-priv-texto > .v-prosa + .v-bloco { margin-top: 48px; padding-top: 48px; border-top: 1px solid var(--v-line); }
+.v-priv-texto .v-bloco h2 { font-size: clamp(26px, 2.6vw, 34px); margin-bottom: 18px; }
+.v-priv-ficha { display: flex; flex-direction: column; gap: 4px; background: #fff; border: 1px solid var(--v-line); border-left: 4px solid var(--v-red); border-radius: 14px; padding: 20px 24px; margin: 0 0 20px; font-size: 15px; line-height: 1.55; color: #4a4a4a; }
+.v-priv-ficha b { color: var(--v-ink); }
+.v-priv-usos { display: grid; gap: 14px; margin: 4px 0 24px; }
+.v-priv-uso { background: #fff; border: 1px solid var(--v-line); border-radius: 14px; padding: 20px 24px; }
+.v-priv-uso h3 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; color: var(--v-ink); margin: 0 0 12px; }
+.v-priv-uso dl { display: grid; grid-template-columns: 110px 1fr; gap: 8px 16px; margin: 0; }
+.v-priv-uso dt { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .1em; color: var(--v-red); padding-top: 4px; }
+.v-priv-uso dd { margin: 0; font-size: 15px; line-height: 1.6; color: #4a4a4a; }
+.v-priv-marcas { margin: 0 0 18px; padding-left: 20px; }
+.v-priv-marcas li { font-size: 15.5px; line-height: 1.65; color: #4a4a4a; margin: 0 0 8px; }
+.v-priv-marcas b { color: var(--v-ink); }
+.v-priv-termo-caixa { background: #fff; border: 1px solid var(--v-line); border-radius: 14px; margin: 8px 0 0; }
+.v-priv-termo-caixa summary { cursor: pointer; padding: 16px 22px; font-weight: 800; color: var(--v-ink); }
+.v-priv-termo-caixa[open] summary { border-bottom: 1px solid var(--v-line); }
+.v-priv-termo-caixa .v-priv-termo { padding: 4px 22px 18px; }
 .v-priv-texto a { color: var(--v-red); font-weight: 650; }
 .v-priv-texto .v-btn { color: var(--v-ink); margin-top: 8px; }
 .v-priv-tabela { border: 1px solid var(--v-line); border-radius: 14px; overflow: hidden; background: #fff; }
@@ -890,7 +904,10 @@ html.v-menu-aberto .v-acoes .v-so-pc, html.v-menu-aberto .v-acoes .v-user { disp
   .v-priv-indice .v-kicker { width: 100%; margin: 0; }
   .v-priv-indice a { border: 1px solid var(--v-line); border-radius: 999px; padding: 6px 12px; font-size: 13px; background: #fff; }
   .v-priv-indice .v-priv-pdf { margin-top: 0; padding: 6px 12px; border: 1px solid var(--v-line); }
-  .v-priv-resumo { padding: 20px; margin-bottom: 40px; }
+  .v-priv-uso { padding: 18px; }
+  .v-priv-uso dl { grid-template-columns: 1fr; gap: 2px; }
+  .v-priv-uso dt { padding-top: 10px; }
+  .v-priv-ficha { padding: 18px; }
   .v-priv-linha { grid-template-columns: 1fr; gap: 4px; }
   .v-priv-cab { display: none; }
 }

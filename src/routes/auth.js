@@ -43,7 +43,7 @@ const asyncHandler = require('../lib/asyncHandler');
       typeof h === 'function' && h.constructor.name === 'AsyncFunction' ? asyncHandler(h) : h));
 });
 
-const POLITICA_VERSAO = '2026-06-16';
+const POLITICA_VERSAO = '2026-10-04'; // data da Política de Privacidade em vigor (views/privacidade.ejs)
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
 
 // ---------- Rate limiters ----------
