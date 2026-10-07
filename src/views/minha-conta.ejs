@@ -98,6 +98,38 @@
             </details>
           <% }) %>
 
+          <% var _sd = typeof saude !== 'undefined' && saude ? saude : { cursos: [] }; %>
+          <% if (_sd.cursos.length) { var _cp = _sd.comprovante; var _st = _cp ? _cp.status : 'falta'; %>
+          <%# Comprovante da área da saúde (lib/comprovante-saude.js) %>
+          <section class="ct-saude ct-saude-<%= _st %>" id="comprovante">
+            <div class="ct-saude-cab">
+              <i class="fa-solid fa-user-doctor" aria-hidden="true"></i>
+              <div>
+                <h3>Comprovante da área da saúde</h3>
+                <p>Exigido para <%= _sd.cursos.join(', ') %>.</p>
+              </div>
+              <span class="ct-saude-selo"><%= _st === 'aprovado' ? 'Aprovado' : _st === 'enviado' ? 'Em análise' : _st === 'recusado' ? 'Recusado' : 'Falta enviar' %></span>
+            </div>
+            <% if (_sd.erro) { %><p class="ct-saude-msg ct-saude-msg-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= _sd.erro %></p><% } %>
+            <% if (_st === 'aprovado') { %>
+              <p class="ct-saude-msg">A secretaria conferiu e aprovou o seu comprovante. Ele vale para os outros cursos da área.</p>
+            <% } else if (_st === 'enviado') { %>
+              <p class="ct-saude-msg"><%= _sd.acabouDeEnviar ? 'Recebemos o seu comprovante' : 'Comprovante enviado' %> (<%= _cp.arquivo && _cp.arquivo.nome %>). A secretaria confere antes da aula; se precisar de outro documento, você recebe um e-mail.</p>
+            <% } else if (_st === 'recusado') { %>
+              <p class="ct-saude-msg ct-saude-msg-erro">A secretaria recusou o documento enviado<%= _cp.motivo ? ': ' + _cp.motivo : '' %>. Envie outro abaixo.</p>
+            <% } else { %>
+              <p class="ct-saude-msg">Envie um documento que comprove que você é da área da saúde: carteira do conselho (COREN, CRM, CRF…), diploma ou certificado, ou declaração de matrícula em faculdade ou curso técnico da área. Sem ele, a entrada na aula pode não ser liberada.</p>
+            <% } %>
+            <% if (_st !== 'aprovado') { %>
+              <form method="POST" action="/conta/comprovante-saude?_csrf=<%= csrfToken %>" enctype="multipart/form-data" class="ct-saude-form">
+                <input type="file" name="comprovante" accept="application/pdf,image/jpeg,image/png,image/webp" required aria-label="Arquivo do comprovante">
+                <button type="submit" class="ct-btn-retomar"><i class="fa-solid fa-upload"></i> <%= _st === 'enviado' ? 'Trocar arquivo' : 'Enviar comprovante' %></button>
+              </form>
+              <small class="ct-saude-nota">PDF ou foto (JPG, PNG), até 10 MB. Fica guardado de forma privada; só a secretaria vê.</small>
+            <% } %>
+          </section>
+          <% } %>
+
           <% if (!matriculas.length) { %>
 
             <div class="ct-vazio">

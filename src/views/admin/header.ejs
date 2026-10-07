@@ -27,6 +27,9 @@
       <a href="/pendentes" class="<%= secaoAtiva === 'pendentes' ? 'on' : '' %>"><i class="fa-solid fa-hourglass-half"></i> Pendentes</a>
     <% } %>
     <a href="/alunos" class="<%= secaoAtiva === 'alunos' ? 'on' : '' %>"><i class="fa-solid fa-user-graduate"></i> Alunos</a>
+    <% if (pode('aluno:gerenciar')) { %>
+      <a href="/comprovantes-saude" class="<%= secaoAtiva === 'comprovantes' ? 'on' : '' %>"><i class="fa-solid fa-user-doctor"></i> Comprovantes</a>
+    <% } %>
     <% if (pode('pesquisa:gerenciar') || pode('painel:leitura')) { %>
       <a href="/pesquisa" class="<%= secaoAtiva === 'pesquisa' ? 'on' : '' %>"><i class="fa-solid fa-star"></i> Pesquisa</a>
     <% } %>

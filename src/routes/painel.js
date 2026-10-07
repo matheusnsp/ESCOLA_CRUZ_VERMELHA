@@ -7,6 +7,7 @@ const { mascarar } = require('../lib/documento');
 const { perfilSchema, ESCOLARIDADES, SITUACOES_ESCOLARIDADE, GENEROS, UFS } = require('../lib/validation');
 const { precisaTrocarSenha } = require('../lib/seguranca');
 const excluirConta = require('../lib/excluir-conta');
+const comprovanteSaude = require('../lib/comprovante-saude');
 
 const router = express.Router();
 
@@ -97,6 +98,38 @@ async function avisosDeBoasVindas(matriculas) {
   }
 }
 
+// Comprovante da área da saúde (lib/comprovante-saude.js) em Minha conta: aparece quando o aluno
+// tem inscrição em andamento num curso que exige. Cobre quem se inscreveu antes da exigência e
+// quem veio pela matrícula rápida.
+async function saudeDaConta(alunoId, matriculas, query = {}) {
+  const ativas = matriculas.filter((m) => !['ESTORNADO', 'CANCELADO'].includes(m.statusPagamento) && m.turma.status !== 'CANCELADA');
+  const exigem = await comprovanteSaude.cursosQueExigem(ativas.map((m) => m.turma.cursoId));
+  const cursos = [...new Set(ativas.filter((m) => exigem[m.turma.cursoId]).map((m) => m.turma.curso.nome))];
+  const comprovante = cursos.length || query.comprovante ? await comprovanteSaude.daPessoa(alunoId) : null;
+  return {
+    cursos,
+    exigeCurso: exigem,
+    comprovante,
+    liberado: comprovanteSaude.liberado(comprovante),
+    acabouDeEnviar: query.comprovante === 'enviado',
+    erro: query.erroComprovante ? (query.erroComprovante === 'vazio' ? 'Escolha o arquivo do comprovante antes de enviar.' : String(query.erroComprovante).slice(0, 120)) : null,
+  };
+}
+
+// Envio (ou troca) do comprovante pela Minha conta. Multipart: CSRF na query.
+router.post('/conta/comprovante-saude', requireLogin, comprovanteSaude.receber('comprovante'), async (req, res) => {
+  const volta = (q) => res.redirect(`/minha-conta?sec=inscricoes&${q}#comprovante`);
+  if (req.uploadErro) return volta('erroComprovante=' + encodeURIComponent(req.uploadErro));
+  if (!req.arquivos || !req.arquivos.length) return volta('erroComprovante=vazio');
+  try {
+    await comprovanteSaude.enviar(req.session.usuarioId, req.arquivos[0]);
+  } catch (e) {
+    console.error('[COMPROVANTE] envio em Minha conta:', e.message);
+    return volta('erroComprovante=' + encodeURIComponent('Não foi possível guardar o comprovante agora. Tente de novo.'));
+  }
+  return volta('comprovante=enviado');
+});
+
 // Área do aluno — painel único com seções (inscricoes | dados | seguranca | excluir).
 router.get('/minha-conta', requireLogin, async (req, res) => {
   const secValidas = ['inscricoes', 'dados', 'seguranca', 'excluir'];
@@ -125,6 +158,7 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
     usuario,
     sec,
     matriculas: matriculasComRetomada,
+    saude: await saudeDaConta(usuario.id, matriculas, req.query),
     avisosTurma: await avisosDeBoasVindas(matriculas),
     matriculasAtivas,
     docMascarado: usuario.cpfCnpj ? mascarar(usuario.cpfCnpj) : usuario.passaporte ? usuario.passaporte : '—',

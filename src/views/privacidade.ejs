@@ -13,7 +13,7 @@
 // para onde manda, atualize a lista USOS e a data ATUALIZADA.
 // No fim vai o Termo de Ciência e Tratamento de Dados Pessoais da instituição, transcrito do
 // /arquivo/privacidade.pdf. Se o jurídico mudar o termo, troque o PDF e a lista CLAUSULAS juntos.
-var ATUALIZADA = '4 de outubro de 2026';
+var ATUALIZADA = '7 de outubro de 2026';
 var USOS = [
   ['Conta na plataforma', 'Nome completo, e-mail, celular, CPF (ou, para estrangeiros, passaporte e país de origem), RG, endereço, escolaridade e gênero; a senha, guardada cifrada (ninguém da Escola consegue lê-la); e o registro do aceite desta política, com a data e a versão.',
     'Identificar você, fazer a matrícula, falar com você sobre o curso e a turma e emitir o certificado.',
@@ -26,6 +26,9 @@ var USOS = [
     'Execução de contrato (art. 7º, V) e legítimo interesse em acompanhar a inscrição até o fim (art. 7º, IX).'],
   ['Inscrição pelo site da instituição', 'Quem paga a inscrição em cruzvermelhariodejaneiro.org/matricula-cursos-presenciais: nome, e-mail, telefone, curso, os dias e horários respondidos lá e a transação na conta de pagamento da instituição.',
     'A secretaria colocar a pessoa numa turma. Nessa hora a plataforma cria a conta (ou usa a que já existe com o mesmo e-mail) e manda o e-mail para criar a senha e pagar o curso. O que acontece no site da instituição segue a política de lá.',
+    'Execução de contrato e dos procedimentos que o antecedem, a seu pedido (art. 7º, V).'],
+  ['Comprovante da área da saúde', 'Nos cursos para profissionais e estudantes da saúde (como Punção Venosa): o arquivo que você envia (carteira do conselho, diploma ou declaração de matrícula), a data do envio e o resultado da conferência da secretaria (aprovado ou recusado, com o motivo).',
+    'Confirmar que você pode fazer o curso, que é só para a área da saúde. O arquivo fica guardado de forma privada e só a secretaria abre; aprovado uma vez, vale para os outros cursos da área. Se for recusado, você recebe um e-mail para mandar outro.',
     'Execução de contrato e dos procedimentos que o antecedem, a seu pedido (art. 7º, V).'],
   ['Certificado', 'Nome, curso, carga horária, turma e data de emissão, e o número de livro e registro.',
     'Emitir o certificado impresso. O certificado é registrado no sistema da filial (Palácio Virtual), que gera o código do QR; quem tem o certificado em mãos pode conferir pelo código se ele é verdadeiro, e a conferência mostra o nome, o curso e a data.',
@@ -190,7 +193,7 @@ var ROMANOS = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XI
           <ul class="v-priv-marcas">
             <li><b>Únicopag</b>, que processa os pagamentos: nome, CPF, e-mail, telefone e endereço e, no cartão, os dados do cartão. Com a sua permissão de estatística, também a campanha de onde você veio (os parâmetros utm do link).</li>
             <li><b>Render</b>, que hospeda a plataforma.</li>
-            <li><b>Supabase</b>, que guarda o banco de dados da plataforma e as imagens dos cursos.</li>
+            <li><b>Supabase</b>, que guarda o banco de dados da plataforma, as imagens dos cursos e, num espaço privado, os comprovantes da área da saúde.</li>
             <li><b>Cloudflare</b>, por onde passa o acesso ao site, para protegê-lo contra ataques e deixá-lo mais rápido.</li>
             <li><b>Resend</b>, que envia os e-mails da Escola.</li>
             <li><b>Palácio Virtual</b>, o sistema da própria filial: nome, curso, carga horária e data de cada certificado, para gerar o código de conferência.</li>
@@ -229,6 +232,7 @@ var ROMANOS = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XI
           <ul class="v-priv-marcas">
             <li><b>Conta:</b> enquanto ela existir. Você pode excluir a conta em <a href="/minha-conta">Minha conta</a> quando não tiver inscrição em andamento: o e-mail, o telefone, o endereço, a senha e os outros dados são apagados na hora.</li>
             <li><b>Inscrições e pagamentos:</b> se entrou algum pagamento, o registro dele fica guardado pelo prazo que a lei exige para registros fiscais e de consumo (em geral, 5 anos), ligado só ao seu nome e documento, mesmo depois de excluir a conta. Inscrição em que nunca entrou pagamento é apagada junto com a conta.</li>
+            <li><b>Comprovante da área da saúde:</b> enquanto a conta existir; mandar outro apaga o anterior, e excluir a conta apaga o arquivo.</li>
             <li><b>Certificados:</b> o registro do certificado e o código de conferência ficam guardados para que o certificado possa ser conferido a qualquer tempo.</li>
             <li><b>Respostas da pesquisa:</b> enquanto forem úteis para avaliar os cursos; o comentário publicado sai do site se você pedir ou se excluir a conta, e a resposta perde o seu nome.</li>
             <li><b>Sessão de login:</b> até 90 dias, ou até você sair.</li>

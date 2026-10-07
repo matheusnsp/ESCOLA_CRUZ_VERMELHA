@@ -12,10 +12,11 @@ const visitasSite = require('../lib/visitas');
 const financeiroContas = require('../lib/financeiro-contas');
 const { contaDoGateway: unicopagContaDoGateway } = require('../lib/unicopag');
 const pesquisa = require('../lib/pesquisa');
+const comprovanteSaude = require('../lib/comprovante-saude');
 const prisma = require('../db');
 const { verificarSenha, hashSenha } = require('../lib/password');
 const { criarCodigo2fa, codigo2faRecente, verificarCodigo2fa, consumirToken, criarTokenDesbloqueio, verificarTokenDesbloqueio, criarTokenReset, verificarTokenReset } = require('../lib/tokens');
-const { enviarCodigo2fa, enviarAlertaLoginSecretaria, enviarLinkDesbloqueio, enviarEmailResetSenha } = require('../lib/email');
+const { enviarCodigo2fa, enviarAlertaLoginSecretaria, enviarLinkDesbloqueio, enviarEmailResetSenha, enviarComprovanteRecusado } = require('../lib/email');
 const { ESCOLARIDADES: ESCOLARIDADES_ALUNO, SITUACOES_ESCOLARIDADE, GENEROS, UFS } = require('../lib/validation');
 const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
 const { formatBRL, calcularValores, lerConfigMatricula } = require('../lib/matricula');
@@ -809,7 +810,10 @@ router.get('/', async (req, res) => {
     ...(mr.ok ? mr.recentes.slice(0, 6).map((r) => ({ tipo: 'rapida', quando: r.quando, r })) : []),
   ].sort((x, y) => y.quando - x.quando).slice(0, 6);
 
+  const comprovantesParaConferir = await comprovanteSaude.contarParaConferir().catch(() => 0);
+
   res.render('admin/dashboard', {
+    comprovantesParaConferir,
 
     stats: {
       totalCursos,
@@ -978,6 +982,8 @@ function extrasCursoDoForm(body) {
     certificadoValidade: String(body.certificadoValidade || '').trim().slice(0, 120) || null,
     // Área do curso (filtros do site). Valor fora da lista não é gravado.
     categoria: require('../lib/vitrine').CATEGORIAS.includes(body.categoria) ? body.categoria : null,
+    // Inscrição só com comprovante de que é da área da saúde (lib/comprovante-saude.js).
+    exigeComprovanteSaude: body.exigeComprovanteSaude === 'on' ? true : null,
   };
 }
 
@@ -1558,6 +1564,66 @@ router.post('/pesquisa/:matriculaId/:acao(aprovar|ocultar)', requirePermissao('p
   if (feito) await auditar(req, status === 'aprovada' ? 'PESQUISA_APROVOU' : 'PESQUISA_OCULTOU', 'Matricula', req.params.matriculaId, null);
   const aba = ['aguardando', 'aprovadas', 'ocultas', 'todas'].includes(req.body.aba) ? req.body.aba : 'aguardando';
   res.redirect(`/pesquisa?aba=${aba}&ok=` + encodeURIComponent(!feito ? 'Esta resposta não pode ir para o site.' : status === 'aprovada' ? 'Depoimento aprovado para o site.' : 'Depoimento fora do site.'));
+});
+
+// ---------- Comprovantes da área da saúde (lib/comprovante-saude.js) ----------
+// O arquivo é dado sensível: ver, aprovar e recusar exigem aluno:gerenciar.
+
+router.get('/comprovantes-saude', requirePermissao('aluno:gerenciar'), async (req, res) => {
+  const todos = await comprovanteSaude.listar();
+  const abas = [
+    { id: 'conferir', rot: 'Para conferir', lista: todos.filter((c) => c.status === 'enviado') },
+    { id: 'recusados', rot: 'Recusados', lista: todos.filter((c) => c.status === 'recusado') },
+    { id: 'aprovados', rot: 'Aprovados', lista: todos.filter((c) => c.status === 'aprovado') },
+  ];
+  const aba = abas.find((a) => a.id === req.query.aba) || abas[0];
+  const cursos = await prisma.curso.findMany({ select: { id: true, nome: true }, orderBy: { nome: 'asc' } });
+  const exigem = await comprovanteSaude.cursosQueExigem(cursos.map((c) => c.id));
+  const cursosQueExigem = cursos.filter((c) => exigem[c.id]);
+  res.render('admin/comprovantes-saude', {
+    flash: req.query.ok || null,
+    aba: aba.id,
+    abas: abas.map((a) => ({ id: a.id, rot: a.rot, n: a.lista.length })),
+    lista: aba.lista,
+    cursosQueExigem,
+  });
+});
+
+router.get('/comprovantes-saude/:alunoId/arquivo', requirePermissao('aluno:gerenciar'), async (req, res) => {
+  let arq = null;
+  try { arq = await comprovanteSaude.abrirArquivo(req.params.alunoId); } catch (e) { console.error('[COMPROVANTE] abrir:', e.message); }
+  if (!arq) return res.status(404).render('admin/erro', { mensagem: 'Comprovante não encontrado.' });
+  await auditar(req, 'COMPROVANTE_SAUDE_ABRIU', 'Usuario', req.params.alunoId, null);
+  res.set('Content-Type', arq.tipo);
+  res.set('Content-Disposition', `inline; filename="${encodeURIComponent(arq.nome)}"`);
+  res.set('Cache-Control', 'private, no-store');
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.send(arq.buffer);
+});
+
+router.post('/comprovantes-saude/:alunoId/:acao(aprovar|recusar)', requirePermissao('aluno:gerenciar'), async (req, res) => {
+  const status = req.params.acao === 'aprovar' ? 'aprovado' : 'recusado';
+  const motivo = String(req.body.motivo || '').trim();
+  const aba = ['conferir', 'recusados', 'aprovados'].includes(req.body.aba) ? req.body.aba : 'conferir';
+  if (status === 'recusado' && !motivo) return res.redirect(`/comprovantes-saude?aba=${aba}&ok=` + encodeURIComponent('Escreva o motivo da recusa: ele vai no e-mail para o aluno.'));
+  const feito = await comprovanteSaude.revisar(req.params.alunoId, status, motivo, req.session.usuarioId);
+  if (!feito) return res.redirect(`/comprovantes-saude?aba=${aba}&ok=` + encodeURIComponent('Comprovante não encontrado.'));
+  await auditar(req, status === 'aprovado' ? 'COMPROVANTE_SAUDE_APROVOU' : 'COMPROVANTE_SAUDE_RECUSOU', 'Usuario', req.params.alunoId, status === 'recusado' ? { motivo: feito.motivo } : null);
+  let aviso = '';
+  if (status === 'recusado') {
+    const aluno = await prisma.usuario.findUnique({ where: { id: req.params.alunoId }, select: { nome: true, email: true } });
+    if (aluno) {
+      const base = (process.env.APP_URL || 'https://escola.cursoscruzvermelha.org').replace(/\/+$/, '');
+      try {
+        await enviarComprovanteRecusado(aluno.email, String(aluno.nome).split(' ')[0], { motivo: feito.motivo, link: `${base}/minha-conta?sec=inscricoes#comprovante` });
+        aviso = ' O aluno recebeu um e-mail para mandar outro.';
+      } catch (e) {
+        console.error('[COMPROVANTE] e-mail de recusa:', e.message);
+        aviso = ' Não foi possível mandar o e-mail; avise o aluno.';
+      }
+    }
+  }
+  res.redirect(`/comprovantes-saude?aba=${aba}&ok=` + encodeURIComponent((status === 'aprovado' ? 'Comprovante aprovado.' : 'Comprovante recusado.') + aviso));
 });
 
 // ---------- Certificados ----------
@@ -2717,6 +2783,7 @@ router.get('/alunos/:id/matriculas', requirePermissao('aluno:gerenciar', 'painel
   res.render('admin/aluno-matriculas', {
     aluno,
     matriculas,
+    comprovante: await comprovanteSaude.daPessoa(aluno.id),
     formatBRL,
     statusBadge,
     ok: req.query.ok || null,

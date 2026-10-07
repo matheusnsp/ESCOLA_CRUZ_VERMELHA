@@ -976,3 +976,26 @@
     }
     .chk-pago i { color: var(--ok); margin-top: 2px; font-size: 13px; }
     .chk-pago strong { color: var(--tinta); font-weight: 700; }
+  /* ── Comprovante da área da saúde (cursos marcados no painel) ─────────── */
+  .chk-saude {
+    border: 1px solid var(--borda); border-radius: var(--r); background: var(--branco);
+    padding: 16px; margin: 18px 0 6px;
+  }
+  .chk-saude h3 { display: flex; align-items: center; gap: 8px; font-size: 16px; margin: 0 0 6px; letter-spacing: -.02em; }
+  .chk-saude h3 i { color: var(--cruz); font-size: 15px; }
+  .chk-saude > p { font-size: 13.5px; color: var(--tinta-60); margin: 0 0 14px; }
+  .chk-saude .chk-aviso { margin-bottom: 12px; }
+  .chk-aviso-erro { background: var(--cruz-bg); color: var(--cruz-esc); }
+  .chk-saude-form { display: flex; flex-direction: column; gap: 10px; }
+  .chk-saude-arquivo {
+    display: flex; flex-direction: column; gap: 6px; padding: 14px;
+    border: 1.5px dashed var(--borda-2); border-radius: var(--r-s); background: var(--neve); cursor: pointer;
+  }
+  .chk-saude-arquivo input { font-family: inherit; font-size: 14px; max-width: 100%; }
+  .chk-saude-arquivo span { font-size: 12px; color: var(--tinta-40); }
+  .chk-btn.chk-btn-sec { flex: none; background: var(--tinta); }
+  .chk-btn.chk-btn-sec:hover:not(:disabled) { background: #2a2d33; }
+  .chk-saude-trocar summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--tinta-60); margin-bottom: 10px; }
+  .chk-saude-priv { font-size: 12px; line-height: 1.5; color: var(--tinta-40); margin: 12px 0 0; }
+  .chk-saude-priv i { margin-right: 5px; }
+  .chk-saude-priv a { color: var(--tinta-60); }

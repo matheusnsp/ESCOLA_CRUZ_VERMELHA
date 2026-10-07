@@ -1842,3 +1842,36 @@ a.mr-num:hover { border-color: var(--linha); }
 .fin-conta-barra { display: block; height: 6px; margin: 6px 0 2px; border-radius: 999px; background: var(--linha2); overflow: hidden; }
 .fin-conta-barra span { display: block; height: 100%; border-radius: 999px; background: var(--vermelho); min-width: 0; }
 .fin-conta-geral { font-size: 12px; color: var(--mut); font-variant-numeric: tabular-nums; }
+
+/* ── Comprovantes da área da saúde (/comprovantes-saude) ─────────────── */
+.cs-pagina { display: grid; gap: 18px; }
+.cs-pagina > .adm-abas { margin: 0; }
+.cs-cursos { display: flex; align-items: baseline; gap: 10px; padding: 14px 18px; color: var(--mut); font-size: 14px; }
+.cs-cursos i { color: var(--tinta); }
+.cs-cursos a { color: var(--tinta); font-weight: 600; }
+.cs-vazio { padding: 28px; text-align: center; color: var(--mut); margin: 0; }
+.cs-lista { display: grid; gap: 12px; padding: 16px; }
+.cs-item { border: 1px solid var(--linha); border-radius: 14px; padding: 16px 18px; background: var(--card); }
+.cs-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.cs-quem a { color: var(--tinta); text-decoration: none; }
+.cs-quem a:hover b { text-decoration: underline; }
+.cs-quem small { display: block; margin-top: 2px; color: var(--mut); }
+.cs-status { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--alerta-bg); color: var(--alerta-tx); white-space: nowrap; }
+.cs-status-aprovado { background: var(--ok-bg); color: var(--ok-tx); }
+.cs-status-recusado { background: var(--erro-bg); color: var(--erro-tx); }
+.cs-info { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 13px; color: var(--mut); }
+.cs-info i { margin-right: 4px; }
+.cs-motivo { margin: 10px 0 0; font-size: 13.5px; color: var(--erro-tx); }
+.cs-acoes { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--linha2); }
+.cs-acoes form { margin: 0; }
+.cs-recusar summary { list-style: none; cursor: pointer; }
+.cs-recusar summary::-webkit-details-marker { display: none; }
+.cs-recusar[open] { flex: 1 1 100%; }
+.cs-recusar form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.cs-recusar input[type=text] { flex: 1 1 260px; min-width: 0; padding: 8px 10px; border: 1px solid var(--linha); border-radius: 8px; font: inherit; font-size: 13.5px; background: var(--card); color: var(--tinta); }
+.adm-alerta-comprovante { margin: 0 0 16px; background: var(--alerta-bg); color: var(--alerta-tx); text-decoration: none; align-items: center; }
+.adm-alerta-comprovante span { flex: 1; }
+.cs-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px; border-radius: 8px; border: 1px solid var(--linha); background: var(--campo); color: var(--tinta); font: inherit; font-size: 13px; font-weight: 700; text-decoration: none; cursor: pointer; }
+.cs-btn:hover { border-color: var(--tinta); }
+.cs-btn-recusar { color: var(--erro-tx); }
+.cs-btn-recusar:hover { border-color: var(--erro-tx); }

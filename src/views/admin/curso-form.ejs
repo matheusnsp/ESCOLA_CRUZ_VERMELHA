@@ -159,6 +159,14 @@
     </script>
   <% } %>
 
+  <h2 class="adm-form-secao full"><i class="fa-solid fa-user-doctor"></i> Quem pode se inscrever</h2>
+
+  <label class="check full">
+    <input type="checkbox" name="exigeComprovanteSaude" <%= c.exigeComprovanteSaude ? 'checked' : '' %>>
+    Exige comprovante de que a pessoa é da área da saúde
+  </label>
+  <small class="adm-hint full">Na inscrição, o aluno só passa para o pagamento depois de enviar um documento (carteira do conselho, diploma, declaração da faculdade ou do curso técnico). A secretaria confere em Alunos → Comprovantes da saúde.</small>
+
   <h2 class="adm-form-secao full"><i class="fa-solid fa-globe"></i> Publicação</h2>
 
   <label class="check full">

@@ -234,6 +234,49 @@ const _trilha = _totalPassos === 2
           </details>
         </div>
 
+        <% var _saude = typeof saude !== 'undefined' && saude ? saude : { exige: false }; %>
+        <% if (_saude.exige) { var _cp = _saude.comprovante; %>
+        <!-- Curso da área da saúde: comprovante obrigatório (lib/comprovante-saude.js) -->
+        <section class="chk-saude anima" style="--d:2" id="comprovante">
+          <h3><i class="fa-solid fa-user-doctor" aria-hidden="true"></i> Comprovante da área da saúde</h3>
+          <p>Este curso é para quem é da área da saúde. Envie um documento que comprove: carteira do conselho (COREN, CRM, CRF…), diploma ou certificado, ou declaração de matrícula em faculdade ou curso técnico da área.</p>
+
+          <% if (_saude.erro) { %>
+            <div class="chk-aviso chk-aviso-erro" role="alert"><i class="fa-solid fa-circle-exclamation"></i><span><%= _saude.erro %></span></div>
+          <% } %>
+
+          <% if (_cp && _cp.status === 'aprovado') { %>
+            <div class="chk-aviso chk-aviso-ok"><i class="fa-solid fa-circle-check"></i><span>Seu comprovante já foi <strong>aprovado</strong> pela secretaria.</span></div>
+          <% } else if (_cp && _cp.status === 'enviado') { %>
+            <div class="chk-aviso chk-aviso-ok"><i class="fa-solid fa-circle-check"></i><span><%= _saude.acabouDeEnviar ? 'Comprovante recebido' : 'Comprovante enviado' %>: <strong><%= _cp.arquivo && _cp.arquivo.nome %></strong>. A secretaria confere antes da aula; pode seguir com a inscrição.</span></div>
+          <% } else if (_cp && _cp.status === 'recusado') { %>
+            <div class="chk-aviso chk-aviso-erro"><i class="fa-solid fa-circle-xmark"></i><span>A secretaria recusou o comprovante enviado<%= _cp.motivo ? ': ' + _cp.motivo : '' %>. Envie outro documento.</span></div>
+          <% } %>
+
+          <% if (!_saude.liberado) { %>
+            <form method="POST" action="/inscrever/<%= turma.id %>/comprovante?_csrf=<%= csrfToken %>" enctype="multipart/form-data" class="chk-saude-form">
+              <label class="chk-saude-arquivo">
+                <input type="file" name="comprovante" accept="application/pdf,image/jpeg,image/png,image/webp" required>
+                <span>PDF ou foto (JPG, PNG), até 10 MB</span>
+              </label>
+              <button type="submit" class="chk-btn chk-btn-sec"><i class="fa-solid fa-upload"></i> Enviar comprovante</button>
+            </form>
+          <% } else if (_cp && _cp.status === 'enviado') { %>
+            <details class="chk-saude-trocar">
+              <summary>Enviar outro arquivo</summary>
+              <form method="POST" action="/inscrever/<%= turma.id %>/comprovante?_csrf=<%= csrfToken %>" enctype="multipart/form-data" class="chk-saude-form">
+                <label class="chk-saude-arquivo">
+                  <input type="file" name="comprovante" accept="application/pdf,image/jpeg,image/png,image/webp" required>
+                  <span>PDF ou foto (JPG, PNG), até 10 MB</span>
+                </label>
+                <button type="submit" class="chk-btn chk-btn-sec"><i class="fa-solid fa-upload"></i> Enviar</button>
+              </form>
+            </details>
+          <% } %>
+          <p class="chk-saude-priv"><i class="fa-solid fa-lock" aria-hidden="true"></i> O arquivo fica guardado de forma privada; só a secretaria vê. <a href="/privacidade#dados" target="_blank" rel="noopener">Política de Privacidade</a></p>
+        </section>
+        <% } %>
+
         <label class="chk-aceite anima" style="--d:2">
           <input type="checkbox" id="aceiteContrato" <% if (_abrirNoPagamento) { %>checked<% } %>>
           <span class="chk-chave" aria-hidden="true"></span>
@@ -241,11 +284,11 @@ const _trilha = _totalPassos === 2
         </label>
 
         <div class="chk-acao">
-          <button id="btnIrPagamento" class="chk-btn" type="button" disabled>
+          <button id="btnIrPagamento" class="chk-btn" type="button" disabled<% if (_saude.exige && !_saude.liberado) { %> data-falta-comprovante="1"<% } %>>
             Continuar <i class="fa-solid fa-arrow-right"></i>
           </button>
         </div>
-        <p class="chk-nota-acao">Nada é cobrado neste passo.</p>
+        <p class="chk-nota-acao"><%= _saude.exige && !_saude.liberado ? 'Envie o comprovante acima para continuar. Nada é cobrado neste passo.' : 'Nada é cobrado neste passo.' %></p>
       </div><!-- /passoContrato -->
 
       <!-- ───────────────── PASSO B: pagamento ───────────────── -->
@@ -718,9 +761,11 @@ const _trilha = _totalPassos === 2
     if (rotContagem) rotContagem.textContent = passo + '/' + lista.length;
   }
 
-  if (btnIrPagamento && chk) btnIrPagamento.disabled = !chk.checked;
+  // Curso da área da saúde sem comprovante: o botão fica travado até o envio (a tela recarrega).
+  var faltaComprovante = btnIrPagamento && btnIrPagamento.getAttribute('data-falta-comprovante') === '1';
+  if (btnIrPagamento && chk) btnIrPagamento.disabled = !chk.checked || faltaComprovante;
   if (chk) chk.addEventListener('change', function () {
-    if (btnIrPagamento) btnIrPagamento.disabled = !this.checked;
+    if (btnIrPagamento) btnIrPagamento.disabled = !this.checked || faltaComprovante;
   });
 
   if (btnIrPagamento) btnIrPagamento.addEventListener('click', function () {

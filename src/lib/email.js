@@ -557,7 +557,25 @@ async function enviarEncaixeMatriculaRapida(email, nome, { curso, inicio, link, 
   await enviar(email, `Turma confirmada — ${limpo(curso)}`, html, `Matrícula rápida encaixada (${curso})`, link);
 }
 
+// Comprovante da área da saúde recusado pela secretaria (lib/comprovante-saude.js).
+async function enviarComprovanteRecusado(email, nome, { motivo, link }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const html = moldura(
+    'Precisamos de outro comprovante',
+    limpo(nome),
+    'A secretaria conferiu o documento que você enviou para comprovar que é da área da saúde e não conseguiu aceitá-lo'
+      + (motivo ? `: <strong>${limpo(motivo)}</strong>` : '.')
+      + '<br><br>Envie outro documento (carteira do conselho, diploma ou declaração de matrícula em curso da área) em Minha conta. '
+      + 'Sem ele, a entrada na aula pode não ser liberada.',
+    'Enviar outro comprovante',
+    link,
+    'Dúvidas? Fale com a secretaria pelo WhatsApp (21) 99992-2864.'
+  );
+  await enviar(email, 'Escola CVB-RJ: envie outro comprovante da área da saúde', html, 'Comprovante recusado', link);
+}
+
 module.exports = {
+  enviarComprovanteRecusado,
   enviarEncaixeMatriculaRapida,
   enviarPesquisaSatisfacao,
   enviarAvisoContas,

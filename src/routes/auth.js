@@ -44,7 +44,7 @@ const asyncHandler = require('../lib/asyncHandler');
 });
 
 const excluirConta = require('../lib/excluir-conta');
-const POLITICA_VERSAO = '2026-10-04'; // data da Política de Privacidade em vigor (views/privacidade.ejs)
+const POLITICA_VERSAO = '2026-10-07'; // data da Política de Privacidade em vigor (views/privacidade.ejs)
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
 
 // ---------- Rate limiters ----------

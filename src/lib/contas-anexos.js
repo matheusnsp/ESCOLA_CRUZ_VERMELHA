@@ -8,6 +8,9 @@
 //
 // Aceita PDF, JPG, PNG e WEBP até 10 MB; o tipo é conferido pelos primeiros bytes do arquivo,
 // não pelo que o navegador diz.
+//
+// O mesmo armazenamento guarda o comprovante da área da saúde dos alunos (lib/comprovante-saude.js),
+// na pasta "saude/" do mesmo bucket privado.
 
 const fs = require('fs');
 const path = require('path');
@@ -17,7 +20,9 @@ const multer = require('multer');
 const URL_BASE = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 const BUCKET = process.env.SUPABASE_BUCKET_PRIVADO || 'escola-privado';
-const PASTA_LOCAL = path.join(__dirname, '..', '..', 'privado', 'contas');
+const PASTA_LOCAL = path.join(__dirname, '..', '..', 'privado');
+const PASTAS = ['contas', 'saude'];
+const CAMINHO_OK = /^(contas|saude)\/[\w-]+\/\d+-[a-f0-9]{16}\.(pdf|jpg|png|webp)$/;
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_ARQUIVOS = 5;
@@ -73,17 +78,19 @@ async function garantirBucket() {
 }
 
 // Guarda os arquivos recebidos e devolve [{ nome, caminho, tipo, tamanho }] para o item.
-async function guardar(arquivos, prefixo) {
+// pasta: 'contas' (padrão) ou 'saude'.
+async function guardar(arquivos, prefixo, pasta = 'contas') {
+  if (!PASTAS.includes(pasta)) throw new Error('Pasta inválida.');
   const salvos = [];
   for (const f of arquivos) {
     const tipo = tipoReal(f.buffer);
-    const caminho = `contas/${prefixo}/${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${EXT[tipo]}`;
+    const caminho = `${pasta}/${prefixo}/${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${EXT[tipo]}`;
     if (remoto()) {
       await garantirBucket();
       const r = await chamar('POST', `object/${BUCKET}/${caminho}`, f.buffer, { 'Content-Type': tipo, 'x-upsert': 'false' });
       if (!r.ok) throw new Error(`Falha ao guardar o anexo (${r.status}).`);
     } else {
-      const destino = path.join(PASTA_LOCAL, caminho.replace(/^contas\//, ''));
+      const destino = path.join(PASTA_LOCAL, caminho);
       fs.mkdirSync(path.dirname(destino), { recursive: true });
       fs.writeFileSync(destino, f.buffer);
     }
@@ -95,22 +102,22 @@ async function guardar(arquivos, prefixo) {
 
 // Devolve { tipo, buffer } do anexo.
 async function abrir(anexo) {
-  if (!anexo || !/^contas\/[\w-]+\/\d+-[a-f0-9]{16}\.(pdf|jpg|png|webp)$/.test(anexo.caminho)) throw new Error('Anexo inválido.');
+  if (!anexo || !CAMINHO_OK.test(anexo.caminho)) throw new Error('Anexo inválido.');
   if (remoto()) {
     const r = await chamar('GET', `object/authenticated/${BUCKET}/${anexo.caminho}`);
     if (!r.ok) throw new Error(`Anexo indisponível (${r.status}).`);
     return { tipo: anexo.tipo, buffer: Buffer.from(await r.arrayBuffer()) };
   }
-  return { tipo: anexo.tipo, buffer: fs.readFileSync(path.join(PASTA_LOCAL, anexo.caminho.replace(/^contas\//, ''))) };
+  return { tipo: anexo.tipo, buffer: fs.readFileSync(path.join(PASTA_LOCAL, anexo.caminho)) };
 }
 
 // Apaga (anexo removido antes do envio, ou item excluído). Falha aqui não atrapalha a tela.
 async function apagar(anexos) {
   for (const a of anexos || []) {
     try {
-      if (!/^contas\//.test(a.caminho)) continue;
+      if (!CAMINHO_OK.test(a.caminho)) continue;
       if (remoto()) await chamar('DELETE', `object/${BUCKET}/${a.caminho}`);
-      else fs.rmSync(path.join(PASTA_LOCAL, a.caminho.replace(/^contas\//, '')), { force: true });
+      else fs.rmSync(path.join(PASTA_LOCAL, a.caminho), { force: true });
     } catch (e) {
       console.error('[contas] apagar anexo:', e.message);
     }

@@ -13,8 +13,10 @@
 //     conta fica bloqueada (o login para de funcionar e as outras sessões caem no requireLogin).
 //   - Sem nenhuma inscrição guardada, a conta é apagada de vez (como antes).
 //   - Respostas da pesquisa de satisfação: saem do site e perdem o nome.
+//   - Comprovante da área da saúde: o arquivo e o registro são apagados.
 
 const prisma = require('../db');
+const comprovanteSaude = require('./comprovante-saude');
 
 const FANTASMA = { NOT: { statusPagamento: 'PENDENTE', taxaConfirmada: false } };
 
@@ -58,6 +60,9 @@ async function excluir(usuario) {
   const pesquisas = matriculas.length
     ? await prisma.configuracao.findMany({ where: { chave: { in: matriculas.map((m) => 'pesquisa:resp:' + m.id) } } })
     : [];
+
+  // Comprovante da área da saúde: arquivo e registro saem junto (não é registro de pagamento).
+  await comprovanteSaude.apagarDaPessoa(usuario.id).catch((e) => console.error('[EXCLUIR-CONTA] comprovante:', e.message));
 
   const ops = [
     ...opsPesquisa(pesquisas),
