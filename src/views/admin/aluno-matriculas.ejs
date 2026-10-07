@@ -53,6 +53,14 @@
 <!-- INSCRIÇÕES -->
 <%- include('legenda-status') %>
 
+<% if (typeof comprovante !== 'undefined' && comprovante && pode('aluno:gerenciar')) { var _rc = { enviado: 'para conferir', aprovado: 'aprovado', recusado: 'recusado' }; %>
+<a href="/comprovantes-saude?aba=<%= comprovante.status === 'enviado' ? 'conferir' : comprovante.status === 'recusado' ? 'recusados' : 'aprovados' %>" class="adm-alerta adm-alerta-comprovante">
+  <i class="fa-solid fa-user-doctor"></i>
+  <span>Comprovante da área da saúde: <b><%= _rc[comprovante.status] || comprovante.status %></b><%= comprovante.status === 'recusado' && comprovante.motivo ? ' (' + comprovante.motivo + ')' : '' %></span>
+  <i class="fa-solid fa-arrow-right"></i>
+</a>
+<% } %>
+
 <div class="adm-box">
 
   <% if (!matriculas.length) { %>

@@ -16,6 +16,7 @@ const extras = require('../lib/extras');
 const vitrine = require('../lib/vitrine');
 const { icsDaTurma } = require('../lib/agenda');
 const pesquisa = require('../lib/pesquisa');
+const comprovanteSaude = require('../lib/comprovante-saude');
 const sharp = require('sharp');
 
 const router = express.Router();
@@ -455,6 +456,23 @@ router.get('/cursos/:cursoId', async (req, res) => {
 //   a taxa em /pagar-taxa (PIX ou Cartão) e o curso é pago depois
 //   presencialmente na secretaria (sem gateway) em /pagar-curso.
 
+// Comprovante da área da saúde (lib/comprovante-saude.js): o que a tela de inscrição mostra.
+const ERROS_COMPROVANTE = {
+  vazio: 'Escolha o arquivo do comprovante antes de enviar.',
+  falha: 'Não foi possível guardar o comprovante agora. Tente de novo.',
+};
+async function situacaoSaude(curso, alunoId, query = {}) {
+  if (!(await comprovanteSaude.exige(curso))) return { exige: false };
+  const comprovante = await comprovanteSaude.daPessoa(alunoId);
+  return {
+    exige: true,
+    comprovante,
+    liberado: comprovanteSaude.liberado(comprovante),
+    acabouDeEnviar: query.comprovante === 'enviado',
+    erro: ERROS_COMPROVANTE[query.erroComprovante] || (query.erroComprovante ? String(query.erroComprovante).slice(0, 120) : null),
+  };
+}
+
 router.get('/inscrever/:turmaId', requireLogin, async (req, res) => {
   const turma = await prisma.turma.findUnique({
     where: { id: req.params.turmaId },
@@ -514,11 +532,29 @@ router.get('/inscrever/:turmaId', requireLogin, async (req, res) => {
     turma, curso: turma.curso, formatBRL,
     aVista, parcelado, parceladoComJuros,
     ehPassaporte,
+    saude: await situacaoSaude(turma.curso, req.session.usuarioId, req.query),
     etapaAtual: 'escolha',
     erro: req.query.erro === 'expirado'
       ? 'O tempo para concluir o pagamento acabou. A cobrança foi cancelada — você pode começar de novo.'
       : null,
   });
+});
+
+// Envio do comprovante da área da saúde na tela de inscrição. É multipart: o token CSRF vem na
+// query (middleware/csrf.js). Volta para a mesma tela, no bloco do comprovante.
+router.post('/inscrever/:turmaId/comprovante', requireLogin, comprovanteSaude.receber('comprovante'), async (req, res) => {
+  const turma = await prisma.turma.findUnique({ where: { id: req.params.turmaId }, include: { curso: true } });
+  if (!turma) return res.status(404).render('erro', { mensagem: 'Turma não encontrada.' });
+  const volta = (q) => res.redirect(`/inscrever/${turma.id}?${q}#comprovante`);
+  if (req.uploadErro) return volta('erroComprovante=' + encodeURIComponent(req.uploadErro));
+  if (!req.arquivos || !req.arquivos.length) return volta('erroComprovante=vazio');
+  try {
+    await comprovanteSaude.enviar(req.session.usuarioId, req.arquivos[0]);
+  } catch (e) {
+    console.error('[COMPROVANTE] envio na inscrição:', e.message);
+    return volta('erroComprovante=falha');
+  }
+  return volta('comprovante=enviado');
 });
 
 router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
@@ -564,8 +600,15 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       turma, curso: turma.curso, formatBRL,
       aVista, parcelado, parceladoComJuros,
       ehPassaporte, etapaAtual, erro: msg,
+      saude: await situacaoSaude(turma.curso, req.session.usuarioId),
     });
   };
+
+  // Curso da área da saúde: sem comprovante enviado (ou aprovado), não segue para o pagamento.
+  const saude = await situacaoSaude(turma.curso, req.session.usuarioId);
+  if (saude.exige && !saude.liberado) {
+    return res.redirect(`/inscrever/${turma.id}?erroComprovante=${encodeURIComponent('Envie o comprovante de que você é da área da saúde para continuar.')}#comprovante`);
+  }
 
   // ---------------- Passaporte: mantém o fluxo presencial já existente ----------------
   if (ehPassaporte) {

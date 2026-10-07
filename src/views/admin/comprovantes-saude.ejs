@@ -1,0 +1,93 @@
+<%- include('head', { titulo: 'Comprovantes da saúde' }) %>
+<%- include('header', { ativo: 'comprovantes' }) %>
+
+<%
+  // Comprovantes da área da saúde (lib/comprovante-saude.js). O aluno manda na inscrição (ou em
+  // Minha conta) dos cursos marcados com "Exige comprovante". A secretaria abre o arquivo, aprova ou
+  // recusa com motivo; recusado, o aluno recebe um e-mail para mandar outro.
+  function dataBR(d) { return d ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; }
+  function dataTurma(d) { if (!d) return ''; var x = new Date(d), p = function (n) { return String(n).padStart(2, '0'); }; return p(x.getUTCDate()) + '/' + p(x.getUTCMonth() + 1); }
+  var rotulo = { enviado: 'Para conferir', aprovado: 'Aprovado', recusado: 'Recusado' };
+%>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Comprovantes da área da saúde</h1>
+  <span class="adm-mut">exigidos na inscrição dos cursos marcados no cadastro do curso</span>
+</div>
+
+<% if (flash) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div><% } %>
+
+<div class="cs-pagina">
+
+  <div class="adm-box cs-cursos">
+    <i class="fa-solid fa-user-doctor"></i>
+    <% if (cursosQueExigem.length) { %>
+      <span>Cursos que exigem: <% cursosQueExigem.forEach(function (c, i) { %><a href="/cursos/<%= c.id %>/editar"><%= c.nome %></a><%= i < cursosQueExigem.length - 1 ? ', ' : '' %><% }) %>.</span>
+    <% } else { %>
+      <span>Nenhum curso exige comprovante ainda. Marque em Cursos → editar → <b>Quem pode se inscrever</b>.</span>
+    <% } %>
+  </div>
+
+  <div class="adm-abas">
+    <% abas.forEach(function (a) { %>
+      <a href="/comprovantes-saude?aba=<%= a.id %>" class="adm-aba <%= aba === a.id ? 'on' : '' %>"><%= a.rot %> <span class="adm-aba-num"><%= a.n %></span></a>
+    <% }) %>
+  </div>
+
+  <div class="adm-box">
+    <% if (!lista.length) { %>
+      <p class="cs-vazio"><%= aba === 'conferir' ? 'Nenhum comprovante esperando conferência.' : 'Nada nesta aba.' %></p>
+    <% } else { %>
+      <div class="cs-lista">
+        <% lista.forEach(function (c) { %>
+          <article class="cs-item">
+            <div class="cs-topo">
+              <div class="cs-quem">
+                <a href="/alunos/<%= c.aluno.id %>/matriculas"><b><%= c.aluno.nome %></b></a>
+                <small><%= c.aluno.email %><%= c.aluno.celular ? ' · ' + c.aluno.celular : '' %></small>
+              </div>
+              <span class="cs-status cs-status-<%= c.status %>"><%= rotulo[c.status] || c.status %></span>
+            </div>
+
+            <div class="cs-info">
+              <span><i class="fa-solid fa-book-medical"></i>
+                <% if (c.cursos.length) { %><%= c.cursos.map(function (k) { return k.nome + ' (' + dataTurma(k.inicio) + ')'; }).join(', ') %><% } else { %>sem inscrição ativa em curso que exige<% } %>
+              </span>
+              <span><i class="fa-regular fa-clock"></i> enviado em <%= dataBR(c.enviadoEm) %></span>
+              <% if (c.revisadoEm) { %><span><i class="fa-solid fa-user-check"></i> <%= c.status === 'aprovado' ? 'aprovado' : 'recusado' %> em <%= dataBR(c.revisadoEm) %></span><% } %>
+            </div>
+
+            <% if (c.status === 'recusado' && c.motivo) { %>
+              <p class="cs-motivo"><i class="fa-solid fa-circle-xmark"></i> Motivo: <%= c.motivo %></p>
+            <% } %>
+
+            <div class="cs-acoes">
+              <a class="cs-btn cs-abrir" href="/comprovantes-saude/<%= c.aluno.id %>/arquivo" target="_blank" rel="noopener">
+                <i class="fa-solid <%= c.arquivo && c.arquivo.tipo === 'application/pdf' ? 'fa-file-pdf' : 'fa-file-image' %>"></i> Abrir o documento
+              </a>
+              <% if (c.status !== 'aprovado') { %>
+                <form method="POST" action="/comprovantes-saude/<%= c.aluno.id %>/aprovar">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="aba" value="<%= aba %>">
+                  <button class="adm-btn adm-btn-sm adm-btn-ok"><i class="fa-solid fa-check"></i> Aprovar</button>
+                </form>
+              <% } %>
+              <% if (c.status !== 'recusado') { %>
+                <details class="cs-recusar">
+                  <summary class="cs-btn cs-btn-recusar"><i class="fa-solid fa-xmark"></i> Recusar</summary>
+                  <form method="POST" action="/comprovantes-saude/<%= c.aluno.id %>/recusar">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="aba" value="<%= aba %>">
+                    <input type="text" name="motivo" maxlength="300" required placeholder="Motivo (vai no e-mail para o aluno). Ex.: documento ilegível">
+                    <button class="adm-btn adm-btn-sm">Recusar e avisar o aluno</button>
+                  </form>
+                </details>
+              <% } %>
+            </div>
+          </article>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+
+</div>
+
+<%- include('foot') %>

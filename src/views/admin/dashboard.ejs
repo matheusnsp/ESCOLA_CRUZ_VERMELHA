@@ -28,6 +28,14 @@
   </div>
 </div>
 
+<% if (typeof comprovantesParaConferir !== 'undefined' && comprovantesParaConferir && pode('aluno:gerenciar')) { %>
+  <a href="/comprovantes-saude" class="adm-alerta adm-alerta-comprovante">
+    <i class="fa-solid fa-user-doctor"></i>
+    <span><%= comprovantesParaConferir %> comprovante<%= comprovantesParaConferir > 1 ? 's' : '' %> da área da saúde para conferir</span>
+    <i class="fa-solid fa-arrow-right"></i>
+  </a>
+<% } %>
+
 <!-- ═══ O dia em números ═════════════════════════════════════════════════ -->
 <div class="adm-cards <%= podeDinheiro ? 'c3' : (podePend ? 'c2' : 'c1') %>">
   <<%= podeMatriculas ? 'a' : 'div' %><% if (podeMatriculas) { %> href="/inscricoes"<% } %> class="adm-stat <%= podeMatriculas ? 'adm-stat-clicavel' : '' %>">
