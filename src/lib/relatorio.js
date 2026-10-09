@@ -12,7 +12,7 @@
 // ============================================================
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
-const { faltaReceber } = require('./matricula');
+const { faltaReceber, cursoJaPago } = require('./matricula');
 
 const TAXA_MATRICULA_PADRAO = 100;
 const LIMITE_AUDITORIA = 1000; // últimos N eventos, pra não estourar o arquivo
@@ -113,7 +113,8 @@ async function coletarDadosRelatorio(prisma) {
     })),
     ...cursoPendenteLista.map((m) => ({
       m,
-      tipo: m.diferencaTransferencia != null ? 'Matrícula (diferença de transferência)' : 'Matrícula',
+      // 'diferença' só quando é ela que falta: curso já pago antes da transferência (faltaReceber).
+      tipo: m.diferencaTransferencia != null && cursoJaPago(m) ? 'Matrícula (diferença de transferência)' : 'Matrícula',
       // O que falta: com a taxa paga, só o curso (lib/matricula.js faltaReceber), como no Painel.
       valor: faltaReceber(m),
       desde: m.criadoEm,

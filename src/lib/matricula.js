@@ -140,6 +140,7 @@ function faltaReceber(m) {
 
 module.exports = {
   faltaReceber,
+  cursoJaPago,
   valorCursoSemTaxa,
   calcularValores,
   valorCursoPorPlano,

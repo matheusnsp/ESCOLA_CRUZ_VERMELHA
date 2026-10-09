@@ -19,7 +19,7 @@ const { criarCodigo2fa, codigo2faRecente, verificarCodigo2fa, consumirToken, cri
 const { enviarCodigo2fa, enviarAlertaLoginSecretaria, enviarLinkDesbloqueio, enviarEmailResetSenha, enviarComprovanteRecusado } = require('../lib/email');
 const { ESCOLARIDADES: ESCOLARIDADES_ALUNO, SITUACOES_ESCOLARIDADE, GENEROS, UFS } = require('../lib/validation');
 const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
-const { formatBRL, calcularValores, lerConfigMatricula, faltaReceber } = require('../lib/matricula');
+const { formatBRL, calcularValores, lerConfigMatricula, faltaReceber, cursoJaPago } = require('../lib/matricula');
 const { simularValores } = require('../lib/simular-valores');
 const { estornarTransacao } = require('../lib/unicopag'); // 💡 A3 — refund real no gateway
 const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarTextoWhats, montarLinkProspeccao } = require('../lib/lembretes');
@@ -1956,7 +1956,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     ...cursoPendenteLista.map((m) => ({
       m,
       tipo:
-        m.diferencaTransferencia != null
+        m.diferencaTransferencia != null && cursoJaPago(m)
           ? 'Matrícula (diferença de transferência)'
           : 'Matrícula',
       valor: valorEmAberto(m),
