@@ -99,7 +99,49 @@ function totalExibicao(curso, cfgMap) {
   return new Prisma.Decimal(curso.precoAvista).add(taxaExibicao(curso, cfgMap));
 }
 
+// ── Quanto falta o aluno pagar ─────────────────────────────────────────────
+// Matricula.valorCurso guarda o TOTAL (curso + taxa de inscrição). Com a taxa já paga, o que falta
+// é só o curso: o preço do curso no plano da matrícula, sem juros, que é o que /pagar-curso cobra
+// (routes/cursos.js) e o que a matrícula rápida usou para montar o total (lib/matricula-rapida.js:
+// 180 de curso + 103,95 da taxa paga na instituição = 283,95; falta 180). PRESENCIAL paga o curso
+// pelo preço à vista, como em /pagar-curso.
+//
+// Sem o curso carregado (m.turma.curso), cai no total menos a taxa gravada na matrícula: os dois
+// campos são gravados juntos em todos os fluxos, exceto depois de uma transferência.
+function valorCursoSemTaxa(m) {
+  const curso = m && m.turma && m.turma.curso;
+  if (curso) {
+    const preco = Number(valorCursoPorPlano(curso, m.plano === 'PARCELADO' ? 'PARCELADO' : 'A_VISTA'));
+    if (Number.isFinite(preco) && preco > 0) return preco;
+  }
+  return Math.max(0, (Number(m.valorCurso) || 0) - (Number(m.valorTaxaMatricula) || 0));
+}
+
+// Valor em aberto de uma matrícula PENDENTE (Painel "A receber", Pendentes, Financeiro, relatório).
+//   - nada pago (taxa não confirmada): o total, curso + taxa;
+//   - taxa paga, curso pendente: só o curso (valorCursoSemTaxa);
+//   - transferida depois de pagar o curso: a diferença, se for a maior. Só com a taxa paga, a
+//     diferença não vale: falta o curso da turma nova.
+// "Curso pago" = um Pagamento CURSO PAGO. confirmadaEm sozinho não basta: o estorno não o apaga.
+// Só sem os pagamentos carregados (ou registro antigo sem nenhum Pagamento CURSO) vale confirmadaEm.
+function cursoJaPago(m) {
+  if (!Array.isArray(m.pagamentos)) return m.confirmadaEm != null;
+  const curso = m.pagamentos.filter((p) => p.tipo === 'CURSO');
+  if (curso.some((p) => p.status === 'PAGO')) return true;
+  return !curso.length && m.confirmadaEm != null;
+}
+
+function faltaReceber(m) {
+  if (!m || m.statusPagamento !== 'PENDENTE') return 0;
+  if (m.diferencaTransferencia != null && cursoJaPago(m)) return Math.max(0, Number(m.diferencaTransferencia) || 0);
+  if (!m.taxaConfirmada) return Number(m.valorCurso) || 0;
+  return valorCursoSemTaxa(m);
+}
+
 module.exports = {
+  faltaReceber,
+  cursoJaPago,
+  valorCursoSemTaxa,
   calcularValores,
   valorCursoPorPlano,
   obterTaxaMatricula,
