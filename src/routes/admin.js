@@ -19,7 +19,7 @@ const { criarCodigo2fa, codigo2faRecente, verificarCodigo2fa, consumirToken, cri
 const { enviarCodigo2fa, enviarAlertaLoginSecretaria, enviarLinkDesbloqueio, enviarEmailResetSenha, enviarComprovanteRecusado } = require('../lib/email');
 const { ESCOLARIDADES: ESCOLARIDADES_ALUNO, SITUACOES_ESCOLARIDADE, GENEROS, UFS } = require('../lib/validation');
 const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
-const { formatBRL, calcularValores, lerConfigMatricula } = require('../lib/matricula');
+const { formatBRL, calcularValores, lerConfigMatricula, faltaReceber, valorCursoSemTaxa } = require('../lib/matricula');
 const { simularValores } = require('../lib/simular-valores');
 const { estornarTransacao } = require('../lib/unicopag'); // 💡 A3 — refund real no gateway
 const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarTextoWhats, montarLinkProspeccao } = require('../lib/lembretes');
@@ -124,16 +124,23 @@ async function sincronizarPagamentoManual(req, matricula, tipo, novoStatus) {
     const existentes = await prisma.pagamento.findMany({
       where: { matriculaId: matricula.id, tipo },
     });
+    // Curso confirmado à mão com a taxa já paga à parte: o que entrou foi só o curso (lib/matricula.js
+    // valorCursoSemTaxa), não o total. Antes gravava o total (ex.: 283,95 em vez de 180 na matrícula
+    // rápida), e o curso + a taxa somavam a taxa duas vezes no extrato.
+    const valorCursoManual = matricula.taxaConfirmada ? valorCursoSemTaxa(matricula) : (Number(matricula.valorCurso) || 0);
     if (existentes.length > 0) {
       await prisma.pagamento.updateMany({
         where: { matriculaId: matricula.id, tipo },
-        data: { status: novoStatus, gatewayStatus: `manual:${novoStatus.toLowerCase()}` },
+        data: {
+          status: novoStatus, gatewayStatus: `manual:${novoStatus.toLowerCase()}`,
+          ...(tipo === 'CURSO' && novoStatus === 'PAGO' && matricula.taxaConfirmada ? { valor: valorCursoManual } : {}),
+        },
       });
       return;
     }
     const valor = tipo === 'TAXA'
       ? Number(matricula.valorTaxaMatricula) || 0
-      : Number(matricula.valorCurso) || 0;
+      : valorCursoManual;
     await prisma.pagamento.create({
       data: {
         matriculaId: matricula.id,
@@ -782,7 +789,12 @@ router.get('/', async (req, res) => {
     }),
     prisma.matricula.findMany({
       where: { statusPagamento: 'PENDENTE', taxaConfirmada: true, turma: turmaEmAberto(agora) },
-      select: { valorCurso: true, diferencaTransferencia: true },
+      select: {
+        valorCurso: true, valorTaxaMatricula: true, diferencaTransferencia: true, plano: true,
+        statusPagamento: true, taxaConfirmada: true, confirmadaEm: true,
+        turma: { select: { curso: { select: { precoAvista: true, precoCheio: true } } } },
+        pagamentos: { select: { tipo: true, status: true } },
+      },
     }),
     prisma.matricula.count({ where: { statusPagamento: 'PENDENTE', taxaConfirmada: false, turma: turmaEmAberto(agora) } }),
     prisma.matricula.count({ where: { diferencaTransferencia: { lt: 0 } } }),
@@ -1817,7 +1829,7 @@ router.get('/inscricoes', requirePermissao(
 });
 
 router.post('/inscricoes/:id/confirmar', requirePermissao('financeiro:aprovar', 'pagamento:confirmar'), async (req, res) => {
-  const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
+  const m = await prisma.matricula.findUnique({ where: { id: req.params.id }, include: { turma: { include: { curso: true } } } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
   await prisma.matricula.update({
     where: { id: m.id },
@@ -1872,9 +1884,10 @@ function codigoMatricula(m) {
 // O mesmo critério e a mesma conta no cartão "A receber" do Financeiro e no topo de Pendentes;
 // antes cada tela contava de um jeito e os números não batiam.
 //
-// Valor: o valorCurso gravado JÁ inclui a taxa (não subtrair valorTaxaMatricula, que está zerado
-// em vários registros onde a taxa foi cobrada). Em transferência com diferença a pagar, vale a
-// diferença.
+// Valor: o que FALTA o aluno pagar (lib/matricula.js faltaReceber). O valorCurso gravado é o total
+// (curso + taxa); com a taxa já paga, falta só o curso no plano, o mesmo que /pagar-curso cobra (ex.:
+// matrícula rápida 283,95 com 103,95 pagos na instituição → falta 180). Antes a conta devolvia o
+// total e contava de novo a taxa já paga. Transferência depois de pagar o curso: a diferença.
 //
 // Turma "em aberto" = ABERTA ou CONFIRMADA, com início no futuro. Antes só ABERTA contava, e
 // quem estava numa turma CONFIRMADA que ainda não começou não aparecia em nenhuma aba de
@@ -1882,8 +1895,9 @@ function codigoMatricula(m) {
 function turmaEmAberto(agora = new Date()) {
   return { status: { in: ['ABERTA', 'CONFIRMADA'] }, inicioPrevisto: { gt: agora } };
 }
+// Precisa de m.turma.curso (preços) e, se houver, m.pagamentos; sem o curso usa total − taxa gravada.
 function valorEmAberto(m) {
-  return m.diferencaTransferencia != null ? Number(m.diferencaTransferencia) : Number(m.valorCurso);
+  return faltaReceber(m);
 }
 
 router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:leitura'), async (req, res) => {
@@ -1952,10 +1966,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
         m.diferencaTransferencia != null
           ? 'Matrícula (diferença de transferência)'
           : 'Matrícula',
-      valor:
-        m.diferencaTransferencia != null
-          ? Number(m.diferencaTransferencia)
-          : Number(m.valorCurso),
+      valor: valorEmAberto(m),
       desde: m.criadoEm,
     })),
   ].sort((a, b) => b.desde - a.desde);
@@ -2930,11 +2941,10 @@ router.get('/pendentes', requirePermissao('pendentes:gerenciar'), async (req, re
   // Quanto ainda falta receber de quem já pagou a taxa. É o valor parado por
   // falta de um clique — o número que justifica esta tela.
   //
-  // ⚠️ NÃO subtrair valorTaxaMatricula daqui. O valorCurso gravado JÁ inclui
-  // a taxa, mas o campo valorTaxaMatricula está zerado em vários registros
-  // onde a taxa foi de fato cobrada (conferido em produção). Subtrair um
-  // campo não confiável fazia o mesmo curso aparecer com valores diferentes
-  // de um aluno pro outro.
+  // O que FALTA (valorEmAberto → lib/matricula.js faltaReceber): com a taxa
+  // paga, só o curso no plano, pelo preço do curso e não pelo campo
+  // valorTaxaMatricula (que já veio zerado em registros antigos). Assim o
+  // mesmo curso dá o mesmo valor para todo aluno.
   const totalEmAberto = comTaxa.reduce((s, m) => s + valorEmAberto(m), 0);
 
   const abasValidas = ['com-taxa', 'sem-taxa', 'fora-prazo'];

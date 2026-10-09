@@ -12,6 +12,7 @@
 // ============================================================
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
+const { faltaReceber } = require('./matricula');
 
 const TAXA_MATRICULA_PADRAO = 100;
 const LIMITE_AUDITORIA = 1000; // últimos N eventos, pra não estourar o arquivo
@@ -112,16 +113,20 @@ async function coletarDadosRelatorio(prisma) {
     ...cursoPendenteLista.map((m) => ({
       m,
       tipo: m.diferencaTransferencia != null ? 'Matrícula (diferença de transferência)' : 'Matrícula',
-      valor: m.diferencaTransferencia != null ? Number(m.diferencaTransferencia) : Number(m.valorCurso),
+      // O que falta: com a taxa paga, só o curso (lib/matricula.js faltaReceber), como no Painel.
+      valor: faltaReceber(m),
       desde: m.criadoEm,
     })),
   ].sort((a, b) => b.desde - a.desde);
 
   // Totais (mesmas fórmulas do admin.js, incluindo a correção A4 do totalRecebido)
-  const totalRecebido = matriculaGeradaLista.reduce((s, m) => {
-    if (m.plano === 'A_VISTA') return s + Number(m.valorCurso);
-    return s + Number(m.valorCurso) + Number(m.valorTaxaMatricula || 0);
-  }, 0);
+  // valorCurso já é o total (curso + taxa) em todos os planos; somar valorTaxaMatricula por cima
+  // contava a taxa duas vezes no parcelado. Mais a taxa de quem pagou só a inscrição, como a tela
+  // do Financeiro (routes/admin.js totalRecebido).
+  const totalTaxaSemMatricula = taxaPagaLista
+    .filter((m) => !['PAGO', 'PARCELADO'].includes(m.statusPagamento))
+    .reduce((s, m) => s + (Number(m.valorTaxaMatricula) || 0), 0);
+  const totalRecebido = matriculaGeradaLista.reduce((s, m) => s + Number(m.valorCurso), 0) + totalTaxaSemMatricula;
   const totalPendente = pendentesLista.reduce((s, p) => s + p.valor, 0);
   const totalEstornado = estornos.reduce((s, m) => s + Number(m.valorCurso), 0);
   const totalAReembolsar = reembolsosPendentesLista.reduce((s, m) => s + Math.abs(Number(m.diferencaTransferencia)), 0);

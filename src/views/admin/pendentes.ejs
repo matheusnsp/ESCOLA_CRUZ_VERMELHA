@@ -241,7 +241,8 @@ function contatoHtml(m) { %>
           <%- alunoHtml(m) %>
           <%- cursoHtml(m) %>
           <%- situacaoHtml(m) %>
-          <td><strong><%= formatBRL(valorEmAberto(m)) %></strong></td>
+          <% var _falta = valorEmAberto(m), _total = Number(m.valorCurso) || 0; %>
+          <td><strong><%= formatBRL(_falta) %></strong><% if (_total && Math.abs(_total - _falta) >= 0.01) { %><small class="adm-valor-de">de <%= formatBRL(_total) %></small><% } %></td>
           <%- contatoHtml(m) %>
           <%- acoesHtml(m) %>
         </tr>
