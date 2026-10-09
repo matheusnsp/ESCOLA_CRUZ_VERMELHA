@@ -241,8 +241,8 @@ function contatoHtml(m) { %>
           <%- alunoHtml(m) %>
           <%- cursoHtml(m) %>
           <%- situacaoHtml(m) %>
-          <% var _falta = valorEmAberto(m), _total = Number(m.valorCurso) || 0; %>
-          <td><strong><%= formatBRL(_falta) %></strong><% if (_total && Math.abs(_total - _falta) >= 0.01) { %><small class="adm-valor-de">de <%= formatBRL(_total) %></small><% } %></td>
+          <% var _falta = valorEmAberto(m), _taxaPaga = m.taxaConfirmada && m.diferencaTransferencia == null ? Number(m.valorTaxaMatricula) || 0 : 0; %>
+          <td><strong><%= formatBRL(_falta) %></strong><% if (_taxaPaga > 0) { %><small class="adm-valor-de">+ <%= formatBRL(_taxaPaga) %> de inscrição já paga</small><% } %></td>
           <%- contatoHtml(m) %>
           <%- acoesHtml(m) %>
         </tr>

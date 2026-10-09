@@ -124,16 +124,36 @@ async function sincronizarPagamentoManual(req, matricula, tipo, novoStatus) {
     const existentes = await prisma.pagamento.findMany({
       where: { matriculaId: matricula.id, tipo },
     });
-    // Curso confirmado à mão com a taxa já paga à parte: o que entrou foi só o curso (lib/matricula.js
-    // valorCursoSemTaxa), não o total. Antes gravava o total (ex.: 283,95 em vez de 180 na matrícula
-    // rápida), e o curso + a taxa somavam a taxa duas vezes no extrato.
-    const valorCursoManual = matricula.taxaConfirmada ? valorCursoSemTaxa(matricula) : (Number(matricula.valorCurso) || 0);
+    // Curso confirmado à mão (botão "Confirmar pagamento"). O valor do Pagamento é o que entrou:
+    //   - curso já pago antes (transferência com diferença a pagar): o Pagamento pago não é tocado
+    //     (no à vista online ele traz curso + taxa) e a diferença vira um Pagamento manual próprio;
+    //   - taxa paga À PARTE (existe Pagamento TAXA pago: parcelado, matrícula rápida, taxa confirmada
+    //     à mão): só o curso (lib/matricula.js valorCursoSemTaxa). Antes gravava o total (ex.: 283,95
+    //     em vez de 180 na matrícula rápida) e a taxa contava duas vezes no extrato;
+    //   - senão (à vista, uma cobrança só): o total, como sempre.
+    let valorCursoManual = Number(matricula.valorCurso) || 0;
+    if (tipo === 'CURSO' && novoStatus === 'PAGO') {
+      if (existentes.some((p) => p.status === 'PAGO')) {
+        const diferenca = Number(matricula.diferencaTransferencia) || 0;
+        if (diferenca > 0) {
+          await prisma.pagamento.create({
+            data: {
+              matriculaId: matricula.id, tipo, metodo: matricula.forma || 'DINHEIRO', valor: diferenca, status: 'PAGO',
+              gateway: 'manual', gatewayStatus: `manual:pago diferença de transferência por ${req.session.usuarioId || 'admin'}`,
+            },
+          });
+        }
+        return;
+      }
+      const taxaAParte = await prisma.pagamento.count({ where: { matriculaId: matricula.id, tipo: 'TAXA', status: 'PAGO' } });
+      if (taxaAParte) valorCursoManual = valorCursoSemTaxa(matricula);
+    }
     if (existentes.length > 0) {
       await prisma.pagamento.updateMany({
         where: { matriculaId: matricula.id, tipo },
         data: {
           status: novoStatus, gatewayStatus: `manual:${novoStatus.toLowerCase()}`,
-          ...(tipo === 'CURSO' && novoStatus === 'PAGO' && matricula.taxaConfirmada ? { valor: valorCursoManual } : {}),
+          ...(tipo === 'CURSO' && novoStatus === 'PAGO' ? { valor: valorCursoManual } : {}),
         },
       });
       return;
@@ -1829,17 +1849,25 @@ router.get('/inscricoes', requirePermissao(
 });
 
 router.post('/inscricoes/:id/confirmar', requirePermissao('financeiro:aprovar', 'pagamento:confirmar'), async (req, res) => {
-  const m = await prisma.matricula.findUnique({ where: { id: req.params.id }, include: { turma: { include: { curso: true } } } });
+  const m = await prisma.matricula.findUnique({ where: { id: req.params.id }, include: { turma: { include: { curso: true } }, pagamentos: true } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
-  await prisma.matricula.update({
-    where: { id: m.id },
-    data: {
-      statusPagamento: 'PAGO',
-      confirmadaPor: req.session.usuarioId,
-      confirmadaEm: new Date(),
-      diferencaTransferencia: null,
-    },
-  });
+  const dados = {
+    statusPagamento: 'PAGO',
+    confirmadaPor: req.session.usuarioId,
+    confirmadaEm: new Date(),
+    diferencaTransferencia: null,
+  };
+  // Taxa paga à parte e curso pago agora: o total passa a ser a taxa + o curso cobrado (o mesmo que
+  // o "A receber" mostrou), como o webhook faz no pagamento online. Só muda se o preço do curso
+  // mudou depois da inscrição; assim o Recebido do Financeiro bate com o que entrou.
+  const taxasPagas = m.pagamentos.filter((p) => p.tipo === 'TAXA' && p.status === 'PAGO');
+  const cursoJaPago = m.pagamentos.some((p) => p.tipo === 'CURSO' && p.status === 'PAGO');
+  if (taxasPagas.length && !cursoJaPago) {
+    const taxa = Number(m.valorTaxaMatricula) || Number(taxasPagas[taxasPagas.length - 1].valor) || 0;
+    const total = Math.round((taxa + valorCursoSemTaxa(m)) * 100) / 100;
+    if (Math.abs(total - Number(m.valorCurso)) >= 0.01) dados.valorCurso = total;
+  }
+  await prisma.matricula.update({ where: { id: m.id }, data: dados });
   await sincronizarPagamentoManual(req, m, 'CURSO', 'PAGO');
   await auditar(req, 'CONFIRMOU_PAGAMENTO', 'Matricula', m.id, null);
   res.redirect(back(req, 'Pagamento confirmado.'));
@@ -1934,7 +1962,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
         turma: turmaEmAberto(),
       },
       orderBy: { criadoEm: 'desc' },
-      include: { aluno: true, turma: { include: { curso: true } } },
+      include: { aluno: true, turma: { include: { curso: true } }, pagamentos: { select: { tipo: true, status: true } } },
     }),
 
     prisma.matricula.findMany({

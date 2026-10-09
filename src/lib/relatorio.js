@@ -50,9 +50,10 @@ async function coletarDadosRelatorio(prisma) {
   ] = await Promise.all([
     prisma.matricula.findMany({ orderBy: { criadoEm: 'desc' }, include: incAluno }),
     prisma.matricula.findMany({ where: { taxaConfirmada: true }, orderBy: { taxaConfirmadaEm: 'desc' }, include: incAluno }),
-    prisma.matricula.findMany({ where: { statusPagamento: 'PAGO' }, orderBy: { confirmadaEm: 'desc' }, include: incAluno }),
+    // PAGO e PARCELADO (cartão parcelado aprovado), como a tela do Financeiro.
+    prisma.matricula.findMany({ where: { statusPagamento: { in: ['PAGO', 'PARCELADO'] } }, orderBy: { confirmadaEm: 'desc' }, include: incAluno }),
     prisma.matricula.findMany({ where: { taxaConfirmada: false }, orderBy: { criadoEm: 'desc' }, include: incAluno }),
-    prisma.matricula.findMany({ where: { taxaConfirmada: true, statusPagamento: 'PENDENTE' }, orderBy: { criadoEm: 'desc' }, include: incAluno }),
+    prisma.matricula.findMany({ where: { taxaConfirmada: true, statusPagamento: 'PENDENTE' }, orderBy: { criadoEm: 'desc' }, include: { ...incAluno, pagamentos: { select: { tipo: true, status: true } } } }),
     prisma.matricula.findMany({ where: { statusPagamento: 'ESTORNADO' }, orderBy: { atualizadoEm: 'desc' }, include: incAluno }),
     prisma.matricula.findMany({ where: { diferencaTransferencia: { lt: 0 } }, orderBy: { atualizadoEm: 'desc' }, include: incAluno }),
     prisma.logAuditoria.findMany({ orderBy: { criadoEm: 'desc' }, take: LIMITE_AUDITORIA }),

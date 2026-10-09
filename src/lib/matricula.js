@@ -120,13 +120,20 @@ function valorCursoSemTaxa(m) {
 // Valor em aberto de uma matrícula PENDENTE (Painel "A receber", Pendentes, Financeiro, relatório).
 //   - nada pago (taxa não confirmada): o total, curso + taxa;
 //   - taxa paga, curso pendente: só o curso (valorCursoSemTaxa);
-//   - transferida depois de pagar o curso (confirmadaEm ou Pagamento CURSO PAGO): a diferença, se
-//     for a maior. Só com a taxa paga, a diferença não vale: falta o curso da turma nova.
+//   - transferida depois de pagar o curso: a diferença, se for a maior. Só com a taxa paga, a
+//     diferença não vale: falta o curso da turma nova.
+// "Curso pago" = um Pagamento CURSO PAGO. confirmadaEm sozinho não basta: o estorno não o apaga.
+// Só sem os pagamentos carregados (ou registro antigo sem nenhum Pagamento CURSO) vale confirmadaEm.
+function cursoJaPago(m) {
+  if (!Array.isArray(m.pagamentos)) return m.confirmadaEm != null;
+  const curso = m.pagamentos.filter((p) => p.tipo === 'CURSO');
+  if (curso.some((p) => p.status === 'PAGO')) return true;
+  return !curso.length && m.confirmadaEm != null;
+}
+
 function faltaReceber(m) {
   if (!m || m.statusPagamento !== 'PENDENTE') return 0;
-  const cursoJaPago = m.confirmadaEm != null
-    || (m.pagamentos || []).some((p) => p.tipo === 'CURSO' && p.status === 'PAGO');
-  if (m.diferencaTransferencia != null && cursoJaPago) return Math.max(0, Number(m.diferencaTransferencia) || 0);
+  if (m.diferencaTransferencia != null && cursoJaPago(m)) return Math.max(0, Number(m.diferencaTransferencia) || 0);
   if (!m.taxaConfirmada) return Number(m.valorCurso) || 0;
   return valorCursoSemTaxa(m);
 }
