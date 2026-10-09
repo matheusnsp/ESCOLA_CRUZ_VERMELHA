@@ -241,7 +241,14 @@ function contatoHtml(m) { %>
           <%- alunoHtml(m) %>
           <%- cursoHtml(m) %>
           <%- situacaoHtml(m) %>
-          <% var _falta = valorEmAberto(m), _taxaPaga = m.taxaConfirmada && m.diferencaTransferencia == null ? Number(m.valorTaxaMatricula) || 0 : 0; %>
+          <%
+            // A taxa paga que aparece ao lado é a do Pagamento TAXA pago (o dinheiro que entrou), não o
+            // campo da matrícula: na isenção a taxa fica confirmada sem pagamento nenhum.
+            var _falta = valorEmAberto(m);
+            var _taxas = (m.pagamentos || []).filter(function (p) { return p.tipo === 'TAXA' && p.status === 'PAGO'; })
+              .sort(function (x, y) { return new Date(y.criadoEm) - new Date(x.criadoEm); });
+            var _taxaPaga = m.taxaConfirmada && m.diferencaTransferencia == null && _taxas.length ? Number(_taxas[0].valor) || 0 : 0;
+          %>
           <td><strong><%= formatBRL(_falta) %></strong><% if (_taxaPaga > 0) { %><small class="adm-valor-de">+ <%= formatBRL(_taxaPaga) %> de inscrição já paga</small><% } %></td>
           <%- contatoHtml(m) %>
           <%- acoesHtml(m) %>
