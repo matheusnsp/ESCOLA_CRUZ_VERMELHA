@@ -155,7 +155,8 @@
                 var taxaOk = (m.taxaConfirmada || pago) && !devolvido;
 
                 // Turma pausada pela secretaria (status CONGELADA): a vaga continua, as datas não valem.
-                var congelada = m.turma.status === 'CONGELADA';
+                // Inscrição devolvida não tem mais vaga a guardar: segue como antes.
+                var congelada = m.turma.status === 'CONGELADA' && !devolvido;
 
                 var labelPlano = m.plano === 'A_VISTA'   ? 'À vista'
                                : m.plano === 'PRESENCIAL' ? 'Presencial'
@@ -179,7 +180,6 @@
                   <div class="ct-insc-topo">
                     <h3><%= m.turma.curso.nome %></h3>
                     <span class="ct-selo ct-selo-<%= cls %>"><%= m.statusPagamento %></span>
-                    <% if (congelada) { %><span class="ct-selo ct-selo-pausada">Turma pausada</span><% } %>
                   </div>
 
                   <p class="ct-insc-sub">
@@ -202,6 +202,11 @@
                         <i class="fa-regular fa-clock"></i> Taxa aguardando confirmação
                       </span>
                     <% } %>
+                    <% if (congelada) { %>
+                      <span class="ct-pill ct-pill-pausada">
+                        <i class="fa-solid fa-snowflake"></i> Turma pausada
+                      </span>
+                    <% } %>
                   </div>
 
                   <%
@@ -210,10 +215,10 @@
                     // há nada a retomar. As telas que renderizam esta view sem
                     // o campo caem no falsy e simplesmente não mostram o bloco.
                   %>
-                  <% if (congelada && !devolvido) { %>
+                  <% if (congelada) { %>
                   <div class="ct-pausada">
-                    <i class="fa-solid fa-snowflake" aria-hidden="true"></i>
-                    <span><b>Turma pausada pela escola.</b> Sua inscrição continua garantida. Quando a turma for retomada, as novas datas aparecem aqui e o pagamento volta a ficar disponível.</span>
+                    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                    <span><b>Turma pausada pela escola.</b> Sua inscrição continua garantida. Quando a turma for retomada, as novas datas aparecem aqui<%= pago ? '' : ' e o pagamento volta a ficar disponível' %>.</span>
                   </div>
                   <% } %>
 
