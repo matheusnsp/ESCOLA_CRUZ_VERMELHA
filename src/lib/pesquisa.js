@@ -187,7 +187,7 @@ async function enviarPendentes({ simular = false } = {}) {
   try {
     const agora = Date.now();
     const turmas = await prisma.turma.findMany({
-      where: { status: { not: 'CANCELADA' }, inicioPrevisto: { gte: new Date(agora - 180 * 24 * 3600000), lte: new Date(agora) } },
+      where: { status: { notIn: ['CANCELADA', 'CONGELADA'] }, inicioPrevisto: { gte: new Date(agora - 180 * 24 * 3600000), lte: new Date(agora) } },
       include: { curso: { select: { nome: true } }, aulas: true },
     });
     const prontas = turmas.filter((t) => {

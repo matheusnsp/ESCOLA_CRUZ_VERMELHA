@@ -58,6 +58,8 @@ const FILTRO_MATRICULA_FANTASMA = {
 // ─────────────────────────────────────────────────────────────────────────
 function calcularRetomada(m) {
   if (m.statusPagamento !== 'PENDENTE') return null;
+  // Turma congelada (pausada pela secretaria): sem botão de pagar até ela ser retomada.
+  if (m.turma && m.turma.status === 'CONGELADA') return null;
 
   if (!m.taxaConfirmada) {
     // A_VISTA cobra taxa e curso na MESMA transação, então não há etapa

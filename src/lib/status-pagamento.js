@@ -75,12 +75,16 @@ async function avisarMatriculaConfirmada(matriculaId) {
       return `${p2(dt.getUTCDate())}/${p2(dt.getUTCMonth() + 1)}/${dt.getUTCFullYear()}`;
     };
 
+    // Turma pausada pela secretaria (CONGELADA): um PIX gerado antes da pausa ainda pode ser pago.
+    // As datas cadastradas não valem mais, então o e-mail não lista aulas nem manda o link da agenda.
+    const congelada = m.turma.status === 'CONGELADA';
+
     await enviarEmailMatriculaConfirmada(m.aluno.email, String(m.aluno.nome).split(' ')[0], {
       curso: m.turma.curso.nome,
-      inicioTurma: dataBR(m.turma.inicioPrevisto),
+      inicioTurma: congelada ? 'data a confirmar (turma pausada pela escola)' : dataBR(m.turma.inicioPrevisto),
       // Cronograma completo quando a turma tem aulas cadastradas — evita o
       // aluno aparecer no dia errado, que é caro pra secretaria resolver.
-      aulas: (m.turma.aulas || []).map((a) => ({
+      aulas: congelada ? [] : (m.turma.aulas || []).map((a) => ({
         data: dataPuraBR(a.data),   // coluna DATE — sem conversão de fuso
         horario: a.horario || '',
       })),
@@ -90,7 +94,7 @@ async function avisarMatriculaConfirmada(matriculaId) {
       // O 1kg de alimento só é pedido em turma que registra a entrega.
       alimento: m.alimentoEntregue === false || m.alimentoEntregue === true,
       link: `${base.replace(/\/+$/, '')}/minha-conta?sec=inscricoes`,
-      agenda: `${base.replace(/\/+$/, '')}/turmas/${m.turmaId}/agenda.ics`,
+      agenda: congelada ? null : `${base.replace(/\/+$/, '')}/turmas/${m.turmaId}/agenda.ics`,
     });
   } catch (e) {
     console.error('[STATUS-PAGAMENTO] Falha ao enviar e-mail de matrícula confirmada:', e.message);

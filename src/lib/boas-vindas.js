@@ -181,6 +181,8 @@ async function carregarTurma(turmaId) {
 async function enviarTurma(turmaId) {
   const turma = await carregarTurma(turmaId);
   if (!turma) return { enviados: 0, erros: 0 };
+  // Turma congelada, concluída ou cancelada: nada sai (o envio automático já usa a mesma regra).
+  if (!['ABERTA', 'CONFIRMADA'].includes(turma.status)) return { enviados: 0, erros: 0, bloqueada: true };
   if (!turma.boasVindasEnviadaEm) {
     turma.boasVindasEnviadaEm = new Date().toISOString();
     await extras.salvarExtra('turma', turma.id, { boasVindasEnviadaEm: turma.boasVindasEnviadaEm });

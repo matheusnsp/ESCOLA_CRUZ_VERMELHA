@@ -32,7 +32,7 @@
 
   <% if (!lista.length) { %>
     <p class="adm-vazio">
-      <%= aba === 'por-comecar' ? 'Nenhuma turma por começar.' : aba === 'andamento' ? 'Nenhuma turma em andamento.' : aba === 'concluidas' ? 'Nenhuma turma concluída.' : 'Nenhuma turma cancelada.' %>
+      <%= aba === 'por-comecar' ? 'Nenhuma turma por começar.' : aba === 'andamento' ? 'Nenhuma turma em andamento.' : aba === 'congeladas' ? 'Nenhuma turma congelada.' : aba === 'concluidas' ? 'Nenhuma turma concluída.' : 'Nenhuma turma cancelada.' %>
       <% if (aba === 'por-comecar' && pode('turmas:gerenciar')) { %><a href="/turmas/nova">Criar uma turma</a>.<% } %>
     </p>
   <% } else { %>

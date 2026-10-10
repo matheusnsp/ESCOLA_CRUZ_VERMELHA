@@ -154,6 +154,10 @@
                 var devolvido = m.statusPagamento === 'ESTORNADO' || m.statusPagamento === 'CANCELADO';
                 var taxaOk = (m.taxaConfirmada || pago) && !devolvido;
 
+                // Turma pausada pela secretaria (status CONGELADA): a vaga continua, as datas não valem.
+                // Inscrição devolvida não tem mais vaga a guardar: segue como antes.
+                var congelada = m.turma.status === 'CONGELADA' && !devolvido;
+
                 var labelPlano = m.plano === 'A_VISTA'   ? 'À vista'
                                : m.plano === 'PRESENCIAL' ? 'Presencial'
                                : 'Parcelado';
@@ -180,7 +184,7 @@
 
                   <p class="ct-insc-sub">
                     <% if (m.turma.aulas && m.turma.aulas.length) { %><%= m.turma.aulas[0].horario %> · <% } %>
-                    início em <b><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %></b>
+                    <% if (congelada) { %>novas datas a confirmar<% } else { %>início em <b><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %></b><% } %>
                     · inscrito em <%= new Date(m.criadoEm).toLocaleDateString('pt-BR') %>
                   </p>
 
@@ -198,6 +202,11 @@
                         <i class="fa-regular fa-clock"></i> Taxa aguardando confirmação
                       </span>
                     <% } %>
+                    <% if (congelada) { %>
+                      <span class="ct-pill ct-pill-pausada">
+                        <i class="fa-solid fa-snowflake"></i> Turma pausada
+                      </span>
+                    <% } %>
                   </div>
 
                   <%
@@ -206,6 +215,13 @@
                     // há nada a retomar. As telas que renderizam esta view sem
                     // o campo caem no falsy e simplesmente não mostram o bloco.
                   %>
+                  <% if (congelada) { %>
+                  <div class="ct-pausada">
+                    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                    <span><b>Turma pausada pela escola.</b> Sua inscrição continua garantida. Quando a turma for retomada, as novas datas aparecem aqui<%= pago ? '' : ' e o pagamento volta a ficar disponível' %>.</span>
+                  </div>
+                  <% } %>
+
                   <% if (m.retomada) { %>
                   <div class="ct-retomar">
                     <p class="ct-retomar-txt">

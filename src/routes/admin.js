@@ -182,7 +182,8 @@ function statusBadge(s) {
 }
 
 const ESCOLARIDADES = ['', 'Ensino Fundamental', 'Ensino Médio', 'Ensino Superior'];
-const STATUS_TURMA = ['ABERTA', 'CONFIRMADA', 'CANCELADA', 'ENCERRADA'];
+// CONGELADA: turma pausada (some do site e das rotinas automáticas; os alunos continuam).
+const STATUS_TURMA = ['ABERTA', 'CONFIRMADA', 'CONGELADA', 'CANCELADA', 'ENCERRADA'];
 
 const DEVICE_2FA_COOKIE = 'cvbrj_admin_2fa';
 
@@ -1129,12 +1130,13 @@ router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), as
     },
   });
   // Abas: por começar (aberta/confirmada com início no futuro), em andamento (aberta/confirmada
-  // que já começou e ainda não foi concluída), concluídas e canceladas.
+  // que já começou e ainda não foi concluída), congeladas (pausadas), concluídas e canceladas.
   const agora = new Date();
   const ativa = (t) => ['ABERTA', 'CONFIRMADA'].includes(t.status);
   const abas = {
     'por-comecar': turmas.filter((t) => ativa(t) && new Date(t.inicioPrevisto) > agora),
     'andamento': turmas.filter((t) => ativa(t) && new Date(t.inicioPrevisto) <= agora),
+    'congeladas': turmas.filter((t) => t.status === 'CONGELADA'),
     'concluidas': turmas.filter((t) => t.status === 'ENCERRADA').reverse(),
     'canceladas': turmas.filter((t) => t.status === 'CANCELADA').reverse(),
   };
@@ -1497,6 +1499,7 @@ router.post('/turmas/:id/boas-vindas/enviar', requirePermissao('turmas:gerenciar
   const turma = await prisma.turma.findUnique({ where: { id: req.params.id } });
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
   const r = await boasVindas.enviarTurma(turma.id);
+  if (r.bloqueada) return res.redirect(`/turmas/${turma.id}/boas-vindas?ok=` + encodeURIComponent('Turma congelada, concluída ou cancelada: nada foi enviado.'));
   await auditar(req, 'ENVIOU_BOAS_VINDAS', 'Turma', turma.id, r);
   const msg = r.enviados
     ? `Boas-vindas enviadas para ${r.enviados} ${r.enviados === 1 ? 'aluno' : 'alunos'}.`
@@ -2886,6 +2889,8 @@ router.get('/pendentes', requirePermissao('pendentes:gerenciar'), async (req, re
     prisma.matricula.findMany({
       where: {
         statusPagamento: 'PENDENTE',
+        // Turma congelada (pausada) não é "fora de prazo": fica fora de Pendentes até ser retomada.
+        turma: { status: { not: 'CONGELADA' } },
         OR: [
           { turma: { status: { notIn: STATUS_TURMA_ATIVA } } },
           { turma: { inicioPrevisto: { lte: agora } } },

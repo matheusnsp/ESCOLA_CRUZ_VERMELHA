@@ -35,6 +35,7 @@
     --erro-bg: #fee2e2;  --erro-tx: #a21b1b;  --erro-bd: #fca5a5;
     --info-bg: #dbeafe;  --info-tx: #1d4ed8;  --info-bd: #bfdbfe;
     --roxo-bg: #ede9fe;  --roxo-tx: #5b21b6;
+    --gelo-bg: #cffafe;  --gelo-tx: #0e7490;
   
     --sombra: 0 1px 0 rgba(22,25,29,.02), 0 6px 20px -12px rgba(22,25,29,.18);
   
@@ -81,6 +82,7 @@
     --erro-bg: #351a1a;  --erro-tx: #fca5a5;  --erro-bd: #5c2626;
     --info-bg: #16233d;  --info-tx: #93b8f8;  --info-bd: #24396b;
     --roxo-bg: #241b3a;  --roxo-tx: #c4b0f5;
+    --gelo-bg: #0f2f36;  --gelo-tx: #67e8f9;
   
     --sombra: 0 1px 0 rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.6);
   
@@ -566,6 +568,7 @@
   .badge.st-confirmada { background: var(--info-bg); color: var(--info-tx); }
   .badge.st-cancelada  { background: var(--erro-bg); color: var(--erro-tx); }
   .badge.st-encerrada  { background: var(--linha2); color: var(--mut); }
+  .badge.st-congelada  { background: var(--gelo-bg); color: var(--gelo-tx); }
   .badge.parc { background: var(--info-bg); color: var(--info-tx); }
   
   /* ===== Ações em linha =================================== */
