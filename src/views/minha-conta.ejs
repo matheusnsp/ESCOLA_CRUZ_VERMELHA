@@ -154,6 +154,9 @@
                 var devolvido = m.statusPagamento === 'ESTORNADO' || m.statusPagamento === 'CANCELADO';
                 var taxaOk = (m.taxaConfirmada || pago) && !devolvido;
 
+                // Turma pausada pela secretaria (status CONGELADA): a vaga continua, as datas não valem.
+                var congelada = m.turma.status === 'CONGELADA';
+
                 var labelPlano = m.plano === 'A_VISTA'   ? 'À vista'
                                : m.plano === 'PRESENCIAL' ? 'Presencial'
                                : 'Parcelado';
@@ -176,11 +179,12 @@
                   <div class="ct-insc-topo">
                     <h3><%= m.turma.curso.nome %></h3>
                     <span class="ct-selo ct-selo-<%= cls %>"><%= m.statusPagamento %></span>
+                    <% if (congelada) { %><span class="ct-selo ct-selo-pausada">Turma pausada</span><% } %>
                   </div>
 
                   <p class="ct-insc-sub">
                     <% if (m.turma.aulas && m.turma.aulas.length) { %><%= m.turma.aulas[0].horario %> · <% } %>
-                    início em <b><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %></b>
+                    <% if (congelada) { %>novas datas a confirmar<% } else { %>início em <b><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %></b><% } %>
                     · inscrito em <%= new Date(m.criadoEm).toLocaleDateString('pt-BR') %>
                   </p>
 
@@ -206,6 +210,13 @@
                     // há nada a retomar. As telas que renderizam esta view sem
                     // o campo caem no falsy e simplesmente não mostram o bloco.
                   %>
+                  <% if (congelada && !devolvido) { %>
+                  <div class="ct-pausada">
+                    <i class="fa-solid fa-snowflake" aria-hidden="true"></i>
+                    <span><b>Turma pausada pela escola.</b> Sua inscrição continua garantida. Quando a turma for retomada, as novas datas aparecem aqui e o pagamento volta a ficar disponível.</span>
+                  </div>
+                  <% } %>
+
                   <% if (m.retomada) { %>
                   <div class="ct-retomar">
                     <p class="ct-retomar-txt">

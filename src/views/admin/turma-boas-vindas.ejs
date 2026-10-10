@@ -38,7 +38,7 @@
       <div class="adm-box-head"><h2 class="adm-h2"><i class="fa-solid fa-paper-plane"></i> Envio</h2></div>
       <div class="adm-bv-envio">
         <% if (!emCurso) { %>
-          <p class="adm-mut">Esta turma já terminou ou foi cancelada; não há envio.</p>
+          <p class="adm-mut"><%= turma.status === 'CONGELADA' ? 'Turma congelada: nada é enviado agora. Ao retomar, quem já foi liberado recebe sozinho.' : 'Esta turma já terminou ou foi cancelada; não há envio.' %></p>
         <% } else { %>
           <p><b><%= recebem.length - faltam.length %></b> de <b><%= recebem.length %></b> <%= recebem.length === 1 ? 'aluno com pagamento ok já recebeu' : 'alunos com pagamento ok já receberam' %>.</p>
           <% if (turma.boasVindasEnviadaEm) { %>
