@@ -32,7 +32,7 @@ var DICA_TABELA = {
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <input type="hidden" name="chave" value="<%= chave %>">
       <button type="submit" class="adm-btn"><i class="fa-solid fa-file-excel"></i> Baixar a planilha pronta</button>
-      <small class="adm-hint">Já vem ligada ao sistema, com as abas Por curso, Aluno e Contatos. É só abrir.</small>
+      <small class="adm-hint">Já vem ligada ao sistema, com as abas Turma, Aluno e Contatos. É só abrir.</small>
     </form>
     <details class="pl-avancado">
       <summary>Links para montar a planilha à mão (avançado)</summary>
@@ -77,12 +77,14 @@ var DICA_TABELA = {
   </ol>
   <h3 class="pl-sub">O que tem na planilha</h3>
   <ul class="pl-passos">
-    <li><b>Por curso:</b> escolha o curso na célula amarela (e a turma, se quiser) e aparecem os alunos matriculados, com a situação do
-      pagamento (pago, parcelado, falta pagar o curso, aguardando taxa), o valor, o que falta e botões de <b>WhatsApp</b> e <b>e-mail</b>.</li>
+    <li><b>Turma:</b> escolha a turma (curso e data) na célula amarela e aparecem os alunos dela, com a situação do pagamento colorida
+      (pago, parcelado, falta pagar o curso, aguardando taxa), o que falta pagar e botões de <b>WhatsApp</b> e <b>e-mail</b>. Em cima, o resumo:
+      com vaga, pagaram tudo, falta pagar, aguardando taxa.</li>
     <li><b>Aluno:</b> escolha o aluno na célula amarela e aparece a ficha dele: documento, contato, se o e-mail e o celular parecem válidos,
       cidade, escolaridade e todas as matrículas.</li>
     <li><b>Contatos:</b> todos os alunos cadastrados, com ou sem inscrição, com WhatsApp Web, e-mail e a verificação do contato.</li>
-    <li><b>Alunos, Matrículas, Cursos e Turmas:</b> as tabelas que vêm do sistema, com os filtros do Excel no cabeçalho. Cursos e turmas mostram as datas.</li>
+    <li><b>Alunos, Matrículas, Cursos e Turmas:</b> as tabelas completas que vêm do sistema, com os filtros do Excel no cabeçalho. Só as colunas
+      mais usadas ficam à vista; clique no <b>+</b> acima da tabela para ver todas.</li>
   </ul>
   <p class="adm-hint"><b>Verificação de contato:</b> o e-mail é conferido pelo formato e se o domínio (gmail.com, hotmail.com…) existe e recebe
     e-mail. O celular, pelo DDD e pelos 9 dígitos. Não dá para saber se a caixa de e-mail existe nem se o número tem WhatsApp: o WhatsApp

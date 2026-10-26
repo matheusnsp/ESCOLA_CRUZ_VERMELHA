@@ -106,6 +106,9 @@ async function ultimaAulaPorTurma() {
 }
 const codigoMatricula = (id) => `MAT-${String(id).slice(0, 8).toUpperCase()}`;
 const codigoTurma = (id) => `TUR-${String(id).slice(0, 8).toUpperCase()}`;
+// Nome da turma para a pessoa escolher numa lista: "Curso — dd/mm/aaaa".
+const dataBR = (d, tz) => data(d, tz).split('-').reverse().join('/');
+const nomeTurma = (t) => `${t?.curso?.nome || '—'} — ${dataBR(t?.inicioPrevisto, 'UTC')}`;
 // CPF com pontos: só dígitos, o Excel leria como número e comeria o zero da frente.
 const documento = (u) => (u?.cpfCnpj ? formatar(u.cpfCnpj) : u?.passaporte || '');
 
@@ -117,7 +120,9 @@ const col = (nome, tipo = 'texto') => ({ nome, tipo });
 async function tabelaMatriculas() {
   const [matriculas, ultimaAula] = await Promise.all([
     prisma.matricula.findMany({
-      orderBy: { criadoEm: 'desc' },
+      // Agrupado por turma (as mais novas primeiro) e, dentro dela, por nome: a lista por turma
+      // da planilha sai em ordem alfabética.
+      orderBy: [{ turma: { inicioPrevisto: 'desc' } }, { aluno: { nome: 'asc' } }],
       include: {
         aluno: true,
         turma: { include: { curso: { select: { nome: true } } } },
@@ -129,7 +134,7 @@ async function tabelaMatriculas() {
   return {
     colunas: [
       col('Código'), col('Aluno'), col('Documento'), col('E-mail'), col('Celular'), col('Curso'), col('Turma'),
-      col('Início da turma', 'data'), col('Status da turma'), col('Plano'), col('Forma de pagamento'),
+      col('Código da turma'), col('Início da turma', 'data'), col('Status da turma'), col('Plano'), col('Forma de pagamento'),
       col('Situação do pagamento'), col('Taxa de inscrição paga'), col('Valor da taxa (R$)', 'numero'),
       col('Valor da matrícula (R$)', 'numero'), col('Falta pagar (R$)', 'numero'), col('Prazo para pagar o curso', 'data'),
       col('Alimento entregue'), col('Nota', 'numero'), col('Situação acadêmica'), col('Inscrito em', 'data'),
@@ -142,6 +147,7 @@ async function tabelaMatriculas() {
       m.aluno?.email,
       digitosCelular(m.aluno?.celular),
       m.turma?.curso?.nome,
+      nomeTurma(m.turma),
       codigoTurma(m.turmaId),
       data(m.turma?.inicioPrevisto, 'UTC'),
       ROTULO_TURMA[statusTurma(m.turma, ultimaAula)],
@@ -266,7 +272,7 @@ async function tabelaTurmas() {
   const aulaBR = (a) => `${data(a.data, 'UTC').split('-').reverse().join('/')} ${a.horario || ''}`.trim();
   return {
     colunas: [
-      col('Turma'), col('Curso'), col('Início', 'data'), col('Status'), col('Vagas', 'inteiro'),
+      col('Turma'), col('Código'), col('Curso'), col('Início', 'data'), col('Status'), col('Vagas', 'inteiro'),
       col('Mínimo de alunos', 'inteiro'), col('Aulas', 'inteiro'), col('Datas e horários'),
       col('Alunos com vaga', 'inteiro'), col('Vagas restantes', 'inteiro'), col('Pagaram tudo', 'inteiro'),
       col('Falta pagar o curso', 'inteiro'), col('Aguardando taxa', 'inteiro'), col('Criada em', 'data'),
@@ -274,6 +280,7 @@ async function tabelaTurmas() {
     linhas: turmas.map((t) => {
       const comVaga = t.matriculas.filter(ocupaVaga).length;
       return [
+        nomeTurma(t),
         codigoTurma(t.id),
         t.curso?.nome,
         data(t.inicioPrevisto, 'UTC'),
