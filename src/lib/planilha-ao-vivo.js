@@ -2,14 +2,17 @@
 //  Planilha ao vivo (Excel → Dados → Da Web)
 //
 //  O Excel não faz login no painel, então ele busca os dados por um link com uma
-//  chave secreta (?chave=...). A chave é gerada na tela /planilha, aparece uma vez
+//  chave secreta (?chave=...). A chave é gerada na aba Integração (/integracao), aparece uma vez
 //  só, e no banco fica apenas o HASH dela (SHA-256), como os tokens de e-mail
 //  (lib/tokens.js). Gerar outra chave desliga a anterior; "Desligar" apaga.
 //
 //  Três tabelas, cada uma num CSV (uma consulta no Excel por tabela):
-//    matriculas — uma linha por matrícula: aluno, curso, turma, plano, status, valores
-//    alunos     — uma linha por aluno, com quantas matrículas tem e quanto já pagou
+//    matriculas — uma linha por matrícula: aluno, curso, turma, plano, status, valor, o que falta
+//    alunos     — uma linha por aluno, com quantas matrículas tem e quantas estão pagas
 //    cursos     — catálogo com preços, turmas abertas e alunos com vaga
+//
+//  Só o que a Secretaria já vê nas telas dela (Matrículas, Alunos, Cursos, Pendentes). Nada do
+//  Financeiro: sem total recebido, sem soma do que cada aluno ou curso já pagou.
 //
 //  CSV no padrão do Excel em português: separador ";", vírgula nos decimais
 //  (120,50) e datas aaaa-mm-dd, que o Excel reconhece como data em qualquer idioma.
@@ -73,10 +76,6 @@ const PAGOU_TUDO = ['PAGO', 'PARCELADO'];
 const codigoMatricula = (id) => `MAT-${String(id).slice(0, 8).toUpperCase()}`;
 // CPF com pontos: só dígitos, o Excel leria como número e comeria o zero da frente.
 const documento = (u) => (u?.cpfCnpj ? formatar(u.cpfCnpj) : u?.passaporte || '');
-// Quanto entrou de fato nesta matrícula: tudo (valorCurso já soma a taxa) ou só a taxa.
-const valorRecebido = (m) => PAGOU_TUDO.includes(m.statusPagamento)
-  ? Number(m.valorCurso) || 0
-  : (m.taxaConfirmada && m.statusPagamento === 'PENDENTE' ? Number(m.valorTaxaMatricula) || 0 : 0);
 
 // ---------- tabelas ----------
 
@@ -93,8 +92,8 @@ async function tabelaMatriculas() {
     colunas: [
       'Código', 'Aluno', 'Documento', 'E-mail', 'Celular', 'Curso', 'Início da turma', 'Status da turma',
       'Plano', 'Forma de pagamento', 'Situação do pagamento', 'Taxa de inscrição paga',
-      'Valor da taxa (R$)', 'Valor total (R$)', 'Recebido (R$)', 'Falta receber (R$)', 'Prazo para pagar o curso',
-      'Nota', 'Situação acadêmica', 'Inscrito em', 'Pagamento confirmado em',
+      'Valor da taxa (R$)', 'Valor da matrícula (R$)', 'Falta pagar (R$)', 'Prazo para pagar o curso',
+      'Alimento entregue', 'Nota', 'Situação acadêmica', 'Inscrito em', 'Pagamento confirmado em',
     ],
     linhas: matriculas.map((m) => [
       codigoMatricula(m.id),
@@ -111,9 +110,9 @@ async function tabelaMatriculas() {
       m.taxaConfirmada ? 'Sim' : 'Não',
       num(m.valorTaxaMatricula),
       num(m.valorCurso),
-      num(valorRecebido(m)),
       num(faltaReceber(m)),
       data(m.prazoPagamentoCurso),
+      m.alimentoEntregue ? 'Sim' : 'Não',
       m.nota == null ? '' : num(m.nota),
       ROTULO_SITUACAO[m.situacao] || '',
       data(m.criadoEm),
@@ -129,7 +128,7 @@ async function tabelaAlunos() {
     include: {
       matriculas: {
         select: {
-          statusPagamento: true, taxaConfirmada: true, valorCurso: true, valorTaxaMatricula: true,
+          statusPagamento: true,
           turma: { select: { curso: { select: { nome: true } } } },
         },
       },
@@ -138,7 +137,7 @@ async function tabelaAlunos() {
   return {
     colunas: [
       'Nome', 'Documento', 'E-mail', 'Celular', 'Gênero', 'Escolaridade', 'Bairro', 'Cidade', 'UF',
-      'Matrículas', 'Matrículas pagas', 'Total pago (R$)', 'Cursos', 'E-mail verificado', 'Cadastrado em', 'Último acesso',
+      'Matrículas', 'Matrículas pagas', 'Cursos', 'E-mail verificado', 'Cadastrado em', 'Último acesso',
     ],
     linhas: alunos.map((a) => [
       a.nome,
@@ -152,7 +151,6 @@ async function tabelaAlunos() {
       a.uf,
       a.matriculas.length,
       a.matriculas.filter((m) => PAGOU_TUDO.includes(m.statusPagamento)).length,
-      num(a.matriculas.reduce((s, m) => s + valorRecebido(m), 0)),
       [...new Set(a.matriculas.map((m) => m.turma?.curso?.nome).filter(Boolean))].join(', '),
       a.emailVerificado ? 'Sim' : 'Não',
       data(a.criadoEm),
@@ -168,7 +166,7 @@ async function tabelaCursos() {
       turmas: {
         select: {
           status: true,
-          matriculas: { select: { statusPagamento: true, taxaConfirmada: true, valorCurso: true, valorTaxaMatricula: true } },
+          matriculas: { select: { statusPagamento: true, taxaConfirmada: true } },
         },
       },
     },
@@ -176,7 +174,7 @@ async function tabelaCursos() {
   return {
     colunas: [
       'Curso', 'Ativo', 'Carga horária (h)', 'Preço à vista (R$)', 'Preço cheio (R$)', 'Parcelas', 'Valor da parcela (R$)',
-      'Taxa de inscrição (R$)', 'Turmas', 'Turmas abertas', 'Alunos com vaga', 'Alunos que pagaram tudo', 'Total recebido (R$)',
+      'Taxa de inscrição (R$)', 'Turmas', 'Turmas abertas', 'Alunos com vaga', 'Alunos que pagaram tudo',
     ],
     linhas: cursos.map((c) => {
       const mats = c.turmas.flatMap((t) => t.matriculas);
@@ -194,7 +192,6 @@ async function tabelaCursos() {
         // Ocupa vaga: pagou ao menos a taxa e não foi cancelado/estornado (FILTRO_VAGA do admin.js).
         mats.filter((m) => m.taxaConfirmada && [...PAGOU_TUDO, 'PENDENTE'].includes(m.statusPagamento)).length,
         mats.filter((m) => PAGOU_TUDO.includes(m.statusPagamento)).length,
-        num(mats.reduce((s, m) => s + valorRecebido(m), 0)),
       ];
     }),
   };

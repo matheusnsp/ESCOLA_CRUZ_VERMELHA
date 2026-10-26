@@ -1,0 +1,90 @@
+<%- include('head', { titulo: 'Integração' }) %>
+<%- include('header', { ativo: 'integracao' }) %>
+
+<%
+// Integração (lib/planilha-ao-vivo.js + routes/integracao.js): o Excel busca os dados por um link
+// do site com chave secreta e se atualiza sozinho. A chave só aparece logo depois de gerada.
+var NOME_TABELA = { matriculas: 'Matrículas', alunos: 'Alunos', cursos: 'Cursos' };
+var DICA_TABELA = {
+  matriculas: 'uma linha por matrícula: aluno, documento, contato, curso, turma, plano, status, valor, o que falta pagar, alimento e nota',
+  alunos: 'uma linha por aluno: documento, contato, cidade, escolaridade, quantas matrículas tem e quantas estão pagas',
+  cursos: 'cursos com carga horária, preços, turmas abertas e quantos alunos têm vaga',
+};
+%>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Integração</h1>
+</div>
+
+<% if (flash) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div><% } %>
+
+<div class="adm-box adm-box-pad pl-box">
+  <h2 class="adm-form-secao"><i class="fa-solid fa-file-excel"></i> Planilha do Excel ao vivo</h2>
+  <p>Liga uma planilha do Excel direto ao banco de dados da escola. Os alunos, as matrículas e os cursos entram sozinhos
+    e se atualizam quando você abre o arquivo e a cada 30 minutos, sem precisar baixar nada de novo.</p>
+  <p class="adm-hint">A planilha traz só o que a Secretaria já vê nas telas do painel. Valores recebidos e totais do Financeiro não entram.</p>
+
+  <% if (chave) { %>
+    <div class="adm-ok"><i class="fa-solid fa-key"></i> Links gerados. Copie agora: por segurança, eles não aparecem de novo.
+      Se perder, gere outros (os anteriores param de funcionar).</div>
+    <% tabelas.forEach(function (t) { %>
+      <label class="pl-link">
+        <b><%= NOME_TABELA[t] %></b> <small class="adm-hint">— <%= DICA_TABELA[t] %></small>
+        <input type="text" readonly value="<%= base %>/<%= t %>.csv?chave=<%= chave %>">
+      </label>
+    <% }) %>
+    <p class="adm-hint"><i class="fa-solid fa-triangle-exclamation"></i> Quem tiver o link vê os dados dos alunos (nome, documento, e-mail, celular).
+      Não mande por e-mail nem WhatsApp; cole só dentro da planilha.</p>
+  <% } else if (ligada) { %>
+    <p><i class="fa-solid fa-circle-check" style="color:#16a34a"></i> Os links estão <b>ligados</b>. As planilhas que já usam eles continuam se atualizando.</p>
+  <% } else { %>
+    <p><i class="fa-solid fa-circle-xmark"></i> Nenhum link ligado ainda. Clique em <b>Gerar links</b> para começar.</p>
+  <% } %>
+
+  <div class="pl-acoes">
+    <form method="POST" action="/integracao/gerar"
+      <% if (ligada) { %>data-confirmar="Gerar links novos desliga os atuais: as planilhas que usam eles param de atualizar até você trocar o link." data-botao="Gerar links novos"<% } %>>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="adm-btn"><i class="fa-solid fa-link"></i> <%= ligada ? 'Gerar links novos' : 'Gerar links' %></button>
+    </form>
+    <% if (ligada) { %>
+      <form method="POST" action="/integracao/desligar" data-confirmar="Desligar os links? As planilhas param de atualizar." data-botao="Desligar">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="adm-btn-sec"><i class="fa-solid fa-power-off"></i> Desligar</button>
+      </form>
+    <% } %>
+  </div>
+</div>
+
+<div class="adm-box adm-box-pad pl-box">
+  <h2 class="adm-form-secao"><i class="fa-solid fa-list-ol"></i> Como usar (uma vez só)</h2>
+  <ol class="pl-passos">
+    <li>Clique em <b>Gerar links</b> aqui em cima. Aparecem três links: Matrículas, Alunos e Cursos.</li>
+    <li>Abra o <b>Excel no computador</b> e crie uma pasta de trabalho em branco.</li>
+    <li>Vá em <b>Dados → Obter Dados → De Outras Fontes → Da Web</b> (em algumas versões é só <b>Dados → Da Web</b>).</li>
+    <li>Cole o link de <b>Matrículas</b> e clique em <b>OK</b>. Se o Excel perguntar o tipo de acesso, escolha <b>Anônimo</b> e clique em <b>Conectar</b>.</li>
+    <li>Na prévia, clique em <b>Carregar</b>. Os dados aparecem numa aba nova, já em forma de tabela.</li>
+    <li>Repita os passos 3 a 5 com os links de <b>Alunos</b> e <b>Cursos</b>. Cada um vira uma aba.</li>
+    <li>Para atualizar sozinha: vá em <b>Dados → Consultas e Conexões</b>, clique com o botão direito em cada consulta →
+      <b>Propriedades</b> → marque <b>Atualizar a cada 30 minutos</b> e <b>Atualizar dados ao abrir o arquivo</b> → <b>OK</b>.</li>
+    <li>Salve o arquivo. Pronto: toda vez que abrir, os dados chegam atualizados.</li>
+  </ol>
+</div>
+
+<div class="adm-box adm-box-pad pl-box">
+  <h2 class="adm-form-secao"><i class="fa-solid fa-circle-question"></i> Dúvidas comuns</h2>
+  <ul class="pl-passos">
+    <li><b>Quero atualizar agora:</b> no Excel, clique em <b>Dados → Atualizar tudo</b>.</li>
+    <li><b>Posso fazer filtros, fórmulas e gráficos?</b> Sim. Use filtros na própria tabela ou crie outras abas com fórmulas e
+      gráficos apontando para ela; tudo continua funcionando depois de cada atualização. Só não digite nada dentro das tabelas que
+      vêm do sistema, porque a atualização sobrescreve.</li>
+    <li><b>Funciona em qualquer computador?</b> Sim, o link é o endereço do site da escola, não precisa estar no painel nem na rede da
+      escola. Precisa do Excel para Windows ou Mac (Microsoft 365, 2016 ou mais novo). No Excel pela internet a atualização
+      automática não funciona.</li>
+    <li><b>Perdi o link ou alguém de fora pegou:</b> clique em <b>Gerar links novos</b>. Os antigos param na hora; troque o link na
+      planilha em <b>Dados → Consultas e Conexões</b> → botão direito na consulta → <b>Editar</b> → <b>Fonte</b>.</li>
+    <li><b>O Excel deu erro ao atualizar:</b> os links foram desligados ou trocados. Gere novos e troque na planilha.</li>
+  </ul>
+</div>
+
+<%- include('foot') %>

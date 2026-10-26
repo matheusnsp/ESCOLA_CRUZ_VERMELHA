@@ -35,7 +35,7 @@ const QRCode = require('qrcode');
 const { temPermissao, PAPEIS_ADMIN, listarPermissoes } = permissoes;
 const horariosSite = require('../lib/horarios-site'); // questionário de dias e horários (lido do site)
 const cacheRapido = require('../lib/cache-rapido');
-const planilha = require('../lib/planilha-ao-vivo'); // planilha do Excel que se atualiza sozinha
+const planilha = require('../lib/planilha-ao-vivo'); // aba Integração: planilha do Excel que se atualiza sozinha
 
 const router = express.Router();
 
@@ -565,19 +565,6 @@ router.post('/logout', async (req, res) => {
     await prisma.usuario.update({ where: { id: req.session.usuarioId }, data: { ultimaAtividade: new Date(Date.now() - 5 * 60 * 1000 - 1000) } }).catch(() => {});
   }
   req.session.destroy(() => res.redirect('/login'));
-});
-
-// ---------- Planilha ao vivo: o Excel busca por aqui (lib/planilha-ao-vivo.js) ----------
-// Fica antes do requireAdmin: o Excel não tem login, entra com a chave do link. Sem chave
-// válida responde 404, como se a página não existisse.
-const planilhaLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false });
-router.get('/planilha/:tabela(matriculas|alunos|cursos).csv', planilhaLimiter, async (req, res) => {
-  if (!(await planilha.chaveValida(req.query.chave))) return res.status(404).type('text/plain').send('Não encontrado.');
-  const csv = await planilha.gerarCsv(req.params.tabela);
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store');
-  res.setHeader('X-Robots-Tag', 'noindex');
-  res.send(csv);
 });
 
 router.use(async (req, res, next) => {
@@ -2214,32 +2201,6 @@ router.get('/relatorios/completo.csv', requirePermissao('relatorio:baixar'), asy
 });
 
 
-// Tela que gera o link da planilha ao vivo e explica como ligar no Excel.
-router.get('/planilha', requirePermissao('relatorio:baixar'), async (req, res) => {
-  // A chave aparece uma vez só, logo depois de gerada; no banco fica só o hash.
-  const chave = req.session.planilhaChaveNova || null;
-  delete req.session.planilhaChaveNova;
-  res.render('admin/planilha', {
-    ligada: await planilha.ligada(),
-    chave,
-    base: `${ADMIN_URL}/planilha`,
-    tabelas: planilha.TABELAS,
-    flash: req.query.ok || null,
-  });
-});
-
-router.post('/planilha/gerar', requirePermissao('relatorio:baixar'), async (req, res) => {
-  req.session.planilhaChaveNova = await planilha.gerarChave();
-  await auditar(req, 'GEROU_LINK_PLANILHA', 'Relatorio', null);
-  res.redirect('/planilha');
-});
-
-router.post('/planilha/desligar', requirePermissao('relatorio:baixar'), async (req, res) => {
-  await planilha.desligar();
-  await auditar(req, 'DESLIGOU_LINK_PLANILHA', 'Relatorio', null);
-  res.redirect('/planilha?ok=' + encodeURIComponent('Link desligado. As planilhas que usavam ele param de atualizar.'));
-});
-
 router.get('/relatorios/completo.ofx', requirePermissao('relatorio:baixar'), async (req, res) => {
   try {
     const de = req.query.de ? new Date(req.query.de) : null;
@@ -2283,6 +2244,36 @@ router.get('/relatorios/completo.ofx', requirePermissao('relatorio:baixar'), asy
  
 
 
+
+// ---------- Integração (planilha do Excel que se atualiza sozinha) ----------
+// Gera e desliga a chave dos links; os links ficam no site público (routes/integracao.js).
+router.get('/integracao', requirePermissao('integracao:gerenciar'), async (req, res) => {
+  // A chave aparece uma vez só, logo depois de gerada; no banco fica só o hash.
+  const chave = req.session.integracaoChaveNova || null;
+  delete req.session.integracaoChaveNova;
+  const site = process.env.ADMIN_PORT
+    ? `http://localhost:${process.env.PORT || 3000}`
+    : (process.env.APP_URL || 'https://escola.cruzvermelhariodejaneiro.org').replace(/\/+$/, '');
+  res.render('admin/integracao', {
+    ligada: await planilha.ligada(),
+    chave,
+    base: `${site}/integracao`,
+    tabelas: planilha.TABELAS,
+    flash: req.query.ok || null,
+  });
+});
+
+router.post('/integracao/gerar', requirePermissao('integracao:gerenciar'), async (req, res) => {
+  req.session.integracaoChaveNova = await planilha.gerarChave();
+  await auditar(req, 'GEROU_LINK_INTEGRACAO', 'Integracao', null);
+  res.redirect('/integracao');
+});
+
+router.post('/integracao/desligar', requirePermissao('integracao:gerenciar'), async (req, res) => {
+  await planilha.desligar();
+  await auditar(req, 'DESLIGOU_LINK_INTEGRACAO', 'Integracao', null);
+  res.redirect('/integracao?ok=' + encodeURIComponent('Links desligados. As planilhas que usavam eles param de atualizar.'));
+});
 
 router.post('/inscricoes/:id/reembolso-concluido', requirePermissao('financeiro:reembolsar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({
