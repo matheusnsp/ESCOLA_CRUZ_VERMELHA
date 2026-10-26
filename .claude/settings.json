@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh api -X PUT repos/matheusnsp/escola_cruz_vermelha/pulls/*/merge*)"
+    ]
+  }
+}
