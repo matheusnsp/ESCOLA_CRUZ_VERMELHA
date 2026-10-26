@@ -2279,9 +2279,11 @@ router.post('/integracao/planilha.xlsx', requirePermissao('integracao:gerenciar'
     return res.status(400).render('admin/erro', { mensagem: 'Esse link já foi desligado ou trocado. Gere links novos na aba Integração e baixe a planilha de novo.' });
   }
   const tabelas = await planilha.gerarTabelas();
-  // Abre já mostrando o primeiro curso com turma aberta (ou o primeiro da lista).
-  const curso = tabelas.cursos.linhas.find((l) => l[9] > 0)?.[0] || tabelas.cursos.linhas[0]?.[0] || '';
-  const buffer = await planilhaExcel.gerar({ base: baseIntegracao(), chave, tabelas, escolhas: { curso } });
+  // Abre já mostrando a próxima turma aberta ou confirmada (ou a primeira da lista).
+  const iStatus = tabelas.turmas.colunas.findIndex((c) => c.nome === 'Status');
+  const ativas = tabelas.turmas.linhas.filter((l) => ['Aberta', 'Confirmada'].includes(l[iStatus]));
+  const turma = (ativas[ativas.length - 1] || tabelas.turmas.linhas[0])?.[0] || '';
+  const buffer = await planilhaExcel.gerar({ base: baseIntegracao(), chave, tabelas, escolhas: { turma } });
   await auditar(req, 'BAIXOU_PLANILHA_INTEGRACAO', 'Integracao', null);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', 'attachment; filename="escola-cvbrj-ao-vivo.xlsx"');
