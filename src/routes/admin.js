@@ -36,6 +36,7 @@ const { temPermissao, PAPEIS_ADMIN, listarPermissoes } = permissoes;
 const horariosSite = require('../lib/horarios-site'); // questionário de dias e horários (lido do site)
 const cacheRapido = require('../lib/cache-rapido');
 const planilha = require('../lib/planilha-ao-vivo'); // aba Integração: planilha do Excel que se atualiza sozinha
+const planilhaExcel = require('../lib/planilha-excel'); // aba Integração: o .xlsx pronto, já ligado aos links
 
 const router = express.Router();
 
@@ -2247,22 +2248,44 @@ router.get('/relatorios/completo.ofx', requirePermissao('relatorio:baixar'), asy
 
 // ---------- Integração (planilha do Excel que se atualiza sozinha) ----------
 // Gera e desliga a chave dos links; os links ficam no site público (routes/integracao.js).
+
+// Endereço público dos links (APP_URL). Não dá para olhar o ADMIN_PORT: o serviço da secretaria
+// em produção também o define, e o link saía como localhost. Localhost só fora de produção.
+function baseIntegracao() {
+  const site = (process.env.APP_URL
+    || (process.env.NODE_ENV !== 'production' && process.env.ADMIN_PORT ? `http://localhost:${process.env.PORT || 3000}` : null)
+    || 'https://escola.cruzvermelhariodejaneiro.org').replace(/\/+$/, '');
+  return `${site}/integracao`;
+}
+
 router.get('/integracao', requirePermissao('integracao:gerenciar'), async (req, res) => {
   // A chave aparece uma vez só, logo depois de gerada; no banco fica só o hash.
   const chave = req.session.integracaoChaveNova || null;
   delete req.session.integracaoChaveNova;
-  // Endereço público do site (APP_URL). Não dá para olhar o ADMIN_PORT: o serviço da secretaria
-  // em produção também o define, e o link saía como localhost. Localhost só fora de produção.
-  const site = (process.env.APP_URL
-    || (process.env.NODE_ENV !== 'production' && process.env.ADMIN_PORT ? `http://localhost:${process.env.PORT || 3000}` : null)
-    || 'https://escola.cruzvermelhariodejaneiro.org').replace(/\/+$/, '');
   res.render('admin/integracao', {
     ligada: await planilha.ligada(),
     chave,
-    base: `${site}/integracao`,
+    base: baseIntegracao(),
     tabelas: planilha.TABELAS,
     flash: req.query.ok || null,
   });
+});
+
+// A planilha pronta: o .xlsx com as quatro consultas já apontando para os links com a chave.
+// A chave vem do formulário (a tela só a tem logo depois de gerar) e é conferida de novo aqui.
+router.post('/integracao/planilha.xlsx', requirePermissao('integracao:gerenciar'), async (req, res) => {
+  const chave = String(req.body.chave || '');
+  if (!(await planilha.chaveValida(chave))) {
+    return res.status(400).render('admin/erro', { mensagem: 'Esse link já foi desligado ou trocado. Gere links novos na aba Integração e baixe a planilha de novo.' });
+  }
+  const tabelas = await planilha.gerarTabelas();
+  // Abre já mostrando o primeiro curso com turma aberta (ou o primeiro da lista).
+  const curso = tabelas.cursos.linhas.find((l) => l[9] > 0)?.[0] || tabelas.cursos.linhas[0]?.[0] || '';
+  const buffer = await planilhaExcel.gerar({ base: baseIntegracao(), chave, tabelas, escolhas: { curso } });
+  await auditar(req, 'BAIXOU_PLANILHA_INTEGRACAO', 'Integracao', null);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="escola-cvbrj-ao-vivo.xlsx"');
+  res.send(buffer);
 });
 
 router.post('/integracao/gerar', requirePermissao('integracao:gerenciar'), async (req, res) => {

@@ -1886,3 +1886,8 @@ a.mr-num:hover { border-color: var(--linha); }
 .pl-link input { width: 100%; font-family: ui-monospace, monospace; font-size: 12px; }
 .pl-acoes { display: flex; gap: 10px; flex-wrap: wrap; }
 .pl-passos { margin: 0; padding-left: 22px; display: grid; gap: 8px; line-height: 1.5; }
+.pl-baixar { display: grid; gap: 6px; justify-items: start; }
+.pl-avancado summary { cursor: pointer; font-size: 13px; color: var(--mut); }
+.pl-avancado[open] summary { margin-bottom: 10px; }
+.pl-avancado { display: grid; gap: 10px; }
+.pl-sub { font-size: 15px; margin: 6px 0 0; }

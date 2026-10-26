@@ -6,10 +6,15 @@
 //  só, e no banco fica apenas o HASH dela (SHA-256), como os tokens de e-mail
 //  (lib/tokens.js). Gerar outra chave desliga a anterior; "Desligar" apaga.
 //
-//  Três tabelas, cada uma num CSV (uma consulta no Excel por tabela):
+//  Quatro tabelas, cada uma num CSV (uma consulta no Excel por tabela):
 //    matriculas — uma linha por matrícula: aluno, curso, turma, plano, status, valor, o que falta
-//    alunos     — uma linha por aluno, com quantas matrículas tem e quantas estão pagas
+//    alunos     — uma linha por aluno, com quantas matrículas tem, se o e-mail e o celular parecem válidos
 //    cursos     — catálogo com preços, turmas abertas e alunos com vaga
+//    turmas     — uma linha por turma: início, aulas, status e quantos alunos em cada situação
+//
+//  As mesmas tabelas alimentam a planilha pronta (lib/planilha-excel.js), que já vem
+//  ligada a estes links. Cada coluna tem um tipo (texto, inteiro, numero, data) para o
+//  Excel receber número como número e data como data.
 //
 //  Só o que a Secretaria já vê nas telas dela (Matrículas, Alunos, Cursos, Pendentes). Nada do
 //  Financeiro: sem total recebido, sem soma do que cada aluno ou curso já pagou.
@@ -21,9 +26,10 @@ const crypto = require('crypto');
 const prisma = require('../db');
 const { faltaReceber } = require('./matricula');
 const { formatar } = require('./documento');
+const { verificarEmails, verificarCelular, digitosCelular } = require('./verificar-contato');
 
 const CHAVE_CONFIG = 'planilha_chave_hash';
-const TABELAS = ['matriculas', 'alunos', 'cursos'];
+const TABELAS = ['matriculas', 'alunos', 'cursos', 'turmas'];
 
 const hash = (txt) => crypto.createHash('sha256').update(String(txt)).digest('hex');
 
@@ -73,9 +79,15 @@ function situacaoPagamento(m) {
 }
 
 const PAGOU_TUDO = ['PAGO', 'PARCELADO'];
+// Ocupa vaga: pagou ao menos a taxa e não foi cancelado/estornado (FILTRO_VAGA do admin.js).
+const ocupaVaga = (m) => m.taxaConfirmada && [...PAGOU_TUDO, 'PENDENTE'].includes(m.statusPagamento);
 const codigoMatricula = (id) => `MAT-${String(id).slice(0, 8).toUpperCase()}`;
+const codigoTurma = (id) => `TUR-${String(id).slice(0, 8).toUpperCase()}`;
 // CPF com pontos: só dígitos, o Excel leria como número e comeria o zero da frente.
 const documento = (u) => (u?.cpfCnpj ? formatar(u.cpfCnpj) : u?.passaporte || '');
+
+// Colunas: { nome, tipo }. tipo: texto | inteiro | numero | data.
+const col = (nome, tipo = 'texto') => ({ nome, tipo });
 
 // ---------- tabelas ----------
 
@@ -90,18 +102,21 @@ async function tabelaMatriculas() {
   });
   return {
     colunas: [
-      'Código', 'Aluno', 'Documento', 'E-mail', 'Celular', 'Curso', 'Início da turma', 'Status da turma',
-      'Plano', 'Forma de pagamento', 'Situação do pagamento', 'Taxa de inscrição paga',
-      'Valor da taxa (R$)', 'Valor da matrícula (R$)', 'Falta pagar (R$)', 'Prazo para pagar o curso',
-      'Alimento entregue', 'Nota', 'Situação acadêmica', 'Inscrito em', 'Pagamento confirmado em',
+      col('Código'), col('Aluno'), col('Documento'), col('E-mail'), col('Celular'), col('Curso'), col('Turma'),
+      col('Início da turma', 'data'), col('Status da turma'), col('Plano'), col('Forma de pagamento'),
+      col('Situação do pagamento'), col('Taxa de inscrição paga'), col('Valor da taxa (R$)', 'numero'),
+      col('Valor da matrícula (R$)', 'numero'), col('Falta pagar (R$)', 'numero'), col('Prazo para pagar o curso', 'data'),
+      col('Alimento entregue'), col('Nota', 'numero'), col('Situação acadêmica'), col('Inscrito em', 'data'),
+      col('Pagamento confirmado em', 'data'),
     ],
     linhas: matriculas.map((m) => [
       codigoMatricula(m.id),
       m.aluno?.nome,
       documento(m.aluno),
       m.aluno?.email,
-      m.aluno?.celular,
+      digitosCelular(m.aluno?.celular),
       m.turma?.curso?.nome,
+      codigoTurma(m.turmaId),
       data(m.turma?.inicioPrevisto, 'UTC'),
       ROTULO_TURMA[m.turma?.status] || m.turma?.status,
       ROTULO_PLANO[m.plano] || m.plano,
@@ -124,7 +139,7 @@ async function tabelaMatriculas() {
 async function tabelaAlunos() {
   const alunos = await prisma.usuario.findMany({
     where: { papel: 'ALUNO' },
-    orderBy: { criadoEm: 'desc' },
+    orderBy: { nome: 'asc' },
     include: {
       matriculas: {
         select: {
@@ -134,24 +149,30 @@ async function tabelaAlunos() {
       },
     },
   });
+  const emailsValidos = await verificarEmails(alunos.map((a) => a.email));
   return {
     colunas: [
-      'Nome', 'Documento', 'E-mail', 'Celular', 'Gênero', 'Escolaridade', 'Bairro', 'Cidade', 'UF',
-      'Matrículas', 'Matrículas pagas', 'Cursos', 'E-mail verificado', 'Cadastrado em', 'Último acesso',
+      col('Nome'), col('Documento'), col('E-mail'), col('Celular'), col('Tem inscrição'), col('Matrículas', 'inteiro'),
+      col('Matrículas pagas', 'inteiro'), col('Cursos'), col('E-mail válido'), col('Celular válido'),
+      col('Gênero'), col('Escolaridade'), col('Bairro'), col('Cidade'), col('UF'),
+      col('E-mail confirmado pelo aluno'), col('Cadastrado em', 'data'), col('Último acesso', 'data'),
     ],
-    linhas: alunos.map((a) => [
+    linhas: alunos.map((a, i) => [
       a.nome,
       documento(a),
       a.email,
-      a.celular,
+      digitosCelular(a.celular),
+      a.matriculas.length ? 'Sim' : 'Não',
+      a.matriculas.length,
+      a.matriculas.filter((m) => PAGOU_TUDO.includes(m.statusPagamento)).length,
+      [...new Set(a.matriculas.map((m) => m.turma?.curso?.nome).filter(Boolean))].join(', '),
+      emailsValidos[i],
+      verificarCelular(a.celular),
       a.genero,
       [a.escolaridade, a.escolaridadeSituacao].filter(Boolean).join(' — '),
       a.bairro,
       a.cidade,
       a.uf,
-      a.matriculas.length,
-      a.matriculas.filter((m) => PAGOU_TUDO.includes(m.statusPagamento)).length,
-      [...new Set(a.matriculas.map((m) => m.turma?.curso?.nome).filter(Boolean))].join(', '),
       a.emailVerificado ? 'Sim' : 'Não',
       data(a.criadoEm),
       data(a.ultimoLogin),
@@ -165,7 +186,7 @@ async function tabelaCursos() {
     include: {
       turmas: {
         select: {
-          status: true,
+          status: true, inicioPrevisto: true,
           matriculas: { select: { statusPagamento: true, taxaConfirmada: true } },
         },
       },
@@ -173,11 +194,15 @@ async function tabelaCursos() {
   });
   return {
     colunas: [
-      'Curso', 'Ativo', 'Carga horária (h)', 'Preço à vista (R$)', 'Preço cheio (R$)', 'Parcelas', 'Valor da parcela (R$)',
-      'Taxa de inscrição (R$)', 'Turmas', 'Turmas abertas', 'Alunos com vaga', 'Alunos que pagaram tudo',
+      col('Curso'), col('Ativo'), col('Carga horária (h)', 'inteiro'), col('Preço à vista (R$)', 'numero'),
+      col('Preço cheio (R$)', 'numero'), col('Parcelas', 'inteiro'), col('Valor da parcela (R$)', 'numero'),
+      col('Taxa de inscrição (R$)', 'numero'), col('Turmas', 'inteiro'), col('Turmas abertas', 'inteiro'),
+      col('Próxima turma', 'data'), col('Alunos com vaga', 'inteiro'), col('Alunos que pagaram tudo', 'inteiro'),
     ],
     linhas: cursos.map((c) => {
       const mats = c.turmas.flatMap((t) => t.matriculas);
+      const abertas = c.turmas.filter((t) => ['ABERTA', 'CONFIRMADA'].includes(t.status));
+      const proxima = abertas.map((t) => t.inicioPrevisto).sort((a, b) => a - b)[0];
       return [
         c.nome,
         c.ativo ? 'Sim' : 'Não',
@@ -188,23 +213,69 @@ async function tabelaCursos() {
         num(c.valorParcela),
         c.taxaMatricula == null ? '' : num(c.taxaMatricula),
         c.turmas.length,
-        c.turmas.filter((t) => ['ABERTA', 'CONFIRMADA'].includes(t.status)).length,
-        // Ocupa vaga: pagou ao menos a taxa e não foi cancelado/estornado (FILTRO_VAGA do admin.js).
-        mats.filter((m) => m.taxaConfirmada && [...PAGOU_TUDO, 'PENDENTE'].includes(m.statusPagamento)).length,
+        abertas.length,
+        data(proxima, 'UTC'),
+        mats.filter(ocupaVaga).length,
         mats.filter((m) => PAGOU_TUDO.includes(m.statusPagamento)).length,
       ];
     }),
   };
 }
 
-const GERADORES = { matriculas: tabelaMatriculas, alunos: tabelaAlunos, cursos: tabelaCursos };
+async function tabelaTurmas() {
+  const turmas = await prisma.turma.findMany({
+    orderBy: { inicioPrevisto: 'desc' },
+    include: {
+      curso: { select: { nome: true } },
+      aulas: { orderBy: { data: 'asc' } },
+      matriculas: { select: { statusPagamento: true, taxaConfirmada: true } },
+    },
+  });
+  const aulaBR = (a) => `${data(a.data, 'UTC').split('-').reverse().join('/')} ${a.horario || ''}`.trim();
+  return {
+    colunas: [
+      col('Turma'), col('Curso'), col('Início', 'data'), col('Status'), col('Vagas', 'inteiro'),
+      col('Mínimo de alunos', 'inteiro'), col('Aulas', 'inteiro'), col('Datas e horários'),
+      col('Alunos com vaga', 'inteiro'), col('Vagas restantes', 'inteiro'), col('Pagaram tudo', 'inteiro'),
+      col('Falta pagar o curso', 'inteiro'), col('Aguardando taxa', 'inteiro'), col('Criada em', 'data'),
+    ],
+    linhas: turmas.map((t) => {
+      const comVaga = t.matriculas.filter(ocupaVaga).length;
+      return [
+        codigoTurma(t.id),
+        t.curso?.nome,
+        data(t.inicioPrevisto, 'UTC'),
+        ROTULO_TURMA[t.status] || t.status,
+        t.vagas,
+        t.minimoAlunos,
+        t.aulas.length,
+        t.aulas.map(aulaBR).join('; '),
+        comVaga,
+        Math.max(0, (t.vagas || 0) - comVaga),
+        t.matriculas.filter((m) => PAGOU_TUDO.includes(m.statusPagamento)).length,
+        t.matriculas.filter((m) => m.taxaConfirmada && m.statusPagamento === 'PENDENTE').length,
+        t.matriculas.filter((m) => !m.taxaConfirmada && m.statusPagamento === 'PENDENTE').length,
+        data(t.criadoEm),
+      ];
+    }),
+  };
+}
 
-// ---------- CSV ----------
+const GERADORES = { matriculas: tabelaMatriculas, alunos: tabelaAlunos, cursos: tabelaCursos, turmas: tabelaTurmas };
 
-// Número com vírgula decimal e sem separador de milhar: 1234,5 → "1234,50".
+// As quatro tabelas de uma vez (planilha pronta).
+async function gerarTabelas() {
+  const listas = await Promise.all(TABELAS.map((t) => GERADORES[t]()));
+  return Object.fromEntries(TABELAS.map((t, i) => [t, listas[i]]));
+}
+
+// ---------- valores ----------
+
+// Número (JS) ou '' quando não há valor. O CSV e a planilha formatam cada um do seu jeito.
 function num(v) {
+  if (v == null || v === '') return '';
   const n = Number(v);
-  return Number.isFinite(n) ? n.toFixed(2).replace('.', ',') : '';
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : '';
 }
 
 // Data aaaa-mm-dd no fuso de Brasília. O início da turma é guardado como dia em UTC (como no Painel).
@@ -213,14 +284,24 @@ function data(d, timeZone = 'America/Sao_Paulo') {
   return new Date(d).toLocaleDateString('sv-SE', { timeZone });
 }
 
-function celula(v) {
-  const s = String(v ?? '');
+// ---------- CSV ----------
+
+function celula(v, tipo) {
+  if (v == null || v === '') return '';
+  if (tipo === 'numero') return Number(v).toFixed(2).replace('.', ',');
+  if (tipo === 'inteiro') return String(v);
+  const s = String(v);
   return /[";\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-async function gerarCsv(tabela) {
-  const { colunas, linhas } = await GERADORES[tabela]();
-  return '﻿' + [colunas, ...linhas].map((l) => l.map(celula).join(';')).join('\r\n') + '\r\n';
+function paraCsv({ colunas, linhas }) {
+  const cab = colunas.map((c) => celula(c.nome, 'texto')).join(';');
+  const corpo = linhas.map((l) => l.map((v, i) => celula(v, colunas[i].tipo)).join(';'));
+  return '﻿' + [cab, ...corpo].join('\r\n') + '\r\n';
 }
 
-module.exports = { TABELAS, gerarChave, desligar, ligada, chaveValida, gerarCsv };
+async function gerarCsv(tabela) {
+  return paraCsv(await GERADORES[tabela]());
+}
+
+module.exports = { TABELAS, gerarChave, desligar, ligada, chaveValida, gerarCsv, gerarTabelas };
