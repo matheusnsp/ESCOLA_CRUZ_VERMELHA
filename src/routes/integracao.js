@@ -9,7 +9,8 @@ const planilha = require('../lib/planilha-ao-vivo');
 const router = express.Router();
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false });
 
-router.get('/integracao/:tabela(matriculas|alunos|cursos).csv', limiter, async (req, res) => {
+// As tabelas são as de planilha.TABELAS; só GET: a planilha lê, nunca grava.
+router.get('/integracao/:tabela(matriculas|alunos|cursos|turmas).csv', limiter, async (req, res) => {
   if (!(await planilha.chaveValida(req.query.chave))) return res.status(404).type('text/plain').send('Não encontrado.');
   const csv = await planilha.gerarCsv(req.params.tabela);
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
