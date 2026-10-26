@@ -4,11 +4,12 @@
 <%
 // Integração (lib/planilha-ao-vivo.js + routes/integracao.js): o Excel busca os dados por um link
 // do site com chave secreta e se atualiza sozinho. A chave só aparece logo depois de gerada.
-var NOME_TABELA = { matriculas: 'Matrículas', alunos: 'Alunos', cursos: 'Cursos' };
+var NOME_TABELA = { matriculas: 'Matrículas', alunos: 'Alunos', cursos: 'Cursos', turmas: 'Turmas' };
 var DICA_TABELA = {
   matriculas: 'uma linha por matrícula: aluno, documento, contato, curso, turma, plano, status, valor, o que falta pagar, alimento e nota',
-  alunos: 'uma linha por aluno: documento, contato, cidade, escolaridade, quantas matrículas tem e quantas estão pagas',
-  cursos: 'cursos com carga horária, preços, turmas abertas e quantos alunos têm vaga',
+  alunos: 'uma linha por aluno: documento, contato, se tem inscrição, se o e-mail e o celular parecem válidos, cidade e escolaridade',
+  cursos: 'cursos com carga horária, preços, próxima turma, turmas abertas e quantos alunos têm vaga',
+  turmas: 'uma linha por turma: início, datas e horários das aulas, status, vagas e quantos alunos em cada situação',
 };
 %>
 
@@ -25,16 +26,25 @@ var DICA_TABELA = {
   <p class="adm-hint">A planilha traz só o que a Secretaria já vê nas telas do painel. Valores recebidos e totais do Financeiro não entram.</p>
 
   <% if (chave) { %>
-    <div class="adm-ok"><i class="fa-solid fa-key"></i> Links gerados. Copie agora: por segurança, eles não aparecem de novo.
-      Se perder, gere outros (os anteriores param de funcionar).</div>
-    <% tabelas.forEach(function (t) { %>
-      <label class="pl-link">
-        <b><%= NOME_TABELA[t] %></b> <small class="adm-hint">— <%= DICA_TABELA[t] %></small>
-        <input type="text" readonly value="<%= base %>/<%= t %>.csv?chave=<%= chave %>">
-      </label>
-    <% }) %>
-    <p class="adm-hint"><i class="fa-solid fa-triangle-exclamation"></i> Quem tiver o link vê os dados dos alunos (nome, documento, e-mail, celular).
-      Não mande por e-mail nem WhatsApp; cole só dentro da planilha.</p>
+    <div class="adm-ok"><i class="fa-solid fa-key"></i> Links gerados. Baixe a planilha agora: por segurança, este botão e os links
+      não aparecem de novo. Se perder, gere outros (os anteriores param de funcionar).</div>
+    <form method="POST" action="/integracao/planilha.xlsx" class="pl-baixar">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="chave" value="<%= chave %>">
+      <button type="submit" class="adm-btn"><i class="fa-solid fa-file-excel"></i> Baixar a planilha pronta</button>
+      <small class="adm-hint">Já vem ligada ao sistema, com as abas Por curso, Aluno e Contatos. É só abrir.</small>
+    </form>
+    <details class="pl-avancado">
+      <summary>Links para montar a planilha à mão (avançado)</summary>
+      <% tabelas.forEach(function (t) { %>
+        <label class="pl-link">
+          <b><%= NOME_TABELA[t] %></b> <small class="adm-hint">— <%= DICA_TABELA[t] %></small>
+          <input type="text" readonly value="<%= base %>/<%= t %>.csv?chave=<%= chave %>">
+        </label>
+      <% }) %>
+    </details>
+    <p class="adm-hint"><i class="fa-solid fa-triangle-exclamation"></i> Quem tiver a planilha ou os links vê os dados dos alunos (nome, documento, e-mail, celular).
+      Não mande por e-mail nem WhatsApp.</p>
   <% } else if (ligada) { %>
     <p><i class="fa-solid fa-circle-check" style="color:#16a34a"></i> Os links estão <b>ligados</b>. As planilhas que já usam eles continuam se atualizando.</p>
   <% } else { %>
@@ -59,16 +69,24 @@ var DICA_TABELA = {
 <div class="adm-box adm-box-pad pl-box">
   <h2 class="adm-form-secao"><i class="fa-solid fa-list-ol"></i> Como usar (uma vez só)</h2>
   <ol class="pl-passos">
-    <li>Clique em <b>Gerar links</b> aqui em cima. Aparecem três links: Matrículas, Alunos e Cursos.</li>
-    <li>Abra o <b>Excel no computador</b> e crie uma pasta de trabalho em branco.</li>
-    <li>Vá em <b>Dados → Obter Dados → De Outras Fontes → Da Web</b> (em algumas versões é só <b>Dados → Da Web</b>).</li>
-    <li>Cole o link de <b>Matrículas</b> e clique em <b>OK</b>. Se o Excel perguntar o tipo de acesso, escolha <b>Anônimo</b> e clique em <b>Conectar</b>.</li>
-    <li>Na prévia, clique em <b>Carregar</b>. Os dados aparecem numa aba nova, já em forma de tabela.</li>
-    <li>Repita os passos 3 a 5 com os links de <b>Alunos</b> e <b>Cursos</b>. Cada um vira uma aba.</li>
-    <li>Para atualizar sozinha: vá em <b>Dados → Consultas e Conexões</b>, clique com o botão direito em cada consulta →
-      <b>Propriedades</b> → marque <b>Atualizar a cada 30 minutos</b> e <b>Atualizar dados ao abrir o arquivo</b> → <b>OK</b>.</li>
-    <li>Salve o arquivo. Pronto: toda vez que abrir, os dados chegam atualizados.</li>
+    <li>Clique em <b>Gerar links</b> aqui em cima e depois em <b>Baixar a planilha pronta</b>.</li>
+    <li>Abra o arquivo no <b>Excel do computador</b>. Se aparecer uma faixa amarela, clique em <b>Habilitar edição</b> e depois em <b>Habilitar conteúdo</b>.</li>
+    <li>Se o Excel perguntar como acessar o endereço do site, escolha <b>Anônimo</b> e clique em <b>Conectar</b>. Isso acontece só na primeira vez.</li>
+    <li>Pronto. Os dados chegam sozinhos ao abrir e a cada 30 minutos. Para atualizar na hora: <b>Dados → Atualizar tudo</b>.</li>
+    <li>Salve o arquivo onde quiser (computador, OneDrive, pen drive). Ele continua ligado ao sistema.</li>
   </ol>
+  <h3 class="pl-sub">O que tem na planilha</h3>
+  <ul class="pl-passos">
+    <li><b>Por curso:</b> escolha o curso na célula amarela (e a turma, se quiser) e aparecem os alunos matriculados, com a situação do
+      pagamento (pago, parcelado, falta pagar o curso, aguardando taxa), o valor, o que falta e botões de <b>WhatsApp</b> e <b>e-mail</b>.</li>
+    <li><b>Aluno:</b> escolha o aluno na célula amarela e aparece a ficha dele: documento, contato, se o e-mail e o celular parecem válidos,
+      cidade, escolaridade e todas as matrículas.</li>
+    <li><b>Contatos:</b> todos os alunos cadastrados, com ou sem inscrição, com WhatsApp Web, e-mail e a verificação do contato.</li>
+    <li><b>Alunos, Matrículas, Cursos e Turmas:</b> as tabelas que vêm do sistema, com os filtros do Excel no cabeçalho. Cursos e turmas mostram as datas.</li>
+  </ul>
+  <p class="adm-hint"><b>Verificação de contato:</b> o e-mail é conferido pelo formato e se o domínio (gmail.com, hotmail.com…) existe e recebe
+    e-mail. O celular, pelo DDD e pelos 9 dígitos. Não dá para saber se a caixa de e-mail existe nem se o número tem WhatsApp: o WhatsApp
+    não oferece essa consulta.</p>
 </div>
 
 <div class="adm-box adm-box-pad pl-box">
@@ -81,9 +99,11 @@ var DICA_TABELA = {
     <li><b>Funciona em qualquer computador?</b> Sim, o link é o endereço do site da escola, não precisa estar no painel nem na rede da
       escola. Precisa do Excel para Windows ou Mac (Microsoft 365, 2016 ou mais novo). No Excel pela internet a atualização
       automática não funciona.</li>
-    <li><b>Perdi o link ou alguém de fora pegou:</b> clique em <b>Gerar links novos</b>. Os antigos param na hora; troque o link na
-      planilha em <b>Dados → Consultas e Conexões</b> → botão direito na consulta → <b>Editar</b> → <b>Fonte</b>.</li>
-    <li><b>O Excel deu erro ao atualizar:</b> os links foram desligados ou trocados. Gere novos e troque na planilha.</li>
+    <li><b>Perdi a planilha ou alguém de fora pegou:</b> clique em <b>Gerar links novos</b> e baixe a planilha de novo. A antiga para de
+      atualizar na hora.</li>
+    <li><b>O Excel deu erro ao atualizar:</b> os links foram desligados ou trocados. Gere novos e baixe a planilha de novo. Se tinha
+      fórmulas e gráficos seus na planilha antiga, copie as abas para a nova.</li>
+    <li><b>Quero montar a planilha do meu jeito:</b> use os links em "avançado", em <b>Dados → Da Web</b>, uma consulta por link.</li>
   </ul>
 </div>
 
