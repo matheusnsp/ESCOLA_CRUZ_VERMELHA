@@ -173,14 +173,20 @@ function abaPorCurso(wb, escolhas) {
   ws.getCell('C3').value = 'opcional: deixe em branco para ver todas as turmas do curso';
   ws.getCell('C3').font = { italic: true, color: { argb: 'FF666666' } };
 
-  rotulo(ws, 'A5', 'Matriculados');
-  ws.getCell('B5').value = { formula: 'COUNT(calc!$A$2:$A$' + (LINHAS_LISTA + 1) + ')' };
-  rotulo(ws, 'C5', 'Pagaram tudo');
-  ws.getCell('D5').value = { formula: 'COUNTIF(calc!$B$2:$B$' + (LINHAS_LISTA + 1) + ',"Pago*")' };
-  rotulo(ws, 'E5', 'Falta pagar o curso');
-  ws.getCell('F5').value = { formula: 'COUNTIF(calc!$B$2:$B$' + (LINHAS_LISTA + 1) + ',"Falta pagar o curso")' };
-  rotulo(ws, 'G5', 'Aguardando taxa');
-  ws.getCell('H5').value = { formula: 'COUNTIF(calc!$B$2:$B$' + (LINHAS_LISTA + 1) + ',"Aguardando taxa de inscrição")' };
+  // Contadores como no painel: "com vaga" = pagou ao menos a taxa e não foi cancelado/estornado.
+  const sit = `calc!$B$2:$B$${LINHAS_LISTA + 1}`;
+  const conta = (...textos) => textos.map((t) => `COUNTIF(${sit},"${t}")`).join('+');
+  const contadores = [
+    ['Com vaga', conta('Pago*', 'Parcelado*', 'Falta pagar o curso')],
+    ['Pagaram tudo', conta('Pago*', 'Parcelado*')],
+    ['Falta pagar o curso', conta('Falta pagar o curso')],
+    ['Aguardando taxa', conta('Aguardando taxa de inscrição')],
+    ['Cancelados ou estornados', conta('Cancelado', 'Estornado')],
+  ];
+  contadores.forEach(([nome, f], i) => {
+    rotulo(ws, `${letra(i * 2 + 1)}5`, nome);
+    ws.getCell(`${letra(i * 2 + 2)}5`).value = { formula: f };
+  });
 
   const colunas = [
     ['Aluno', 'Aluno', 30], ['Situação do pagamento', 'Situação do pagamento', 26], ['Início da turma', 'Início da turma', 14],
@@ -213,6 +219,9 @@ function abaAluno(wb, escolhas) {
   rotulo(ws, 'A2', 'Aluno');
   campoEscolha(ws, 'B2', 'Alunos[Nome]');
   if (escolhas.aluno) ws.getCell('B2').value = escolhas.aluno;
+  // Dois alunos com o mesmo nome: a ficha mostra o primeiro; avisa para conferir pelo documento.
+  ws.getCell('C2').value = { formula: 'IF(COUNTIF(Alunos[Nome],$B$2)>1,"Atenção: há mais de um aluno com este nome. A ficha mostra o primeiro; confira pelo documento na aba Alunos.","")' };
+  ws.getCell('C2').font = { color: { argb: VERMELHO }, bold: true };
   const campo = (coluna) => `IF($B$2="","",${valor('Alunos', coluna, 'MATCH($B$2,Alunos[Nome],0)')})`;
   const campos = [
     ['Documento', 'Documento'], ['E-mail', 'E-mail'], ['E-mail válido', 'E-mail válido'], ['Celular', 'Celular'],

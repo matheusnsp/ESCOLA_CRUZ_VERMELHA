@@ -66,13 +66,16 @@ async function chaveValida(chave) {
 
 const ROTULO_PLANO = { A_VISTA: 'À vista', PARCELADO: 'Parcelado', PRESENCIAL: 'Presencial' };
 const ROTULO_FORMA = { PIX: 'PIX', DEBITO: 'Débito', CREDITO: 'Crédito', DINHEIRO: 'Dinheiro' };
-const ROTULO_TURMA = { ABERTA: 'Aberta', CONFIRMADA: 'Confirmada', CANCELADA: 'Cancelada', ENCERRADA: 'Encerrada', CONGELADA: 'Congelada' };
+// No banco a turma concluída fica ENCERRADA; na tela aparece CONCLUÍDA (server.js rotuloTurma).
+const ROTULO_TURMA = { ABERTA: 'Aberta', CONFIRMADA: 'Confirmada', CANCELADA: 'Cancelada', ENCERRADA: 'Concluída', CONGELADA: 'Congelada' };
 const ROTULO_SITUACAO = { APROVADO: 'Aprovado', REPROVADO: 'Reprovado' };
 
-// Uma palavra só para a situação do pagamento, que dá para filtrar no Excel.
+// Situação do pagamento como na legenda do painel (legenda-status.ejs): o cartão parcelado
+// aprovado (status PARCELADO) ainda tem parcelas a vencer; plano parcelado com status PAGO é
+// o que a secretaria marcou como parcelas quitadas.
 function situacaoPagamento(m) {
-  if (m.statusPagamento === 'PAGO') return 'Pago';
-  if (m.statusPagamento === 'PARCELADO') return 'Pago (cartão parcelado)';
+  if (m.statusPagamento === 'PAGO') return m.plano === 'PARCELADO' ? 'Pago (parcelas quitadas)' : 'Pago';
+  if (m.statusPagamento === 'PARCELADO') return 'Parcelado (parcelas em andamento)';
   if (m.statusPagamento === 'ESTORNADO') return 'Estornado';
   if (m.statusPagamento === 'CANCELADO') return 'Cancelado';
   return m.taxaConfirmada ? 'Falta pagar o curso' : 'Aguardando taxa de inscrição';
@@ -81,6 +84,26 @@ function situacaoPagamento(m) {
 const PAGOU_TUDO = ['PAGO', 'PARCELADO'];
 // Ocupa vaga: pagou ao menos a taxa e não foi cancelado/estornado (FILTRO_VAGA do admin.js).
 const ocupaVaga = (m) => m.taxaConfirmada && [...PAGOU_TUDO, 'PENDENTE'].includes(m.statusPagamento);
+// Pagou tudo, como o painel conta (pagamentosPorTurma: ocupa vaga e não está pendente).
+const pagouTudo = (m) => ocupaVaga(m) && m.statusPagamento !== 'PENDENTE';
+
+// A tela de Turmas marca como concluída a turma confirmada cuja última aula (ou o início, sem
+// aulas) já passou (lib/concluir-turmas.js), mas só quando alguém abre a tela. Aqui a planilha
+// mostra o mesmo sem gravar nada: calcula a situação na hora.
+function statusTurma(t, ultimaAula) {
+  if (t.status === 'CONFIRMADA') {
+    const fim = data(ultimaAula.get(t.id) || t.inicioPrevisto, 'UTC');
+    if (fim && fim < data(new Date())) return 'ENCERRADA';
+  }
+  return t.status;
+}
+const turmaAtiva = (s) => ['ABERTA', 'CONFIRMADA'].includes(s);
+
+// turmaId → data da última aula.
+async function ultimaAulaPorTurma() {
+  const grupos = await prisma.aulaData.groupBy({ by: ['turmaId'], _max: { data: true } });
+  return new Map(grupos.map((g) => [g.turmaId, g._max.data]));
+}
 const codigoMatricula = (id) => `MAT-${String(id).slice(0, 8).toUpperCase()}`;
 const codigoTurma = (id) => `TUR-${String(id).slice(0, 8).toUpperCase()}`;
 // CPF com pontos: só dígitos, o Excel leria como número e comeria o zero da frente.
@@ -92,14 +115,17 @@ const col = (nome, tipo = 'texto') => ({ nome, tipo });
 // ---------- tabelas ----------
 
 async function tabelaMatriculas() {
-  const matriculas = await prisma.matricula.findMany({
-    orderBy: { criadoEm: 'desc' },
-    include: {
-      aluno: true,
-      turma: { include: { curso: { select: { nome: true } } } },
-      pagamentos: { select: { tipo: true, status: true } },
-    },
-  });
+  const [matriculas, ultimaAula] = await Promise.all([
+    prisma.matricula.findMany({
+      orderBy: { criadoEm: 'desc' },
+      include: {
+        aluno: true,
+        turma: { include: { curso: { select: { nome: true } } } },
+        pagamentos: { select: { tipo: true, status: true } },
+      },
+    }),
+    ultimaAulaPorTurma(),
+  ]);
   return {
     colunas: [
       col('Código'), col('Aluno'), col('Documento'), col('E-mail'), col('Celular'), col('Curso'), col('Turma'),
@@ -118,7 +144,7 @@ async function tabelaMatriculas() {
       m.turma?.curso?.nome,
       codigoTurma(m.turmaId),
       data(m.turma?.inicioPrevisto, 'UTC'),
-      ROTULO_TURMA[m.turma?.status] || m.turma?.status,
+      ROTULO_TURMA[statusTurma(m.turma, ultimaAula)],
       ROTULO_PLANO[m.plano] || m.plano,
       ROTULO_FORMA[m.forma] || m.forma,
       situacaoPagamento(m),
@@ -181,17 +207,20 @@ async function tabelaAlunos() {
 }
 
 async function tabelaCursos() {
-  const cursos = await prisma.curso.findMany({
-    orderBy: { nome: 'asc' },
-    include: {
-      turmas: {
-        select: {
-          status: true, inicioPrevisto: true,
-          matriculas: { select: { statusPagamento: true, taxaConfirmada: true } },
+  const [cursos, ultimaAula] = await Promise.all([
+    prisma.curso.findMany({
+      orderBy: { nome: 'asc' },
+      include: {
+        turmas: {
+          select: {
+            id: true, status: true, inicioPrevisto: true,
+            matriculas: { select: { statusPagamento: true, taxaConfirmada: true } },
+          },
         },
       },
-    },
-  });
+    }),
+    ultimaAulaPorTurma(),
+  ]);
   return {
     colunas: [
       col('Curso'), col('Ativo'), col('Carga horária (h)', 'inteiro'), col('Preço à vista (R$)', 'numero'),
@@ -201,7 +230,7 @@ async function tabelaCursos() {
     ],
     linhas: cursos.map((c) => {
       const mats = c.turmas.flatMap((t) => t.matriculas);
-      const abertas = c.turmas.filter((t) => ['ABERTA', 'CONFIRMADA'].includes(t.status));
+      const abertas = c.turmas.filter((t) => turmaAtiva(statusTurma(t, ultimaAula)));
       const proxima = abertas.map((t) => t.inicioPrevisto).sort((a, b) => a - b)[0];
       return [
         c.nome,
@@ -216,21 +245,24 @@ async function tabelaCursos() {
         abertas.length,
         data(proxima, 'UTC'),
         mats.filter(ocupaVaga).length,
-        mats.filter((m) => PAGOU_TUDO.includes(m.statusPagamento)).length,
+        mats.filter(pagouTudo).length,
       ];
     }),
   };
 }
 
 async function tabelaTurmas() {
-  const turmas = await prisma.turma.findMany({
-    orderBy: { inicioPrevisto: 'desc' },
-    include: {
-      curso: { select: { nome: true } },
-      aulas: { orderBy: { data: 'asc' } },
-      matriculas: { select: { statusPagamento: true, taxaConfirmada: true } },
-    },
-  });
+  const [turmas, ultimaAula] = await Promise.all([
+    prisma.turma.findMany({
+      orderBy: { inicioPrevisto: 'desc' },
+      include: {
+        curso: { select: { nome: true } },
+        aulas: { orderBy: { data: 'asc' } },
+        matriculas: { select: { statusPagamento: true, taxaConfirmada: true } },
+      },
+    }),
+    ultimaAulaPorTurma(),
+  ]);
   const aulaBR = (a) => `${data(a.data, 'UTC').split('-').reverse().join('/')} ${a.horario || ''}`.trim();
   return {
     colunas: [
@@ -245,14 +277,14 @@ async function tabelaTurmas() {
         codigoTurma(t.id),
         t.curso?.nome,
         data(t.inicioPrevisto, 'UTC'),
-        ROTULO_TURMA[t.status] || t.status,
+        ROTULO_TURMA[statusTurma(t, ultimaAula)],
         t.vagas,
         t.minimoAlunos,
         t.aulas.length,
         t.aulas.map(aulaBR).join('; '),
         comVaga,
         Math.max(0, (t.vagas || 0) - comVaga),
-        t.matriculas.filter((m) => PAGOU_TUDO.includes(m.statusPagamento)).length,
+        t.matriculas.filter(pagouTudo).length,
         t.matriculas.filter((m) => m.taxaConfirmada && m.statusPagamento === 'PENDENTE').length,
         t.matriculas.filter((m) => !m.taxaConfirmada && m.statusPagamento === 'PENDENTE').length,
         data(t.criadoEm),
