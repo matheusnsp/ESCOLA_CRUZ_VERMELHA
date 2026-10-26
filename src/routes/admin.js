@@ -2251,9 +2251,11 @@ router.get('/integracao', requirePermissao('integracao:gerenciar'), async (req, 
   // A chave aparece uma vez só, logo depois de gerada; no banco fica só o hash.
   const chave = req.session.integracaoChaveNova || null;
   delete req.session.integracaoChaveNova;
-  const site = process.env.ADMIN_PORT
-    ? `http://localhost:${process.env.PORT || 3000}`
-    : (process.env.APP_URL || 'https://escola.cruzvermelhariodejaneiro.org').replace(/\/+$/, '');
+  // Endereço público do site (APP_URL). Não dá para olhar o ADMIN_PORT: o serviço da secretaria
+  // em produção também o define, e o link saía como localhost. Localhost só fora de produção.
+  const site = (process.env.APP_URL
+    || (process.env.NODE_ENV !== 'production' && process.env.ADMIN_PORT ? `http://localhost:${process.env.PORT || 3000}` : null)
+    || 'https://escola.cruzvermelhariodejaneiro.org').replace(/\/+$/, '');
   res.render('admin/integracao', {
     ligada: await planilha.ligada(),
     chave,
