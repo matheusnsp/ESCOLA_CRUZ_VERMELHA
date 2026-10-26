@@ -315,11 +315,13 @@ const siteAluno = express.Router();
 // Visitantes sem login (lib/visitas.js): anônimo, sem cookie; o número vai para o Painel.
 const visitas = require('./lib/visitas');
 visitas.iniciar();
+// Antes de contar visita: o Excel atualizando a planilha não é visitante.
+siteAluno.use(require('./routes/integracao'));
 siteAluno.use(visitas.registrar);
 // Buscadores: só as páginas públicas; o painel da secretaria fica fora de tudo.
 siteAluno.get('/robots.txt', (req, res) => res.type('text/plain').send(
   'User-agent: *\nDisallow: /minha-conta\nDisallow: /inscrever/\nDisallow: /inscricao/\nDisallow: /completar-dados\n'
-  + 'Disallow: /turmas/\nDisallow: /compartilhar/\n\nSitemap: ' + res.locals.urlSite + '/sitemap.xml\n'));
+  + 'Disallow: /turmas/\nDisallow: /compartilhar/\nDisallow: /integracao/\n\nSitemap: ' + res.locals.urlSite + '/sitemap.xml\n'));
 siteAluno.use(authRoutes);
 siteAluno.use(cursosRoutes);
 siteAluno.use(painelRoutes);

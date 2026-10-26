@@ -35,6 +35,7 @@ const QRCode = require('qrcode');
 const { temPermissao, PAPEIS_ADMIN, listarPermissoes } = permissoes;
 const horariosSite = require('../lib/horarios-site'); // questionário de dias e horários (lido do site)
 const cacheRapido = require('../lib/cache-rapido');
+const planilha = require('../lib/planilha-ao-vivo'); // aba Integração: planilha do Excel que se atualiza sozinha
 
 const router = express.Router();
 
@@ -2243,6 +2244,36 @@ router.get('/relatorios/completo.ofx', requirePermissao('relatorio:baixar'), asy
  
 
 
+
+// ---------- Integração (planilha do Excel que se atualiza sozinha) ----------
+// Gera e desliga a chave dos links; os links ficam no site público (routes/integracao.js).
+router.get('/integracao', requirePermissao('integracao:gerenciar'), async (req, res) => {
+  // A chave aparece uma vez só, logo depois de gerada; no banco fica só o hash.
+  const chave = req.session.integracaoChaveNova || null;
+  delete req.session.integracaoChaveNova;
+  const site = process.env.ADMIN_PORT
+    ? `http://localhost:${process.env.PORT || 3000}`
+    : (process.env.APP_URL || 'https://escola.cruzvermelhariodejaneiro.org').replace(/\/+$/, '');
+  res.render('admin/integracao', {
+    ligada: await planilha.ligada(),
+    chave,
+    base: `${site}/integracao`,
+    tabelas: planilha.TABELAS,
+    flash: req.query.ok || null,
+  });
+});
+
+router.post('/integracao/gerar', requirePermissao('integracao:gerenciar'), async (req, res) => {
+  req.session.integracaoChaveNova = await planilha.gerarChave();
+  await auditar(req, 'GEROU_LINK_INTEGRACAO', 'Integracao', null);
+  res.redirect('/integracao');
+});
+
+router.post('/integracao/desligar', requirePermissao('integracao:gerenciar'), async (req, res) => {
+  await planilha.desligar();
+  await auditar(req, 'DESLIGOU_LINK_INTEGRACAO', 'Integracao', null);
+  res.redirect('/integracao?ok=' + encodeURIComponent('Links desligados. As planilhas que usavam eles param de atualizar.'));
+});
 
 router.post('/inscricoes/:id/reembolso-concluido', requirePermissao('financeiro:reembolsar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({
