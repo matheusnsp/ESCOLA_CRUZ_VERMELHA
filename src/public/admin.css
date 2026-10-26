@@ -1878,3 +1878,11 @@ a.mr-num:hover { border-color: var(--linha); }
 .cs-btn:hover { border-color: var(--tinta); }
 .cs-btn-recusar { color: var(--erro-tx); }
 .cs-btn-recusar:hover { border-color: var(--erro-tx); }
+
+/* Planilha ao vivo (views/admin/planilha.ejs) */
+.pl-box { margin-bottom: 20px; display: grid; gap: 14px; }
+.pl-box p { margin: 0; }
+.pl-link { display: grid; gap: 6px; }
+.pl-link input { width: 100%; font-family: ui-monospace, monospace; font-size: 12px; }
+.pl-acoes { display: flex; gap: 10px; flex-wrap: wrap; }
+.pl-passos { margin: 0; padding-left: 22px; display: grid; gap: 8px; line-height: 1.5; }

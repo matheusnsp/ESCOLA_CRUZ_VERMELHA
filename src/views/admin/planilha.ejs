@@ -1,0 +1,75 @@
+<%- include('head', { titulo: 'Planilha ao vivo' }) %>
+<%- include('header', { ativo: 'financeiro' }) %>
+
+<%
+// Planilha ao vivo (lib/planilha-ao-vivo.js): o Excel busca os dados por um link com chave
+// secreta e se atualiza sozinho. A chave só aparece logo depois de gerada.
+var NOME_TABELA = { matriculas: 'Matrículas', alunos: 'Alunos', cursos: 'Cursos' };
+var DICA_TABELA = {
+  matriculas: 'uma linha por matrícula: aluno, curso, turma, plano, situação do pagamento, valores e o que falta receber',
+  alunos: 'uma linha por aluno: contato, cidade, quantas matrículas tem e quanto já pagou',
+  cursos: 'catálogo com preços, turmas abertas, alunos com vaga e total recebido',
+};
+%>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Planilha ao vivo</h1>
+  <a href="/financeiro" class="adm-link"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
+</div>
+
+<% if (flash) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div><% } %>
+
+<div class="adm-box adm-box-pad pl-box">
+  <p>Uma planilha do Excel ligada ao sistema: os dados dos alunos, das matrículas, dos pagamentos e dos cursos
+    entram sozinhos e se atualizam quando você abre o arquivo e a cada 30 minutos (ou na hora, em <b>Dados → Atualizar tudo</b>).</p>
+
+  <% if (chave) { %>
+    <div class="adm-ok"><i class="fa-solid fa-key"></i> Link gerado. Copie os links abaixo agora: por segurança, eles não aparecem de novo.
+      Se perder, é só gerar outro (o anterior para de funcionar).</div>
+    <% tabelas.forEach(function (t) { %>
+      <label class="pl-link">
+        <b><%= NOME_TABELA[t] %></b> <small class="adm-hint">— <%= DICA_TABELA[t] %></small>
+        <input type="text" readonly value="<%= base %>/<%= t %>.csv?chave=<%= chave %>">
+      </label>
+    <% }) %>
+    <p class="adm-hint"><i class="fa-solid fa-triangle-exclamation"></i> Quem tiver o link vê os dados dos alunos (nome, documento, e-mail, celular).
+      Não mande por e-mail nem WhatsApp; guarde só dentro da planilha.</p>
+  <% } else if (ligada) { %>
+    <p><i class="fa-solid fa-circle-check" style="color:#16a34a"></i> O link está <b>ligado</b>. As planilhas que já usam ele continuam se atualizando.</p>
+  <% } else { %>
+    <p><i class="fa-solid fa-circle-xmark"></i> Nenhum link ligado ainda.</p>
+  <% } %>
+
+  <div class="pl-acoes">
+    <form method="POST" action="/planilha/gerar"
+      <% if (ligada) { %>data-confirmar="Gerar um link novo desliga o atual: as planilhas que usam ele param de atualizar até você trocar o link." data-botao="Gerar link novo"<% } %>>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="adm-btn"><i class="fa-solid fa-link"></i> <%= ligada ? 'Gerar link novo' : 'Gerar link' %></button>
+    </form>
+    <% if (ligada) { %>
+      <form method="POST" action="/planilha/desligar" data-confirmar="Desligar o link? As planilhas param de atualizar." data-botao="Desligar">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="adm-btn-sec"><i class="fa-solid fa-power-off"></i> Desligar</button>
+      </form>
+    <% } %>
+  </div>
+</div>
+
+<div class="adm-box adm-box-pad pl-box">
+  <h2 class="adm-form-secao"><i class="fa-solid fa-file-excel"></i> Como ligar no Excel (uma vez só)</h2>
+  <ol class="pl-passos">
+    <li>Abra o Excel numa pasta de trabalho em branco.</li>
+    <li>Vá em <b>Dados → Obter Dados → De Outras Fontes → Da Web</b> (ou só <b>Dados → Da Web</b>).</li>
+    <li>Cole o link de <b>Matrículas</b> e clique em <b>OK</b>. Se perguntar o tipo de acesso, escolha <b>Anônimo</b> e <b>Conectar</b>.</li>
+    <li>Na prévia, clique em <b>Carregar</b>. A tabela aparece numa aba nova.</li>
+    <li>Repita os passos 2 a 4 com os links de <b>Alunos</b> e <b>Cursos</b>.</li>
+    <li>Para atualizar sozinha: <b>Dados → Consultas e Conexões</b>, clique com o botão direito em cada consulta →
+      <b>Propriedades</b> → marque <b>Atualizar a cada 30 minutos</b> e <b>Atualizar dados ao abrir o arquivo</b>.</li>
+    <li>Salve o arquivo. Pronto: toda vez que abrir, os dados vêm atualizados.</li>
+  </ol>
+  <p class="adm-hint">Funciona no Excel para Windows e Mac (Microsoft 365, 2016 ou mais novo). No Excel pela internet a atualização
+    automática não funciona; abra no aplicativo do computador. Os filtros, fórmulas e gráficos que você criar em outras abas continuam
+    funcionando depois de cada atualização.</p>
+</div>
+
+<%- include('foot') %>
