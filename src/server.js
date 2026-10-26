@@ -330,6 +330,8 @@ siteAluno.use((req, res) => res.status(404).render('erro', { mensagem: 'Página 
 // Painel da secretaria.
 const painelAdmin = express.Router();
 painelAdmin.get('/robots.txt', (req, res) => res.type('text/plain').send('User-agent: *\nDisallow: /\n'));
+// Os links da planilha também respondem pelo endereço do painel (o serviço da secretaria roda à parte).
+painelAdmin.use(require('./routes/integracao'));
 painelAdmin.use(adminRoutes);
 painelAdmin.use((req, res) => res.status(404).render('admin/erro', { mensagem: 'Página não encontrada.' }));
 
