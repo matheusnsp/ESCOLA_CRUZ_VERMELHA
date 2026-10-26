@@ -24,7 +24,7 @@
 // ============================================================
 const crypto = require('crypto');
 const prisma = require('../db');
-const { faltaReceber } = require('./matricula');
+const { faltaReceber, valorCursoSemTaxa } = require('./matricula');
 const { formatar } = require('./documento');
 const { verificarEmails, verificarCelular, digitosCelular } = require('./verificar-contato');
 
@@ -81,6 +81,30 @@ function situacaoPagamento(m) {
   return m.taxaConfirmada ? 'Falta pagar o curso' : 'Aguardando taxa de inscrição';
 }
 
+// Fora de prazo como na tela Pendentes: pendente numa turma que não está mais ativa ou já começou
+// (turma congelada fica de fora: está pausada, não vencida).
+function foraDePrazo(m) {
+  const t = m.turma || {};
+  if (m.statusPagamento !== 'PENDENTE' || t.status === 'CONGELADA') return false;
+  return !turmaAtiva(t.status) || new Date(t.inicioPrevisto) <= new Date();
+}
+
+// Taxa de inscrição e matrícula (curso) separadas, cada uma com Pago / Pendente / Não pago,
+// para a planilha colorir: verde, amarelo, vermelho. Cancelado e estornado ficam cinza.
+function situacaoTaxa(m) {
+  if (m.statusPagamento === 'ESTORNADO') return 'Estornado';
+  if (m.statusPagamento === 'CANCELADO') return 'Cancelado';
+  if (m.taxaConfirmada) return 'Pago';
+  return foraDePrazo(m) ? 'Não pago (fora de prazo)' : 'Pendente';
+}
+function situacaoCurso(m) {
+  if (m.statusPagamento === 'ESTORNADO') return 'Estornado';
+  if (m.statusPagamento === 'CANCELADO') return 'Cancelado';
+  if (m.statusPagamento === 'PAGO') return m.plano === 'PARCELADO' ? 'Pago (parcelas quitadas)' : 'Pago';
+  if (m.statusPagamento === 'PARCELADO') return 'Pago (parcelas em andamento)';
+  return foraDePrazo(m) ? 'Não pago (fora de prazo)' : 'Pendente';
+}
+
 const PAGOU_TUDO = ['PAGO', 'PARCELADO'];
 // Ocupa vaga: pagou ao menos a taxa e não foi cancelado/estornado (FILTRO_VAGA do admin.js).
 const ocupaVaga = (m) => m.taxaConfirmada && [...PAGOU_TUDO, 'PENDENTE'].includes(m.statusPagamento);
@@ -135,8 +159,8 @@ async function tabelaMatriculas() {
     colunas: [
       col('Código'), col('Aluno'), col('Documento'), col('E-mail'), col('Celular'), col('Curso'), col('Turma'),
       col('Código da turma'), col('Início da turma', 'data'), col('Status da turma'), col('Plano'), col('Forma de pagamento'),
-      col('Situação do pagamento'), col('Taxa de inscrição paga'), col('Valor da taxa (R$)', 'numero'),
-      col('Valor da matrícula (R$)', 'numero'), col('Falta pagar (R$)', 'numero'), col('Prazo para pagar o curso', 'data'),
+      col('Taxa de inscrição'), col('Valor da taxa (R$)', 'numero'), col('Matrícula (curso)'), col('Valor do curso (R$)', 'numero'),
+      col('Situação do pagamento'), col('Valor total (R$)', 'numero'), col('Falta pagar (R$)', 'numero'), col('Prazo para pagar o curso', 'data'),
       col('Alimento entregue'), col('Nota', 'numero'), col('Situação acadêmica'), col('Inscrito em', 'data'),
       col('Pagamento confirmado em', 'data'),
     ],
@@ -153,9 +177,11 @@ async function tabelaMatriculas() {
       ROTULO_TURMA[statusTurma(m.turma, ultimaAula)],
       ROTULO_PLANO[m.plano] || m.plano,
       ROTULO_FORMA[m.forma] || m.forma,
-      situacaoPagamento(m),
-      m.taxaConfirmada ? 'Sim' : 'Não',
+      situacaoTaxa(m),
       num(m.valorTaxaMatricula),
+      situacaoCurso(m),
+      num(valorCursoSemTaxa(m)),
+      situacaoPagamento(m),
       num(m.valorCurso),
       num(faltaReceber(m)),
       data(m.prazoPagamentoCurso),
@@ -183,11 +209,10 @@ async function tabelaAlunos() {
   });
   const emailsValidos = await verificarEmails(alunos.map((a) => a.email));
   return {
+    // Só identificação e contato: nada de endereço, gênero ou escolaridade.
     colunas: [
       col('Nome'), col('Documento'), col('E-mail'), col('Celular'), col('Tem inscrição'), col('Matrículas', 'inteiro'),
-      col('Matrículas pagas', 'inteiro'), col('Cursos'), col('E-mail válido'), col('Celular válido'),
-      col('Gênero'), col('Escolaridade'), col('Bairro'), col('Cidade'), col('UF'),
-      col('E-mail confirmado pelo aluno'), col('Cadastrado em', 'data'), col('Último acesso', 'data'),
+      col('Matrículas pagas', 'inteiro'), col('Cursos'), col('E-mail válido'), col('Celular válido'), col('Cadastrado em', 'data'),
     ],
     linhas: alunos.map((a, i) => [
       a.nome,
@@ -200,14 +225,7 @@ async function tabelaAlunos() {
       [...new Set(a.matriculas.map((m) => m.turma?.curso?.nome).filter(Boolean))].join(', '),
       emailsValidos[i],
       verificarCelular(a.celular),
-      a.genero,
-      [a.escolaridade, a.escolaridadeSituacao].filter(Boolean).join(' — '),
-      a.bairro,
-      a.cidade,
-      a.uf,
-      a.emailVerificado ? 'Sim' : 'Não',
       data(a.criadoEm),
-      data(a.ultimoLogin),
     ]),
   };
 }

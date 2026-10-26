@@ -38,13 +38,14 @@ const ORDEM = ['matriculas', 'alunos', 'cursos', 'turmas'];
 
 // Colunas que ficam à vista em cada tabela; as outras vão para o grupo escondido (o "+").
 const PRINCIPAIS = {
-  matriculas: ['Aluno', 'Turma', 'Situação do pagamento', 'Falta pagar (R$)', 'Celular', 'E-mail', 'Inscrito em'],
-  alunos: ['Nome', 'E-mail', 'Celular', 'Tem inscrição', 'Matrículas', 'Cursos', 'E-mail válido', 'Celular válido'],
+  matriculas: ['Aluno', 'Turma', 'Taxa de inscrição', 'Valor da taxa (R$)', 'Matrícula (curso)', 'Valor do curso (R$)', 'Falta pagar (R$)', 'Celular', 'E-mail'],
+  alunos: ['Nome', 'Documento', 'E-mail', 'Celular', 'Tem inscrição', 'Matrículas', 'Cursos', 'E-mail válido', 'Celular válido'],
   cursos: ['Curso', 'Ativo', 'Preço à vista (R$)', 'Parcelas', 'Valor da parcela (R$)', 'Turmas abertas', 'Próxima turma', 'Alunos com vaga'],
   turmas: ['Turma', 'Status', 'Início', 'Vagas', 'Alunos com vaga', 'Vagas restantes', 'Pagaram tudo', 'Falta pagar o curso', 'Aguardando taxa', 'Datas e horários'],
 };
 const LARGURA = {
   Aluno: 34, Nome: 34, Turma: 44, Curso: 34, Cursos: 40, 'Situação do pagamento': 30, 'E-mail': 32, Celular: 14,
+  'Taxa de inscrição': 22, 'Matrícula (curso)': 26,
   'Datas e horários': 48, Documento: 18, Escolaridade: 28, Status: 12, 'Tem inscrição': 12,
 };
 
@@ -147,7 +148,9 @@ function campoEscolha(ws, celula, lista) {
   c.dataValidation = { type: 'list', allowBlank: true, showErrorMessage: false, formulae: [`=INDIRECT("${lista}")`] };
 }
 
-// Cor por situação do pagamento, como os selos do painel.
+// Cor por situação: pago verde, pendente amarelo, não pago vermelho, cancelado/estornado cinza.
+// A regra de "Não pago" vem antes da de "Pago" de propósito: "não pago" também contém "pago",
+// e no Excel a regra de cima ganha quando as duas batem.
 function corPorSituacao(ws, ref) {
   const regra = (texto, fundo, fonte) => ({
     type: 'containsText', operator: 'containsText', text: texto,
@@ -156,12 +159,14 @@ function corPorSituacao(ws, ref) {
   ws.addConditionalFormatting({
     ref,
     rules: [
-      regra('Pago', 'FFC6EFCE', 'FF006100'),
-      regra('Parcelado', 'FFDDEBF7', 'FF1F4E79'),
-      regra('Falta pagar', 'FFFFEB9C', 'FF9C5700'),
-      regra('Aguardando', 'FFFCE4D6', 'FF833C0B'),
       regra('Cancelado', 'FFE7E6E6', 'FF595959'),
       regra('Estornado', 'FFE7E6E6', 'FF595959'),
+      regra('Não pago', 'FFFFC7CE', 'FF9C0006'),
+      regra('Aguardando', 'FFFFC7CE', 'FF9C0006'),
+      regra('Pendente', 'FFFFEB9C', 'FF9C5700'),
+      regra('Falta pagar', 'FFFFEB9C', 'FF9C5700'),
+      regra('Pago', 'FFC6EFCE', 'FF006100'),
+      regra('Parcelado', 'FFC6EFCE', 'FF006100'),
     ],
   });
 }
@@ -239,7 +244,7 @@ function abaTurma(wb, escolhas) {
   rotulo(ws, 'A3', 'Status');
   ws.getCell('B3').value = { formula: daTurma('Status') };
   rotulo(ws, 'A4', 'Aulas');
-  ws.mergeCells('B4:F4');
+  ws.mergeCells('B4:I4');
   ws.getCell('B4').value = { formula: daTurma('Datas e horários') };
   ws.getCell('B4').alignment = { wrapText: true, vertical: 'top' };
 
@@ -254,7 +259,7 @@ function abaTurma(wb, escolhas) {
     `"Aguardando taxa: "&(${conta('Aguardando taxa de inscrição')})`,
     `"Cancelados ou estornados: "&(${conta('Cancelado', 'Estornado')})`,
   ];
-  ws.mergeCells('A6:G6');
+  ws.mergeCells('A6:I6');
   ws.getCell('A6').value = { formula: `IF($B$2="","",${partes.join('&"   ·   "&')})` };
   ws.getCell('A6').font = { bold: true, size: 12 };
   ws.getCell('A6').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
@@ -266,22 +271,23 @@ function abaTurma(wb, escolhas) {
     indice: (k) => `SMALL(calc!$A$2:$A$${LINHAS_LISTA + 1},${k})`,
     quantidade: LINHAS_LISTA,
     colunas: [
-      ['Aluno', 'Aluno', 36],
-      ['Situação do pagamento', 'Situação do pagamento', 32],
-      ['Falta pagar (R$)', 'Falta pagar (R$)', 16],
-      ['WhatsApp', (n) => linkWhats(valor('Matriculas', 'Celular', n)), 12],
-      ['Enviar e-mail', (n) => linkEmail(valor('Matriculas', 'E-mail', n)), 14],
+      ['Aluno', 'Aluno', 34],
+      ['Taxa de inscrição', 'Taxa de inscrição', 22],
+      ['Matrícula (curso)', 'Matrícula (curso)', 26],
+      ['Falta pagar (R$)', 'Falta pagar (R$)', 15],
+      ['WhatsApp', (n) => linkWhats(valor('Matriculas', 'Celular', n)), 11],
+      ['Enviar e-mail', (n) => linkEmail(valor('Matriculas', 'E-mail', n)), 13],
       ['Celular', 'Celular', 14],
-      ['E-mail', 'E-mail', 32],
+      ['E-mail', 'E-mail', 30],
+      ['CPF', 'Documento', 16],
     ],
   });
-  corPorSituacao(ws, `B9:B${8 + LINHAS_LISTA}`);
-  ws.getColumn(3).width = 16; ws.getColumn(4).width = 12; ws.getColumn(5).width = 24; ws.getColumn(6).width = 14;
+  corPorSituacao(ws, `B9:C${8 + LINHAS_LISTA}`);
 }
 
 function abaAluno(wb, escolhas) {
   const ws = wb.addWorksheet('Aluno', { views: [{ showGridLines: false }] });
-  [26, 40, 4, 22, 30].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+  [40, 26, 26, 18, 30].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
   titulo(ws, 'A1', 'Ficha do aluno');
   rotulo(ws, 'A2', 'Aluno');
   campoEscolha(ws, 'B2', 'Alunos[Nome]');
@@ -292,8 +298,8 @@ function abaAluno(wb, escolhas) {
   ws.getCell('A3').font = { color: { argb: VERMELHO }, bold: true };
 
   const campo = (coluna) => `IF($B$2="","",${valor('Alunos', coluna, 'MATCH($B$2,Alunos[Nome],0)')})`;
-  const esquerda = [['Documento', 'Documento'], ['E-mail', 'E-mail'], ['Celular', 'Celular'], ['Tem inscrição', 'Tem inscrição'], ['Matrículas', 'Matrículas'], ['Cursos', 'Cursos']];
-  const direita = [['E-mail válido', 'E-mail válido'], ['Celular válido', 'Celular válido'], ['Cidade', 'Cidade'], ['Escolaridade', 'Escolaridade'], ['Cadastrado em', 'Cadastrado em'], ['Último acesso', 'Último acesso']];
+  const esquerda = [['CPF', 'Documento'], ['E-mail', 'E-mail'], ['Celular', 'Celular'], ['Cursos', 'Cursos']];
+  const direita = [['Tem inscrição', 'Tem inscrição'], ['Matrículas', 'Matrículas'], ['Matrículas pagas', 'Matrículas pagas'], ['Cadastrado em', 'Cadastrado em']];
   esquerda.forEach(([nome, coluna], i) => {
     rotulo(ws, `A${5 + i}`, nome);
     ws.getCell(`B${5 + i}`).value = { formula: campo(coluna) };
@@ -302,26 +308,29 @@ function abaAluno(wb, escolhas) {
     rotulo(ws, `D${5 + i}`, nome);
     const c = ws.getCell(`E${5 + i}`);
     c.value = { formula: campo(coluna) };
-    if (nome.endsWith(' em') || nome === 'Último acesso') c.numFmt = FMT_DATA;
+    if (nome.endsWith(' em')) c.numFmt = FMT_DATA;
   });
-  rotulo(ws, 'A12', 'Contato');
-  ws.getCell('B12').value = { formula: linkWhats(campo('Celular')) };
-  ws.getCell('B13').value = { formula: linkEmail(campo('E-mail')) };
-  ws.getCell('B12').font = ws.getCell('B13').font = estiloLink;
+  rotulo(ws, 'A10', 'Contato');
+  ws.getCell('B10').value = { formula: linkWhats(campo('Celular')) };
+  ws.getCell('B11').value = { formula: linkEmail(campo('E-mail')) };
+  ws.getCell('B10').font = ws.getCell('B11').font = estiloLink;
+  rotulo(ws, 'D10', 'Contato confere?');
+  ws.getCell('E10').value = { formula: `IF($B$2="","",TRIM(IF(OR(${campo('E-mail válido')}="",${campo('E-mail válido')}="Sim",${campo('E-mail válido')}="Não verificado"),"","E-mail: "&${campo('E-mail válido')}&"  ")&IF(OR(${campo('Celular válido')}="",${campo('Celular válido')}="Sim"),"","Celular: "&${campo('Celular válido')})))` };
+  ws.getCell('E10').font = { color: { argb: VERMELHO } };
 
-  titulo(ws, 'A15', 'Matrículas deste aluno');
+  titulo(ws, 'A13', 'Matrículas deste aluno');
   listaPorFormula(ws, {
-    linhaCabecalho: 16,
+    linhaCabecalho: 14,
     tabela: 'Matriculas',
     indice: (k) => `SMALL(calc!$C$2:$C$${LINHAS_LISTA + 1},${k})`,
     quantidade: 60,
     larguras: false,
     colunas: [
-      ['Turma', 'Turma'], ['Situação do pagamento', 'Situação do pagamento'], ['Falta pagar (R$)', 'Falta pagar (R$)'],
-      ['Plano', 'Plano'], ['Nota', 'Nota'],
+      ['Turma', 'Turma'], ['Taxa de inscrição', 'Taxa de inscrição'], ['Matrícula (curso)', 'Matrícula (curso)'],
+      ['Falta pagar (R$)', 'Falta pagar (R$)'], ['Nota', 'Nota'],
     ],
   });
-  corPorSituacao(ws, 'B17:B76');
+  corPorSituacao(ws, 'B15:C74');
 }
 
 function abaContatos(wb) {
@@ -388,8 +397,10 @@ function abaTabela(wb, chave, { colunas, linhas }) {
     if (principais.length && !principais.includes(c.nome)) { coluna.outlineLevel = 1; coluna.hidden = true; }
   });
   ws.properties.outlineProperties = { summaryBelow: false, summaryRight: false };
-  const iSit = colunas.findIndex((c) => c.nome === 'Situação do pagamento');
-  if (iSit >= 0) corPorSituacao(ws, `${letra(iSit + 1)}2:${letra(iSit + 1)}${LINHAS_LISTA + 1}`);
+  for (const nome of ['Taxa de inscrição', 'Matrícula (curso)', 'Situação do pagamento']) {
+    const i = colunas.findIndex((c) => c.nome === nome);
+    if (i >= 0) corPorSituacao(ws, `${letra(i + 1)}2:${letra(i + 1)}${LINHAS_LISTA + 1}`);
+  }
   cabecalho(ws);
   return ws;
 }
