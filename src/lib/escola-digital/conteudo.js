@@ -36,11 +36,24 @@ function lerPasta(pasta) {
   return { curso: ler('curso.json'), modulos: arquivos.map(ler) };
 }
 
-// Só localhost / 127.0.0.1 contam como banco local (host exato, não "contém").
+// Só localhost / 127.0.0.1 contam como banco local (host exato, não "contém"). Os parâmetros
+// ?host= e ?hostaddr= da URL valem mais que o host do endereço (Prisma/libpq): se existirem,
+// todos os valores também precisam ser locais (caminho de socket, começando com "/", conta).
 function ehBancoLocal(urlBanco) {
+  const local = (h) => {
+    const v = String(h).trim().toLowerCase();
+    return v === 'localhost' || v === '127.0.0.1' || v.startsWith('/');
+  };
   try {
-    const host = new URL(String(urlBanco || '')).hostname;
-    return host === 'localhost' || host === '127.0.0.1';
+    const url = new URL(String(urlBanco || ''));
+    if (!local(url.hostname)) return false;
+    for (const chave of ['host', 'hostaddr']) {
+      for (const valor of url.searchParams.getAll(chave)) {
+        // lista separada por vírgula também é aceita pelo libpq: confere cada item
+        if (!valor.split(',').every(local)) return false;
+      }
+    }
+    return true;
   } catch (e) {
     return false;
   }

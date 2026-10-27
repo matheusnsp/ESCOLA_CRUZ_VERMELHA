@@ -151,6 +151,12 @@ test('ehBancoLocal só aceita localhost e 127.0.0.1', () => {
   assert.equal(ehBancoLocal('postgresql://u:p@db.supabase.co:5432/x'), false);
   assert.equal(ehBancoLocal('postgresql://u:p@localhost.evil.com:5432/x'), false);
   assert.equal(ehBancoLocal('postgresql://u:p@evil.com/localhost'), false);
+  assert.equal(ehBancoLocal('postgresql://u@localhost/db?host=evil.com'), false);
+  assert.equal(ehBancoLocal('postgresql://u@localhost/db?hostaddr=1.2.3.4'), false);
+  assert.equal(ehBancoLocal('postgresql://u@localhost/db?host=localhost&host=evil.com'), false);
+  assert.equal(ehBancoLocal('postgresql://u@LOCALHOST/db'), true);
+  assert.equal(ehBancoLocal('postgresql://u@localhost/db?host=/var/tmp'), true);
+  assert.equal(ehBancoLocal('postgresql://u@localhost/db?host=127.0.0.1&hostaddr=127.0.0.1'), true);
   assert.equal(ehBancoLocal(''), false);
   assert.equal(ehBancoLocal(undefined), false);
   assert.equal(ehBancoLocal('lixo'), false);

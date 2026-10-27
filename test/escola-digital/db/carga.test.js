@@ -126,7 +126,9 @@ test('carga do conteúdo no banco', { skip }, async (t) => {
     const quebrado = copiar((f, d) => {
       if (f === 'modulo-01.json') d.topicos[0].perguntas[0].correta = 9;
     });
+    const antes = await contar(cursoId);
     await assert.rejects(() => carregarCurso(quebrado, prisma), /Conteúdo inválido/);
+    assert.deepEqual(await contar(cursoId), antes, 'contagens iguais depois da carga recusada');
   });
 });
 
