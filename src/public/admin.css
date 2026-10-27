@@ -1715,6 +1715,7 @@ a.mr-num:hover { border-color: var(--linha); }
 .mr-estado.ok { background: var(--ok-bg); color: var(--ok-tx); }
 .mr-estado.espera { background: var(--bg); color: var(--tinta-60); }
 .mr-estado.espera.atrasado { background: var(--alerta-bg); color: var(--alerta-tx); }
+.mr-estado.cancelada { background: var(--bg); color: var(--tinta-60); } /* matrícula desfeita: trata-se em Inscrições */
 
 .mr-card-meio { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin: 0 18px; border: 1px solid var(--linha2); border-radius: 12px; background: var(--linha2); overflow: hidden; }
 .mr-bloco { display: grid; gap: 3px; align-content: start; padding: 11px 13px; background: var(--card); min-width: 0; }

@@ -106,7 +106,8 @@
           var pg = p.pagamento;
           var sit = pg ? situacao(pg.status) : 'pago';
           var dias = esperando(p);
-          var estado = p.encaixe ? 'ok' : 'espera';
+          var estado = p.encaixe ? 'ok' : (p.cancelada ? 'cancelada' : 'espera');
+          var desfeita = p.cancelada ? (p.cancelada.status === 'ESTORNADO' ? 'estornada' : 'cancelada') : '';
         %>
         <article class="mr-card mr-card-<%= estado %>" data-busca="<%= [p.nome, p.email, p.telefone, tel(p.telefone)].join(' ').toLowerCase() %>">
 
@@ -118,6 +119,8 @@
             </div>
             <% if (p.encaixe) { %>
               <span class="mr-estado ok"><i class="fa-solid fa-circle-check"></i> <%= p.encaixe.naEscola || p.encaixe.ligado ? 'Já matriculado(a) na escola' : 'Encaixado(a)' %></span>
+            <% } else if (p.cancelada) { %>
+              <span class="mr-estado cancelada"><i class="fa-solid fa-ban"></i> Matrícula <%= desfeita %></span>
             <% } else if (p.espera) { %>
               <span class="mr-estado espera"><i class="fa-regular fa-clock"></i> <%= p.espera.desde ? 'Na espera desde ' + dataBR(p.espera.desde) : 'Na espera' %></span>
             <% } else { %>
@@ -199,6 +202,10 @@
                   </form>
                 </div>
               <% } %>
+            <% } else if (p.cancelada) { %>
+              <%# Matrícula cancelada / estornada: nada para encaixar nem mover aqui. %>
+              <span class="mr-pe-txt"><i class="fa-solid fa-ban"></i> Matrícula <%= desfeita %> · trate em Inscrições</span>
+              <a href="/alunos/<%= p.cancelada.alunoId %>/matriculas" class="mr-pe-link">Ver matrícula <i class="fa-solid fa-arrow-right"></i></a>
             <% } else if (podeEncaixar) { %>
               <% if (p.espera) { %>
                 <a href="/alunos/<%= p.espera.alunoId %>/matriculas" class="mr-pe-link">Ver matrícula <i class="fa-solid fa-arrow-right"></i></a>

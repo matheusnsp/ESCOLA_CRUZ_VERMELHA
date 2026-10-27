@@ -1361,7 +1361,9 @@ router.get('/matricula-rapida', requirePermissao('turmas:gerenciar', 'painel:lei
   const curso = cursos.some((c) => c.chave === req.query.curso) ? req.query.curso : '';
   const doCurso = d.pessoas.filter(horariosSite.doCurso(curso));
   const sit = ['aguardando', 'encaixados', 'todos'].includes(req.query.sit) ? req.query.sit : 'aguardando';
-  const lista = sit === 'todos' ? doCurso : doCurso.filter((p) => (sit === 'encaixados') === !!p.encaixe);
+  // Matrícula desfeita (p.cancelada) não está nem em turma nem aguardando: aparece só em "Todos".
+  const aguarda = (p) => !p.encaixe && !p.cancelada;
+  const lista = sit === 'todos' ? doCurso : doCurso.filter((p) => (sit === 'encaixados' ? !!p.encaixe : aguarda(p)));
   const pagas = d.pessoas.map((p) => p.pagamento).filter((pg) => pg && matriculaRapida.situacaoPagamento(pg.status) === 'pago');
   res.render('admin/matricula-rapida', {
     ...base, erro: null, d, lista, cursos,
@@ -1369,7 +1371,7 @@ router.get('/matricula-rapida', requirePermissao('turmas:gerenciar', 'painel:lei
     situacao: matriculaRapida.situacaoPagamento, dataPago: matriculaRapida.dataPago,
     hs: horariosSite, R: d.dados.rotulos,
     resumo: {
-      aguardando: doCurso.filter((p) => !p.encaixe).length,
+      aguardando: doCurso.filter(aguarda).length,
       encaixados: doCurso.filter((p) => p.encaixe).length,
       todos: doCurso.length,
       pagos: pagas.length,
@@ -1505,6 +1507,13 @@ router.get('/turmas/:id/pesquisa-qr.png', requirePermissao('turmas:gerenciar', '
   res.set('Content-Type', 'image/png');
   res.set('Content-Disposition', `attachment; filename="qr-pesquisa-${nome}.png"`);
   res.send(png);
+});
+
+// A turma de espera (lib/turma-espera.js) não tem boas-vindas nem certificados: ninguém começa nela.
+router.use(['/turmas/:id/boas-vindas', '/turmas/:id/certificados'], async (req, res, next) => {
+  const t = await prisma.turma.findUnique({ where: { id: req.params.id }, select: { status: true } });
+  if (t && t.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não tem boas-vindas nem certificados.'));
+  next();
 });
 
 router.get('/turmas/:id/boas-vindas', requirePermissao('turmas:gerenciar'), async (req, res) => {
