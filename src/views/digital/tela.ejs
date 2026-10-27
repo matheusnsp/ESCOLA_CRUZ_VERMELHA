@@ -1,0 +1,80 @@
+<%- include('_topo') %>
+<%
+// Tela de aula (spec §5.5): âncora + imagem → vídeo → revisão → alerta → dica, e o botão "Próximo" fixo.
+// Computador: tópicos na lateral; celular: menu (details/summary, sem script).
+// Locals: modulo, posicao, totalTelas, topicoTitulo, tela, topicos, telaAtualId, proximoAction,
+// rotuloProximo, areaLink, moduloLink.
+%>
+<div class="ed-tela-pagina">
+  <div class="ed-estudo">
+    <aside class="ed-lateral" aria-label="Tópicos do módulo">
+      <p class="ed-voltar"><a href="<%= areaLink %>">← Módulos do curso</a></p>
+      <p class="ed-lateral-tit"><a href="<%= moduloLink %>"><span class="ed-lateral-num"><%= modulo.numero %></span> <%= modulo.titulo %></a></p>
+      <%- include('_topicos') %>
+    </aside>
+
+    <article class="ed-tela">
+      <header class="ed-tela-cab">
+        <b class="ed-tela-num"><%= modulo.numero %></b>
+        <span><%= modulo.titulo.toUpperCase() %> · TELA <%= posicao %>/<%= totalTelas %></span>
+        <span><%= modulo.minutos %> MIN</span>
+      </header>
+
+      <details class="ed-menu-topicos">
+        <summary>Tópicos deste módulo</summary>
+        <p class="ed-voltar"><a href="<%= areaLink %>">← Módulos do curso</a> · <a href="<%= moduloLink %>">Página do módulo</a></p>
+        <%- include('_topicos') %>
+      </details>
+
+      <div class="ed-tela-corpo">
+        <p class="ed-rotulo">// <%= topicoTitulo.toUpperCase() %></p>
+        <h1><%= tela.titulo %></h1>
+        <p class="ed-ancora"><%= tela.ancora %></p>
+        <% if (tela.imagem) { %><img class="ed-tela-img" src="<%= tela.imagem %>" alt="<%= tela.imagemAlt %>" loading="lazy"><% } %>
+
+        <% if (tela.videoId) { %>
+        <div class="ed-video">
+          <iframe src="https://www.youtube-nocookie.com/embed/<%= tela.videoId %>?rel=0&amp;modestbranding=1" title="<%= tela.videoTitulo %>" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"></iframe>
+        </div>
+        <% } else { %>
+        <div class="ed-video ed-video-falta" role="img" aria-label="Vídeo em produção">
+          <span class="ed-video-play" aria-hidden="true"></span>
+          <b>Vídeo em produção</b>
+          <small>Esta tela ainda não tem vídeo. O resumo abaixo traz o essencial.</small>
+        </div>
+        <% } %>
+
+        <% if (tela.revisao.length) { %>
+        <section class="ed-rv" aria-labelledby="ed-rv-t">
+          <h2 id="ed-rv-t" class="ed-rv-cab">REVISÃO RÁPIDA</h2>
+          <ol class="ed-rv-lista">
+            <% tela.revisao.forEach(function (item, i) { %>
+            <li><b><%= i + 1 %></b><span><%= item %></span></li>
+            <% }) %>
+          </ol>
+        </section>
+        <% } %>
+
+        <% if (tela.alerta) { %>
+        <section class="ed-alerta" aria-label="Alerta">
+          <b>⚠ ALERTA</b>
+          <p><%= tela.alerta %></p>
+        </section>
+        <% } %>
+
+        <% if (tela.dica) { %>
+        <section class="ed-dica" aria-label="Dica">
+          <b>DICA</b>
+          <p><%= tela.dica %></p>
+        </section>
+        <% } %>
+      </div>
+
+      <form class="ed-prox" method="post" action="<%= proximoAction %>">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="ed-botao ed-botao-grande"><span><%= rotuloProximo %></span> <span aria-hidden="true">→</span></button>
+      </form>
+    </article>
+  </div>
+</div>
+<%- include('_rodape') %>

@@ -3,6 +3,6 @@
   <p class="ed-rotulo">ERRO</p>
   <h1><%= typeof titulo !== 'undefined' ? titulo : 'Algo deu errado' %></h1>
   <p><%= typeof mensagem !== 'undefined' ? mensagem : 'Não foi possível abrir esta página.' %></p>
-  <a class="ed-botao" href="/digital">Ver os cursos <span aria-hidden="true">→</span></a>
+  <a class="ed-botao" href="<%= typeof voltaHref !== 'undefined' ? voltaHref : '/digital' %>"><%= typeof voltaTexto !== 'undefined' ? voltaTexto : 'Ver os cursos' %> <span aria-hidden="true">→</span></a>
 </section>
 <%- include('_rodape') %>

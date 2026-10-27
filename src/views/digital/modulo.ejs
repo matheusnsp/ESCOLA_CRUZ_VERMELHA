@@ -1,0 +1,64 @@
+<%- include('_topo') %>
+<%
+// Página do módulo (spec §5.5): abertura, tópicos com telas e a escolha "Quero aprender" / "Já sei isso?".
+// Locals: modulo, estado, rotuloEstado, topicos, escolha, linkAprender, linkPreTeste, cenarios, areaLink.
+%>
+<article class="ed-modulo">
+  <p class="ed-voltar"><a href="<%= areaLink %>">← Módulos do curso</a></p>
+  <header class="ed-modulo-cab">
+    <span class="ed-modulo-num"><%= modulo.numero %></span>
+    <div>
+      <p class="ed-rotulo">// MÓDULO · <%= modulo.minutos %> MIN</p>
+      <h1><%= modulo.titulo %></h1>
+    </div>
+    <span class="ed-carimbo <%= estado === 'AGORA' ? 'at' : (estado === 'TRANCADO' ? 'lk' : 'ok') %>"><%= rotuloEstado %></span>
+  </header>
+
+  <% if (modulo.imagem) { %><img class="ed-modulo-img" src="<%= modulo.imagem %>" alt="" loading="lazy"><% } %>
+  <% if (modulo.paragrafos.length) { %>
+  <div class="ed-modulo-texto">
+    <% modulo.paragrafos.forEach(function (p) { %><p><%= p %></p><% }) %>
+  </div>
+  <% } %>
+
+  <% if (escolha) { %>
+  <section class="ed-escolha" aria-label="Como você quer começar">
+    <% if (linkAprender) { %><a class="ed-botao ed-botao-grande" href="<%= linkAprender %>">Quero aprender <span aria-hidden="true">→</span></a><% } %>
+    <a class="ed-botao ed-botao-grande ed-botao-claro" href="<%= linkPreTeste %>">Já sei isso? <span aria-hidden="true">→</span></a>
+    <p class="ed-mono">"Já sei isso?" é um teste de 10 perguntas sobre o módulo. Com 80% de acertos você pula as telas. Se não passar, segue para as telas, sem penalidade.</p>
+  </section>
+  <% } else if (linkAprender && !modulo.final) { %>
+  <section class="ed-escolha">
+    <a class="ed-botao ed-botao-grande" href="<%= linkAprender %>"><%= estado === 'AGORA' ? 'Quero aprender' : 'Rever as telas' %> <span aria-hidden="true">→</span></a>
+  </section>
+  <% } %>
+
+  <% if (topicos.length) { %>
+  <section class="ed-modulo-topicos" aria-labelledby="ed-mod-top-t">
+    <h2 id="ed-mod-top-t" class="ed-rotulo">TÓPICOS E TELAS</h2>
+    <%- include('_topicos', { topicos: topicos }) %>
+  </section>
+  <% } %>
+
+  <% if (modulo.final) { %>
+  <section class="ed-modulo-topicos" aria-labelledby="ed-mod-cen-t">
+    <h2 id="ed-mod-cen-t" class="ed-rotulo">CENÁRIOS</h2>
+    <% if (cenarios.length) { %>
+    <ol class="ed-cenarios">
+      <% cenarios.forEach(function (c, i) { %>
+      <li>
+        <a class="ed-cenario<%= c.feito ? ' ed-cenario-feito' : '' %>" href="<%= c.link %>">
+          <span class="ed-num"><%= String(i + 1).padStart(2, '0') %></span>
+          <span class="ed-mod-texto"><b><%= c.titulo %></b><small>TEMPO SUGERIDO: <%= Math.floor(c.tempoSugerido / 60) %>:<%= String(c.tempoSugerido % 60).padStart(2, '0') %></small></span>
+          <span class="ed-carimbo <%= c.feito ? 'ok' : 'at' %>"><%= c.feito ? 'FEITO' : 'FAZER' %></span>
+        </a>
+      </li>
+      <% }) %>
+    </ol>
+    <% } else { %>
+    <p>Os cenários deste módulo ainda estão sendo preparados.</p>
+    <% } %>
+  </section>
+  <% } %>
+</article>
+<%- include('_rodape') %>

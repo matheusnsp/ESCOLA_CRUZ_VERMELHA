@@ -1,0 +1,67 @@
+<%- include('_topo') %>
+<%
+// Painel do curso do aluno (spec §5.4). Locals: curso, modulos, resumo, prazo, acessoAte, concluida,
+// botao, certificadoLink, cartaoLink, senhaInicial, inscricaoId.
+%>
+<div class="ed-area">
+  <section class="ed-area-cab">
+    <p class="ed-rotulo">// SEU CURSO</p>
+    <h1><%= curso.nome %></h1>
+    <div class="ed-lema" aria-label="Olhar, ligar, cuidar">
+      <span>OLHAR</span><span>LIGAR</span><span class="on">CUIDAR</span>
+    </div>
+  </section>
+
+  <% if (senhaInicial) { %>
+  <p class="ed-aviso ed-aviso-senha"><a href="/minha-conta?sec=seguranca">Sua senha ainda é a inicial (4 últimos dígitos do CPF). Troque em Minha conta.</a></p>
+  <% } %>
+
+  <section class="ed-progresso" aria-label="Seu progresso">
+    <div class="ed-prog">
+      <span><%= resumo.modulosFeitos %>/<%= resumo.modulosTotal %></span>
+      <div class="ed-prog-trilha" role="progressbar" aria-valuemin="0" aria-valuemax="<%= resumo.modulosTotal %>" aria-valuenow="<%= resumo.modulosFeitos %>" aria-label="Módulos concluídos">
+        <% modulos.forEach(function (m) { %><i class="<%= m.estado === 'FEITO' || m.estado === 'JA_SABIA' ? 'f' : (m.estado === 'AGORA' ? 'a' : '') %>"></i><% }) %>
+      </div>
+      <span><%= resumo.percentual %>%</span>
+    </div>
+    <p class="ed-mono"><%= resumo.telasVistas %> de <%= resumo.telasTotal %> telas vistas · <%= resumo.modulosFeitos %> de <%= resumo.modulosTotal %> módulos concluídos</p>
+    <% if (prazo) { %>
+    <p class="ed-prazo<%= concluida ? ' ed-prazo-ok' : '' %>"><b><%= prazo %></b><% if (acessoAte) { %> <span class="ed-mono">(acesso até <%= acessoAte %>)</span><% } %></p>
+    <% } %>
+    <a class="ed-botao ed-botao-grande" href="<%= botao.link %>"><%= botao.texto %> <span aria-hidden="true">→</span></a>
+  </section>
+
+  <section class="ed-area-modulos" aria-labelledby="ed-area-mod-t">
+    <h2 id="ed-area-mod-t" class="ed-rotulo">MÓDULOS</h2>
+    <ol class="ed-mods">
+      <% modulos.forEach(function (m) { %>
+      <li>
+        <% if (m.link) { %><a class="ed-mod ed-mod-<%= m.estado.toLowerCase() %>" href="<%= m.link %>"><% } else { %><div class="ed-mod ed-mod-trancado"><% } %>
+          <span class="ed-num"><%= m.numero %></span>
+          <span class="ed-mod-texto"><b><%= m.titulo %></b><small><%= m.minutos %> MIN<% if (m.telasTotal) { %> · <%= m.telasVistas %>/<%= m.telasTotal %> TELAS<% } %></small></span>
+          <span class="ed-carimbo <%= m.estado === 'AGORA' ? 'at' : (m.estado === 'TRANCADO' ? 'lk' : 'ok') %>"><%= m.rotulo %></span>
+        <% if (m.link) { %></a><% } else { %></div><% } %>
+      </li>
+      <% }) %>
+    </ol>
+  </section>
+
+  <section class="ed-area-fim" aria-labelledby="ed-area-fim-t">
+    <h2 id="ed-area-fim-t" class="ed-rotulo">AO CONCLUIR</h2>
+    <ul class="ed-lista-fim">
+      <li>
+        <% if (certificadoLink) { %><a class="ed-fim" href="<%= certificadoLink %>"><% } else { %><div class="ed-fim ed-fim-lk"><% } %>
+          <span class="ed-fim-texto"><b>Certificado</b><small><%= certificadoLink ? 'PDF PARA BAIXAR' : 'LIBERADO AO CONCLUIR O CURSO' %></small></span>
+          <span class="ed-carimbo <%= certificadoLink ? 'ok' : 'lk' %>"><%= certificadoLink ? 'LIBERADO' : 'TRANCADO' %></span>
+        <% if (certificadoLink) { %></a><% } else { %></div><% } %>
+      </li>
+      <li>
+        <% if (cartaoLink) { %><a class="ed-fim" href="<%= cartaoLink %>"><% } else { %><div class="ed-fim ed-fim-lk"><% } %>
+          <span class="ed-fim-texto"><b>Cartão de bolso</b><small><%= cartaoLink ? 'PDF PARA IMPRIMIR' : 'LIBERADO AO CONCLUIR O CURSO' %></small></span>
+          <span class="ed-carimbo <%= cartaoLink ? 'ok' : 'lk' %>"><%= cartaoLink ? 'LIBERADO' : 'TRANCADO' %></span>
+        <% if (cartaoLink) { %></a><% } else { %></div><% } %>
+      </li>
+    </ul>
+  </section>
+</div>
+<%- include('_rodape') %>

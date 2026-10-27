@@ -1,6 +1,7 @@
 <%
 // Abre a página da Escola Digital: <head>, barra superior e <main>. Fecha com _rodape.ejs.
-// Locals: titulo, descricao, rastrear (true nas páginas públicas: vitrine e curso; as de estudo não rastreiam).
+// Locals: titulo, descricao, rastrear (true nas páginas públicas: vitrine e curso; as de estudo não rastreiam),
+// corpoClasse (classe extra no <body>, opcional).
 var _titulo = typeof titulo !== 'undefined' && titulo ? titulo : NOME;
 var _site = typeof urlSite !== 'undefined' ? urlSite : '';
 var _caminho = typeof edCaminho !== 'undefined' ? edCaminho : '/digital';
@@ -32,7 +33,7 @@ var _primeiroNome = usuario && usuario.nome ? String(usuario.nome).trim().split(
 <link rel="stylesheet" href="<%= asset('/escola-digital.css') %>">
 <% if (typeof rastrear !== 'undefined' && rastrear) { %><%- include('../partials/rastreamento') %><% } %>
 </head>
-<body class="ed">
+<body class="ed<%= typeof corpoClasse !== 'undefined' && corpoClasse ? ' ' + corpoClasse : '' %>">
 <a class="ed-pular" href="#conteudo">Ir para o conteúdo</a>
 <header class="ed-topo">
   <div class="ed-topo-in">

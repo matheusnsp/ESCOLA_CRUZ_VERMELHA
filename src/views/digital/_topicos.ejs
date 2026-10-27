@@ -1,0 +1,37 @@
+<%
+// Lista de tópicos e telas de um módulo, com o estado de cada item (vista, atual, teste rápido).
+// Usada na lateral da tela de aula (computador), no menu (celular) e na página do módulo.
+// Locals: topicos [{ titulo, aprovado, link, telas: [{ id, titulo, vista, link }] }], telaAtualId (opcional).
+var _atual = typeof telaAtualId !== 'undefined' ? telaAtualId : null;
+%>
+<ol class="ed-topicos">
+  <% topicos.forEach(function (t, i) {
+       var todasVistas = t.telas.length > 0 && t.telas.every(function (x) { return x.vista; }); %>
+  <li class="ed-topico">
+    <p class="ed-topico-tit"><span class="ed-topico-n"><%= i + 1 %></span> <%= t.titulo %></p>
+    <ul class="ed-telas">
+      <% t.telas.forEach(function (x) { %>
+      <li>
+        <a class="ed-tela-item<%= x.vista ? ' ed-tela-vista' : '' %><%= x.id === _atual ? ' ed-tela-atual' : '' %>" href="<%= x.link %>"<%- x.id === _atual ? ' aria-current="page"' : '' %>>
+          <span class="ed-tela-marca" aria-hidden="true"><%= x.vista ? '✓' : '' %></span>
+          <span><%= x.titulo %><% if (x.vista) { %><span class="ed-so-leitor"> (vista)</span><% } %></span>
+        </a>
+      </li>
+      <% }) %>
+      <li>
+        <% if (todasVistas || t.aprovado) { %>
+        <a class="ed-tela-item ed-tela-teste<%= t.aprovado ? ' ed-tela-vista' : '' %>" href="<%= t.link %>">
+          <span class="ed-tela-marca" aria-hidden="true"><%= t.aprovado ? '✓' : '' %></span>
+          <span>Teste rápido<% if (t.aprovado) { %><span class="ed-so-leitor"> (aprovado)</span><% } %></span>
+        </a>
+        <% } else { %>
+        <span class="ed-tela-item ed-tela-teste ed-tela-lk">
+          <span class="ed-tela-marca" aria-hidden="true">·</span>
+          <span>Teste rápido <span class="ed-so-leitor">(libera depois das telas)</span></span>
+        </span>
+        <% } %>
+      </li>
+    </ul>
+  </li>
+  <% }) %>
+</ol>

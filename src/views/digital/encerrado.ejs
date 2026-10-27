@@ -1,0 +1,17 @@
+<%- include('_topo') %>
+<%
+// Acesso encerrado: inscrição expirada (prazo vencido) ou cancelada. Locals: cursoNome, situacao, acessoAte.
+%>
+<section class="ed-encerrado-pag">
+  <p class="ed-rotulo">// <%= situacao === 'EXPIRADA' ? 'PRAZO ENCERRADO' : 'INSCRIÇÃO CANCELADA' %></p>
+  <h1>Acesso encerrado</h1>
+  <p class="ed-mono"><%= cursoNome %></p>
+  <% if (situacao === 'EXPIRADA') { %>
+    <p>O prazo de acesso a este curso terminou<% if (acessoAte) { %> em <b><%= acessoAte %></b><% } %>. O que você já estudou fica registrado, mas as aulas não abrem mais.</p>
+  <% } else { %>
+    <p>Esta inscrição foi cancelada e o acesso ao curso foi fechado.</p>
+  <% } %>
+  <p>Para continuar, fale com a secretaria: <a href="mailto:contato@cruzvermelhariodejaneiro.org">contato@cruzvermelhariodejaneiro.org</a>.</p>
+  <a class="ed-botao" href="/digital">Ver os cursos <span aria-hidden="true">→</span></a>
+</section>
+<%- include('_rodape') %>
