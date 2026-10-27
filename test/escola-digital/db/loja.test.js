@@ -68,12 +68,22 @@ test('com a chave desligada /digital dá 404', { skip }, async () => {
   assert.strictEqual(r2.status, 404);
 });
 
-test('"Entrar" segue para o login e recusa destino fora da Escola Digital', { skip }, async () => {
-  const r = await fetch(`${ligado.url}/digital/entrar?voltar=${encodeURIComponent('/digital/cursos/' + slug)}`, { redirect: 'manual' });
+// Faz GET /digital/entrar e diz se o destino foi guardado: o returnTo só vive na sessão, e a
+// sessão (cookie escola.sid) só é criada quando algo é gravado nela (saveUninitialized: false).
+async function entrar(voltar) {
+  const r = await fetch(`${ligado.url}/digital/entrar?voltar=${encodeURIComponent(voltar)}`, { redirect: 'manual' });
   assert.strictEqual(r.status, 302);
   assert.strictEqual(r.headers.get('location'), '/login');
-  const r2 = await fetch(`${ligado.url}/digital/entrar?voltar=${encodeURIComponent('//evil.com')}`, { redirect: 'manual' });
-  assert.strictEqual(r2.status, 302);
-  assert.strictEqual(r2.headers.get('location'), '/login');
-  assert.ok(!(r2.headers.get('set-cookie') || '').includes('escola.sid'));
+  return /escola\.sid=/.test(r.headers.get('set-cookie') || '');
+}
+
+test('"Entrar" guarda o destino válido na sessão e segue para o login', { skip }, async () => {
+  assert.strictEqual(await entrar('/digital/cursos/' + slug), true);
+  assert.strictEqual(await entrar('/digital'), true);
+});
+
+test('"Entrar" recusa destinos fora da Escola Digital (sem sessão)', { skip }, async () => {
+  for (const ruim of ['//evil.com', 'https://evil.com', '/digital/../minha-conta', '/digital/%2e%2e/minha-conta', '/digital\\@evil.com', '/digital/\\evil', '/minha-conta']) {
+    assert.strictEqual(await entrar(ruim), false, ruim);
+  }
 });

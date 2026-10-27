@@ -3,6 +3,7 @@
 const { spawn } = require('node:child_process');
 const net = require('node:net');
 const path = require('node:path');
+const { ehBancoLocal } = require('../../../src/lib/escola-digital/conteudo');
 
 const RAIZ = path.join(__dirname, '..', '..', '..');
 
@@ -22,6 +23,10 @@ const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Sobe o servidor com o ambiente de teste (sem chaves de e-mail nem de pagamento) mais `env`.
 async function iniciarServidor({ env = {}, tempoMaxMs = 30000 } = {}) {
+  // O servidor sobe agendadores (lembretes, boas-vindas, pesquisa, reconciliação) contra o banco
+  // que receber: nunca um que não seja local.
+  const bancoUrl = env.DATABASE_URL !== undefined ? env.DATABASE_URL : process.env.DATABASE_URL;
+  if (!ehBancoLocal(bancoUrl)) throw new Error('iniciarServidor: DATABASE_URL ausente ou não é localhost/127.0.0.1');
   const porta = await portaLivre();
   let portaAdmin = await portaLivre();
   while (portaAdmin === porta) portaAdmin = await portaLivre();
@@ -38,6 +43,7 @@ async function iniciarServidor({ env = {}, tempoMaxMs = 30000 } = {}) {
     APP_URL: url,
     DATABASE_URL: process.env.DATABASE_URL,
   }, env);
+  if (!ehBancoLocal(ambiente.DATABASE_URL)) throw new Error('iniciarServidor: DATABASE_URL ausente ou não é localhost/127.0.0.1');
 
   const filho = spawn(process.execPath, ['src/server.js'], { cwd: RAIZ, env: ambiente, stdio: ['ignore', 'pipe', 'pipe'] });
   let saida = '';
@@ -45,8 +51,12 @@ async function iniciarServidor({ env = {}, tempoMaxMs = 30000 } = {}) {
   filho.stderr.on('data', (d) => { saida += d; });
   let encerrou = false;
   filho.on('exit', () => { encerrou = true; });
+  // Se o processo de teste morrer de forma anormal, o servidor não fica para trás.
+  const matarFilho = () => { try { filho.kill('SIGKILL'); } catch (e) { /* já saiu */ } };
+  process.once('exit', matarFilho);
 
   const parar = () => new Promise((resolve) => {
+    process.removeListener('exit', matarFilho);
     if (encerrou) return resolve();
     filho.once('exit', () => resolve());
     filho.kill('SIGTERM');

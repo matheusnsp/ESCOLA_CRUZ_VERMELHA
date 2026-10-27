@@ -53,7 +53,11 @@ router.use('/digital', (req, res, next) => {
 // /login. Só aceita caminho interno da própria Escola Digital (barra open redirect).
 router.get('/digital/entrar', (req, res) => {
   const voltar = String(req.query.voltar || '');
-  const valido = /^\/digital(\/|\?|#|$)/.test(voltar) && !voltar.startsWith('//') && !/[\r\n\\]/.test(voltar);
+  let valido = /^\/digital(\/|\?|#|$)/.test(voltar) && !voltar.startsWith('//') && !/[\r\n\\]/.test(voltar);
+  if (valido) {
+    // O caminho já normalizado (sem "..", %2e%2e etc.) também precisa ficar dentro de /digital.
+    try { valido = /^\/digital(\/|$)/.test(new URL(voltar, 'http://x').pathname); } catch (e) { valido = false; }
+  }
   if (req.session && valido) req.session.returnTo = voltar;
   res.redirect('/login');
 });
