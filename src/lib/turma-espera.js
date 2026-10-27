@@ -10,6 +10,7 @@
 // Ela nunca aparece como turma aberta (site, secretaria, planilha, selects de encaixe) e é tratada
 // como a turma CONGELADA nas rotinas: sem cobrança, sem lembrete, sem contar como "fora de prazo".
 // ─────────────────────────────────────────────────────────────────────────
+const crypto = require('crypto');
 const prisma = require('../db');
 
 const EM_ESPERA = 'EM_ESPERA';
@@ -20,20 +21,22 @@ const INICIO_ESPERA = new Date('2099-12-31T00:00:00Z');
 const ehEspera = (turma) => !!turma && turma.status === EM_ESPERA;
 
 // Acha a turma de espera do curso (a mais antiga, se por algum motivo houver mais de uma) ou cria.
-// O lock de aviso do Postgres (por curso, liberado no fim da transação) evita que duas chamadas
-// simultâneas criem duas turmas de espera; são só duas consultas pequenas.
+// Sem transação interativa (neste projeto elas estouram o tempo no Render): se não existe, um
+// $transaction em array (uma só ida ao banco) segura um lock de aviso do Postgres por curso e faz
+// INSERT ... WHERE NOT EXISTS; assim duas chamadas simultâneas não criam duas turmas de espera.
+// Depois é só ler de novo a mais antiga. As colunas seguem o que o `create` do Prisma gravaria.
 async function turmaDeEspera(cursoId) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'turma-espera:' + cursoId}))`;
-    const existente = await tx.turma.findFirst({
-      where: { cursoId, status: EM_ESPERA },
-      orderBy: { criadoEm: 'asc' },
-    });
-    if (existente) return existente;
-    return tx.turma.create({
-      data: { cursoId, status: EM_ESPERA, inicioPrevisto: INICIO_ESPERA, vagas: 9999, minimoAlunos: 0 },
-    });
-  });
+  const achar = () => prisma.turma.findFirst({ where: { cursoId, status: EM_ESPERA }, orderBy: { criadoEm: 'asc' } });
+  const existente = await achar();
+  if (existente) return existente;
+  await prisma.$transaction([
+    prisma.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'turma-espera:' + cursoId}))`,
+    prisma.$executeRaw`
+      INSERT INTO "Turma" ("id", "cursoId", "inicioPrevisto", "vagas", "minimoAlunos", "status", "criadoEm")
+      SELECT ${crypto.randomUUID()}, ${cursoId}, TIMESTAMP '2099-12-31 00:00:00', 9999, 0, 'EM_ESPERA'::"StatusTurma", (now() AT TIME ZONE 'UTC')
+      WHERE NOT EXISTS (SELECT 1 FROM "Turma" WHERE "cursoId" = ${cursoId} AND "status" = 'EM_ESPERA'::"StatusTurma")`,
+  ]);
+  return achar();
 }
 
 module.exports = { EM_ESPERA, ehEspera, turmaDeEspera };

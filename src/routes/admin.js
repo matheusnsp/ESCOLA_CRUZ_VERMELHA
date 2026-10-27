@@ -1511,9 +1511,11 @@ router.get('/turmas/:id/pesquisa-qr.png', requirePermissao('turmas:gerenciar', '
 
 // A turma de espera (lib/turma-espera.js) não tem boas-vindas nem certificados: ninguém começa nela.
 router.use(['/turmas/:id/boas-vindas', '/turmas/:id/certificados'], async (req, res, next) => {
-  const t = await prisma.turma.findUnique({ where: { id: req.params.id }, select: { status: true } });
-  if (t && t.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não tem boas-vindas nem certificados.'));
-  next();
+  try {
+    const t = await prisma.turma.findUnique({ where: { id: req.params.id }, select: { status: true } });
+    if (t && t.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não tem boas-vindas nem certificados.'));
+    next();
+  } catch (err) { next(err); }
 });
 
 router.get('/turmas/:id/boas-vindas', requirePermissao('turmas:gerenciar'), async (req, res) => {

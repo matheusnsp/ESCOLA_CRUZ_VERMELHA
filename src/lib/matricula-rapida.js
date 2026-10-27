@@ -351,6 +351,8 @@ async function matriculaDoCurso(inscricaoId, { pessoa } = {}) {
   return { cfg, anotado, m, origem: 'escola' };
 }
 
+// Inscrição confirmada: taxa paga ou curso pago/parcelado (a mensagem ao aluno promete "paga e garantida").
+const inscricaoPaga = (m) => !!m.taxaConfirmada || ['PAGO', 'PARCELADO'].includes(m.statusPagamento);
 const temNota = (m) => m.nota != null || !!m.situacao || (m.avaliacoes && m.avaliacoes.length > 0);
 const diaBR = (d) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 const linkConta = (appUrl) => (appUrl || process.env.APP_URL || 'https://escola.cruzvermelhariodejaneiro.org').replace(/\/+$/, '') + '/minha-conta?sec=inscricoes';
@@ -397,6 +399,7 @@ async function moverMatricula({ inscricaoId, alvo, destino, porUsuarioId, appUrl
   if (destino.cursoId !== m.turma.cursoId) return { ok: false, msg: 'A turma escolhida é de outro curso. Para trocar de curso, use Transferir em Inscrições.' };
   if (destino.id === m.turmaId) return { ok: false, msg: `${m.aluno.nome} já está nessa turma.` };
   if (['CANCELADO', 'ESTORNADO'].includes(m.statusPagamento)) return { ok: false, msg: 'Essa matrícula está cancelada ou estornada; não dá para mover.' };
+  if (!inscricaoPaga(m)) return { ok: false, msg: 'A inscrição ainda não foi paga; não dá para mover.' };
   if (temNota(m)) return { ok: false, msg: `${m.aluno.nome} já tem nota lançada nessa turma; não dá para mover.` };
   if (m.turma.status === 'ENCERRADA') return { ok: false, msg: 'A turma já foi encerrada; não dá para mover.' };
   const jaNaOutra = await prisma.matricula.findUnique({ where: { alunoId_turmaId: { alunoId: m.alunoId, turmaId: destino.id } } });
@@ -470,11 +473,12 @@ async function voltarParaEspera({ inscricaoId, motivo, porUsuarioId, appUrl }) {
   if (alvo.erro) return { ok: false, msg: alvo.erro };
   const { m, origem } = alvo;
   if (['CANCELADO', 'ESTORNADO'].includes(m.statusPagamento)) return { ok: false, msg: 'Essa matrícula está cancelada ou estornada; não dá para voltar para a espera.' };
+  if (!inscricaoPaga(m)) return { ok: false, msg: 'A inscrição ainda não foi paga; não dá para colocar na espera.' };
   if (temNota(m)) return { ok: false, msg: `${m.aluno.nome} já tem nota lançada nessa turma; não dá para voltar para a espera.` };
   if (m.turma.status === 'ENCERRADA') return { ok: false, msg: 'A turma já foi encerrada; não dá para voltar para a espera.' };
   if (ehEspera(m.turma)) return { ok: false, msg: `${m.aluno.nome} já está na lista de espera.` };
 
-  // Fora da transação: turmaDeEspera abre a sua própria (lock por curso).
+  // turmaDeEspera cria a turma (com lock por curso) fora desta transação.
   const espera = await turmaDeEspera(m.turma.cursoId);
   const agora = new Date().toISOString();
   const mudancas = { turmaId: espera.id, esperaDesde: agora, esperaMotivo: motivo, esperaPor: porUsuarioId, esperaDe: m.turmaId };
