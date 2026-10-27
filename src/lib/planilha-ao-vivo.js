@@ -2,9 +2,12 @@
 //  Planilha ao vivo (Excel → Dados → Da Web)
 //
 //  O Excel não faz login no painel, então ele busca os dados por um link com uma
-//  chave secreta (?chave=...). A chave é gerada na aba Integração (/integracao), aparece uma vez
-//  só, e no banco fica apenas o HASH dela (SHA-256), como os tokens de e-mail
-//  (lib/tokens.js). Gerar outra chave desliga a anterior; "Desligar" apaga.
+//  chave secreta (?chave=...). Cada conta do painel tem a SUA chave, gerada na aba
+//  Integração (/integracao): aparece uma vez só, e no banco fica apenas o HASH dela
+//  (SHA-256), como os tokens de e-mail (lib/tokens.js). Gerar outra chave desliga só a
+//  anterior da mesma conta; as planilhas das outras contas continuam atualizando.
+//  A chave antiga, de antes de existir chave por conta, continua valendo como "link
+//  compartilhado" até alguém desligá-la.
 //
 //  Quatro tabelas, cada uma num CSV (uma consulta no Excel por tabela):
 //    matriculas — uma linha por matrícula: aluno, curso, turma, plano, status, valor, o que falta
@@ -28,38 +31,69 @@ const { faltaReceber } = require('./matricula');
 const { formatar } = require('./documento');
 const { verificarEmails, verificarCelular, digitosCelular } = require('./verificar-contato');
 
-const CHAVE_CONFIG = 'planilha_chave_hash';
+const CHAVE_CONFIG = 'planilha_chave_hash';   // a chave antiga, compartilhada (de antes da chave por conta)
+const PREFIXO_CONTA = 'planilha_chave:';      // + usuarioId → { hash, em }
+const COMPARTILHADA = 'compartilhada';         // id que representa a chave antiga nas telas
 const TABELAS = ['matriculas', 'alunos', 'cursos', 'turmas'];
 
 const hash = (txt) => crypto.createHash('sha256').update(String(txt)).digest('hex');
 
 // ---------- chave de acesso ----------
 
-async function gerarChave() {
+const chaveDaConta = (usuarioId) => (usuarioId === COMPARTILHADA ? CHAVE_CONFIG : PREFIXO_CONTA + usuarioId);
+
+// Lê uma linha de Configuracao como { usuarioId, hash, em }. A chave antiga guarda só o hash.
+function lerLinha(cfg) {
+  if (cfg.chave === CHAVE_CONFIG) return { usuarioId: COMPARTILHADA, hash: cfg.valor, em: null };
+  try {
+    const v = JSON.parse(cfg.valor);
+    return { usuarioId: cfg.chave.slice(PREFIXO_CONTA.length), hash: v.hash, em: v.em ? new Date(v.em) : null };
+  } catch {
+    return null;
+  }
+}
+
+async function todasAsLinhas() {
+  const cfgs = await prisma.configuracao.findMany({
+    where: { OR: [{ chave: CHAVE_CONFIG }, { chave: { startsWith: PREFIXO_CONTA } }] },
+  });
+  return cfgs.map(lerLinha).filter(Boolean);
+}
+
+// Gera a chave desta conta (apaga só a anterior dela).
+async function gerarChave(usuarioId) {
   const chave = crypto.randomBytes(32).toString('hex');
+  const valor = JSON.stringify({ hash: hash(chave), em: new Date().toISOString() });
   await prisma.configuracao.upsert({
-    where: { chave: CHAVE_CONFIG },
-    update: { valor: hash(chave) },
-    create: { chave: CHAVE_CONFIG, valor: hash(chave) },
+    where: { chave: chaveDaConta(usuarioId) },
+    update: { valor },
+    create: { chave: chaveDaConta(usuarioId), valor },
   });
   return chave;
 }
 
-async function desligar() {
-  await prisma.configuracao.deleteMany({ where: { chave: CHAVE_CONFIG } });
+// Desliga a chave de uma conta (ou a compartilhada antiga, com usuarioId = COMPARTILHADA).
+async function desligar(usuarioId) {
+  await prisma.configuracao.deleteMany({ where: { chave: chaveDaConta(usuarioId) } });
 }
 
-async function ligada() {
-  return !!(await prisma.configuracao.findUnique({ where: { chave: CHAVE_CONFIG } }));
+async function ligada(usuarioId) {
+  return !!(await prisma.configuracao.findUnique({ where: { chave: chaveDaConta(usuarioId) } }));
 }
 
+// Quem tem chave ligada: [{ usuarioId, em }] (a compartilhada antiga vem com usuarioId COMPARTILHADA).
+async function listarChaves() {
+  return (await todasAsLinhas()).map(({ usuarioId, em }) => ({ usuarioId, em }));
+}
+
+// Vale se bate com a chave de qualquer conta ou com a compartilhada antiga.
 async function chaveValida(chave) {
   if (!chave || typeof chave !== 'string' || chave.length > 200) return false;
-  const cfg = await prisma.configuracao.findUnique({ where: { chave: CHAVE_CONFIG } });
-  if (!cfg) return false;
   const a = Buffer.from(hash(chave));
-  const b = Buffer.from(cfg.valor);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  return (await todasAsLinhas()).some(({ hash: h }) => {
+    const b = Buffer.from(String(h || ''));
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  });
 }
 
 // ---------- rótulos ----------
@@ -343,4 +377,4 @@ async function gerarCsv(tabela) {
   return paraCsv(await GERADORES[tabela]());
 }
 
-module.exports = { TABELAS, gerarChave, desligar, ligada, chaveValida, gerarCsv, gerarTabelas };
+module.exports = { TABELAS, COMPARTILHADA, gerarChave, desligar, ligada, listarChaves, chaveValida, gerarCsv, gerarTabelas };

@@ -26,8 +26,8 @@ var DICA_TABELA = {
   <p class="adm-hint">A planilha traz só o que a Secretaria já vê nas telas do painel. Valores recebidos e totais do Financeiro não entram.</p>
 
   <% if (chave) { %>
-    <div class="adm-ok"><i class="fa-solid fa-key"></i> Links gerados. Baixe a planilha agora: por segurança, este botão e os links
-      não aparecem de novo. Se perder, gere outros (os anteriores param de funcionar).</div>
+    <div class="adm-ok"><i class="fa-solid fa-key"></i> Sua planilha está pronta. Baixe agora: por segurança, este botão e os links
+      não aparecem de novo. Se perder, gere de novo (só a sua anterior para de funcionar).</div>
     <form method="POST" action="/integracao/planilha.xlsx" class="pl-baixar">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <input type="hidden" name="chave" value="<%= chave %>">
@@ -46,30 +46,58 @@ var DICA_TABELA = {
     <p class="adm-hint"><i class="fa-solid fa-triangle-exclamation"></i> Quem tiver a planilha ou os links vê os dados dos alunos (nome, documento, e-mail, celular).
       Não mande por e-mail nem WhatsApp.</p>
   <% } else if (ligada) { %>
-    <p><i class="fa-solid fa-circle-check" style="color:#16a34a"></i> Os links estão <b>ligados</b>. As planilhas que já usam eles continuam se atualizando.</p>
+    <p><i class="fa-solid fa-circle-check" style="color:#16a34a"></i> <b>Sua planilha está ligada.</b> Ela continua atualizando. Se perdeu o arquivo,
+      clique em <b>Gerar minha planilha de novo</b>: só a sua anterior para de funcionar.</p>
   <% } else { %>
-    <p><i class="fa-solid fa-circle-xmark"></i> Nenhum link ligado ainda. Clique em <b>Gerar links</b> para começar.</p>
+    <p><i class="fa-solid fa-circle-xmark"></i> Você ainda não tem planilha. Clique em <b>Gerar minha planilha</b> para começar.</p>
   <% } %>
+  <p class="adm-hint">Cada conta do painel tem a sua planilha. O que você gera ou desliga aqui vale só para a sua; as das outras pessoas continuam atualizando.</p>
 
   <div class="pl-acoes">
     <form method="POST" action="/integracao/gerar"
-      <% if (ligada) { %>data-confirmar="Gerar links novos desliga os atuais: as planilhas que usam eles param de atualizar até você trocar o link." data-botao="Gerar links novos"<% } %>>
+      <% if (ligada) { %>data-confirmar="Gerar de novo desliga a sua planilha atual: ela para de atualizar até você baixar a nova. As das outras contas continuam." data-botao="Gerar de novo"<% } %>>
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <button type="submit" class="adm-btn"><i class="fa-solid fa-link"></i> <%= ligada ? 'Gerar links novos' : 'Gerar links' %></button>
+      <button type="submit" class="adm-btn"><i class="fa-solid fa-link"></i> <%= ligada ? 'Gerar minha planilha de novo' : 'Gerar minha planilha' %></button>
     </form>
     <% if (ligada) { %>
-      <form method="POST" action="/integracao/desligar" data-confirmar="Desligar os links? As planilhas param de atualizar." data-botao="Desligar">
+      <form method="POST" action="/integracao/desligar" data-confirmar="Desligar a sua planilha? Ela para de atualizar. As das outras contas continuam." data-botao="Desligar">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <button type="submit" class="adm-btn-sec"><i class="fa-solid fa-power-off"></i> Desligar</button>
+        <button type="submit" class="adm-btn-sec"><i class="fa-solid fa-power-off"></i> Desligar a minha</button>
       </form>
     <% } %>
   </div>
 </div>
 
+<% if (lista.length) { %>
+<div class="adm-box adm-box-pad pl-box">
+  <h2 class="adm-form-secao"><i class="fa-solid fa-users"></i> Planilhas ligadas</h2>
+  <table class="adm-table pl-lista">
+    <thead><tr><th>Conta</th><th>Gerada em</th><th></th></tr></thead>
+    <tbody>
+      <% lista.forEach(function (c) { %>
+        <tr>
+          <td><%= c.nome %><% if (c.minha) { %> <span class="adm-mut">(você)</span><% } %></td>
+          <td><%= c.em ? new Date(c.em).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }) : 'antes das planilhas por conta' %></td>
+          <td>
+            <% if (!c.minha && podeDesligarOutras) { %>
+              <form method="POST" action="/integracao/desligar/<%= c.usuarioId %>" data-confirmar="Desligar a planilha de <%= c.nome %>? Ela para de atualizar." data-botao="Desligar">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="adm-btn-sec adm-btn-sm"><i class="fa-solid fa-power-off"></i> Desligar</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <p class="adm-hint">O "link compartilhado (antigo)" é o de antes de existir planilha por conta. Quem baixou com ele continua atualizando; a coordenação pode desligá-lo quando todo mundo já tiver a sua.</p>
+</div>
+<% } %>
+
 <div class="adm-box adm-box-pad pl-box">
   <h2 class="adm-form-secao"><i class="fa-solid fa-list-ol"></i> Como usar (uma vez só)</h2>
   <ol class="pl-passos">
-    <li>Clique em <b>Gerar links</b> aqui em cima e depois em <b>Baixar a planilha pronta</b>.</li>
+    <li>Clique em <b>Gerar minha planilha</b> aqui em cima e depois em <b>Baixar a planilha pronta</b>.</li>
     <li>Abra o arquivo no <b>Excel do computador</b>. Se aparecer uma faixa amarela, clique em <b>Habilitar edição</b> e depois em <b>Habilitar conteúdo</b>.</li>
     <li>Se o Excel perguntar como acessar o endereço do site, escolha <b>Anônimo</b> e clique em <b>Conectar</b>. Isso acontece só na primeira vez.</li>
     <li>Pronto. Os dados chegam sozinhos ao abrir e a cada 30 minutos. Para atualizar na hora: <b>Dados → Atualizar tudo</b>.</li>
@@ -101,10 +129,10 @@ var DICA_TABELA = {
     <li><b>Funciona em qualquer computador?</b> Sim, o link é o endereço do site da escola, não precisa estar no painel nem na rede da
       escola. Precisa do Excel para Windows ou Mac (Microsoft 365, 2016 ou mais novo). No Excel pela internet a atualização
       automática não funciona.</li>
-    <li><b>Perdi a planilha ou alguém de fora pegou:</b> clique em <b>Gerar links novos</b> e baixe a planilha de novo. A antiga para de
-      atualizar na hora.</li>
-    <li><b>O Excel deu erro ao atualizar:</b> os links foram desligados ou trocados. Gere novos e baixe a planilha de novo. Se tinha
-      fórmulas e gráficos seus na planilha antiga, copie as abas para a nova.</li>
+    <li><b>Perdi a planilha ou alguém de fora pegou:</b> clique em <b>Gerar minha planilha de novo</b> e baixe outra. Só a sua anterior para de
+      atualizar; as das outras contas continuam.</li>
+    <li><b>O Excel deu erro ao atualizar:</b> a sua planilha foi desligada ou gerada de novo. Gere e baixe outra. Se tinha fórmulas e
+      gráficos seus na antiga, copie as abas para a nova.</li>
     <li><b>Quero montar a planilha do meu jeito:</b> use os links em "avançado", em <b>Dados → Da Web</b>, uma consulta por link.</li>
   </ul>
 </div>

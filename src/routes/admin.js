@@ -2258,15 +2258,32 @@ function baseIntegracao() {
   return `${site}/integracao`;
 }
 
+// Desligar a chave de OUTRA conta (ou a compartilhada antiga) é coisa de quem coordena.
+const podeDesligarOutras = (papel) => ['DEV', 'COORDENADOR'].includes(papel);
+
 router.get('/integracao', requirePermissao('integracao:gerenciar'), async (req, res) => {
   // A chave aparece uma vez só, logo depois de gerada; no banco fica só o hash.
   const chave = req.session.integracaoChaveNova || null;
   delete req.session.integracaoChaveNova;
+  const chaves = await planilha.listarChaves();
+  const ids = chaves.map((c) => c.usuarioId).filter((id) => id !== planilha.COMPARTILHADA);
+  const usuarios = ids.length ? await prisma.usuario.findMany({ where: { id: { in: ids } }, select: { id: true, nome: true } }) : [];
+  const nomePorId = Object.fromEntries(usuarios.map((u) => [u.id, u.nome]));
+  const lista = chaves
+    .map((c) => ({
+      usuarioId: c.usuarioId,
+      nome: c.usuarioId === planilha.COMPARTILHADA ? 'Link compartilhado (antigo)' : (nomePorId[c.usuarioId] || 'Conta removida'),
+      em: c.em,
+      minha: c.usuarioId === req.session.usuarioId,
+    }))
+    .sort((a, b) => (b.minha - a.minha) || a.nome.localeCompare(b.nome));
   res.render('admin/integracao', {
-    ligada: await planilha.ligada(),
+    ligada: lista.some((c) => c.minha),
     chave,
     base: baseIntegracao(),
     tabelas: planilha.TABELAS,
+    lista,
+    podeDesligarOutras: podeDesligarOutras(req.session.papel),
     flash: req.query.ok || null,
   });
 });
@@ -2290,16 +2307,25 @@ router.post('/integracao/planilha.xlsx', requirePermissao('integracao:gerenciar'
   res.send(buffer);
 });
 
+// Gera a chave da PRÓPRIA conta: só a anterior dela para de valer.
 router.post('/integracao/gerar', requirePermissao('integracao:gerenciar'), async (req, res) => {
-  req.session.integracaoChaveNova = await planilha.gerarChave();
-  await auditar(req, 'GEROU_LINK_INTEGRACAO', 'Integracao', null);
+  req.session.integracaoChaveNova = await planilha.gerarChave(req.session.usuarioId);
+  await auditar(req, 'GEROU_LINK_INTEGRACAO', 'Integracao', req.session.usuarioId);
   res.redirect('/integracao');
 });
 
-router.post('/integracao/desligar', requirePermissao('integracao:gerenciar'), async (req, res) => {
-  await planilha.desligar();
-  await auditar(req, 'DESLIGOU_LINK_INTEGRACAO', 'Integracao', null);
-  res.redirect('/integracao?ok=' + encodeURIComponent('Links desligados. As planilhas que usavam eles param de atualizar.'));
+// Desliga a chave da própria conta; com :alvo, a de outra conta ou a compartilhada antiga.
+router.post('/integracao/desligar/:alvo?', requirePermissao('integracao:gerenciar'), async (req, res) => {
+  const alvo = req.params.alvo || req.session.usuarioId;
+  if (alvo !== req.session.usuarioId && !podeDesligarOutras(req.session.papel)) {
+    return res.status(403).render('admin/erro', { mensagem: 'Só a coordenação pode desligar a planilha de outra conta.' });
+  }
+  await planilha.desligar(alvo);
+  await auditar(req, 'DESLIGOU_LINK_INTEGRACAO', 'Integracao', alvo);
+  const msg = alvo === req.session.usuarioId
+    ? 'Sua planilha foi desligada: ela para de atualizar. As planilhas das outras contas continuam.'
+    : 'Planilha desligada. As das outras contas continuam.';
+  res.redirect('/integracao?ok=' + encodeURIComponent(msg));
 });
 
 router.post('/inscricoes/:id/reembolso-concluido', requirePermissao('financeiro:reembolsar'), async (req, res) => {
