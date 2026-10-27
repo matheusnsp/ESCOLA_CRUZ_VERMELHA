@@ -557,6 +557,22 @@ async function enviarEncaixeMatriculaRapida(email, nome, { curso, inicio, link, 
   await enviar(email, `Turma confirmada — ${limpo(curso)}`, html, `Matrícula rápida encaixada (${curso})`, link);
 }
 
+// A secretaria moveu o encaixe da matrícula rápida para outra turma do mesmo curso
+// (lib/matricula-rapida.js, moverEncaixe). Quem recebe já tem conta e já pagou a inscrição.
+async function enviarMudancaTurmaMatriculaRapida(email, nome, { curso, inicioAntigo, inicioNovo, link }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const html = moldura(
+    'Sua turma mudou de data',
+    limpo(nome),
+    `A secretaria mudou a sua turma de <strong>${limpo(curso)}</strong>: ela começava em <strong>${limpo(inicioAntigo)}</strong> e agora começa em <strong>${limpo(inicioNovo)}</strong>. `
+      + 'A sua inscrição continua paga e o valor do curso não muda. Veja a matrícula no site da escola pelo botão abaixo.',
+    'Ver minha matrícula',
+    link,
+    'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.'
+  );
+  await enviar(email, `Sua turma mudou de data — ${limpo(curso)}`, html, `Matrícula rápida movida de turma (${curso})`, link);
+}
+
 // Comprovante da área da saúde recusado pela secretaria (lib/comprovante-saude.js).
 async function enviarComprovanteRecusado(email, nome, { motivo, link }) {
   const limpo = (t) => String(t).replace(/[<>&"]/g, '');
@@ -577,6 +593,7 @@ async function enviarComprovanteRecusado(email, nome, { motivo, link }) {
 module.exports = {
   enviarComprovanteRecusado,
   enviarEncaixeMatriculaRapida,
+  enviarMudancaTurmaMatriculaRapida,
   enviarPesquisaSatisfacao,
   enviarAvisoContas,
   enviarBoasVindasTurma,

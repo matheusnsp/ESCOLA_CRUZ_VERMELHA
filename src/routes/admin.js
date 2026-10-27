@@ -1376,6 +1376,23 @@ router.post('/matricula-rapida/:inscricaoId/encaixar', requirePermissao('taxa:ap
   res.redirect('/matricula-rapida?' + (r.ok ? 'ok=' : 'erro=') + encodeURIComponent(r.msg));
 });
 
+// Mover o encaixe para outra turma do mesmo curso (lib/matricula-rapida.js, moverEncaixe).
+router.post('/matricula-rapida/:inscricaoId/mover', requirePermissao('taxa:aprovar'), async (req, res) => {
+  const r = await matriculaRapida.moverEncaixe({
+    inscricaoId: req.params.inscricaoId, turmaId: req.body.turmaId, porUsuarioId: req.session.usuarioId,
+  });
+  if (r.ok) await auditar(req, 'MOVEU_MATRICULA_RAPIDA', 'Matricula', r.matriculaId, { inscricaoSite: req.params.inscricaoId, de: r.de, para: r.para });
+  res.redirect('/matricula-rapida?sit=encaixados&' + (r.ok ? 'ok=' : 'erro=') + encodeURIComponent(r.msg));
+});
+
+// Desfazer o encaixe: a pessoa volta para "Aguardando encaixe" (lib/matricula-rapida.js, voltarParaEspera).
+router.post('/matricula-rapida/:inscricaoId/espera', requirePermissao('taxa:aprovar'), async (req, res) => {
+  const motivo = String(req.body.motivo || '').trim().slice(0, 200);
+  const r = await matriculaRapida.voltarParaEspera({ inscricaoId: req.params.inscricaoId, motivo });
+  if (r.ok) await auditar(req, 'VOLTOU_PARA_ESPERA_MATRICULA_RAPIDA', 'Matricula', r.matriculaId, r.snapshot);
+  res.redirect(r.ok ? '/matricula-rapida?ok=' + encodeURIComponent(r.msg) : '/matricula-rapida?sit=encaixados&erro=' + encodeURIComponent(r.msg));
+});
+
 router.get('/horarios', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
   const h = await carregarHorarios(req);
   if (h.erro) {

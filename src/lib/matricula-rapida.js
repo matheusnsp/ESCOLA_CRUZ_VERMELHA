@@ -19,7 +19,7 @@ const { calcularValores } = require('./matricula');
 const { validarCpfCnpj } = require('./documento');
 const { hashSenha } = require('./password');
 const { criarTokenReset } = require('./tokens');
-const { enviarEncaixeMatriculaRapida } = require('./email');
+const { enviarEncaixeMatriculaRapida, enviarMudancaTurmaMatriculaRapida } = require('./email');
 
 const CHAVE = (inscricaoId) => 'matricularapida:' + inscricaoId;
 const ler = (v) => { try { return JSON.parse(v); } catch (e) { return {}; } };
@@ -243,6 +243,101 @@ async function encaixar({ inscricaoId, turmaId, porUsuarioId, appUrl }) {
   };
 }
 
+// O encaixe feito por aqui (botão Encaixar): a anotação e a matrícula que ele criou. Quem se
+// matriculou pela escola e só foi ligado à inscrição (ligarComEscola / naEscola) não passa: essa
+// matrícula é da escola e se mexe em Inscrições. Devolve { erro } ou { cfg, anotado, m }.
+async function encaixeDaqui(inscricaoId) {
+  const cfg = await prisma.configuracao.findUnique({ where: { chave: CHAVE(inscricaoId) } });
+  if (!cfg) return { erro: 'Essa pessoa não está encaixada. Clique em "Atualizar".' };
+  const anotado = ler(cfg.valor);
+  if (anotado.ligado || anotado.naEscola || !anotado.matriculaId) {
+    return { erro: 'Essa matrícula foi feita pela escola, não pelo encaixe. Trate em Inscrições (Transferir / Cancelar).' };
+  }
+  const m = await prisma.matricula.findUnique({
+    where: { id: anotado.matriculaId },
+    include: { aluno: true, turma: { include: { curso: true } }, pagamentos: true, avaliacoes: true },
+  });
+  if (!m) return { erro: 'A matrícula do encaixe não existe mais. Clique em "Atualizar".' };
+  return { cfg, anotado, m };
+}
+
+const temNota = (m) => m.nota != null || !!m.situacao || (m.avaliacoes && m.avaliacoes.length > 0);
+const diaBR = (d) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+
+// Move o encaixe para outra turma do MESMO curso. O preço não muda (mesmo curso), então valorCurso e
+// diferencaTransferencia ficam como estão; para outro curso, o caminho é Transferir em Inscrições.
+async function moverEncaixe({ inscricaoId, turmaId, porUsuarioId, appUrl }) {
+  const e = await encaixeDaqui(inscricaoId);
+  if (e.erro) return { ok: false, msg: e.erro };
+  const { anotado, m } = e;
+  const destino = await prisma.turma.findUnique({ where: { id: String(turmaId || '') } });
+  if (!destino || !['ABERTA', 'CONFIRMADA'].includes(destino.status)) return { ok: false, msg: 'Escolha uma turma aberta.' };
+  if (destino.cursoId !== m.turma.cursoId) return { ok: false, msg: 'A turma escolhida é de outro curso. Para trocar de curso, use Transferir em Inscrições.' };
+  if (destino.id === m.turmaId) return { ok: false, msg: `${m.aluno.nome} já está nessa turma.` };
+  if (['CANCELADO', 'ESTORNADO'].includes(m.statusPagamento)) return { ok: false, msg: 'Essa matrícula está cancelada ou estornada; não dá para mover.' };
+  if (temNota(m)) return { ok: false, msg: `${m.aluno.nome} já tem nota lançada nessa turma; não dá para mover.` };
+  const jaNaOutra = await prisma.matricula.findUnique({ where: { alunoId_turmaId: { alunoId: m.alunoId, turmaId: destino.id } } });
+  if (jaNaOutra) return { ok: false, msg: `${m.aluno.nome} já tem matrícula na turma de ${diaBR(destino.inicioPrevisto)}.` };
+  // Vaga ocupada = o mesmo critério do FILTRO_VAGA de routes/admin.js (não o _count do select da tela).
+  const ocupadas = await prisma.matricula.count({ where: { turmaId: destino.id, taxaConfirmada: true, statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] } } });
+  if (ocupadas >= destino.vagas) return { ok: false, msg: `A turma de ${diaBR(destino.inicioPrevisto)} está cheia (${ocupadas}/${destino.vagas}).` };
+
+  const novo = { ...anotado, turmaId: destino.id, movidoDe: m.turmaId, movidoPor: porUsuarioId, movidoEm: new Date().toISOString() };
+  // Gravação em lote, como no ligarComEscola (transação interativa estourava o tempo no Render).
+  await prisma.$transaction([
+    // lembreteVesperaEm zerado: o lembrete da véspera é da turma nova.
+    prisma.matricula.update({ where: { id: m.id }, data: { turmaId: destino.id, lembreteVesperaEm: null } }),
+    prisma.configuracao.update({ where: { chave: CHAVE(inscricaoId) }, data: { valor: JSON.stringify(novo) } }),
+  ]);
+
+  const de = diaBR(m.turma.inicioPrevisto), para = diaBR(destino.inicioPrevisto);
+  const base = (appUrl || process.env.APP_URL || 'https://escola.cruzvermelhariodejaneiro.org').replace(/\/+$/, '');
+  try {
+    await enviarMudancaTurmaMatriculaRapida(m.aluno.email, String(m.aluno.nome).split(' ')[0], {
+      curso: m.turma.curso.nome, inicioAntigo: de, inicioNovo: para, link: `${base}/minha-conta?sec=inscricoes`,
+    });
+  } catch (err) {
+    console.error('[MATRICULA-RAPIDA] e-mail da mudança de turma falhou:', err.message);
+  }
+  return { ok: true, matriculaId: m.id, de: m.turmaId, para: destino.id, msg: `${m.aluno.nome} movido(a) para a turma de ${para}. A pessoa recebeu o aviso por e-mail.` };
+}
+
+// Desfaz o encaixe: a pessoa volta para "Aguardando encaixe" com a inscrição paga valendo.
+// Apaga (e não marca) de propósito: o encaixe seguinte recria matrícula e pagamento lendo a transação
+// paga direto da Únicopag (pelo hash), então a taxa não fica contada duas vezes no Financeiro, e sem
+// a matrícula a pessoa não é religada sozinha pelo bloco semEncaixe do carregar().
+async function voltarParaEspera({ inscricaoId, motivo }) {
+  const e = await encaixeDaqui(inscricaoId);
+  if (e.erro) return { ok: false, msg: e.erro };
+  const { anotado, m } = e;
+  if (m.statusPagamento !== 'PENDENTE') {
+    return { ok: false, msg: 'Com o curso pago, cancelado ou estornado, o caminho é a tela de Inscrições (Transferir / Cancelar / Estornar).' };
+  }
+  const segunda = unicopag.conta('segunda').gateway;
+  if (m.pagamentos.some((pg) => pg.tipo !== 'TAXA' || pg.gateway !== segunda)) {
+    return { ok: false, msg: 'Essa matrícula já tem outros pagamentos além da inscrição paga na instituição. Use Transferir / Cancelar / Estornar em Inscrições.' };
+  }
+  if (temNota(m)) return { ok: false, msg: `${m.aluno.nome} já tem nota lançada nessa turma; não dá para voltar para a espera.` };
+  if (m.turma.status === 'ENCERRADA') return { ok: false, msg: 'A turma já foi encerrada; não dá para voltar para a espera.' };
+
+  // Tudo o que vai sumir fica na auditoria (a rota grava este snapshot).
+  const snapshot = {
+    inscricaoSite: String(inscricaoId), aluno: m.aluno.nome, email: m.aluno.email, alunoId: m.alunoId,
+    curso: m.turma.curso.nome, turmaId: m.turmaId, turmaInicio: m.turma.inicioPrevisto,
+    valorCurso: Number(m.valorCurso), valorTaxa: Number(m.valorTaxaMatricula), taxaConfirmadaEm: m.taxaConfirmadaEm,
+    pagamentos: m.pagamentos.map((pg) => ({ id: pg.id, tipo: pg.tipo, status: pg.status, valor: Number(pg.valor), metodo: pg.metodo, gatewayRef: pg.gatewayRef, criadoEm: pg.criadoEm })),
+    encaixe: anotado, motivo: String(motivo || ''),
+  };
+  // Pagamento aponta para Matricula sem cascata: apaga os pagamentos primeiro, depois a matrícula.
+  await prisma.$transaction([
+    prisma.pagamento.deleteMany({ where: { matriculaId: m.id } }),
+    prisma.matricula.delete({ where: { id: m.id } }),
+    prisma.configuracao.delete({ where: { chave: CHAVE(inscricaoId) } }),
+  ]);
+  idsCache = null; // as listas da secretaria não devem mais somar a taxa dessa matrícula
+  return { ok: true, matriculaId: m.id, snapshot, msg: `${m.aluno.nome} voltou para a lista de espera. A inscrição paga continua valendo: é só encaixar numa outra turma.` };
+}
+
 // Liga sozinho a inscrição paga pela matrícula rápida à matrícula da mesma pessoa na escola.
 // A taxa é a que a pessoa pagou (R$ 99 pelo site da escola ou, por aqui, o valor da instituição,
 // ex.: R$ 103,95 no cartão); o curso, o preço do curso. Então:
@@ -444,4 +539,4 @@ async function idsMatriculas() {
   return ids;
 }
 
-module.exports = { idsMatriculas, carregar, encaixar, situacaoPagamento, dataPago, resumoPainel, taxaPaga, pagoNoGateway };
+module.exports = { idsMatriculas, carregar, encaixar, moverEncaixe, voltarParaEspera, situacaoPagamento, dataPago, resumoPainel, taxaPaga, pagoNoGateway };

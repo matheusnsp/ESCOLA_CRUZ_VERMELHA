@@ -170,6 +170,29 @@
                 <span class="mr-ajustado mr-dobro"><i class="fa-solid fa-triangle-exclamation"></i> Também pagou a inscrição online pela escola: confira se não pagou em dobro</span>
                 <% if (Array.isArray(p.encaixe.dobro)) { %><small class="mr-dobro-det">Pago na Únicopag da escola: <%= p.encaixe.dobro.map(function (d) { return (d.tipo === 'TAXA' ? 'taxa' : 'curso à vista (com a taxa)') + ' ' + formatBRL(d.valor) + ' · ' + (d.metodo === 'CREDITO' ? 'cartão' : String(d.metodo || '').toLowerCase()) + ' · ' + dataBR(d.em); }).join('; ') %></small><% } %>
               <% } %>
+              <% if (podeEncaixar && !p.encaixe.naEscola && !p.encaixe.ligado && !p.encaixe.erroLigar) { %>
+                <%
+                  // Só o encaixe feito por aqui tem Mover e Voltar para a espera (lib/matricula-rapida.js).
+                  var outras = turmas.filter(function (t) { return t.id !== p.encaixe.turmaId; });
+                %>
+                <div class="mr-acoes">
+                  <% if (outras.length) { %>
+                    <form method="POST" action="/matricula-rapida/<%= p.inscricaoId %>/mover" class="mr-form" data-confirmar="Mover <%= p.nome %> para a turma escolhida? O preço não muda e a pessoa recebe o aviso por e-mail." data-botao="Mover">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <select name="turmaId" aria-label="Nova turma para <%= p.nome %>">
+                        <% outras.forEach(function (t) { %>
+                          <option value="<%= t.id %>"><%= diaTurma(t.inicioPrevisto) %><%= t.aulas[0] && t.aulas[0].horario ? ' · ' + t.aulas[0].horario : '' %> · <%= t._count.matriculas %>/<%= t.vagas %> vagas</option>
+                        <% }) %>
+                      </select>
+                      <button class="adm-btn adm-btn-sm"><i class="fa-solid fa-right-left"></i> Mover</button>
+                    </form>
+                  <% } %>
+                  <form method="POST" action="/matricula-rapida/<%= p.inscricaoId %>/espera" data-confirmar="Voltar <%= p.nome %> para a lista de espera? A inscrição paga continua valendo. A matrícula desta turma é desfeita e refeita no próximo encaixe." data-motivo="Por que está voltando para a espera" data-botao="Voltar para a espera">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button class="mr-pe-btn"><i class="fa-solid fa-rotate-left"></i> Voltar para a espera</button>
+                  </form>
+                </div>
+              <% } %>
             <% } else if (podeEncaixar) { %>
               <% if (turmas.length) { %>
                 <form method="POST" action="/matricula-rapida/<%= p.inscricaoId %>/encaixar" class="mr-form" data-confirmar="Encaixar <%= p.nome %> na turma escolhida? A pessoa ganha a conta na escola e recebe o e-mail para pagar o curso." data-botao="Encaixar">
