@@ -83,7 +83,7 @@ body.ed {
 .ed h2.ed-rotulo::first-letter { text-transform: uppercase; }
 .ed-mono { font: 600 12.5px/1.45 var(--ed-texto); letter-spacing: .02em; color: var(--ed-cinza); }
 .ed-nowrap { white-space: nowrap; }
-.ed-hero-texto { font-size: 16.5px; max-width: 52ch; margin-top: 12px; }
+.ed .ed-hero-texto { font-size: 16.5px; max-width: 52ch; margin-top: 12px; }
 
 /* faixa em degradê: vitrine, página do curso e painel do aluno */
 .ed-hero, .ed-curso-hero, .ed-faixa {
@@ -116,9 +116,9 @@ body.ed {
 .ed a.ed-botao-claro:hover, .ed button.ed-botao-claro:hover { background: var(--ed-superficie); }
 .ed-faixa a.ed-botao, .ed-hero a.ed-botao, .ed-curso-hero a.ed-botao { background: #fff; color: var(--ed-vermelho-escuro); box-shadow: none; }
 .ed-faixa a.ed-botao:hover { background: #ffecee; }
-.ed-faixa .ed-botao:focus-visible { outline-color: #fff; }
+.ed-faixa .ed-botao:focus-visible, .ed-hero .ed-botao:focus-visible, .ed-curso-hero .ed-botao:focus-visible { outline-color: #fff; }
 
-.ed-selo {
+.ed p.ed-selo {
   display: inline-block; margin-top: 14px; font: 800 10.5px var(--ed-texto); letter-spacing: .08em; text-transform: uppercase;
   color: #fff; background: rgba(255, 255, 255, .18); padding: 4px 10px; border-radius: 999px;
 }
@@ -138,7 +138,8 @@ body.ed {
 /* ---- vitrine ---- */
 .ed-hero { margin: 12px 16px 0; padding: 22px 18px 20px; }
 .ed-hero h1, .ed-curso-hero h1 { font-size: 29px; font-weight: 900; line-height: 1.08; margin-top: 8px; text-wrap: balance; }
-.ed-hero .ed-lema { margin-top: 18px; }
+.ed-hero-lado { margin-top: 18px; display: grid; gap: 14px; }
+.ed-hero-pontos { display: none; list-style: none; margin: 0; padding: 0; }
 
 .ed-cursos { padding: 24px 16px 32px; }
 .ed-cursos > .ed-rotulo { margin-bottom: 14px; }
@@ -160,19 +161,26 @@ body.ed {
 .ed-vazio p { margin-top: 6px; }
 
 /* ---- página do curso ---- */
-.ed-curso { display: grid; grid-template-columns: minmax(0, 1fr); }
+.ed-curso { display: flex; flex-direction: column; }
+/* no celular e no tablet a ordem é: faixa, matrícula, sobre, módulos, como funciona, aviso (wrappers "somem" e a ordem vem de order) */
+.ed-curso-lado, .ed-curso-corpo { display: contents; }
+.ed-compra { order: 1; }
+.ed-bloco-sobre { order: 2; }
+.ed-bloco-modulos { order: 3; }
+.ed-bloco-como { order: 4; }
+.ed-curso-corpo > .ed-alerta { order: 5; margin-bottom: 32px; }
+.ed-curso-corpo > *, .ed-curso-lado > .ed-bloco { margin: 28px 16px 0; }
 .ed-curso-hero { margin: 12px 16px 0; padding: 22px 18px 20px; }
 .ed-fatos { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; font-size: 13.5px; }
 .ed-fatos li { background: rgba(255, 255, 255, .16); border-radius: 999px; padding: 5px 12px; }
 .ed-fatos b { font: 800 13.5px var(--ed-texto); }
 
-.ed-compra { margin: 14px 16px 8px; background: #fff; border: 1px solid #f0eeea; border-radius: 20px; padding: 18px; box-shadow: 0 8px 28px rgba(16, 24, 40, .12); }
+.ed-compra { margin: 14px 16px 0; background: #fff; border: 1px solid #f0eeea; border-radius: 20px; padding: 18px; box-shadow: 0 8px 28px rgba(16, 24, 40, .12); }
 .ed-compra .ed-preco { margin-top: 8px; }
-.ed-parcelas { margin-top: 6px; font-size: 15px; color: var(--ed-cinza); }
+.ed .ed-parcelas { margin-top: 6px; font-size: 15px; color: var(--ed-cinza); }
 .ed-compra-lista { list-style: none; margin: 14px 0 16px; padding: 12px 0 0; border-top: 1px solid var(--ed-linha); display: grid; gap: 7px; font-size: 14.5px; }
 .ed-compra-lista li::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ed-vermelho); margin-right: 10px; vertical-align: 2px; }
 
-.ed-curso-corpo { padding: 8px 16px 32px; display: grid; gap: 28px; margin-top: 18px; }
 .ed-bloco > .ed-rotulo { margin-bottom: 10px; }
 .ed-bloco > p + p { margin-top: 10px; }
 .ed-lista { list-style: none; margin: 0; padding: 0; }
@@ -292,6 +300,8 @@ body.ed {
 .ed-area-modulos, .ed-area-fim { padding: 26px 16px 0; }
 .ed-area-modulos > .ed-rotulo, .ed-area-fim > .ed-rotulo { margin-bottom: 12px; }
 .ed-mods, .ed-lista-fim, .ed-cenarios { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ed-mods > li { display: flex; }
+.ed-mods > li > .ed-mod { flex: 1; min-width: 0; }
 .ed a.ed-mod, .ed div.ed-mod, .ed a.ed-cenario {
   display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 12px; align-items: center;
   background: #fff; border-radius: 16px; padding: 12px; box-shadow: var(--ed-sombra); border: 1px solid #f0eeea;
@@ -324,6 +334,7 @@ body.ed {
 /* página do módulo */
 .ed-modulo { padding: 20px 16px 40px; max-width: 720px; display: grid; gap: 18px; }
 .ed-modulo-cab { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+@media (min-width: 600px) { .ed-modulo-cab { grid-template-columns: auto minmax(0, max-content) auto; justify-content: start; } }
 .ed-modulo-num { width: 56px; height: 56px; border-radius: 16px; background: var(--ed-rosa); color: var(--ed-vermelho-escuro); display: grid; place-items: center; font: 900 26px var(--ed-titulo); letter-spacing: 0; }
 .ed-modulo-cab h1 { font-size: 24px; font-weight: 900; line-height: 1.1; margin-top: 3px; text-wrap: balance; }
 .ed-modulo-main, .ed-modulo-lado { display: grid; gap: 18px; align-content: start; min-width: 0; }
@@ -383,6 +394,7 @@ body.ed-corpo-tela { padding-bottom: 112px; }
 .ed-chip.on { background: var(--ed-tinta); color: #fff; }
 .ed-ancora { font-size: 17px; line-height: 1.5; max-width: 60ch; }
 .ed-tela-img { display: block; width: 100%; height: auto; border-radius: 16px; }
+.ed-rv { margin-top: 10px; }
 .ed-rv-cab { font: 900 19px/1.2 var(--ed-titulo); letter-spacing: -.025em; text-transform: lowercase; margin-bottom: 10px; }
 .ed-rv-cab::first-letter { text-transform: uppercase; }
 .ed-rv-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -412,58 +424,8 @@ body.ed-corpo-tela { padding-bottom: 112px; }
 .ed-abas a { color: var(--ed-cinza); text-decoration: none; padding: 4px 0; display: grid; gap: 3px; justify-items: center; border-radius: 12px; }
 .ed-abas .on { color: var(--ed-vermelho); }
 .ed-abas :focus-visible { outline-offset: -2px; }
-
-/* ---- tablet (iPad em pé, 600 a 899px): colunas confortáveis, nada de celular esticado ---- */
-@media (min-width: 600px) and (max-width: 899px) {
-  .ed-topo-in { padding: 14px 24px; }
-  .ed-link-site { display: inline; }
-  .ed-logo { height: 28px; }
-  .ed-abas { padding-left: max(6px, calc((100% - 640px) / 2)); padding-right: max(6px, calc((100% - 640px) / 2)); }
-
-  .ed-hero { margin: 24px 24px 0; padding: 40px 36px 34px; }
-  .ed-hero h1 { font-size: 40px; max-width: 20ch; }
-  .ed-hero-texto { font-size: 18px; }
-  .ed-cursos { padding: 32px 24px 48px; }
-  .ed-grade { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-
-  .ed-curso-hero { margin: 24px 24px 0; padding: 36px 32px 28px; }
-  .ed-curso-hero h1 { font-size: 38px; }
-  .ed-compra { margin: 16px 24px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 28px; align-items: start; padding: 22px; }
-  .ed-compra > .ed-rotulo, .ed-compra > .ed-preco, .ed-compra > .ed-parcelas { grid-column: 1; }
-  .ed-compra > .ed-compra-lista { grid-column: 2; grid-row: 1 / span 3; margin: 0; padding: 0; border: 0; align-self: center; }
-  .ed-compra > .ed-botao, .ed-compra > .ed-encerrado { grid-column: 1 / -1; margin-top: 18px; }
-  .ed-curso-corpo { padding: 8px 24px 48px; margin-top: 24px; }
-  .ed-lista { display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; }
-  .ed-bloco .ed-passos { grid-template-columns: 1fr 1fr; }
-
-  .ed-matricula, .ed-pagamento, .ed-erro, .ed-encerrado-pag { margin-left: auto; margin-right: auto; padding-left: 24px; padding-right: 24px; }
-  .ed-matricula, .ed-pagamento { padding-top: 40px; }
-
-  .ed-area { max-width: 760px; margin: 0 auto; padding: 0 24px 48px; }
-  .ed .ed-aviso-senha { margin: 16px 0 0; }
-  .ed-faixa { margin: 24px 0 0; padding: 28px 28px 24px; }
-  .ed-area-cab h1 { font-size: 32px; }
-  .ed-area-modulos, .ed-area-fim { padding-left: 0; padding-right: 0; }
-  .ed-mods { grid-template-columns: 1fr 1fr; }
-  .ed-lista-fim { grid-template-columns: 1fr 1fr; }
-
-  .ed-modulo { margin: 0 auto; padding: 32px 24px 56px; }
-  .ed-modulo-cab h1 { font-size: 30px; }
-
-  .ed-tela { max-width: 720px; margin: 0 auto; }
-  .ed-tela-video { margin: 20px 24px 0; border-radius: 18px; overflow: hidden; }
-  .ed-menu-topicos { margin: 16px 24px 0; }
-  .ed-tela-corpo { padding: 20px 24px 28px; }
-  .ed-tela-corpo h1 { font-size: 32px; }
-  .ed-prox { padding-left: max(24px, calc((100% - 720px) / 2 + 24px)); padding-right: max(24px, calc((100% - 720px) / 2 + 24px)); }
-
-  .ed-teste { margin: 0 auto; padding-top: 16px; }
-  .ed-teste-cab, .ed-etapas, .ed-teste-corpo { padding-left: 24px; padding-right: 24px; }
-  .ed-teste-corpo h1 { font-size: 30px; }
-  .ed-enunciado { font-size: 23px; }
-  .ed-lema-botoes { grid-template-columns: repeat(3, 1fr); }
-  .ed .ed-lema-botao { flex-direction: column; align-items: flex-start; min-height: 110px; justify-content: space-between; }
-}
+/* telas de estudo: no celular a barra Próximo ocupa o lugar das abas; no tablet as duas convivem */
+.ed-abas-tablet { display: none; }
 
 /* ---- computador ---- */
 @media (min-width: 900px) {
@@ -482,32 +444,40 @@ body.ed-corpo-tela { padding-bottom: 112px; }
 
   .ed-matricula, .ed-pagamento, .ed-erro, .ed-encerrado-pag { margin-left: auto; margin-right: auto; }
 
-  .ed-hero { margin: 28px 24px 0; padding: 48px 44px 40px; }
-  .ed-hero h1 { font-size: 48px; max-width: 18ch; line-height: 1.05; }
-  .ed-hero-texto { font-size: 19px; }
+  .ed-hero { margin: 28px 24px 0; padding: 40px 44px; display: grid; grid-template-columns: minmax(0, 1fr) 340px; column-gap: 56px; align-items: center; }
+  .ed-hero > .ed-rotulo, .ed-hero > h1, .ed-hero > .ed-hero-texto { grid-column: 1; }
+  .ed-hero h1 { font-size: 46px; max-width: 24ch; line-height: 1.05; }
+  .ed .ed-hero-texto { font-size: 19px; }
+  .ed-hero-lado { grid-column: 2; grid-row: 1 / span 3; margin: 0; gap: 18px; }
+  .ed-hero-pontos { display: grid; gap: 10px; background: rgba(255, 255, 255, .14); border-radius: 16px; padding: 16px 18px; font-size: 15px; }
+  .ed-hero-pontos li::before { content: "✓"; font-weight: 800; margin-right: 10px; }
   .ed-cursos { padding: 36px 24px 64px; }
   .ed-grade { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
   .ed-card { padding: 22px; }
 
-  .ed-curso { grid-template-columns: minmax(0, 1fr) 360px; column-gap: 36px; padding: 0 24px 64px; align-items: start; }
-  .ed-curso-hero { grid-column: 1; grid-row: 1; margin: 28px 0 0; padding: 40px 36px 32px; }
-  .ed-curso-hero h1 { font-size: 44px; }
-  .ed-curso-corpo { grid-column: 1; grid-row: 2; padding: 0; margin-top: 28px; gap: 34px; }
-  .ed-compra { grid-column: 2; grid-row: 1 / span 2; margin: 28px 0 0; position: sticky; top: 24px; padding: 22px; }
+  .ed-curso { display: grid; grid-template-columns: minmax(0, 1fr) 360px; column-gap: 40px; row-gap: 30px; padding: 0 24px 64px; align-items: start; }
+  .ed-curso-hero { grid-column: 1 / -1; grid-row: 1; margin: 28px 0 0; padding: 40px 44px 34px; }
+  .ed-curso-hero h1 { font-size: 46px; max-width: 26ch; }
+  /* texto e módulos à esquerda; matrícula e "como funciona" empilhados à direita */
+  .ed-curso-corpo { display: flex; flex-direction: column; gap: 34px; grid-column: 1; grid-row: 2; }
+  .ed-curso-lado { display: flex; flex-direction: column; gap: 30px; grid-column: 2; grid-row: 2; }
+  .ed-curso-corpo > *, .ed-curso-lado > .ed-bloco { margin: 0; }
+  .ed-curso-corpo > .ed-alerta { margin-bottom: 0; }
+  .ed-compra { margin: 0; padding: 22px; }
   .ed-erro { padding: 64px 24px; }
   .ed-pagamento { padding: 48px 24px 64px; }
   .ed-rodape { padding-top: 22px; padding-bottom: 32px; }
 
   .ed-area { max-width: 1120px; margin: 0 auto; padding: 0 24px 64px; display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto auto auto 1fr; column-gap: 40px; align-items: start; }
   .ed .ed-aviso-senha { grid-column: 1 / -1; grid-row: 1; margin: 18px 0 0; }
-  .ed-faixa { grid-column: 2; grid-row: 2 / span 3; margin: 28px 0 0; padding: 26px 24px 24px; position: sticky; top: 16px; }
+  .ed-faixa { grid-column: 2; grid-row: 2; margin: 28px 0 0; padding: 26px 24px 24px; }
   .ed-area-cab h1 { font-size: 28px; }
-  .ed-area-modulos { grid-column: 1; grid-row: 2; padding: 28px 0 0; }
-  .ed-area-fim { grid-column: 1; grid-row: 3; padding: 30px 0 0; }
+  .ed-area-modulos { grid-column: 1; grid-row: 2 / span 3; padding: 28px 0 0; }
+  .ed-area-fim { grid-column: 2; grid-row: 3; padding: 28px 0 0; }
   .ed-modulo { max-width: 1120px; margin: 0 auto; padding: 40px 24px 64px; grid-template-columns: minmax(0, 1fr) 380px; column-gap: 40px; align-items: start; }
   .ed-modulo > .ed-voltar, .ed-modulo > .ed-modulo-cab { grid-column: 1 / -1; }
-  .ed-modulo-main { grid-column: 1; }
-  .ed-modulo-lado { grid-column: 2; }
+  .ed-modulo-lado { grid-column: 1; grid-row: 3; }
+  .ed-modulo-main { grid-column: 2; grid-row: 3; position: sticky; top: 16px; background: #fff; border: 1px solid #f0eeea; border-radius: 18px; box-shadow: var(--ed-sombra); padding: 20px; }
   .ed-modulo-cab h1 { font-size: 34px; }
   .ed-modulo-num { width: 72px; height: 72px; font-size: 34px; border-radius: 20px; }
 
@@ -579,12 +549,17 @@ body.ed-corpo-teste { padding-bottom: 32px; }
 }
 
 /* ---- cenários do módulo final ---- */
-.ed-cen-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.ed-cen-topo { display: flex; flex-direction: column; gap: 12px; }
 .ed-cen-topo > div:first-child { min-width: 0; display: grid; gap: 4px; }
-.ed-relogio { flex: none; display: grid; grid-template-columns: auto auto; column-gap: 8px; align-items: baseline; border-radius: 14px; background: var(--ed-neutro); padding: 8px 12px; }
+.ed-relogio { display: flex; column-gap: 8px; align-items: baseline; border-radius: 14px; background: var(--ed-neutro); padding: 8px 12px; }
 .ed-relogio-rot { font: 700 10px var(--ed-texto); letter-spacing: .08em; color: var(--ed-cinza); }
 .ed-relogio b { font: 900 21px/1.1 var(--ed-titulo); letter-spacing: -.02em; font-variant-numeric: tabular-nums; text-align: right; }
-.ed-relogio-sug { color: var(--ed-cinza); }
+.ed-relogio-sug { color: var(--ed-cinza); margin-right: auto; }
+@media (min-width: 600px) {
+  .ed-cen-topo { flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 14px; }
+  .ed-relogio { flex: none; display: grid; grid-template-columns: auto auto; }
+  .ed-relogio-sug { margin-right: 0; }
+}
 .ed-relogio-passou { background: var(--ed-rosa); }
 .ed-relogio-passou .ed-relogio-tempo { color: var(--ed-vermelho-escuro); }
 .ed-relogio-aviso { font: 600 13.5px/1.4 var(--ed-texto); border-radius: 14px; background: var(--ed-rosa-claro); border: 1px solid var(--ed-rosa-linha); padding: 9px 12px; }
@@ -636,10 +611,9 @@ body.ed-corpo-teste { padding-bottom: 32px; }
 /* ---- computador largo (1024px ou mais, inclui iPad deitado): lista de módulos em duas colunas ---- */
 @media (min-width: 1024px) {
   .ed-area { grid-template-columns: minmax(0, 1fr) 380px; }
-  .ed-mods, .ed-lista-fim { grid-template-columns: 1fr 1fr; }
+  .ed-mods { grid-template-columns: 1fr 1fr; }
   .ed-curso { grid-template-columns: minmax(0, 1fr) 380px; column-gap: 44px; }
   .ed-lista { display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; }
-  .ed-bloco .ed-passos { grid-template-columns: 1fr 1fr; }
 }
 
 /* ---- tablet e computador: com um curso só, o cartão ocupa a largura ---- */
@@ -652,4 +626,61 @@ body.ed-corpo-teste { padding-bottom: 32px; }
   .ed-grade > .ed-card:only-child .ed-card-pe .ed-botao { justify-content: space-between; }
   .ed-grade > .ed-card:only-child h3 { font-size: 28px; }
   .ed-grade > .ed-card:only-child .ed-card-desc { font-size: 16.5px; max-width: 56ch; }
+}
+
+/* ---- tablet (iPad em pé, 600 a 899px): colunas confortáveis, nada de celular esticado ---- */
+@media (min-width: 600px) and (max-width: 899px) {
+  .ed-topo-in { padding: 14px 24px; }
+  .ed-link-site { display: inline; }
+  .ed-logo { height: 28px; }
+  .ed-abas { padding-left: max(6px, calc((100% - 640px) / 2)); padding-right: max(6px, calc((100% - 640px) / 2)); }
+
+  .ed-hero { margin: 24px 24px 0; padding: 40px 36px 34px; }
+  .ed-hero h1 { font-size: 40px; max-width: 20ch; }
+  .ed .ed-hero-texto { font-size: 18px; }
+  .ed-cursos { padding: 32px 24px 48px; }
+  .ed-grade { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+
+  .ed-curso-hero { margin: 24px 24px 0; padding: 36px 32px 28px; }
+  .ed-curso-hero h1 { font-size: 38px; }
+  .ed-compra { margin: 16px 24px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 28px; align-items: start; padding: 22px; }
+  .ed-compra > .ed-rotulo, .ed-compra > .ed-preco, .ed-compra > .ed-parcelas { grid-column: 1; }
+  .ed-compra > .ed-compra-lista { grid-column: 2; grid-row: 1 / span 3; margin: 0; padding: 0; border: 0; align-self: center; }
+  .ed-compra > .ed-botao, .ed-compra > .ed-encerrado { grid-column: 1 / -1; margin-top: 18px; }
+  .ed-curso-corpo > *, .ed-curso-lado > .ed-bloco { margin-left: 24px; margin-right: 24px; }
+  .ed-curso-corpo > .ed-alerta { margin-bottom: 48px; }
+  .ed-lista { display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; }
+  .ed-bloco .ed-passos { grid-template-columns: 1fr 1fr; }
+  .ed-bloco .ed-passos li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+  .ed-matricula, .ed-pagamento, .ed-erro, .ed-encerrado-pag { margin-left: auto; margin-right: auto; padding-left: 24px; padding-right: 24px; }
+  .ed-matricula, .ed-pagamento { padding-top: 40px; }
+
+  .ed-area { max-width: 760px; margin: 0 auto; padding: 0 24px 48px; }
+  .ed .ed-aviso-senha { margin: 16px 0 0; }
+  .ed-faixa { margin: 24px 0 0; padding: 28px 28px 24px; }
+  .ed-area-cab h1 { font-size: 32px; }
+  .ed-area-modulos, .ed-area-fim { padding-left: 0; padding-right: 0; }
+  .ed-mods { grid-template-columns: 1fr 1fr; }
+  .ed-lista-fim { grid-template-columns: 1fr 1fr; }
+
+  .ed-modulo { margin: 0 auto; padding: 32px 24px 56px; }
+  .ed-modulo-cab h1 { font-size: 30px; }
+
+  .ed-tela { max-width: 720px; margin: 0 auto; }
+  .ed-tela-video { margin: 20px 24px 0; border-radius: 18px; overflow: hidden; }
+  .ed-menu-topicos { margin: 16px 24px 0; }
+  .ed-tela-corpo { padding: 20px 24px 28px; }
+  .ed-tela-corpo h1 { font-size: 32px; }
+  .ed-abas-tablet { display: grid; }
+  body.ed-corpo-tela { padding-bottom: 190px; }
+  body.ed-corpo-teste { padding-bottom: 100px; }
+  .ed-prox { bottom: 68px; padding-left: max(24px, calc((100% - 720px) / 2 + 24px)); padding-right: max(24px, calc((100% - 720px) / 2 + 24px)); }
+
+  .ed-teste { margin: 0 auto; padding: 16px 24px 0; max-width: 688px; }
+  .ed-teste-cab, .ed-etapas, .ed-teste-corpo { padding-left: 0; padding-right: 0; }
+  .ed-teste-corpo h1 { font-size: 30px; }
+  .ed-enunciado { font-size: 23px; }
+  .ed-lema-botoes { grid-template-columns: repeat(3, 1fr); }
+  .ed .ed-lema-botao { flex-direction: column; align-items: flex-start; min-height: 110px; justify-content: space-between; }
 }

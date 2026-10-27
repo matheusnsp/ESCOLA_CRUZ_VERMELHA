@@ -1,9 +1,8 @@
-<%# Menu de abas embaixo, só no celular (o CSS esconde a partir de 900px). `aba` marca a atual; `semAbas` (tela de aula, que tem o botão Próximo fixo) não desenha o menu. %>
-<% if (typeof semAbas === 'undefined' || !semAbas) { %><% var _aba = typeof aba !== 'undefined' ? aba : ''; %>
-<nav class="ed-abas" aria-label="Menu da Escola Digital">
+<%# Menu de abas embaixo, no celular e no tablet em pé (o CSS esconde a partir de 900px). `aba` marca a atual; `semAbas` (telas de estudo, que têm a barra Próximo fixa) esconde o menu só no celular e o mantém no tablet. %>
+<% var _aba = typeof aba !== 'undefined' ? aba : ''; var _soTablet = typeof semAbas !== 'undefined' && semAbas; %>
+<nav class="ed-abas<%= _soTablet ? ' ed-abas-tablet' : '' %>" aria-label="Menu da Escola Digital">
   <a href="/digital"<%- _aba === 'inicio' ? ' class="on" aria-current="page"' : '' %>><%- include('_icone', { nome: 'casa' }) %><span>Início</span></a>
   <a href="/digital#cursos"<%- _aba === 'cursos' ? ' class="on" aria-current="page"' : '' %>><%- include('_icone', { nome: 'livros' }) %><span>Cursos</span></a>
   <a href="/minha-conta"<%- _aba === 'certificados' ? ' class="on" aria-current="page"' : '' %>><%- include('_icone', { nome: 'premio' }) %><span>Certificados</span></a>
   <a href="/minha-conta"<%- _aba === 'conta' ? ' class="on" aria-current="page"' : '' %>><%- include('_icone', { nome: 'pessoa' }) %><span>Conta</span></a>
 </nav>
-<% } %>
