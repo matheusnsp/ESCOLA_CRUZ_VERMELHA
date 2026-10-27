@@ -1,0 +1,86 @@
+<%- include('_topo') %>
+<%
+var acao = '/digital/cursos/' + slug + '/matricula';
+function campoErro(c) { return campos && campos[c] ? campos[c] : ''; }
+function atributosCampo(c) { return campoErro(c) ? ' aria-invalid="true" aria-describedby="mat-' + c + '-msg"' : ''; }
+%>
+<section class="ed-matricula">
+  <p class="ed-rotulo">MATRÍCULA RÁPIDA</p>
+  <h1><%= curso.nome %></h1>
+  <p class="ed-mat-preco"><span class="ed-nowrap"><%= curso.precoAvista %> à vista</span><% if (curso.parcelas > 1) { %> · <span class="ed-nowrap">ou até <%= curso.parcelas %>× de <%= curso.valorParcela %></span><% } %></p>
+
+  <% if (modo === 'outro-papel') { %>
+    <div class="ed-aviso" role="alert">
+      <b>Conta sem acesso ao curso</b>
+      <p><%= msgSoAluno %></p>
+    </div>
+    <p class="ed-mat-volta"><a href="/digital/cursos/<%= slug %>">Voltar para o curso</a></p>
+
+  <% } else if (modo === 'encerrada') { %>
+    <div class="ed-encerrado">
+      <b>Inscrição encerrada</b>
+      <p>Sua inscrição neste curso foi encerrada. Fale com a secretaria.</p>
+      <p><a href="mailto:contato@cruzvermelhariodejaneiro.org">contato@cruzvermelhariodejaneiro.org</a></p>
+    </div>
+    <p class="ed-mat-volta"><a href="/digital/cursos/<%= slug %>">Voltar para o curso</a></p>
+
+  <% } else { %>
+    <% if (erros.length) { %>
+    <div class="ed-aviso" role="alert">
+      <b>Confira os dados</b>
+      <ul><% erros.forEach(function (e) { %><li><%= e %></li><% }) %></ul>
+    </div>
+    <% } %>
+
+    <form class="ed-form" method="POST" action="<%= acao %>" novalidate>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <% if (modo === 'aluno') { %>
+        <p class="ed-mat-quem">Você vai se matricular como <b><%= aluno.nome %></b>.</p>
+        <p class="ed-mat-nota">Depois de confirmar, você escolhe a forma de pagamento.</p>
+      <% } else { %>
+        <p class="ed-mat-nota">Preencha os dados para criar sua conta de aluno e se matricular. Depois você escolhe a forma de pagamento.</p>
+
+        <div class="ed-campo<%= campoErro('nome') ? ' ed-campo-erro' : '' %>">
+          <label for="mat-nome">Nome completo</label>
+          <input id="mat-nome" name="nome" type="text" autocomplete="name" value="<%= valores.nome || '' %>" maxlength="120"<%- atributosCampo('nome') %>>
+          <p class="ed-campo-msg" id="mat-nome-msg"><%= campoErro('nome') %></p>
+        </div>
+
+        <div class="ed-campo<%= campoErro('cpf') ? ' ed-campo-erro' : '' %>">
+          <label for="mat-cpf">CPF</label>
+          <input id="mat-cpf" name="cpf" type="text" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" value="<%= valores.cpf || '' %>" maxlength="14"<%- atributosCampo('cpf') %>>
+          <p class="ed-campo-msg" id="mat-cpf-msg"><%= campoErro('cpf') %></p>
+        </div>
+
+        <div class="ed-campo<%= campoErro('celular') ? ' ed-campo-erro' : '' %>">
+          <label for="mat-celular">Celular com DDD</label>
+          <input id="mat-celular" name="celular" type="tel" autocomplete="tel-national" placeholder="(21) 98888-7777" value="<%= valores.celular || '' %>" maxlength="20"<%- atributosCampo('celular') %>>
+          <p class="ed-campo-msg" id="mat-celular-msg"><%= campoErro('celular') %></p>
+        </div>
+
+        <div class="ed-campo<%= campoErro('email') ? ' ed-campo-erro' : '' %>">
+          <label for="mat-email">E-mail</label>
+          <input id="mat-email" name="email" type="email" autocomplete="email" value="<%= valores.email || '' %>" maxlength="180"<%- atributosCampo('email') %>>
+          <p class="ed-campo-msg" id="mat-email-msg"><%= campoErro('email') %></p>
+        </div>
+
+        <p class="ed-mat-nota">Sua senha inicial são os <b>4 últimos dígitos do CPF</b>. Você poderá trocá-la em Minha conta.</p>
+      <% } %>
+
+      <% if (modo === 'novo' || precisaAceite) { %>
+      <div class="ed-campo ed-campo-aceite<%= campoErro('aceite') ? ' ed-campo-erro' : '' %>">
+        <label class="ed-check" for="mat-aceite">
+          <input id="mat-aceite" name="aceite" type="checkbox" value="on"<%= aceitou ? ' checked' : '' %><%- atributosCampo('aceite') %>>
+          <span>Li e aceito os <a href="/digital/cursos/<%= slug %>" target="_blank" rel="noopener">termos do curso online</a> e a <a href="/privacidade" target="_blank" rel="noopener">Política de Privacidade</a>.</span>
+        </label>
+        <p class="ed-campo-msg" id="mat-aceite-msg"><%= campoErro('aceite') %></p>
+      </div>
+      <% } %>
+
+      <button type="submit" class="ed-botao ed-botao-grande"><%= modo === 'aluno' ? 'Confirmar matrícula' : 'Matricular e ir ao pagamento' %> <span aria-hidden="true">→</span></button>
+    </form>
+    <p class="ed-mat-volta"><a href="/digital/cursos/<%= slug %>">Voltar para o curso</a></p>
+  <% } %>
+</section>
+<%- include('_rodape') %>

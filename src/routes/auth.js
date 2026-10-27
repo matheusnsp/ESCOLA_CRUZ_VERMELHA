@@ -20,11 +20,10 @@ const {
 const {
   criarTokenReset,
   verificarTokenReset,
-  criarTokenVerificacao,
   verificarTokenVerificacao,
   consumirToken,
 } = require('../lib/tokens');
-const { enviarEmailResetSenha, enviarEmailConfirmacao } = require('../lib/email');
+const { enviarEmailResetSenha } = require('../lib/email');
 const { avaliarSenhaAsync, MENSAGEM_SENHA_FRACA } = require('../lib/senha-forte');
 const { validarCpfCnpj } = require('../lib/documento');
 const { precisaTrocarSenha, registrarTrocaSenha } = require('../lib/seguranca'); // 👈 novo
@@ -44,7 +43,8 @@ const asyncHandler = require('../lib/asyncHandler');
 });
 
 const excluirConta = require('../lib/excluir-conta');
-const POLITICA_VERSAO = '2026-10-07'; // data da Política de Privacidade em vigor (views/privacidade.ejs)
+const { POLITICA_VERSAO, senhaPadraoDoDocumento } = require('../lib/cadastro-aluno');
+const { enviarConfirmacao } = require('../lib/confirmacao-email');
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
 
 // ---------- Rate limiters ----------
@@ -52,20 +52,6 @@ const cadastroLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardH
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 8, standardHeaders: true, legacyHeaders: false });
 const resetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false });
 const reenvioLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false });
-
-// Envia o e-mail de confirmacao para um usuario.
-async function enviarConfirmacao(usuario) {
-  const token = await criarTokenVerificacao(usuario.id);
-  const link = `${APP_URL}/confirmar-email?token=${token}`;
-  await enviarEmailConfirmacao(usuario.email, usuario.nome, link);
-}
-
-function senhaPadraoDoDocumento({ tipoDocumento, cpfCnpjNormalizado, passaporte }) {
-  const base = tipoDocumento === 'PASSAPORTE'
-    ? (passaporte || '').replace(/[^A-Z0-9]/g, '')
-    : (cpfCnpjNormalizado || '');
-  return base.slice(-4);
-}
 
 // ============================================================
 //  CADASTRO

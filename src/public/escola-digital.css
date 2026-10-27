@@ -69,13 +69,14 @@ body.ed {
 .ed-lema span + span { border-left: 2px solid var(--ed-tinta); }
 .ed-lema .on { background: var(--ed-vermelho); color: #fff; }
 
-.ed a.ed-botao {
+.ed a.ed-botao, .ed button.ed-botao {
   display: inline-flex; justify-content: space-between; align-items: center; gap: 14px;
   background: var(--ed-tinta); color: #fff; text-decoration: none;
   padding: 14px 16px; font: 800 14px var(--ed-texto);
   box-shadow: 6px 6px 0 var(--ed-vermelho); min-height: 48px;
 }
-.ed a.ed-botao:hover { background: var(--ed-vermelho-escuro); }
+.ed button.ed-botao { border: 0; cursor: pointer; text-align: left; line-height: 1.2; }
+.ed a.ed-botao:hover, .ed button.ed-botao:hover { background: var(--ed-vermelho-escuro); }
 .ed-botao:focus-visible { outline-color: var(--ed-tinta); outline-offset: 4px; }
 .ed-botao-grande { display: flex; width: 100%; font-size: 15px; }
 
@@ -138,6 +139,33 @@ body.ed {
 .ed-passos b { font-family: var(--ed-titulo); }
 .ed-alerta { background: var(--ed-vermelho); color: #fff; padding: 14px 16px; font-size: 15px; }
 .ed-alerta b { display: block; font: 700 10.5px var(--ed-mono); letter-spacing: .06em; margin-bottom: 4px; }
+
+/* ---- matrícula rápida ---- */
+.ed-matricula { padding: 24px 16px 40px; max-width: 560px; }
+.ed-matricula h1 { font-size: 30px; font-weight: 900; line-height: 1; letter-spacing: -.04em; margin-top: 8px; text-wrap: balance; }
+.ed .ed-mat-preco { margin-top: 10px; font: 700 12px var(--ed-mono); letter-spacing: .02em; color: var(--ed-cinza); }
+.ed .ed-mat-nota { font-size: 14.5px; color: var(--ed-cinza); }
+.ed .ed-mat-quem { font-size: 17px; }
+.ed-mat-quem b { font: 900 19px var(--ed-titulo); letter-spacing: -.02em; }
+.ed .ed-mat-volta { margin-top: 22px; font-size: 14px; }
+.ed-matricula .ed-encerrado { margin-top: 18px; background: #fff; }
+.ed-aviso { margin-top: 18px; background: var(--ed-vermelho); color: #fff; padding: 12px 14px; font-size: 14.5px; }
+.ed-aviso b { display: block; font: 700 10.5px var(--ed-mono); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 4px; }
+.ed-aviso ul { margin: 0; padding-left: 18px; }
+.ed-aviso a { color: #fff; }
+.ed-form { margin-top: 18px; display: grid; gap: 16px; border: 2px solid var(--ed-tinta); background: #fff; padding: 16px; box-shadow: 6px 6px 0 var(--ed-vermelho); }
+.ed-campo label { display: block; font: 700 11px var(--ed-mono); letter-spacing: .05em; text-transform: uppercase; margin-bottom: 6px; }
+.ed-campo input[type="text"], .ed-campo input[type="tel"], .ed-campo input[type="email"] {
+  display: block; width: 100%; min-height: 48px; padding: 10px 12px; font: 500 16px var(--ed-texto); color: var(--ed-tinta);
+  background: var(--ed-papel); border: 2px solid var(--ed-tinta); border-radius: 0; -webkit-appearance: none; appearance: none;
+}
+.ed-campo input::placeholder { color: #8a8478; }
+.ed .ed-campo-msg { margin-top: 5px; font: 700 12.5px var(--ed-texto); color: var(--ed-vermelho-escuro); }
+.ed .ed-campo-msg:empty { display: none; }
+.ed-campo-erro input[type="text"], .ed-campo-erro input[type="tel"], .ed-campo-erro input[type="email"] { border-color: var(--ed-vermelho); background: #fff; }
+.ed-campo .ed-check { display: flex; gap: 12px; align-items: flex-start; font: 400 14.5px/1.4 var(--ed-texto); letter-spacing: 0; text-transform: none; margin: 0; }
+.ed-check input { flex: none; width: 24px; height: 24px; margin: 1px 0 0; accent-color: var(--ed-vermelho); }
+.ed-form .ed-botao-grande { margin-top: 4px; }
 
 /* ---- erro ---- */
 .ed-erro { padding: 32px 16px 48px; max-width: 560px; }
