@@ -149,7 +149,7 @@ test('(a) "paid" → pagamento PAGO, inscrição ATIVA com acessoAte = ativadaEm
   assert.strictEqual(i.plano, 'PARCELADO');
   assert.strictEqual(i.forma, 'CREDITO');
   assert.strictEqual(i.parcelas, 3);
-  assert.strictEqual(Number(i.valor), 106.5); // total com juros do aviso
+  assert.strictEqual(Number(i.valor), 99.9); // o valor cobrado (base), não o amount_total do aviso
 
   assert.strictEqual(enviados.length, 1);
   const [para, nome, dados] = enviados[0];
@@ -314,6 +314,30 @@ test('(e) PIX vencido (mais de 30 min) vira CANCELADO e sai um novo', { skip }, 
   assert.strictEqual(await prisma.pagamentoOnline.count({ where: { inscricaoId: inscricao.id, status: 'PENDENTE' } }), 1);
 });
 
+test('cobrar não reaproveita um PENDENTE de outro gateway (simulado x Únicopag)', { skip }, async () => {
+  const { inscricao } = await novaInscricao();
+  const simulado = await pagamento.cobrar({ inscricaoId: inscricao.id, plano: 'A_VISTA', parcelas: 1, forma: 'PIX' });
+  assert.strictEqual(simulado.gateway, 'simulado');
+
+  delete process.env.ESCOLA_DIGITAL_PAGAMENTO_SIMULADO;
+  process.env.UNICOPAG_API_TOKEN = 'token-falso-de-teste';
+  let chamadas = 0;
+  unicopag.criarTransacao = async () => {
+    chamadas += 1;
+    return { success: true, gateway: 'unicopag', id: 'id-g', hash: `HGW${EXEC}`, gatewayRef: `HGW${EXEC}`, paymentStatus: 'waiting_payment', pixQrCode: '000201GW' };
+  };
+  const real = await pagamento.cobrar({ inscricaoId: inscricao.id, plano: 'A_VISTA', parcelas: 1, forma: 'PIX' });
+  assert.notStrictEqual(real.id, simulado.id);
+  assert.strictEqual(real.gateway, 'unicopag');
+  assert.strictEqual(chamadas, 1);
+
+  // E o contrário: com o simulado ligado de novo, o PENDENTE da Únicopag não serve.
+  process.env.ESCOLA_DIGITAL_PAGAMENTO_SIMULADO = '1';
+  const deNovo = await pagamento.cobrar({ inscricaoId: inscricao.id, plano: 'A_VISTA', parcelas: 1, forma: 'PIX' });
+  assert.strictEqual(deNovo.id, simulado.id);
+  assert.strictEqual(deNovo.reaproveitado, true);
+});
+
 test('cobrar recusa combinações inválidas e inscrição que não aguarda pagamento', { skip }, async () => {
   const { inscricao } = await novaInscricao();
   const casos = [
@@ -435,6 +459,22 @@ test('(f) acharPorAviso: por hash, por order_id "ED-", e sem os dois por e-mail 
   assert.strictEqual(await pagamento.acharPorAviso({}), null);
 });
 
+test('(f) e-mail + valor não casa cobrança que já tem referência, nem aviso cujo hash já está gravado', { skip }, async () => {
+  const { aluno, inscricao } = await novaInscricao();
+  const comRef = await novoPagamento(inscricao.id, { valor: 66.6, gatewayRef: `HJA${EXEC}`, gatewayHash: `HJA${EXEC}` });
+  assert.strictEqual(await pagamento.acharPorEmailEValor({ hash: `HNOVO2${EXEC}`, email: aluno.email, valor: 66.6 }), null);
+  assert.strictEqual(await pagamento.acharPorIdentificador({ hash: `HJA${EXEC}` }).then((p) => p.id), comRef.id);
+
+  const semRef = await novoPagamento(inscricao.id, { valor: 55.5 });
+  assert.strictEqual((await pagamento.acharPorEmailEValor({ hash: `HLIVRE${EXEC}`, email: aluno.email, valor: 55.5 })).id, semRef.id);
+  // O hash do aviso já é de outra cobrança (aqui, uma online): não casa por e-mail.
+  assert.strictEqual(await pagamento.acharPorEmailEValor({ hash: `HJA${EXEC}`, email: aluno.email, valor: 55.5 }), null);
+  // Idem quando o hash está num Pagamento presencial.
+  const m = await matriculaPresencial(aluno, 10);
+  await prisma.pagamento.create({ data: { matriculaId: m.id, tipo: 'CURSO', gateway: 'unicopag', metodo: 'PIX', valor: 10, status: 'PAGO', gatewayRef: `HPRES2${EXEC}` } });
+  assert.strictEqual(await pagamento.acharPorEmailEValor({ hash: `HPRES2${EXEC}`, email: aluno.email, valor: 55.5 }), null);
+});
+
 // ---------- aviso da Únicopag (routes/webhook.js) ----------
 
 async function comWebhook(fn) {
@@ -520,6 +560,36 @@ test('webhook: online por hash e por order_id "ED-"; repetido responde "já proc
     assert.strictEqual(r.status, 404);
   });
   assert.strictEqual(enviados.length, 1);
+});
+
+test('webhook: aviso com o hash de uma cobrança online não marca pago o presencial PENDENTE de mesmo e-mail e valor', { skip }, async () => {
+  const { aluno, inscricao } = await novaInscricao();
+  const m = await matriculaPresencial(aluno, 100);
+  const pres = await prisma.pagamento.create({ data: { matriculaId: m.id, tipo: 'CURSO', gateway: 'unicopag', metodo: 'PIX', valor: 100, status: 'PENDENTE' } });
+  const hash = `HONL${EXEC}`;
+  const online = await novoPagamento(inscricao.id, { valor: 100, gatewayHash: hash, gatewayRef: hash });
+  await comWebhook(async (avisar) => {
+    const r = await avisar({ hash, payment_status: 'paid', amount: 10000, customer: { email: aluno.email } });
+    assert.deepStrictEqual(r, { status: 200, json: { ok: true } });
+  });
+  assert.strictEqual((await prisma.pagamento.findUnique({ where: { id: pres.id } })).status, 'PENDENTE');
+  assert.strictEqual((await prisma.pagamento.findUnique({ where: { id: pres.id } })).gatewayRef, null);
+  assert.strictEqual((await lerPagamento(online.id)).status, 'PAGO');
+  assert.strictEqual((await lerInscricao(inscricao.id)).situacao, 'ATIVA');
+});
+
+test('webhook: aviso presencial que não casa no passo 3 não ativa inscrição online cuja cobrança tem outro hash', { skip }, async () => {
+  const { aluno, inscricao } = await novaInscricao();
+  const online = await novoPagamento(inscricao.id, { valor: 100, gatewayHash: `HOUTRO${EXEC}`, gatewayRef: `HOUTRO${EXEC}` });
+  await comWebhook(async (avisar) => {
+    const r = await avisar({ hash: `HPRESX${EXEC}`, payment_status: 'paid', amount: 10000, customer: { email: aluno.email } });
+    assert.strictEqual(r.status, 404);
+  });
+  const depois = await lerPagamento(online.id);
+  assert.strictEqual(depois.status, 'PENDENTE');
+  assert.strictEqual(depois.gatewayRef, `HOUTRO${EXEC}`);
+  assert.strictEqual((await lerInscricao(inscricao.id)).situacao, 'AGUARDANDO_PAGAMENTO');
+  assert.strictEqual(enviados.length, 0);
 });
 
 // ---------- reconciliação ----------
@@ -666,6 +736,16 @@ test('telas com pagamento simulado: PIX com QR e Aprovar; aprovar ativa; status 
 
     r = await c.get(`${base}/status`);
     assert.deepStrictEqual(await r.json(), { status: 'PAGO', situacao: 'ATIVA' });
+
+    // Cobrança já respondida: o banco simulado não mexe mais nela.
+    html = await (await c.get(`/digital/simulado/${pag.id}`)).text();
+    assert.ok(html.includes('Cobrança já respondida'));
+    assert.ok(!html.includes('value="recusar"'));
+    r = await c.post(`/digital/simulado/${pag.id}`, { _csrf: lerCsrf(await (await c.get('/minha-conta')).text()), acao: 'recusar' });
+    assert.strictEqual(r.status, 302);
+    assert.strictEqual(r.headers.get('location'), base);
+    assert.strictEqual((await lerPagamento(pag.id)).status, 'PAGO');
+    assert.strictEqual((await lerInscricao(inscricao.id)).situacao, 'ATIVA');
     r = await c.get(base);
     assert.strictEqual(r.status, 302);
     assert.strictEqual(r.headers.get('location'), `/digital/estudo/${inscricao.id}`);

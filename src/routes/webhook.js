@@ -41,6 +41,21 @@ router.post('/webhook/unicopag', express.json(), async (req, res) => {
       return res.status(400).json({ ok: false });
     }
 
+    // Aviso de um PagamentoOnline (Escola Digital): grava o hash quando falta e aplica com a regra do
+    // curso online. Responde como o ramo do Pagamento, mais abaixo.
+    const responderOnline = async (online) => {
+      if (hash && !online.gatewayRef) {
+        await prisma.pagamentoOnline.updateMany({
+          where: { id: online.id, gatewayRef: null },
+          data: { gatewayRef: hash, gatewayHash: online.gatewayHash || hash },
+        });
+        online.gatewayRef = hash;
+      }
+      const r = await pagamentoOnline.aplicarStatusOnline(online, { status, payload, origem: 'webhook' });
+      if (r.info) return res.json({ ok: true, info: r.info });
+      return res.json({ ok: true });
+    };
+
     // 1) Caminho normal: hash da transação (gravado como gatewayRef/gatewayHash
     //    na criação). SEM filtro de status, de propósito: um pagamento marcado
     //    CANCELADO pelo timeout do nosso lado ainda precisa ser confirmável
@@ -59,6 +74,14 @@ router.post('/webhook/unicopag', express.json(), async (req, res) => {
         where: { matriculaId: String(orderId), status: 'PENDENTE' },
         orderBy: { criadoEm: 'desc' },
       });
+    }
+
+    // 2b) Escola Digital (curso online), identificadores exatos: hash gravado num PagamentoOnline
+    //     ou order_id "ED-<id>". Vem antes de qualquer casamento por e-mail + valor (passo 3), para
+    //     um aviso do curso online nunca marcar pago um Pagamento presencial pendente de mesmo valor.
+    if (!pagamento) {
+      const online = await pagamentoOnline.acharPorIdentificador({ hash, orderId });
+      if (online) return responderOnline(online);
     }
 
     // 3) Corrida de dados: o webhook chegou antes de o gatewayRef ser gravado
@@ -88,23 +111,12 @@ router.post('/webhook/unicopag', express.json(), async (req, res) => {
       }
     }
 
-    // 4) Escola Digital (curso online): só quando nenhum dos 3 caminhos acima achou um Pagamento.
-    //    Procura em PagamentoOnline pelo hash, pelo order_id "ED-<id>" ou por e-mail + valor
-    //    (lib/escola-digital/pagamento.js) e aplica com a regra própria do curso online.
+    // 3b) Escola Digital, por e-mail + valor (o mesmo tipo de casamento do passo 3, para a corrida
+    //     de dados do curso online). Só depois de TODOS os identificadores exatos (passos 1, 2 e 2b)
+    //     e do passo 3, e nunca numa cobrança que já tem outro hash gravado (lib/escola-digital/pagamento.js).
     if (!pagamento) {
-      const online = await pagamentoOnline.acharPorAviso({ hash, orderId, email: emailCliente, valor: amountBase });
-      if (online) {
-        if (hash && !online.gatewayRef) {
-          await prisma.pagamentoOnline.updateMany({
-            where: { id: online.id, gatewayRef: null },
-            data: { gatewayRef: hash, gatewayHash: online.gatewayHash || hash },
-          });
-          online.gatewayRef = hash;
-        }
-        const r = await pagamentoOnline.aplicarStatusOnline(online, { status, payload, tx, origem: 'webhook' });
-        if (r.info) return res.json({ ok: true, info: r.info });
-        return res.json({ ok: true });
-      }
+      const online = await pagamentoOnline.acharPorEmailEValor({ hash, email: emailCliente, valor: amountBase });
+      if (online) return responderOnline(online);
     }
 
     if (!pagamento) {

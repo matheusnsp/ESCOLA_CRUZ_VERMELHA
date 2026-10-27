@@ -237,6 +237,8 @@ router.post('/digital/simulado/:pagamentoId', requireLogin, asyncHandler(async (
   if (!pagamento) return simuladoNaoEncontrado(res);
   const acao = String(req.body.acao || '');
   if (acao !== 'aprovar' && acao !== 'recusar') return res.redirect(`/digital/simulado/${pagamento.id}`);
+  // Só uma cobrança ainda pendente recebe resposta do banco simulado; as outras ficam como estão.
+  if (pagamento.status !== 'PENDENTE') return res.redirect(`/digital/pagamento/${pagamento.inscricaoId}`);
 
   const { inscricao, ...linha } = pagamento;
   await pagamentoOnline.aplicarStatusOnline(linha, {

@@ -15,6 +15,12 @@
     <div><dt>Situação</dt><dd><%= pagamento.status %></dd></div>
   </dl>
 
+  <% if (pagamento.status !== 'PENDENTE') { %>
+  <div class="ed-encerrado ed-simulado-fim">
+    <b>Cobrança já respondida</b>
+    <p>Esta cobrança não está mais pendente. Volte para o pagamento para ver a situação.</p>
+  </div>
+  <% } else { %>
   <div class="ed-simulado-acoes">
     <form method="POST" action="/digital/simulado/<%= pagamento.id %>">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -27,6 +33,7 @@
       <button type="submit" class="ed-botao ed-botao-grande ed-botao-claro">Recusar <span aria-hidden="true">✕</span></button>
     </form>
   </div>
+  <% } %>
 
   <p class="ed-mat-volta"><a href="/digital/pagamento/<%= pagamento.inscricaoId %>">Voltar para o pagamento</a></p>
 </section>

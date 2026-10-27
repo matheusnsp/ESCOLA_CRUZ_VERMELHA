@@ -213,6 +213,7 @@ body.ed {
 .ed-resumo dt { font: 700 11px var(--ed-mono); letter-spacing: .05em; text-transform: uppercase; color: var(--ed-cinza); }
 .ed-resumo dd { margin: 0; font-weight: 700; text-align: right; }
 .ed-simulado-acoes { margin-top: 22px; display: grid; gap: 16px; }
+.ed-pagamento .ed-simulado-fim { margin-top: 18px; background: #fff; }
 .ed button.ed-botao-claro { background: #fff; color: var(--ed-tinta); border: 2px solid var(--ed-tinta); box-shadow: 6px 6px 0 var(--ed-tinta); }
 .ed button.ed-botao-claro:hover { background: var(--ed-papel); }
 

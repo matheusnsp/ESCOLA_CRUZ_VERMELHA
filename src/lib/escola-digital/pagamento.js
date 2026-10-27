@@ -6,7 +6,8 @@
 //   cobrar({ inscricaoId, plano, parcelas, forma, dadosCartao?, origem? }) -> PagamentoOnline
 //     (+ `reaproveitado` quando devolve a cobrança pendente que já existia, + `motivo` no cartão recusado)
 //   aplicarStatusOnline(pagamento, { status, payload, origem }) -> { info? , novoStatus?, situacao? }
-//   acharPorAviso({ hash, orderId, email, valor }) -> PagamentoOnline | null   (routes/webhook.js)
+//   acharPorIdentificador({ hash, orderId }) / acharPorEmailEValor({ hash, email, valor })
+//     -> PagamentoOnline | null   (routes/webhook.js: os exatos antes, e-mail + valor por último)
 //   reconciliarOnline(opts) -> resumo                                           (lib/reconciliacao.js)
 //
 // O que vale aqui, e por quê:
@@ -108,7 +109,8 @@ async function acharOuCriarPendente({ inscricaoId, metodo, parcelas, valor, gate
 
     const agora = Date.now();
     const pendentes = await tx.pagamentoOnline.findMany({
-      where: { inscricaoId, metodo, parcelas, valor: emDecimal(valor), status: 'PENDENTE' },
+      // Mesmo gateway: um PENDENTE do simulado nunca serve quando a Únicopag está ativa, e vice-versa.
+      where: { inscricaoId, metodo, parcelas, valor: emDecimal(valor), gateway, status: 'PENDENTE' },
       orderBy: { criadoEm: 'desc' },
     });
     for (const p of pendentes) {
@@ -275,15 +277,13 @@ async function avisarAtivacao(inscricaoId) {
  * @param {object} o
  * @param {string} o.status   paid, refunded, refused, waiting_payment…
  * @param {object} o.payload  o que veio (fica em gatewayResponse)
- * @param {object} [o.tx]     a transação dentro do payload, quando há envelope (para amount_total)
  * @param {'webhook'|'reconciliacao'|'cartao'|'simulado'} o.origem
  * @param {boolean} [o.gravarPendente=true]
  * @returns {Promise<{info?: string, novoStatus?: string, situacao?: string}>}
  */
-async function aplicarStatusOnline(pagamento, { status, payload, tx, origem = 'webhook', gravarPendente = true } = {}) {
+async function aplicarStatusOnline(pagamento, { status, payload, origem = 'webhook', gravarPendente = true } = {}) {
   const log = `ESCOLA-DIGITAL ${QUEM[origem] || 'WEBHOOK'}`;
   payload = payload || {};
-  const transacao = tx || payload;
   const classe = classificarStatus(status);
 
   // Atalho: o mesmo status já gravado. A proteção de verdade é a trava atômica mais abaixo.
@@ -337,8 +337,6 @@ async function aplicarStatusOnline(pagamento, { status, payload, tx, origem = 'w
     let mudou = false;
     if (efeito === 'ATIVA') {
       const parcelado = pagamento.parcelas > 1;
-      // Parcelado: o que a pessoa paga de fato é o total com juros (amount_total do aviso).
-      const totalComJuros = Number(transacao.amount_total ?? payload.amount_total ?? 0) / 100;
       const u = await db.inscricaoOnline.updateMany({
         where: { id: insc.id, situacao: 'AGUARDANDO_PAGAMENTO' },
         data: {
@@ -348,7 +346,8 @@ async function aplicarStatusOnline(pagamento, { status, payload, tx, origem = 'w
           plano: parcelado ? 'PARCELADO' : 'A_VISTA',
           forma: pagamento.metodo,
           parcelas: pagamento.parcelas,
-          valor: parcelado && totalComJuros > 0 ? totalComJuros : Number(pagamento.valor),
+          // O valor cobrado (base: precoAvista ou precoCheio), igual em todos os caminhos.
+          valor: Number(pagamento.valor),
         },
       });
       mudou = u.count === 1;
@@ -384,11 +383,11 @@ async function aplicarStatusOnline(pagamento, { status, payload, tx, origem = 'w
 }
 
 /**
- * Acha o PagamentoOnline de um aviso da Únicopag que não casou com nenhum Pagamento presencial:
- * pelo hash (sem filtro de status, como o webhook presencial), pelo order_id "ED-<id>" (PENDENTE)
- * ou, sem os dois, pelo e-mail do aluno + valor base, PENDENTE mais recente.
+ * Identificadores exatos de um aviso da Únicopag: o hash gravado num PagamentoOnline (sem filtro de
+ * status, como o webhook presencial) ou o order_id "ED-<id>" (PENDENTE). O webhook procura aqui
+ * logo depois dos identificadores exatos do Pagamento presencial e antes de qualquer e-mail + valor.
  */
-async function acharPorAviso({ hash, orderId, email: emailCliente, valor } = {}) {
+async function acharPorIdentificador({ hash, orderId } = {}) {
   const h = String(hash || '');
   if (h) {
     const p = await prisma.pagamentoOnline.findFirst({
@@ -397,29 +396,51 @@ async function acharPorAviso({ hash, orderId, email: emailCliente, valor } = {})
     });
     if (p) return p;
   }
-
   const pedido = String(orderId || '');
   if (pedido.startsWith(PREFIXO_REF) && pedido.length > PREFIXO_REF.length) {
     const p = await prisma.pagamentoOnline.findFirst({ where: { id: pedido.slice(PREFIXO_REF.length), status: 'PENDENTE' } });
     if (p) return p;
   }
+  return null;
+}
 
+/**
+ * Corrida de dados (o aviso chegou antes de a cobrança gravar o hash): e-mail do aluno + valor base,
+ * PENDENTE mais recente, e só entre as cobranças ainda sem referência da Únicopag. Não casa nada
+ * quando o hash do aviso já está gravado em algum Pagamento ou PagamentoOnline (é de outra cobrança).
+ */
+async function acharPorEmailEValor({ hash, email: emailCliente, valor } = {}) {
   const e = String(emailCliente || '').trim().toLowerCase();
   const v = Number(valor);
-  if (e && Number.isFinite(v) && v > 0) {
-    const aluno = await prisma.usuario.findUnique({ where: { email: e }, select: { id: true } });
-    if (aluno) {
-      const p = await prisma.pagamentoOnline.findFirst({
-        where: { status: 'PENDENTE', valor: emDecimal(v), inscricao: { alunoId: aluno.id } },
-        orderBy: { criadoEm: 'desc' },
-      });
-      if (p) {
-        console.log(`[ESCOLA-DIGITAL WEBHOOK] Casado por e-mail (corrida de dados) — PagamentoOnline ${p.id}`);
-        return p;
-      }
-    }
+  if (!e || !Number.isFinite(v) || v <= 0) return null;
+
+  const h = String(hash || '');
+  if (h) {
+    const comHash = { OR: [{ gatewayHash: h }, { gatewayRef: h }] };
+    const [presenciais, online] = await Promise.all([
+      prisma.pagamento.count({ where: comHash }),
+      prisma.pagamentoOnline.count({ where: comHash }),
+    ]);
+    if (presenciais || online) return null;
   }
-  return null;
+
+  const aluno = await prisma.usuario.findUnique({ where: { email: e }, select: { id: true } });
+  if (!aluno) return null;
+  const p = await prisma.pagamentoOnline.findFirst({
+    where: {
+      status: 'PENDENTE', valor: emDecimal(v), inscricao: { alunoId: aluno.id },
+      // Cobrança que já tem a referência dela na Únicopag não é a deste aviso.
+      gatewayRef: null, gatewayHash: null,
+    },
+    orderBy: { criadoEm: 'desc' },
+  });
+  if (p) console.log(`[ESCOLA-DIGITAL WEBHOOK] Casado por e-mail (corrida de dados) — PagamentoOnline ${p.id}`);
+  return p;
+}
+
+// Os dois, na ordem: identificador exato, depois e-mail + valor.
+async function acharPorAviso(aviso = {}) {
+  return (await acharPorIdentificador(aviso)) || acharPorEmailEValor(aviso);
 }
 
 /**
@@ -508,5 +529,5 @@ async function opcoesDePagamento(curso) {
 module.exports = {
   PREFIXO_REF, ESPERA_PIX,
   disponivel, conferirEscolha, pendenteAtual, opcoesDePagamento,
-  cobrar, aplicarStatusOnline, acharPorAviso, reconciliarOnline,
+  cobrar, aplicarStatusOnline, acharPorAviso, acharPorIdentificador, acharPorEmailEValor, reconciliarOnline,
 };
