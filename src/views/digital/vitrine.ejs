@@ -1,0 +1,35 @@
+<%- include('_topo') %>
+<section class="ed-hero">
+  <p class="ed-rotulo"><%= NOME.toUpperCase() %></p>
+  <h1>Primeiros socorros no seu ritmo, com certificado</h1>
+  <p class="ed-hero-texto">Estude pelo celular, em telas curtas, e aprenda a reconhecer a emergência e a decidir o que fazer até a ajuda chegar.</p>
+  <div class="ed-lema" aria-label="Olhar, ligar, cuidar">
+    <span class="on">OLHAR</span><span>LIGAR</span><span>CUIDAR</span>
+  </div>
+</section>
+
+<section class="ed-cursos" id="cursos" aria-labelledby="ed-cursos-t">
+  <h2 id="ed-cursos-t" class="ed-rotulo">CURSOS ONLINE</h2>
+  <% if (!cursos.length) { %>
+    <div class="ed-vazio">
+      <b>Os cursos online estão chegando.</b>
+      <p>Ainda não há curso aberto por aqui. Volte em breve ou veja os <a href="/cursos">cursos presenciais da escola</a>.</p>
+    </div>
+  <% } else { %>
+    <div class="ed-grade">
+    <% cursos.forEach(function (c, i) { %>
+      <article class="ed-card">
+        <span class="ed-card-num"><%= String(i + 1).padStart(2, '0') %></span>
+        <h3><a href="/digital/cursos/<%= c.slug %>"><%= c.nome %></a></h3>
+        <% if (c.descricao) { %><p class="ed-card-desc"><%= c.descricao %></p><% } %>
+        <p class="ed-mono"><%= c.minutos %> MIN<% if (c.modulos) { %> · <%= c.modulos %> MÓDULOS<% } %> · CERTIFICADO</p>
+        <div class="ed-card-pe">
+          <p class="ed-preco"><span class="ed-nowrap"><%= c.precoAvista %></span> <small>à vista</small></p>
+          <a class="ed-botao" href="/digital/cursos/<%= c.slug %>">Ver o curso <span aria-hidden="true">→</span></a>
+        </div>
+      </article>
+    <% }) %>
+    </div>
+  <% } %>
+</section>
+<%- include('_rodape') %>

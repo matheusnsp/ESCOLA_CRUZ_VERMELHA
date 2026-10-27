@@ -1,0 +1,78 @@
+<%- include('_topo') %>
+<%
+var rotulosBotao = { matricular: 'Matricular e começar', pagar: 'Continuar pagamento', continuar: 'Continuar estudando', certificado: 'Ver certificado' };
+%>
+<div class="ed-curso">
+  <section class="ed-curso-hero">
+    <p class="ed-rotulo">CURSO ONLINE · <%= curso.modulos.length %> MÓDULOS</p>
+    <h1><%= curso.nome %></h1>
+    <% if (curso.descricao) { %><p class="ed-hero-texto"><%= curso.descricao %></p><% } %>
+    <ul class="ed-fatos">
+      <li><b><%= curso.cargaHoraria %> h</b> de carga horária</li>
+      <% if (curso.minutos) { %><li><b><%= curso.minutos %> min</b> de estudo</li><% } %>
+      <li><b>OLHAR · LIGAR · CUIDAR</b></li>
+    </ul>
+    <% if (ilustrativo) { %><p class="ed-selo">conteúdo ilustrativo</p><% } %>
+  </section>
+
+  <aside class="ed-compra" aria-label="Compra do curso">
+    <p class="ed-rotulo">MATRÍCULA</p>
+    <p class="ed-preco"><span class="ed-nowrap"><%= curso.precoAvista %> à vista</span></p>
+    <% if (curso.parcelas > 1) { %><p class="ed-parcelas">ou até <%= curso.parcelas %>× de <%= curso.valorParcela %> no cartão</p><% } %>
+    <ul class="ed-compra-lista">
+      <% if (curso.prazoAcesso) { %><li><%= curso.prazoAcesso %> de acesso</li><% } %>
+      <% if (curso.validadeMeses) { %><li>Certificado válido por <%= curso.validadeMeses %> meses</li><% } %>
+      <li>Estude no celular, no seu ritmo</li>
+    </ul>
+    <% if (estadoBotao === 'encerrado') { %>
+      <div class="ed-encerrado">
+        <b>Acesso encerrado</b>
+        <p>Sua inscrição neste curso não está mais ativa. Fale com a secretaria: <a href="mailto:contato@cruzvermelhariodejaneiro.org">contato@cruzvermelhariodejaneiro.org</a>.</p>
+      </div>
+    <% } else { %>
+      <a class="ed-botao ed-botao-grande" href="<%= linkBotao %>"><%= rotulosBotao[estadoBotao] %> <span aria-hidden="true">→</span></a>
+    <% } %>
+  </aside>
+
+  <div class="ed-curso-corpo">
+    <% if (curso.paragrafos.length) { %>
+    <section class="ed-bloco">
+      <h2 class="ed-rotulo">SOBRE O CURSO</h2>
+      <% curso.paragrafos.forEach(function (p) { %><p><%= p %></p><% }) %>
+    </section>
+    <% } %>
+
+    <section class="ed-bloco" aria-labelledby="ed-modulos-t">
+      <h2 id="ed-modulos-t" class="ed-rotulo">MÓDULOS</h2>
+      <ol class="ed-lista">
+        <% curso.modulos.forEach(function (m) { %>
+        <li class="ed-it">
+          <span class="ed-num"><%= String(m.ordem).padStart(2, '0') %></span>
+          <b><%= m.titulo %></b>
+          <small><%= m.minutos %> min</small>
+        </li>
+        <% }) %>
+      </ol>
+    </section>
+
+    <section class="ed-bloco" aria-labelledby="ed-como-t">
+      <h2 id="ed-como-t" class="ed-rotulo">COMO FUNCIONA</h2>
+      <div class="ed-lema" aria-label="Olhar, ligar, cuidar">
+        <span class="on">OLHAR</span><span>LIGAR</span><span>CUIDAR</span>
+      </div>
+      <ul class="ed-passos">
+        <li><b>Telas curtas.</b> Cada tópico tem poucas telas, com texto direto e, quando há, vídeo.</li>
+        <li><b>Teste rápido.</b> Ao fim de cada tópico, 3 perguntas para fixar o que viu.</li>
+        <li><b>"Já sei isso?"</b> Quem já conhece um módulo pode fazer um teste de 10 perguntas e pular as telas.</li>
+        <li><b>Cenários.</b> No último módulo, situações de emergência com decisões cronometradas.</li>
+        <li><b>Certificado.</b> Ao concluir o curso, você recebe o certificado de conclusão.</li>
+      </ul>
+    </section>
+
+    <section class="ed-alerta" aria-label="Aviso sobre a prática">
+      <b>AVISO</b>
+      <p><%= avisoPratica %></p>
+    </section>
+  </div>
+</div>
+<%- include('_rodape') %>

@@ -13,7 +13,7 @@ router.use((req, res, next) => {
   return next();
 });
 
-// Aqui entrarão os roteadores da loja e do estudo (tarefas seguintes).
-router.get('/digital', (req, res) => res.send('ok'));
+// Sub-roteadores: só entram depois da trava acima. Os do estudo e da matrícula vêm nas tarefas seguintes.
+router.use(require('./loja'));
 
 module.exports = router;

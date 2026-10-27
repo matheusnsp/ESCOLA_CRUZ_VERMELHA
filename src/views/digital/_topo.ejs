@@ -1,0 +1,53 @@
+<%
+// Abre a página da Escola Digital: <head>, barra superior e <main>. Fecha com _rodape.ejs.
+// Locals: titulo, descricao, rastrear (true nas páginas públicas: vitrine e curso; as de estudo não rastreiam).
+var _titulo = typeof titulo !== 'undefined' && titulo ? titulo : NOME;
+var _site = typeof urlSite !== 'undefined' ? urlSite : '';
+var _caminho = typeof edCaminho !== 'undefined' ? edCaminho : '/digital';
+var _primeiroNome = usuario && usuario.nome ? String(usuario.nome).trim().split(/\s+/)[0] : '';
+%><!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><%= _titulo %></title>
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/img/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<% if (typeof descricao !== 'undefined' && descricao) { %><meta name="description" content="<%= descricao %>"><% } %>
+<% if (typeof urlPagina !== 'undefined') { %><link rel="canonical" href="<%= urlPagina %>">
+<meta property="og:url" content="<%= urlPagina %>"><% } %>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="<%= NOME %>">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:title" content="<%= _titulo %>">
+<% if (typeof descricao !== 'undefined' && descricao) { %><meta property="og:description" content="<%= descricao %>"><% } %>
+<meta property="og:image" content="<%= _site %>/img/compartilhar.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#f4f1ea">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Azeret+Mono:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="<%= asset('/escola-digital.css') %>">
+<% if (typeof rastrear !== 'undefined' && rastrear) { %><%- include('../partials/rastreamento') %><% } %>
+</head>
+<body class="ed">
+<a class="ed-pular" href="#conteudo">Ir para o conteúdo</a>
+<header class="ed-topo">
+  <div class="ed-topo-in">
+    <a class="ed-marca" href="/digital" aria-label="<%= NOME %>">
+      <span class="ed-cruz" aria-hidden="true"></span>
+      <span class="ed-nome"><%= NOME_CURTO %><small>CVB-RJ</small></span>
+    </a>
+    <nav class="ed-topo-nav" aria-label="Atalhos">
+      <a class="ed-link-site" href="/">Site da escola</a>
+      <% if (usuario) { %>
+        <a class="ed-conta" href="/minha-conta"><%= _primeiroNome || 'Minha conta' %></a>
+      <% } else { %>
+        <a class="ed-conta" href="/digital/entrar?voltar=<%= encodeURIComponent(_caminho) %>">Entrar</a>
+      <% } %>
+    </nav>
+  </div>
+</header>
+<main id="conteudo" class="ed-main">
