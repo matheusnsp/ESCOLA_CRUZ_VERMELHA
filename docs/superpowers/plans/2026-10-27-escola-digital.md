@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - **Nada vai para o ar.** Trabalho na branch `claude/ead-cvbrj-online`; nunca juntar na `main` nem abrir pull request.
-- **Nenhuma alteração de banco enviada ao GitHub (Task 2 em diante) antes da Task 0 confirmar que as prévias da Vercel não usam o banco da produção.** Até lá, commits locais; push só de tarefas sem `prisma/`.
+- **Push só na branch `claude/ead-cvbrj-online`**, que a Vercel ignora (`vercel.json`, Task 0) e a Render não publica.
 - Banco: só acréscimos. Nenhuma coluna ou tabela existente muda de nome, tipo, obrigatoriedade; nada é apagado.
 - Chave: `ESCOLA_DIGITAL=1` liga; ausente/qualquer outro valor = desligada → rotas `/digital*` 404 e o site/secretaria idênticos a hoje.
 - Pagamento simulado só quando `NODE_ENV !== 'production'` **e** `ESCOLA_DIGITAL_PAGAMENTO_SIMULADO=1`.
@@ -57,15 +57,9 @@
 
 ---
 
-### Task 0: Conferir as prévias da Vercel (ação da equipe)
+### Task 0: Prévias da Vercel (concluída em 27/10)
 
-**Files:** nenhum.
-
-- [ ] **Step 1:** Pedir à equipe prints de Vercel → projeto → *Settings → Build and Deployment* (Build Command) e *Settings → Environment Variables* (quais variáveis valem para **Preview**).
-- [ ] **Step 2:** Liberar push de mudanças de banco só se: o Build Command não roda `prisma migrate deploy`/`db push`, **e** `DATABASE_URL` não está marcada para Preview (ou aponta para outro banco). Caso contrário, orientar a desligar as prévias de branches (Settings → Git → Ignored Build Step: `if [ "$VERCEL_GIT_COMMIT_REF" != "main" ]; then exit 0; else exit 1; fi`) e esperar a confirmação.
-- [ ] **Step 3:** Registrar a conclusão no topo deste plano ("Task 0: liberado em dd/mm por …").
-
-Até concluir, as Tasks 2+ seguem com commits locais; a equipe testa quando o push for liberado.
+O site oficial roda na Render, que só publica a `main`. A Vercel ainda está ligada ao repositório (equipe de outra conta) e montava uma cópia a cada push. Resolvido no próprio repositório: `vercel.json` com `git.deploymentEnabled` desligando a branch `claude/ead-cvbrj-online`. Conferir depois de cada push que `gh api repos/matheusnsp/ESCOLA_CRUZ_VERMELHA/deployments` não ganhou um Preview novo para o commit. O `vercel.json` nunca vai para a `main`.
 
 ---
 
@@ -142,7 +136,7 @@ test('migração só acrescenta', () => {
 });
 ```
 - [ ] **Step 4:** `npm test` → PASS; `npx prisma db push` no banco de teste local → sem erro; `npx prisma validate` → OK.
-- [ ] **Step 5: Commit local** (push só depois da Task 0) `git commit -m "Escola Digital: modelo de dados (só acréscimos)"`
+- [ ] **Step 5: Commit + push** `git commit -m "Escola Digital: modelo de dados (só acréscimos)"`
 
 ---
 
@@ -357,4 +351,4 @@ test('valorCobranca', () => {
 
 - [ ] **Step 1:** Escrever o passo a passo para o Mac: `.env` de teste (acrescentar `ESCOLA_DIGITAL=1` e `ESCOLA_DIGITAL_PAGAMENTO_SIMULADO=1`), `npx prisma db push`, `npm run digital:carregar -- primeiros-socorros`, `npm run dev`, e o roteiro manual da spec §9 em forma de checklist.
 - [ ] **Step 2:** Rodar o roteiro inteiro aqui (celular 390px e computador), com capturas de tela; `npm test` → todos PASS.
-- [ ] **Step 3: Commit + push** (se a Task 0 liberou) `"Escola Digital: roteiro de teste local"`; avisar a equipe para `git pull` e seguir o roteiro.
+- [ ] **Step 3: Commit + push** `"Escola Digital: roteiro de teste local"`; avisar a equipe para `git pull` e seguir o roteiro.
