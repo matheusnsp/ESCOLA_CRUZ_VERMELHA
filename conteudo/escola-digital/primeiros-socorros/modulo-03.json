@@ -1,0 +1,63 @@
+{
+  "chave": "parada-cardiaca-crianca-bebe",
+  "ordem": 3,
+  "titulo": "Parada cardíaca na criança e no bebê",
+  "minutos": 20,
+  "abertura": "Em crianças e bebês a causa costuma ser diferente, e os cuidados também. Veja o que muda.",
+  "temPreTeste": true,
+  "final": false,
+  "topicos": [
+    {
+      "chave": "rcp-crianca-e-bebe",
+      "titulo": "RCP em criança e bebê",
+      "telas": [
+        {
+          "chave": "crianca-que-saiu-da-agua",
+          "titulo": "Criança que saiu da água",
+          "ancora": "Depois de um mergulho no rio, uma criança de 5 anos é retirada da água sem responder e sem respirar. Em crianças, a parada costuma vir da falta de ar, por isso a respiração faz diferença. Comece rápido. (conteúdo ilustrativo, não validado)",
+          "revisao": [
+            "Criança: massagem com uma ou duas mãos no centro do peito.",
+            "Bebê: dois polegares no centro do peito, envolvendo o tórax com as mãos.",
+            "Ligue 192 e peça o DEA pediátrico, se houver."
+          ],
+          "alerta": "Afogamento: tire a vítima da água sem se colocar em risco e peça ajuda ao 193."
+        }
+      ],
+      "perguntas": [
+        {
+          "chave": "bebe-maos",
+          "enunciado": "No bebê, a massagem cardíaca é feita com…",
+          "alternativas": [
+            "A palma da mão",
+            "Dois polegares no centro do peito",
+            "O punho fechado"
+          ],
+          "correta": 1,
+          "porque": "No bebê o tórax é pequeno: os dois polegares, com as mãos envolvendo o peito, dão força sem machucar."
+        },
+        {
+          "chave": "por-que-ventilar",
+          "enunciado": "Por que a respiração importa mais na parada de criança do que na de adulto?",
+          "alternativas": [
+            "A parada costuma começar por falta de ar",
+            "O coração da criança é maior",
+            "Não importa: só a massagem conta"
+          ],
+          "correta": 0,
+          "porque": "Em crianças a parada costuma vir da falta de oxigênio, como no afogamento e no engasgo."
+        },
+        {
+          "chave": "rio-sem-resposta",
+          "enunciado": "Uma criança é retirada de um rio, não responde e não respira. O que você faz primeiro?",
+          "alternativas": [
+            "Dou tapas nas costas até sair a água",
+            "Peço ajuda (192 ou 193) e começo a RCP",
+            "Espero a roupa secar e observo"
+          ],
+          "correta": 1,
+          "porque": "Não perca tempo tirando água dos pulmões. Chame ajuda e comece a RCP."
+        }
+      ]
+    }
+  ]
+}

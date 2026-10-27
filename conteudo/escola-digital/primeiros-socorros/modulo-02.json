@@ -1,0 +1,64 @@
+{
+  "chave": "parada-cardiaca-adulto",
+  "ordem": 2,
+  "titulo": "Parada cardíaca no adulto",
+  "minutos": 25,
+  "abertura": "Poucos minutos fazem toda a diferença. Aqui você aprende a reconhecer a parada e a começar a massagem.",
+  "temPreTeste": true,
+  "final": false,
+  "topicos": [
+    {
+      "chave": "reconhecer-e-iniciar-a-rcp",
+      "titulo": "Reconhecer e iniciar a RCP",
+      "telas": [
+        {
+          "chave": "pessoa-caida-que-nao-responde",
+          "titulo": "Pessoa caída que não responde",
+          "ancora": "Um colega cai no corredor, não responde quando você o chama e não respira, ou respira de um jeito estranho, como quem ofega. A cada minuto sem massagem, as chances dele diminuem. Você pode começar agora, enquanto a ajuda chega. (conteúdo ilustrativo, não validado)",
+          "revisao": [
+            "Chame alto e toque os ombros: não responde.",
+            "Não respira ou só ofega: trate como parada cardíaca.",
+            "Ligue 192 e peça que alguém traga o DEA.",
+            "Massagem no centro do peito, forte e rápida: 100 a 120 por minuto."
+          ],
+          "alerta": "Ofegos raros (respiração agônica) não são respiração normal: comece a massagem."
+        }
+      ],
+      "perguntas": [
+        {
+          "chave": "ritmo-da-massagem",
+          "enunciado": "Qual é o ritmo da massagem cardíaca no adulto?",
+          "alternativas": [
+            "60 a 80 por minuto",
+            "100 a 120 por minuto",
+            "150 a 180 por minuto"
+          ],
+          "correta": 1,
+          "porque": "De 100 a 120 compressões por minuto mantêm o sangue circulando sem cansar você cedo demais."
+        },
+        {
+          "chave": "ofegos",
+          "enunciado": "Uma pessoa inconsciente dá ofegos raros, de boca aberta. O que isso significa?",
+          "alternativas": [
+            "Respiração normal; é só observar",
+            "Possível parada cardíaca: ligar 192 e começar a massagem",
+            "Soluço, sem importância"
+          ],
+          "correta": 1,
+          "porque": "Ofegos raros são a respiração agônica, um sinal comum de parada cardíaca. Não espere: ligue e comece."
+        },
+        {
+          "chave": "posicao-das-maos",
+          "enunciado": "Onde ficam as mãos na massagem cardíaca do adulto?",
+          "alternativas": [
+            "No centro do peito",
+            "Na barriga, acima do umbigo",
+            "Do lado esquerdo do peito"
+          ],
+          "correta": 0,
+          "porque": "As mãos vão sobrepostas no centro do peito, sobre a metade inferior do osso do esterno."
+        }
+      ]
+    }
+  ]
+}

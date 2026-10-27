@@ -1,0 +1,65 @@
+{
+  "chave": "antes-de-tudo",
+  "ordem": 1,
+  "titulo": "Antes de tudo",
+  "minutos": 20,
+  "abertura": "Antes de tocar em alguém, aprenda a olhar a cena. É isso que protege você e quem precisa de ajuda.",
+  "temPreTeste": true,
+  "final": false,
+  "topicos": [
+    {
+      "chave": "seu-papel",
+      "titulo": "Seu papel: olhar, ligar, cuidar",
+      "telas": [
+        {
+          "chave": "seu-papel-na-emergencia",
+          "titulo": "Seu papel na emergência",
+          "ancora": "Você não precisa ser profissional de saúde para ajudar. Numa emergência, o seu papel é simples: olhar a cena, chamar ajuda e cuidar da pessoa até ela chegar. (conteúdo ilustrativo, não validado)",
+          "revisao": [
+            "OLHAR: a cena é segura para você e para a vítima?",
+            "LIGAR: 192 (SAMU) ou 193 (Bombeiros).",
+            "CUIDAR: faça o que aprendeu, sem passar do seu limite."
+          ],
+          "alerta": "Sua segurança vem primeiro: se a cena não está segura, não entre.",
+          "dica": "Aponte uma pessoa para ligar: \"Você, de camiseta azul, ligue para o 192 e volte aqui.\""
+        }
+      ],
+      "perguntas": [
+        {
+          "chave": "ordem-do-lema",
+          "enunciado": "Qual é a ordem do lema da Cruz Vermelha para uma emergência?",
+          "alternativas": [
+            "Ligar, olhar, cuidar",
+            "Olhar, ligar, cuidar",
+            "Cuidar, olhar, ligar"
+          ],
+          "correta": 1,
+          "porque": "Primeiro olhar: sem ver a cena você não sabe se é seguro entrar nem o que dizer ao telefone. Depois ligar, e então cuidar até a ajuda chegar."
+        },
+        {
+          "chave": "fios-no-chao",
+          "enunciado": "Você vê uma pessoa caída perto de fios soltos num chão molhado. O que faz primeiro?",
+          "alternativas": [
+            "Corro e puxo a pessoa pelos braços",
+            "Mantenho distância, aviso os outros e ligo para o 193",
+            "Jogo água no rosto para acordá-la"
+          ],
+          "correta": 1,
+          "porque": "Se a cena não é segura, você vira a segunda vítima e não ajuda ninguém. Afaste-se, avise e chame os Bombeiros."
+        },
+        {
+          "chave": "numero-samu",
+          "enunciado": "Qual número chama o SAMU?",
+          "alternativas": [
+            "190",
+            "192",
+            "193",
+            "199"
+          ],
+          "correta": 1,
+          "porque": "O 192 é o SAMU. O 193 é o Corpo de Bombeiros e o 190, a Polícia Militar."
+        }
+      ]
+    }
+  ]
+}

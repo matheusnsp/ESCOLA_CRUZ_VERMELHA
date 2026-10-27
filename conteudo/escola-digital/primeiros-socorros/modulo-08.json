@@ -1,0 +1,202 @@
+{
+  "chave": "juntando-tudo",
+  "ordem": 8,
+  "titulo": "Juntando tudo",
+  "minutos": 20,
+  "abertura": "Cinco cenas do dia a dia da escola, com o relógio correndo. Decida, ouça o instrutor e reveja o que aprendeu.",
+  "temPreTeste": false,
+  "final": true,
+  "topicos": [],
+  "cenarios": [
+    {
+      "chave": "lanche-na-creche",
+      "titulo": "Pânico na hora do lanche",
+      "tempoSugerido": 240,
+      "cena": "Creche municipal, 15h. Dona Lúcia, a merendeira, vê que o Davi, 2 anos, parou de mastigar, está com os olhos arregalados e não faz som nenhum. A professora saiu para buscar os outros. Você é o adulto mais perto. (conteúdo ilustrativo, não validado)",
+      "decisoes": [
+        {
+          "pergunta": "O que você faz primeiro?",
+          "opcoes": [
+            "OLHAR",
+            "LIGAR",
+            "CUIDAR"
+          ],
+          "correta": 2,
+          "fala": "Você não tem telefone na mão e o Davi não respira. Isso é uma situação de cuidar primeiro: comece agora e grite por ajuda. Boa escolha."
+        },
+        {
+          "pergunta": "Dona Lúcia está ao seu lado. O que você pede a ela?",
+          "opcoes": [
+            "Que ligue para o 192 e volte",
+            "Que traga um copo de água",
+            "Que vá buscar a mãe do Davi"
+          ],
+          "correta": 0,
+          "fala": "Enquanto você cuida, ela liga para o 192. Duas pessoas, duas tarefas."
+        },
+        {
+          "pergunta": "O Davi continua sem voz. Qual é o próximo passo?",
+          "opcoes": [
+            "Alternar tapas nas costas e compressões, como na aula",
+            "Chacoalhar o Davi de cabeça para baixo",
+            "Esperar a professora voltar"
+          ],
+          "correta": 0,
+          "fala": "Tapas e compressões, alternados, até o objeto sair ou o Davi reagir. Se ele desmaiar, comece a RCP."
+        }
+      ]
+    },
+    {
+      "chave": "colega-na-sala-dos-professores",
+      "titulo": "Colega na sala dos professores",
+      "tempoSugerido": 240,
+      "cena": "Sala dos professores, 11h. O professor Marcos, 54 anos, diz que está com dor forte no peito e falta de ar; está suado e pálido. Os colegas se juntam em volta, sem saber o que fazer. Você está perto dele. (conteúdo ilustrativo, não validado)",
+      "decisoes": [
+        {
+          "pergunta": "O que você faz primeiro?",
+          "opcoes": [
+            "OLHAR",
+            "LIGAR",
+            "CUIDAR"
+          ],
+          "correta": 0,
+          "fala": "Olhar primeiro: a cena é segura, ele está consciente e respirando. Agora você sabe o que dizer ao 192."
+        },
+        {
+          "pergunta": "Ele quer \"ficar de pé para passar\". O que você faz?",
+          "opcoes": [
+            "Deixo andar um pouco",
+            "Peço que se sente em local confortável e que alguém ligue para o 192",
+            "Dou um copo de água com açúcar"
+          ],
+          "correta": 1,
+          "fala": "Descansar sentado reduz o esforço do coração, e o 192 deve ser chamado já."
+        },
+        {
+          "pergunta": "O professor desmaia e não respira. O que você faz?",
+          "opcoes": [
+            "Deito-o e começo a massagem cardíaca, pedindo o DEA",
+            "Jogo água no rosto dele",
+            "Espero o SAMU sem tocar nele"
+          ],
+          "correta": 0,
+          "fala": "Sem resposta e sem respiração é parada: massagem forte e rápida, e o DEA assim que chegar."
+        }
+      ]
+    },
+    {
+      "chave": "queda-no-patio",
+      "titulo": "Queda no pátio",
+      "tempoSugerido": 180,
+      "cena": "Pátio, 10h. Um aluno de 9 anos cai da escada de ferro do parquinho. Ele está deitado, chorando, e diz que o pescoço dói e que não sente bem uma das pernas. Outras crianças correm até ele. (conteúdo ilustrativo, não validado)",
+      "decisoes": [
+        {
+          "pergunta": "O que você faz primeiro?",
+          "opcoes": [
+            "OLHAR",
+            "LIGAR",
+            "CUIDAR"
+          ],
+          "correta": 0,
+          "fala": "Afaste as crianças e veja a cena. Só depois você decide como ajudar, sem mexer no aluno."
+        },
+        {
+          "pergunta": "O aluno quer se levantar. O que você faz?",
+          "opcoes": [
+            "Ajudo a levantar devagar",
+            "Peço que fique quieto e mantenho a cabeça dele parada",
+            "Levo-o no colo para a enfermaria"
+          ],
+          "correta": 1,
+          "fala": "Com dor no pescoço, mexer pode piorar uma lesão na coluna. Deixe-o parado."
+        },
+        {
+          "pergunta": "Quem você chama?",
+          "opcoes": [
+            "Os pais, e esperar",
+            "O 192 (SAMU)",
+            "Ninguém: é só susto"
+          ],
+          "correta": 1,
+          "fala": "Pescoço dolorido e perna sem sensibilidade pedem o SAMU. Avise os pais depois."
+        }
+      ]
+    },
+    {
+      "chave": "corte-na-cozinha",
+      "titulo": "Corte na cozinha",
+      "tempoSugerido": 180,
+      "cena": "Cozinha da escola, 9h. Ao cortar legumes, a Dona Marta faz um corte fundo na palma da mão. O sangue pinga sem parar no chão. Ela olha para a mão e fica pálida. (conteúdo ilustrativo, não validado)",
+      "decisoes": [
+        {
+          "pergunta": "O que você faz primeiro?",
+          "opcoes": [
+            "OLHAR",
+            "LIGAR",
+            "CUIDAR"
+          ],
+          "correta": 2,
+          "fala": "Pressione o corte com um pano limpo agora. Cada minuto de sangramento conta."
+        },
+        {
+          "pergunta": "O pano ficou encharcado. O que você faz?",
+          "opcoes": [
+            "Tiro e coloco um novo",
+            "Coloco outro pano por cima e mantenho a pressão",
+            "Solto para ver como está"
+          ],
+          "correta": 1,
+          "fala": "Soltar ou trocar rompe o coágulo. Acrescente outro pano e mantenha a pressão."
+        },
+        {
+          "pergunta": "A Dona Marta diz que vai desmaiar. O que você faz?",
+          "opcoes": [
+            "Deixo em pé, apoiada na bancada",
+            "Deito-a no chão, mantenho a pressão e ligo para o 192",
+            "Dou um copo de água"
+          ],
+          "correta": 1,
+          "fala": "Deitada, ela cai de menos e o sangue chega melhor ao cérebro. Ligue para o 192 porque o sangramento é grande."
+        }
+      ]
+    },
+    {
+      "chave": "crise-na-quadra",
+      "titulo": "Crise na quadra",
+      "tempoSugerido": 180,
+      "cena": "Quadra, 10h. Durante o jogo, o Pedro, 12 anos, para, se senta no chão com chiado no peito e só consegue falar palavras soltas. Você está com o telefone do professor na mão e a bombinha do Pedro está na mochila, na arquibancada. (conteúdo ilustrativo, não validado)",
+      "decisoes": [
+        {
+          "pergunta": "O que você faz primeiro?",
+          "opcoes": [
+            "OLHAR",
+            "LIGAR",
+            "CUIDAR"
+          ],
+          "correta": 1,
+          "fala": "Ele mal fala e o telefone está na sua mão: ligue para o 192 agora e peça que alguém traga a bombinha."
+        },
+        {
+          "pergunta": "Alguém traz a bombinha. O que você faz?",
+          "opcoes": [
+            "Ajudo o Pedro a usá-la, como ele costuma fazer",
+            "Escondo a bombinha: pode ser demais",
+            "Mando-o voltar para o jogo"
+          ],
+          "correta": 0,
+          "fala": "A bombinha é o remédio dele para a crise. Ajude-o, sentado e calmo."
+        },
+        {
+          "pergunta": "O Pedro fica azulado e para de responder. O que você faz?",
+          "opcoes": [
+            "Deito-o, verifico a respiração e, se não respira, começo a RCP",
+            "Dou água",
+            "Deixo descansar na arquibancada"
+          ],
+          "correta": 0,
+          "fala": "Sem resposta e sem respiração, comece a RCP e mantenha o 192 na linha."
+        }
+      ]
+    }
+  ]
+}

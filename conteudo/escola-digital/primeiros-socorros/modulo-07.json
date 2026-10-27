@@ -1,0 +1,65 @@
+{
+  "chave": "lesoes-e-ambiente",
+  "ordem": 7,
+  "titulo": "Lesões e ambiente",
+  "minutos": 15,
+  "abertura": "Queimaduras, intoxicações e outros riscos do dia a dia, e o que fazer (e o que não fazer) em cada um.",
+  "temPreTeste": true,
+  "final": false,
+  "topicos": [
+    {
+      "chave": "queimaduras-e-intoxicacao",
+      "titulo": "Queimaduras e intoxicação",
+      "telas": [
+        {
+          "chave": "queimadura-na-cozinha",
+          "titulo": "Queimadura na cozinha",
+          "ancora": "Um aluno derruba água fervendo no braço enquanto ajuda na cozinha. A pele fica vermelha e ardendo. O que você faz nos primeiros segundos reduz a gravidade da queimadura. (conteúdo ilustrativo, não validado)",
+          "revisao": [
+            "Água corrente fria (não gelada) por 10 a 20 minutos.",
+            "Retire anéis e pulseiras antes de inchar.",
+            "Cubra com pano limpo e úmido ou filme plástico.",
+            "Não estoure as bolhas."
+          ],
+          "alerta": "Nada de pasta de dente, manteiga, pó de café ou gelo sobre a queimadura.",
+          "dica": "Intoxicação: o Disque-Intoxicação atende pelo 0800 722 6001."
+        }
+      ],
+      "perguntas": [
+        {
+          "chave": "nao-passar",
+          "enunciado": "O que NÃO se coloca sobre uma queimadura?",
+          "alternativas": [
+            "Água corrente fria",
+            "Pasta de dente, manteiga ou pó de café",
+            "Pano limpo e úmido"
+          ],
+          "correta": 1,
+          "porque": "Esses produtos retêm calor, sujam a lesão e dificultam o atendimento. Use só água corrente e pano limpo."
+        },
+        {
+          "chave": "disque-intoxicacao",
+          "enunciado": "Qual telefone orienta em casos de intoxicação?",
+          "alternativas": [
+            "0800 722 6001",
+            "190",
+            "0800 000 0000"
+          ],
+          "correta": 0,
+          "porque": "O Disque-Intoxicação, 0800 722 6001, funciona todos os dias. Em caso grave, ligue também para o 192."
+        },
+        {
+          "chave": "produto-de-limpeza",
+          "enunciado": "Uma criança engole produto de limpeza. Você faz vomitar?",
+          "alternativas": [
+            "Sim, o mais rápido possível",
+            "Não: ligo para o Disque-Intoxicação ou 192 e levo a embalagem",
+            "Dou leite e espero"
+          ],
+          "correta": 1,
+          "porque": "Vomitar pode queimar de novo o caminho do produto. Peça orientação por telefone e tenha a embalagem à mão."
+        }
+      ]
+    }
+  ]
+}

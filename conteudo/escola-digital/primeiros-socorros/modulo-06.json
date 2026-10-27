@@ -1,0 +1,64 @@
+{
+  "chave": "sangramento-grave",
+  "ordem": 6,
+  "titulo": "Sangramento grave",
+  "minutos": 10,
+  "abertura": "Estancar o sangramento depressa salva vidas. A primeira resposta é sempre a mesma: pressão direta.",
+  "temPreTeste": true,
+  "final": false,
+  "topicos": [
+    {
+      "chave": "pressao-direta",
+      "titulo": "Pressão direta",
+      "telas": [
+        {
+          "chave": "corte-profundo",
+          "titulo": "Corte profundo",
+          "ancora": "Na cozinha da escola, uma funcionária se corta fundo com uma faca e o sangue escorre sem parar. Pressione o ferimento já: isso é o que mais ajuda nos primeiros minutos. (conteúdo ilustrativo, não validado)",
+          "revisao": [
+            "Proteja-se: use luvas ou um saco plástico nas mãos.",
+            "Pressione forte, direto sobre o ferimento, com um pano limpo.",
+            "Se o pano encharcar, ponha outro por cima e continue pressionando.",
+            "Ligue para o 192 se o sangue não para ou sai com força."
+          ],
+          "alerta": "Torniquete é só conceito neste curso: o uso se aprende no treino presencial."
+        }
+      ],
+      "perguntas": [
+        {
+          "chave": "primeira-atitude",
+          "enunciado": "Um corte sangra muito. Qual é a primeira atitude?",
+          "alternativas": [
+            "Lavar com álcool e esperar",
+            "Pressionar direto o ferimento com um pano limpo",
+            "Levantar a vítima e andar com ela"
+          ],
+          "correta": 1,
+          "porque": "Pressão direta e firme é a forma mais rápida de reduzir o sangramento."
+        },
+        {
+          "chave": "pano-encharcado",
+          "enunciado": "O pano ficou encharcado de sangue. O que fazer?",
+          "alternativas": [
+            "Tirar o pano e trocar por um novo",
+            "Pôr outro pano por cima e manter a pressão",
+            "Soltar para o sangue circular"
+          ],
+          "correta": 1,
+          "porque": "Tirar o pano rompe o coágulo que começa a se formar. Acrescente outro por cima e continue."
+        },
+        {
+          "chave": "lata-350",
+          "enunciado": "Por que usamos a lata de 350 ml como referência?",
+          "alternativas": [
+            "Para estimar a quantidade de sangue perdida e perceber a gravidade",
+            "Para recolher o sangue",
+            "Para fazer a pressão no ferimento"
+          ],
+          "correta": 0,
+          "porque": "Comparar a poça com uma lata de refrigerante ajuda a avaliar e a descrever a gravidade ao 192."
+        }
+      ]
+    }
+  ]
+}

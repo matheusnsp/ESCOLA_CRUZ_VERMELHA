@@ -1,0 +1,64 @@
+{
+  "chave": "mal-subito",
+  "ordem": 5,
+  "titulo": "Mal súbito",
+  "minutos": 25,
+  "abertura": "Nem toda emergência tem causa visível. Mesmo sem saber o que é, você sabe proteger, observar e chamar ajuda.",
+  "temPreTeste": true,
+  "final": false,
+  "topicos": [
+    {
+      "chave": "cuidados-gerais",
+      "titulo": "Cuidados gerais no mal súbito",
+      "telas": [
+        {
+          "chave": "pessoa-que-passa-mal",
+          "titulo": "Pessoa que passa mal de repente",
+          "ancora": "Durante a reunião, uma professora fica pálida, suada e diz que vai desmaiar. Você não precisa saber a causa para ajudar: dá para proteger, observar e chamar ajuda. (conteúdo ilustrativo, não validado)",
+          "revisao": [
+            "Deite ou sente a pessoa num lugar seguro.",
+            "Observe se ela responde e respira normalmente.",
+            "Pergunte sobre doenças, remédios e alergias.",
+            "Ligue para o 192 se ela perder a consciência, piorar ou não melhorar logo."
+          ],
+          "alerta": "Não dê comida, bebida ou remédio a quem está confuso ou sonolento: há risco de engasgar."
+        }
+      ],
+      "perguntas": [
+        {
+          "chave": "confusa-e-sonolenta",
+          "enunciado": "A pessoa passa mal e fica confusa e sonolenta. Você oferece água?",
+          "alternativas": [
+            "Sim, para reanimar",
+            "Não: ela pode engasgar",
+            "Sim, com açúcar"
+          ],
+          "correta": 1,
+          "porque": "Quem está confuso ou sonolento engole mal. Nada pela boca até a pessoa estar bem acordada."
+        },
+        {
+          "chave": "convulsao",
+          "enunciado": "Uma pessoa está convulsionando. O que fazer?",
+          "alternativas": [
+            "Segurar firme, para ela não se mexer",
+            "Proteger a cabeça, afastar objetos e não colocar nada na boca",
+            "Colocar uma colher entre os dentes"
+          ],
+          "correta": 1,
+          "porque": "Não se segura nem se coloca nada na boca. Proteja a cabeça, deixe passar e chame o 192."
+        },
+        {
+          "chave": "quando-ligar",
+          "enunciado": "Quando ligar para o 192 num mal súbito?",
+          "alternativas": [
+            "Só se a pessoa pedir",
+            "Se ela perder a consciência, piorar ou não melhorar logo",
+            "Nunca: é melhor levar de carro"
+          ],
+          "correta": 1,
+          "porque": "Na dúvida, ligue. O atendente orienta o que fazer até a ambulância chegar."
+        }
+      ]
+    }
+  ]
+}

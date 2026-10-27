@@ -1,0 +1,172 @@
+{
+  "chave": "engasgo",
+  "ordem": 4,
+  "titulo": "Engasgo",
+  "minutos": 20,
+  "abertura": "Engasgo é uma das emergências mais comuns na escola. A pergunta é sempre a mesma: ele ainda consegue tossir e falar?",
+  "temPreTeste": true,
+  "final": false,
+  "topicos": [
+    {
+      "chave": "reconhecer-o-engasgo",
+      "titulo": "Reconhecer o engasgo",
+      "telas": [
+        {
+          "chave": "crianca-no-recreio",
+          "titulo": "Criança no recreio",
+          "ancora": "Uma criança de 6 anos está comendo no pátio quando para de rir, leva as mãos ao pescoço e não consegue falar. Você tem segundos para decidir se ela ainda está respirando — e isso muda tudo o que vem depois. (conteúdo ilustrativo, não validado)",
+          "imagemAlt": "Pátio de escola municipal: criança sentada no banco, merendeira ao fundo.",
+          "revisao": [
+            "Mãos no pescoço: o sinal universal.",
+            "Tosse forte e consegue falar: engasgo leve. Incentive a tossir.",
+            "Som agudo, sem voz, sem tosse: engasgo grave. Aja agora.",
+            "Lábios ou pele arroxeando: já é emergência de vida."
+          ],
+          "alerta": "Se a criança tosse com força, não bata nas costas: você pode transformar um engasgo leve num grave. Fique ao lado e espere a tosse resolver."
+        }
+      ],
+      "perguntas": [
+        {
+          "chave": "sinal-de-engasgo-grave",
+          "enunciado": "Qual destes sinais mostra um engasgo grave?",
+          "alternativas": [
+            "Tosse forte e voz",
+            "Mãos no pescoço, sem voz e sem tosse",
+            "Lacrimejar e pigarrear"
+          ],
+          "correta": 1,
+          "porque": "Sem voz e sem tosse, o ar quase não passa. É grave: aja agora e peça que alguém ligue para o 192."
+        },
+        {
+          "chave": "pedaco-de-pao",
+          "enunciado": "No recreio, um aluno de 7 anos começa a tossir com força depois de engolir um pedaço de pão. Ele está vermelho, mas consegue dizer \"tá preso\". O que você faz primeiro?",
+          "alternativas": [
+            "Dou 5 tapas firmes nas costas",
+            "Dou água para ajudar a descer",
+            "Fico ao lado, incentivo a tossir e observo",
+            "Ligo para o 192 e aguardo sem intervir"
+          ],
+          "correta": 2,
+          "porque": "Tosse forte e voz = via aérea só parcialmente obstruída; o corpo está resolvendo. Tapas nas costas agora podem deslocar o pedaço para pior. Se a tosse parar ou ele perder a voz, aí sim: tapas e compressões."
+        },
+        {
+          "chave": "alimentos-de-risco",
+          "enunciado": "Qual destes alimentos mais causa engasgo grave em crianças pequenas?",
+          "alternativas": [
+            "Uva inteira, pipoca, salsicha em rodelas e bala dura",
+            "Arroz bem cozido",
+            "Caldo de feijão"
+          ],
+          "correta": 0,
+          "porque": "Alimentos redondos, duros ou que escorregam entopem a via aérea da criança. Corte em pedaços pequenos e fique perto na hora de comer."
+        }
+      ]
+    },
+    {
+      "chave": "adulto-e-crianca",
+      "titulo": "Adulto e criança",
+      "telas": [
+        {
+          "chave": "engasgo-grave-no-adulto",
+          "titulo": "Engasgo grave no adulto",
+          "ancora": "Na cantina da escola, um colega engasga com um pedaço de carne, leva as mãos ao pescoço e não consegue falar. Se ele não tosse nem fala, a via aérea está bloqueada e você precisa agir já. (conteúdo ilustrativo, não validado)",
+          "revisao": [
+            "Pergunte \"você está engasgado?\": se ele não consegue falar, é grave.",
+            "Peça que alguém ligue para o 192.",
+            "Alterne 5 tapas nas costas e 5 compressões na barriga.",
+            "Se ele desmaiar, deite-o no chão e comece a RCP."
+          ],
+          "alerta": "Em grávidas e em pessoas muito obesas, a compressão é feita no peito, não na barriga."
+        }
+      ],
+      "perguntas": [
+        {
+          "chave": "adulto-sequencia",
+          "enunciado": "Adulto consciente com engasgo grave. Qual é a sequência?",
+          "alternativas": [
+            "5 tapas nas costas e 5 compressões na barriga, alternando",
+            "Dar água aos poucos",
+            "Deitar de barriga para cima e esperar"
+          ],
+          "correta": 0,
+          "porque": "Tapas e compressões, alternados, criam a pressão que pode expulsar o objeto. Continue até ele sair ou a pessoa desmaiar."
+        },
+        {
+          "chave": "adulto-desmaiou",
+          "enunciado": "O adulto engasgado desmaia. O que você faz?",
+          "alternativas": [
+            "Deito a pessoa, chamo o 192 e começo a RCP",
+            "Dou água para reanimar",
+            "Espero ele acordar sozinho"
+          ],
+          "correta": 0,
+          "porque": "Sem consciência, o caso vira parada cardíaca: peça ajuda e comece a massagem."
+        },
+        {
+          "chave": "crianca-maior",
+          "enunciado": "Uma criança de 5 anos, engasgo grave, sem voz. O que muda em relação ao adulto?",
+          "alternativas": [
+            "A técnica é a mesma, com força proporcional ao tamanho dela",
+            "Nada se faz: só esperar o SAMU",
+            "Dá-se um copo de água"
+          ],
+          "correta": 0,
+          "porque": "A sequência é a mesma do adulto, aplicada com menos força, de acordo com o tamanho da criança."
+        }
+      ]
+    },
+    {
+      "chave": "bebe",
+      "titulo": "Bebê",
+      "telas": [
+        {
+          "chave": "bebe-na-hora-do-lanche",
+          "titulo": "Bebê na hora do lanche",
+          "ancora": "Na creche, um bebê de 8 meses engasga com um pedaço de bolacha: boca aberta, sem chorar, lábios arroxeando. Em bebês a técnica é diferente da usada em crianças maiores e adultos. (conteúdo ilustrativo, não validado)",
+          "revisao": [
+            "Apoie o bebê de bruços no antebraço, cabeça mais baixa que o corpo.",
+            "5 tapas firmes entre as omoplatas.",
+            "Vire o bebê e faça 5 compressões no centro do peito, com dois dedos.",
+            "Nunca faça compressão na barriga de um bebê."
+          ],
+          "alerta": "Não tente tirar o objeto com o dedo às cegas: você pode empurrá-lo mais fundo."
+        }
+      ],
+      "perguntas": [
+        {
+          "chave": "bebe-posicao",
+          "enunciado": "Como se posiciona um bebê engasgado para os tapas nas costas?",
+          "alternativas": [
+            "De bruços no antebraço, cabeça mais baixa que o corpo",
+            "De pé, no colo, olhando para você",
+            "De barriga para cima, no chão"
+          ],
+          "correta": 0,
+          "porque": "Com a cabeça mais baixa, a gravidade ajuda o objeto a sair."
+        },
+        {
+          "chave": "bebe-compressao",
+          "enunciado": "Em um bebê, onde se fazem as compressões?",
+          "alternativas": [
+            "Na barriga, acima do umbigo",
+            "No centro do peito, com dois dedos",
+            "Nas costas, com a palma da mão"
+          ],
+          "correta": 1,
+          "porque": "No bebê, compressão na barriga pode machucar órgãos. Use o centro do peito, com dois dedos."
+        },
+        {
+          "chave": "bebe-dedo",
+          "enunciado": "O bebê está engasgado. Você enxerga a ponta do objeto na boca. Pode tentar tirar com o dedo às cegas?",
+          "alternativas": [
+            "Sim, é o mais rápido",
+            "Não: pode empurrar o objeto mais fundo",
+            "Sim, mas só se ele chorar"
+          ],
+          "correta": 1,
+          "porque": "Só retire o que você vê e consegue pegar com facilidade. Às cegas, o dedo empurra o objeto para dentro."
+        }
+      ]
+    }
+  ]
+}
