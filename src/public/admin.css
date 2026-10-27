@@ -1891,3 +1891,4 @@ a.mr-num:hover { border-color: var(--linha); }
 .pl-avancado[open] summary { margin-bottom: 10px; }
 .pl-avancado { display: grid; gap: 10px; }
 .pl-sub { font-size: 15px; margin: 6px 0 0; }
+.pl-lista td form { margin: 0; }
