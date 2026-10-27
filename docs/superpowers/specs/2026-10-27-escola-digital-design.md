@@ -4,7 +4,7 @@
 
 Base: o documento "O primeiro EAD da Cruz Vermelha Rio" (Núcleo de Comunicação, out/2026) e as decisões
 tomadas com a equipe da escola na conversa de desenho. Protótipo visual: `docs/ead/prototipo-escola-digital.html`
-(direção C).
+(direção A).
 
 ---
 
@@ -16,7 +16,7 @@ secretaria. O primeiro curso é **Primeiros Socorros (Lei Lucas)**, com a estrut
 
 **Sucesso desta etapa:** no computador de quem desenvolve, com banco de teste e pagamento simulado, uma pessoa
 consegue fazer o caminho inteiro (matrícula rápida → pagamento → estudo → testes → cenários → certificado), no
-visual da direção C, sem que nada do site presencial e da secretaria mude de comportamento.
+visual da direção A, sem que nada do site presencial e da secretaria mude de comportamento.
 
 ### Dentro do escopo
 - Vitrine dos cursos online, página do curso, matrícula rápida, pagamento (PIX e cartão, à vista ou parcelado).
@@ -43,7 +43,7 @@ visual da direção C, sem que nada do site presencial e da secretaria mude de c
 |---|---|
 | Nome | **Escola Digital CVB-RJ** (provisório; definido num lugar só, fácil de trocar) |
 | Endereço | `/digital` no mesmo site (não subdomínio): mesmo login, sem domínio novo, funciona em `localhost:3000/digital` |
-| Visual | Direção **C, "Manual de campo"**: papel claro, linhas pretas, números grandes, carimbos de status, lema sempre à vista, vermelho e preto; fontes Archivo, Instrument Sans e Azeret Mono |
+| Visual | Direção **A, "App claro"**: fundo branco, cartões com sombra suave e raio 16px, faixa vermelha em degradê com o progresso, ícone quadrado colorido por estado, abas brancas embaixo no celular; vermelho concentrado no botão principal e nos alertas; fontes Archivo e Instrument Sans |
 | Da plataforma americana | Só a estrutura pedagógica (módulos, pilha da tela, pré-teste, quiz sorteado, cenários, cartão de bolso). Nada do visual nem do conteúdo |
 | Conta | Uma conta só para site, Escola Digital e Minha conta |
 | Matrícula | **Matrícula rápida**: nome, CPF, celular e e-mail; senha inicial = 4 últimos dígitos do CPF; depois pede para trocar a senha e completar os dados (avisos que já existem) |
@@ -212,14 +212,17 @@ inscrições online, sem mudar a dos presenciais.
 
 ---
 
-## 6. Visual (direção C)
+## 6. Visual (direção A, "App claro")
 
 - Layout próprio da Escola Digital, separado do layout do site: barra superior com a cruz, "Escola Digital ·
   CVB-RJ", conta; menu de abas embaixo no celular (Início, Cursos, Certificados, Conta); no computador, conteúdo
   centralizado com a lista de tópicos à esquerda.
-- Fundo papel (`#f4f1ea`), texto `#111`, vermelho da marca, bordas pretas de 2px, números grandes em Archivo,
-  rótulos técnicos em Azeret Mono, carimbos de status levemente inclinados, alerta em bloco vermelho.
-- Feito primeiro para o celular (público estuda no celular), com contraste alto para leitura no sol.
+- Fundo branco, texto `#141414`, vermelho da marca (`#d9081f`), cinza de apoio `#6b6b6b` e azul-marinho do site
+  como cor de apoio; títulos em Archivo e texto em Instrument Sans. Cartões brancos com raio 16px e sombra leve;
+  faixa vermelha em degradê (`135deg, #d9081f → #9c0012`) com progresso e botão branco "Continuar"; ícone
+  quadrado por estado do módulo (verde feito ou já sabia, rosa agora, cinza trancado); vídeo escuro no topo da
+  tela de aula; revisão em blocos azul-claro numerados; alerta em bloco rosa-claro; abas brancas embaixo no celular.
+- Feito primeiro para o celular (público estuda no celular), com contraste AA para leitura no sol.
 - CSS próprio (`public/escola-digital.css`), sem mexer em `vitrine.css`, `style.css` e `site-extra.css`.
 - Respeita as regras de segurança atuais do site (CSP do `helmet` em `src/server.js`): nada de `<style>` inline,
   scripts em arquivos de `public/js`, e o vídeo exige acrescentar `https://www.youtube-nocookie.com` ao

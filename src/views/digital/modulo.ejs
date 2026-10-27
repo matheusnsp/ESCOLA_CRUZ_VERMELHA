@@ -8,12 +8,13 @@
   <header class="ed-modulo-cab">
     <span class="ed-modulo-num"><%= modulo.numero %></span>
     <div>
-      <p class="ed-rotulo">// MÓDULO · <%= modulo.minutos %> MIN</p>
+      <p class="ed-rotulo">MÓDULO · <%= modulo.minutos %> MIN</p>
       <h1><%= modulo.titulo %></h1>
     </div>
     <span class="ed-carimbo <%= estado === 'AGORA' ? 'at' : (estado === 'TRANCADO' ? 'lk' : 'ok') %>"><%= rotuloEstado %></span>
   </header>
 
+  <div class="ed-modulo-main">
   <% if (modulo.imagem) { %><img class="ed-modulo-img" src="<%= modulo.imagem %>" alt="" loading="lazy"><% } %>
   <% if (modulo.paragrafos.length) { %>
   <div class="ed-modulo-texto">
@@ -32,7 +33,9 @@
     <a class="ed-botao ed-botao-grande" href="<%= linkAprender %>"><%= estado === 'AGORA' ? 'Quero aprender' : 'Rever as telas' %> <span aria-hidden="true">→</span></a>
   </section>
   <% } %>
+  </div>
 
+  <div class="ed-modulo-lado">
   <% if (topicos.length) { %>
   <section class="ed-modulo-topicos" aria-labelledby="ed-mod-top-t">
     <h2 id="ed-mod-top-t" class="ed-rotulo">TÓPICOS E TELAS</h2>
@@ -60,5 +63,6 @@
     <% } %>
   </section>
   <% } %>
+  </div>
 </article>
 <%- include('_rodape') %>

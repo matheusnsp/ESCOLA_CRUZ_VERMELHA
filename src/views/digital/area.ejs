@@ -4,17 +4,18 @@
 // botao, certificadoLink, cartaoLink, senhaInicial, inscricaoId.
 %>
 <div class="ed-area">
+  <% if (senhaInicial) { %>
+  <p class="ed-aviso ed-aviso-senha"><a href="/minha-conta?sec=seguranca">Sua senha ainda é a inicial (4 últimos dígitos do CPF). Troque em Minha conta.</a></p>
+  <% } %>
+
+  <div class="ed-faixa">
   <section class="ed-area-cab">
-    <p class="ed-rotulo">// SEU CURSO</p>
+    <p class="ed-rotulo">SEU CURSO</p>
     <h1><%= curso.nome %></h1>
     <div class="ed-lema" aria-label="Olhar, ligar, cuidar">
       <span>OLHAR</span><span>LIGAR</span><span class="on">CUIDAR</span>
     </div>
   </section>
-
-  <% if (senhaInicial) { %>
-  <p class="ed-aviso ed-aviso-senha"><a href="/minha-conta?sec=seguranca">Sua senha ainda é a inicial (4 últimos dígitos do CPF). Troque em Minha conta.</a></p>
-  <% } %>
 
   <section class="ed-progresso" aria-label="Seu progresso">
     <div class="ed-prog">
@@ -30,6 +31,7 @@
     <% } %>
     <a class="ed-botao ed-botao-grande" href="<%= botao.link %>"><%= botao.texto %> <span aria-hidden="true">→</span></a>
   </section>
+  </div>
 
   <section class="ed-area-modulos" aria-labelledby="ed-area-mod-t">
     <h2 id="ed-area-mod-t" class="ed-rotulo">MÓDULOS</h2>
@@ -37,8 +39,8 @@
       <% modulos.forEach(function (m) { %>
       <li>
         <% if (m.link) { %><a class="ed-mod ed-mod-<%= m.estado.toLowerCase() %>" href="<%= m.link %>"><% } else { %><div class="ed-mod ed-mod-trancado"><% } %>
-          <span class="ed-num"><%= m.numero %></span>
-          <span class="ed-mod-texto"><b><%= m.titulo %></b><small><%= m.minutos %> MIN<% if (m.telasTotal) { %> · <%= m.telasVistas %>/<%= m.telasTotal %> TELAS<% } %></small></span>
+          <span class="ed-num"><% if (m.estado === 'FEITO' || m.estado === 'JA_SABIA') { %><%- include('_icone', { nome: 'check' }) %><% } else if (m.estado === 'TRANCADO') { %><%- include('_icone', { nome: 'cadeado' }) %><% } else { %><%= m.numero %><% } %></span>
+          <span class="ed-mod-texto"><b><span class="ed-so-leitor">Módulo <%= m.numero %>: </span><%= m.titulo %></b><small><%= m.minutos %> MIN<% if (m.telasTotal) { %> · <%= m.telasVistas %>/<%= m.telasTotal %> TELAS<% } %></small></span>
           <span class="ed-carimbo <%= m.estado === 'AGORA' ? 'at' : (m.estado === 'TRANCADO' ? 'lk' : 'ok') %>"><%= m.rotulo %></span>
         <% if (m.link) { %></a><% } else { %></div><% } %>
       </li>

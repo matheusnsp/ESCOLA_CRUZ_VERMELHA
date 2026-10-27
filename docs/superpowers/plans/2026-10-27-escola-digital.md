@@ -20,7 +20,7 @@
 - Nome exibido: constante única `NOME = 'Escola Digital CVB-RJ'`, `NOME_CURTO = 'Escola Digital'`.
 - Nota mínima `0.8`; teste rápido 3 perguntas; "Já sei isso?" 10 perguntas.
 - Senha inicial da conta nova = 4 últimos dígitos do CPF (mesma regra de `senhaPadraoDoDocumento` em `src/routes/auth.js`); consentimento LGPD com `POLITICA_VERSAO` de `src/routes/auth.js`.
-- Visual direção C (spec §6): fundo `#f4f1ea`, texto `#111`, vermelho `#d9081f`, bordas 2px pretas, Archivo / Instrument Sans / Azeret Mono; celular primeiro.
+- Visual direção A, "App claro" (spec §6): fundo branco, texto `#141414`, vermelho `#d9081f`, cartões com raio 16px e sombra leve, faixa em degradê, Archivo / Instrument Sans; celular primeiro.
 - CSP: sem `<style>` inline; JS em `src/public/js/`; acrescentar `https://www.youtube-nocookie.com` em `frameSrc`.
 - Ressalva do certificado (texto fixo): "Curso teórico: ensina a reconhecer e decidir. Não inclui treino prático em manequim."
 - Textos de exemplo marcados "conteúdo ilustrativo, não validado".

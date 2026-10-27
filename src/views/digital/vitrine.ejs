@@ -19,7 +19,7 @@
     <div class="ed-grade">
     <% cursos.forEach(function (c, i) { %>
       <article class="ed-card">
-        <span class="ed-card-num"><%= String(i + 1).padStart(2, '0') %></span>
+        <span class="ed-card-num" aria-hidden="true"><%= i + 1 %></span>
         <h3><a href="/digital/cursos/<%= c.slug %>"><%= c.nome %></a></h3>
         <% if (c.descricao) { %><p class="ed-card-desc"><%= c.descricao %></p><% } %>
         <p class="ed-mono"><%= c.minutos %> MIN<% if (c.modulos) { %> · <%= c.modulos %> MÓDULOS<% } %> · CERTIFICADO</p>

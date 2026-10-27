@@ -15,7 +15,7 @@ var GLIFOS = { OLHAR: '◉', LIGAR: '☎', CUIDAR: '✚' };
     <a class="ed-teste-sair" href="<%= moduloLink %>">Sair</a>
   </header>
 
-  <ol class="ed-passos" aria-label="Progresso do cenário">
+  <ol class="ed-etapas" aria-label="Progresso do cenário">
     <% for (var i = 1; i <= total; i++) { %>
     <li class="<%= i <= respondidas ? 'feito' : (i === ordem && etapa === 'DECISAO' ? 'atual' : '') %>"><span class="ed-so-leitor">Decisão <%= i %><%= i <= respondidas ? ' respondida' : '' %></span></li>
     <% } %>
@@ -24,7 +24,7 @@ var GLIFOS = { OLHAR: '◉', LIGAR: '☎', CUIDAR: '✚' };
   <div class="ed-teste-corpo">
     <div class="ed-cen-topo">
       <div>
-        <p class="ed-rotulo">// CENÁRIO</p>
+        <p class="ed-rotulo">CENÁRIO</p>
         <h1><%= cenario.titulo %></h1>
       </div>
       <div class="ed-relogio<%= relogio.passou ? ' ed-relogio-passou' : '' %>" data-ed-relogio data-inicio="<%= relogio.inicio %>" data-agora="<%= relogio.agora %>" data-sugerido="<%= relogio.sugerido %>" role="timer" aria-label="Tempo do cenário">
@@ -43,7 +43,7 @@ var GLIFOS = { OLHAR: '◉', LIGAR: '☎', CUIDAR: '✚' };
     <% if (etapa === 'DECISAO') { %>
     <% if (ordem === 1) { %>
     <section class="ed-cena" aria-label="A cena">
-      <p class="ed-rotulo">// A CENA</p>
+      <p class="ed-rotulo">A CENA</p>
       <% if (cenario.imagem) { %><img class="ed-tela-img" src="<%= cenario.imagem %>" alt="" loading="lazy"><% } %>
       <% cenario.paragrafos.forEach(function (p) { %><p><%= p %></p><% }) %>
     </section>
@@ -60,7 +60,7 @@ var GLIFOS = { OLHAR: '◉', LIGAR: '☎', CUIDAR: '✚' };
       <input type="hidden" name="ordem" value="<%= ordem %>">
       <fieldset class="ed-grupo ed-pergunta">
         <legend>
-          <span class="ed-rotulo">// PERGUNTA <%= ordem %> DE <%= total %></span>
+          <span class="ed-rotulo">PERGUNTA <%= ordem %> DE <%= total %></span>
           <span class="ed-enunciado"><%= pergunta %></span>
         </legend>
         <% if (primeira) { %>

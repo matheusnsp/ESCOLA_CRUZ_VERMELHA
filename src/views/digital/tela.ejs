@@ -14,24 +14,8 @@
     </aside>
 
     <article class="ed-tela">
-      <header class="ed-tela-cab">
-        <b class="ed-tela-num"><%= modulo.numero %></b>
-        <span><%= modulo.titulo.toUpperCase() %> · TELA <%= posicao %>/<%= totalTelas %></span>
-        <span><%= modulo.minutos %> MIN</span>
-      </header>
-
-      <details class="ed-menu-topicos">
-        <summary>Tópicos deste módulo</summary>
-        <p class="ed-voltar"><a href="<%= areaLink %>">← Módulos do curso</a> · <a href="<%= moduloLink %>">Página do módulo</a></p>
-        <%- include('_topicos') %>
-      </details>
-
-      <div class="ed-tela-corpo">
-        <p class="ed-rotulo">// <%= topicoTitulo.toUpperCase() %></p>
-        <h1><%= tela.titulo %></h1>
-        <p class="ed-ancora"><%= tela.ancora %></p>
-        <% if (tela.imagem) { %><img class="ed-tela-img" src="<%= tela.imagem %>" alt="<%= tela.imagemAlt %>" loading="lazy"><% } %>
-
+      <%# vídeo no topo, como no app: ocupa a largura toda no celular %>
+      <div class="ed-tela-video">
         <% if (tela.videoId) { %>
         <div class="ed-video">
           <iframe src="https://www.youtube-nocookie.com/embed/<%= tela.videoId %>?rel=0&amp;modestbranding=1" title="<%= tela.videoTitulo %>" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"></iframe>
@@ -43,6 +27,23 @@
           <small>Esta tela ainda não tem vídeo. O resumo abaixo traz o essencial.</small>
         </div>
         <% } %>
+      </div>
+
+      <details class="ed-menu-topicos">
+        <summary>Tópicos deste módulo</summary>
+        <p class="ed-voltar"><a href="<%= areaLink %>">← Módulos do curso</a> · <a href="<%= moduloLink %>">Página do módulo</a></p>
+        <%- include('_topicos') %>
+      </details>
+
+      <div class="ed-tela-corpo">
+        <p class="ed-tela-cab">
+          <b class="ed-tela-num" aria-hidden="true"><%= modulo.numero %></b>
+          <span><%= modulo.titulo.toUpperCase() %> · TELA <%= posicao %>/<%= totalTelas %> · <%= modulo.minutos %> MIN</span>
+        </p>
+        <h1><%= tela.titulo %></h1>
+        <p class="ed-chips"><span class="ed-chip on"><%= topicoTitulo %></span></p>
+        <p class="ed-ancora"><%= tela.ancora %></p>
+        <% if (tela.imagem) { %><img class="ed-tela-img" src="<%= tela.imagem %>" alt="<%= tela.imagemAlt %>" loading="lazy"><% } %>
 
         <% if (tela.revisao.length) { %>
         <section class="ed-rv" aria-labelledby="ed-rv-t">

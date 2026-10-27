@@ -25,11 +25,11 @@ var _primeiroNome = usuario && usuario.nome ? String(usuario.nome).trim().split(
 <% if (typeof descricao !== 'undefined' && descricao) { %><meta property="og:description" content="<%= descricao %>"><% } %>
 <meta property="og:image" content="<%= _site %>/img/compartilhar.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#f4f1ea">
+<meta name="theme-color" content="#ffffff">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Azeret+Mono:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="<%= asset('/escola-digital.css') %>">
 <% if (typeof rastrear !== 'undefined' && rastrear) { %><%- include('../partials/rastreamento') %><% } %>
 </head>
@@ -38,13 +38,20 @@ var _primeiroNome = usuario && usuario.nome ? String(usuario.nome).trim().split(
 <header class="ed-topo">
   <div class="ed-topo-in">
     <a class="ed-marca" href="/digital" aria-label="<%= NOME %>">
-      <span class="ed-cruz" aria-hidden="true"></span>
+      <img class="ed-logo" src="/img/logo-cvb-rj.webp" alt="" width="58" height="26">
       <span class="ed-nome"><%= NOME_CURTO %><small>CVB-RJ</small></span>
     </a>
+    <%# no computador o menu de abas some: os mesmos links ficam aqui no alto %>
+    <% var _abaAtual = typeof aba !== 'undefined' ? aba : ''; %>
+    <nav class="ed-topo-menu" aria-label="Seções">
+      <a href="/digital"<%- _abaAtual === 'inicio' ? ' class="on" aria-current="page"' : '' %>>Início</a>
+      <a href="/digital#cursos"<%- _abaAtual === 'cursos' ? ' class="on" aria-current="page"' : '' %>>Cursos</a>
+      <a href="/minha-conta"<%- _abaAtual === 'certificados' ? ' class="on" aria-current="page"' : '' %>>Certificados</a>
+    </nav>
     <nav class="ed-topo-nav" aria-label="Atalhos">
       <a class="ed-link-site" href="/">Site da escola</a>
       <% if (usuario) { %>
-        <a class="ed-conta" href="/minha-conta"><%= _primeiroNome || 'Minha conta' %></a>
+        <a class="ed-conta" href="/minha-conta"><span class="ed-av" aria-hidden="true"><%= (_primeiroNome || 'M').charAt(0).toUpperCase() %></span><span class="ed-conta-nome"><%= _primeiroNome || 'Minha conta' %></span></a>
       <% } else { %>
         <a class="ed-conta" href="/digital/entrar?voltar=<%= encodeURIComponent(_caminho) %>">Entrar</a>
       <% } %>

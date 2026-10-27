@@ -3,7 +3,7 @@
 // Acesso encerrado: inscrição expirada (prazo vencido) ou cancelada. Locals: cursoNome, situacao, acessoAte.
 %>
 <section class="ed-encerrado-pag">
-  <p class="ed-rotulo">// <%= situacao === 'EXPIRADA' ? 'PRAZO ENCERRADO' : 'INSCRIÇÃO CANCELADA' %></p>
+  <p class="ed-rotulo"><%= situacao === 'EXPIRADA' ? 'PRAZO ENCERRADO' : 'INSCRIÇÃO CANCELADA' %></p>
   <h1>Acesso encerrado</h1>
   <p class="ed-mono"><%= cursoNome %></p>
   <% if (situacao === 'EXPIRADA') { %>

@@ -14,7 +14,7 @@
     <a class="ed-teste-sair" href="<%= moduloLink %>">Sair</a>
   </header>
 
-  <ol class="ed-passos" aria-label="Progresso do teste">
+  <ol class="ed-etapas" aria-label="Progresso do teste">
     <% for (var i = 1; i <= total; i++) { %>
     <li class="<%= i <= respondidas ? 'feito' : (i === n && etapa !== 'FIM' ? 'atual' : '') %>"><span class="ed-so-leitor">Pergunta <%= i %><%= i <= respondidas ? ' respondida' : '' %></span></li>
     <% } %>
@@ -22,7 +22,7 @@
 
   <% if (etapa === 'FIM') { %>
   <div class="ed-teste-corpo">
-    <p class="ed-rotulo">// <%= assunto.toUpperCase() %></p>
+    <p class="ed-rotulo"><%= assunto.toUpperCase() %></p>
     <h1>Você respondeu todas as perguntas</h1>
     <p>Veja o resultado do "Já sei isso?" deste módulo.</p>
     <form method="post" action="<%= finalizarAction %>">
@@ -37,7 +37,7 @@
     <input type="hidden" name="perguntaId" value="<%= pergunta.id %>">
     <fieldset class="ed-grupo ed-pergunta">
       <legend>
-        <span class="ed-rotulo">// <%= assunto.toUpperCase() %></span>
+        <span class="ed-rotulo"><%= assunto.toUpperCase() %></span>
         <span class="ed-enunciado"><%= pergunta.enunciado %></span>
       </legend>
       <% pergunta.alternativas.forEach(function (a, i) { %>
@@ -55,7 +55,7 @@
   <div class="ed-teste-corpo">
     <fieldset class="ed-grupo ed-pergunta" disabled>
       <legend>
-        <span class="ed-rotulo">// <%= assunto.toUpperCase() %></span>
+        <span class="ed-rotulo"><%= assunto.toUpperCase() %></span>
         <span class="ed-enunciado"><%= pergunta.enunciado %></span>
       </legend>
       <% pergunta.alternativas.forEach(function (a) { %>
