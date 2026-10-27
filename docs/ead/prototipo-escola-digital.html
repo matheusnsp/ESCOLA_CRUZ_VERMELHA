@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escola Digital CVB-RJ — ligação com o site e direções de visual</title>
+<!-- Rascunho de design (brainstorming). Não é código do site: abre direto no navegador.
+     As imagens vêm de src/public/img, por isso o arquivo precisa ficar em docs/ead/. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Instrument+Sans:wght@400;500;600;700&family=Azeret+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--red:#d9081f;--red2:#b80016;--ink:#141414;--mut:#6b6b6b;--bg:#f7f6f3;--line:#e4e1dc;--green:#16a369;--navy:#1a365d}
+*{box-sizing:border-box}
+body{margin:0;background:#dcd8d1;font-family:'Instrument Sans',system-ui,sans-serif;color:var(--ink);font-size:15px;line-height:1.5}
+h1,h2,h3,h4,.t{font-family:Archivo,system-ui,sans-serif;letter-spacing:-.025em;margin:0}
+.doc{max-width:1340px;margin:0 auto;padding:28px 20px 90px}
+.cap{background:#141414;color:#fff;border-radius:18px;padding:26px 28px}
+.cap h1{font-size:28px;font-weight:900}
+.cap p{margin:8px 0 0;color:#cfcac2;max-width:900px}
+.sec{margin:42px 0 16px}
+.sec .n{display:inline-block;background:var(--red);color:#fff;font:800 12px Archivo;border-radius:999px;padding:3px 10px;margin-right:8px}
+.sec h2{display:inline;font-size:22px;font-weight:900}
+.sec p{margin:6px 0 0;color:#4a4740;max-width:960px}
+.rot{font:700 11px Archivo;letter-spacing:.1em;text-transform:uppercase;color:#5c5850;margin:0 0 8px 4px}
+.row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.phone{width:360px;flex:none;border-radius:34px;border:10px solid #141414;box-shadow:0 18px 40px rgba(0,0,0,.25);overflow:hidden}
+.phone .in{height:720px;overflow:hidden;position:relative}
+
+/* ---------- 1. fluxo ---------- */
+.fluxo{display:grid;grid-template-columns:1fr 70px 1fr 70px 1fr;align-items:stretch;gap:0}
+.box{background:#fff;border-radius:18px;padding:18px;border:1px solid #cfc9bf}
+.box h3{font-size:17px;font-weight:900;margin-bottom:4px}
+.box .url{font:500 12px 'Azeret Mono';background:#f1eee9;border-radius:8px;padding:4px 8px;display:inline-block;margin:4px 0 10px;color:#3a362f}
+.box ul{margin:0;padding-left:18px;font-size:13.5px;display:grid;gap:5px}
+.seta{display:grid;place-items:center;font:900 28px Archivo;color:#8b867d}
+.box.site{border-top:6px solid var(--red)}
+.box.dig{border-top:6px solid #141414}
+.box.conta{border-top:6px solid var(--green)}
+.nota{background:#fff8e8;border-left:4px solid #b7791f;border-radius:10px;padding:12px 16px;font-size:13.5px;margin-top:14px;max-width:1000px}
+/* mini mock do site com o link */
+.mini{background:#fff;border-radius:14px;overflow:hidden;border:1px solid #cfc9bf;width:620px}
+.mini .tb{height:22px;background:var(--red);color:#fff;font:800 9px/22px 'Instrument Sans';letter-spacing:.08em;padding:0 14px;text-transform:uppercase}
+.mini .hd{height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid var(--line);gap:10px}
+.mini .hd img{height:26px}
+.mini .mn{display:flex;gap:14px;font:650 11.5px 'Instrument Sans';color:#3a3a3a;align-items:center}
+.mini .dg{display:inline-flex;align-items:center;gap:6px;background:#141414;color:#fff;border-radius:999px;padding:6px 10px;font-weight:800}
+.mini .dg i{width:7px;height:7px;border-radius:50%;background:#5ee0a3;display:inline-block}
+.mini .band{background:#141414;color:#fff;padding:18px;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.mini .band b{font:900 18px Archivo;display:block}
+.mini .band span{color:#cfcac2;font-size:12.5px}
+.mini .bt{background:var(--red);color:#fff;border-radius:999px;padding:9px 14px;font:800 12px 'Instrument Sans';white-space:nowrap}
+.mini .cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:14px;background:var(--bg)}
+.mini .cd{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:12px}
+.mini .cd .im{height:60px;background:linear-gradient(160deg,#c3101f,#7d0510)}
+.mini .cd .tx{padding:8px 10px}
+.mini .cd b{font:800 12.5px Archivo;display:block}
+.mini .tag{display:inline-block;font:800 9px 'Instrument Sans';letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:2px 7px;margin-bottom:4px}
+.mini .tag.on{background:#141414;color:#fff}.mini .tag.pr{background:#efede9;color:#6b6b6b}
+
+/* ---------- opções de visual ---------- */
+.opcao{background:#efece6;border-radius:22px;padding:22px;margin-top:18px;border:1px solid #cfc9bf}
+.opcao .cab{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
+.opcao .cab .l{font:900 26px Archivo;color:var(--red)}
+.opcao .cab h3{font-size:21px;font-weight:900}
+.opcao .desc{max-width:980px;color:#4a4740;margin:0 0 16px;font-size:14px}
+.pc{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;font-size:13px;max-width:980px;margin-bottom:16px}
+.pc b{display:block;font:800 12px Archivo;text-transform:uppercase;letter-spacing:.08em}
+.pc .p b{color:#0f7a4d}.pc .c b{color:var(--red2)}
+.pc ul{margin:4px 0 0;padding-left:18px}
+
+/* ===== A — App claro ===== */
+.A{background:#fff;font-family:'Instrument Sans'}
+.A .top{display:flex;align-items:center;gap:10px;padding:14px 16px 8px}
+.A .top img{height:24px}
+.A .top .nm{font:900 14px Archivo;line-height:1}
+.A .top .nm small{display:block;font:700 9px 'Instrument Sans';letter-spacing:.12em;color:var(--red);text-transform:uppercase}
+.A .top .av{margin-left:auto;width:32px;height:32px;border-radius:50%;background:#fde7e9;color:var(--red);display:grid;place-items:center;font:900 13px Archivo}
+.A .ola{padding:6px 16px 0}
+.A .ola h2{font-size:24px;font-weight:900}
+.A .ola p{margin:2px 0 0;color:var(--mut);font-size:13px}
+.A .hero{margin:14px 16px;border-radius:22px;background:linear-gradient(135deg,#d9081f,#9c0012);color:#fff;padding:18px;box-shadow:0 14px 30px rgba(217,8,31,.28)}
+.A .hero small{font:800 10px 'Instrument Sans';letter-spacing:.12em;opacity:.8;text-transform:uppercase}
+.A .hero h3{font-size:19px;font-weight:900;margin:4px 0 2px}
+.A .hero .bar{height:7px;background:rgba(255,255,255,.3);border-radius:99px;margin:12px 0 6px}
+.A .hero .bar i{display:block;height:100%;width:38%;background:#fff;border-radius:99px}
+.A .hero .cont{margin-top:12px;background:#fff;color:var(--red);border-radius:14px;padding:11px 14px;font:800 13.5px 'Instrument Sans';display:flex;justify-content:space-between}
+.A .lt{padding:4px 16px 0;font:900 15px Archivo}
+.A .mods{padding:10px 16px;display:grid;gap:10px}
+.A .m{display:flex;gap:12px;align-items:center;background:#fff;border-radius:16px;padding:12px;box-shadow:0 4px 16px rgba(16,24,40,.08);border:1px solid #f0eeea}
+.A .m .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font:900 16px Archivo;flex:none}
+.A .m .ok{background:#e3f6ec;color:#0f7a4d}.A .m .at{background:#fde7e9;color:var(--red)}.A .m .lk{background:#f1efeb;color:#a39e95}
+.A .m b{font:800 14.5px Archivo;display:block}
+.A .m small{color:var(--mut);font-size:12px}
+.A .tab{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #eee;display:grid;grid-template-columns:repeat(4,1fr);padding:8px 6px 12px;text-align:center;font:700 10.5px 'Instrument Sans';color:#8b867d}
+.A .tab span{display:grid;gap:3px;justify-items:center}
+.A .tab i{font-style:normal;font-size:18px}
+.A .tab .on{color:var(--red)}
+.A.lesson .vh{height:204px;background:#0e0e0e;display:grid;place-items:center;position:relative}
+.A .play{width:58px;height:58px;border-radius:50%;background:var(--red);display:grid;place-items:center}
+.A .play::after{content:"";border-left:16px solid #fff;border-top:10px solid transparent;border-bottom:10px solid transparent;margin-left:5px}
+.A.lesson .bk{position:absolute;top:12px;left:12px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;display:grid;place-items:center;font-weight:900}
+.A.lesson .bd{padding:16px;display:grid;gap:12px}
+.A.lesson .pl{font:800 10.5px 'Instrument Sans';letter-spacing:.1em;color:var(--red);text-transform:uppercase}
+.A.lesson h3{font-size:21px;font-weight:900}
+.A .chips{display:flex;gap:6px;overflow:hidden}
+.A .chips span{flex:none;border-radius:999px;padding:6px 11px;font:700 12px 'Instrument Sans';background:#f3f1ed}
+.A .chips .on{background:#141414;color:#fff}
+.A .rv{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.A .rv div{background:#f6f9ff;border-radius:14px;padding:10px;font-size:12.5px}
+.A .rv b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font:800 11px Archivo;margin-bottom:4px}
+.A .al{border-radius:16px;background:#fff1f2;padding:12px 14px;font-size:13px;border:1px solid #f7c6cc}
+.A .al b{color:var(--red);font:900 11px 'Instrument Sans';letter-spacing:.1em;display:block}
+.A .nx{position:absolute;left:16px;right:16px;bottom:16px;background:var(--red);color:#fff;border-radius:16px;padding:14px;font:800 14px 'Instrument Sans';display:flex;justify-content:space-between;box-shadow:0 10px 24px rgba(217,8,31,.3)}
+
+/* ===== B — Foco escuro ===== */
+.B{background:#0f0f10;color:#f3f1ec;font-family:'Instrument Sans'}
+.B .top{display:flex;align-items:center;gap:10px;padding:14px 16px}
+.B .top .lg{width:26px;height:26px;border-radius:7px;background:var(--red);display:grid;place-items:center}
+.B .top .lg::before,.B .top .lg::after{content:"";position:absolute;background:#fff}
+.B .top .nm{font:900 14px Archivo}
+.B .top .nm small{display:block;font:700 9px 'Instrument Sans';letter-spacing:.12em;color:#ff5a6a;text-transform:uppercase}
+.B .top .av{margin-left:auto;width:32px;height:32px;border-radius:50%;background:#2a2a2c;display:grid;place-items:center;font:900 13px Archivo}
+.B .feat{margin:6px 16px 14px;border-radius:20px;height:230px;position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(15,15,16,.1),rgba(15,15,16,.95)),url('../../src/public/img/capa.webp') center/cover}
+.B .feat .tx{position:absolute;left:16px;right:16px;bottom:14px}
+.B .feat small{font:800 10px 'Instrument Sans';letter-spacing:.12em;color:#ff5a6a;text-transform:uppercase}
+.B .feat h3{font-size:22px;font-weight:900;margin:4px 0 8px}
+.B .feat .bar{height:4px;background:#3a3a3c;border-radius:9px}.B .feat .bar i{display:block;height:100%;width:38%;background:var(--red);border-radius:9px}
+.B .feat .go{margin-top:12px;display:inline-flex;gap:8px;align-items:center;background:#fff;color:#111;border-radius:999px;padding:10px 16px;font:800 13px 'Instrument Sans'}
+.B .lt{padding:0 16px;font:900 15px Archivo;display:flex;justify-content:space-between}
+.B .lt span{font:600 12px 'Instrument Sans';color:#9a958d}
+.B .shelf{display:flex;gap:10px;padding:10px 16px;overflow:hidden}
+.B .sm{flex:none;width:136px}
+.B .sm .th{height:84px;border-radius:12px;background:#222;position:relative;display:grid;place-items:center;font:900 30px Archivo;color:#3d3d40}
+.B .sm .th.ok::after{content:"✓";position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;background:var(--green);color:#fff;font:900 11px/20px Archivo;text-align:center}
+.B .sm .th.at{background:linear-gradient(135deg,#d9081f,#7d0510);color:rgba(255,255,255,.35)}
+.B .sm .th.lk{opacity:.45}
+.B .sm b{font:800 13px Archivo;display:block;margin-top:6px}
+.B .sm small{color:#9a958d;font-size:11.5px}
+.B .tab{position:absolute;left:0;right:0;bottom:0;background:#141416;border-top:1px solid #222;display:grid;grid-template-columns:repeat(4,1fr);padding:9px 6px 12px;text-align:center;font:700 10.5px 'Instrument Sans';color:#77736c}
+.B .tab span{display:grid;gap:3px;justify-items:center}.B .tab i{font-style:normal;font-size:18px}.B .tab .on{color:#fff}
+.B.lesson .vh{height:204px;background:#000;display:grid;place-items:center;position:relative}
+.B.lesson .play{width:58px;height:58px;border-radius:50%;background:#fff;display:grid;place-items:center}
+.B.lesson .play::after{content:"";border-left:16px solid #111;border-top:10px solid transparent;border-bottom:10px solid transparent;margin-left:5px}
+.B.lesson .bd{padding:16px;display:grid;gap:12px}
+.B.lesson .pl{font:800 10.5px 'Instrument Sans';letter-spacing:.1em;color:#ff5a6a;text-transform:uppercase}
+.B.lesson h3{font-size:21px;font-weight:900}
+.B.lesson p{margin:0;color:#c9c4bb;font-size:13.5px}
+.B .rv{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.B .rv div{background:#1c1c1e;border-radius:14px;padding:10px;font-size:12.5px;color:#ddd}
+.B .rv b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#fff;color:#111;font:800 11px Archivo;margin-bottom:4px}
+.B .al{border-radius:14px;background:#2a0a0e;border:1px solid #6b1420;padding:12px 14px;font-size:13px;color:#ffd9dd}
+.B .al b{color:#ff5a6a;font:900 11px 'Instrument Sans';letter-spacing:.1em;display:block}
+.B .nx{position:absolute;left:16px;right:16px;bottom:16px;background:#fff;color:#111;border-radius:999px;padding:14px 18px;font:800 14px 'Instrument Sans';display:flex;justify-content:space-between}
+
+/* ===== C — Manual de campo ===== */
+.C{background:#f4f1ea;color:#111;font-family:'Instrument Sans'}
+.C .top{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:2px solid #111}
+.C .top .cz{width:22px;height:22px;position:relative}
+.C .top .cz::before,.C .top .cz::after{content:"";position:absolute;background:var(--red)}
+.C .top .cz::before{left:7px;top:0;width:8px;height:22px}.C .top .cz::after{top:7px;left:0;width:22px;height:8px}
+.C .top .nm{font:900 15px Archivo;letter-spacing:-.03em;line-height:1}
+.C .top .nm small{display:block;font:500 9.5px 'Azeret Mono';letter-spacing:.06em;color:#555;margin-top:2px}
+.C .top .av{margin-left:auto;font:700 11px 'Azeret Mono';border:1.5px solid #111;padding:5px 8px}
+.C .ola{padding:16px 16px 8px}
+.C .ola small{font:700 10.5px 'Azeret Mono';letter-spacing:.06em;color:var(--red)}
+.C .ola h2{font-size:30px;font-weight:900;line-height:.95;margin-top:6px;letter-spacing:-.04em}
+.C .lema{display:grid;grid-template-columns:repeat(3,1fr);margin:12px 16px;border:2px solid #111}
+.C .lema span{padding:8px 4px;text-align:center;font:900 13px Archivo;letter-spacing:.04em}
+.C .lema span+span{border-left:2px solid #111}
+.C .lema .on{background:var(--red);color:#fff}
+.C .prog{margin:0 16px 10px;display:flex;align-items:center;gap:10px;font:700 11px 'Azeret Mono'}
+.C .prog .tr{flex:1;display:grid;grid-template-columns:repeat(8,1fr);gap:3px}
+.C .prog .tr i{height:10px;border:1.5px solid #111}
+.C .prog .tr i.f{background:#111}.C .prog .tr i.a{background:var(--red);border-color:var(--red)}
+.C .lista{margin:0 16px;border-top:2px solid #111}
+.C .it{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid #c8c2b6}
+.C .it .num{font:900 30px Archivo;letter-spacing:-.05em;line-height:1}
+.C .it b{font:800 14.5px Archivo;display:block}
+.C .it small{font:500 10.5px 'Azeret Mono';color:#666}
+.C .st{font:700 10px 'Azeret Mono';letter-spacing:.04em;padding:3px 6px;border:1.5px solid currentColor;transform:rotate(-3deg)}
+.C .st.ok{color:#0f7a4d}.C .st.at{color:var(--red)}.C .st.lk{color:#9a958d}
+.C .it.at .num{color:var(--red)}
+.C .it.lk{opacity:.5}
+.C .tab{position:absolute;left:0;right:0;bottom:0;background:#111;color:#bbb;display:grid;grid-template-columns:repeat(4,1fr);padding:10px 6px 13px;text-align:center;font:700 10px 'Azeret Mono';letter-spacing:.04em}
+.C .tab .on{color:#fff;text-decoration:underline;text-decoration-color:var(--red);text-decoration-thickness:3px;text-underline-offset:5px}
+.C.lesson .hd{padding:12px 16px;border-bottom:2px solid #111;display:flex;justify-content:space-between;align-items:center;font:700 10.5px 'Azeret Mono'}
+.C.lesson .hd b{font:900 26px Archivo;color:var(--red)}
+.C.lesson .bd{padding:14px 16px;display:grid;gap:12px}
+.C.lesson .pl{font:700 10.5px 'Azeret Mono';color:#666}
+.C.lesson h3{font-size:25px;font-weight:900;letter-spacing:-.04em;line-height:1}
+.C.lesson .vh{height:180px;background:#111;display:grid;place-items:center;position:relative}
+.C.lesson .vh .pl2{width:60px;height:60px;background:var(--red);display:grid;place-items:center}
+.C.lesson .vh .pl2::after{content:"";border-left:18px solid #fff;border-top:11px solid transparent;border-bottom:11px solid transparent;margin-left:5px}
+.C.lesson .vh .tm{position:absolute;right:10px;bottom:8px;font:700 11px 'Azeret Mono';color:#fff}
+.C .rv{border:2px solid #111}
+.C .rv .rh{background:#111;color:#fff;font:700 10.5px 'Azeret Mono';padding:5px 10px;letter-spacing:.05em}
+.C .rv .rl{display:grid;grid-template-columns:28px 1fr;gap:8px;padding:8px 10px;border-top:1px solid #c8c2b6;font-size:13px}
+.C .rv .rl b{font:900 18px Archivo;color:var(--red)}
+.C .al{background:var(--red);color:#fff;padding:12px 14px;font-size:13px;position:relative}
+.C .al b{font:700 10.5px 'Azeret Mono';letter-spacing:.06em;display:block;margin-bottom:2px}
+.C .nx{position:absolute;left:16px;right:16px;bottom:16px;background:#111;color:#fff;padding:15px 16px;font:800 14px 'Instrument Sans';display:flex;justify-content:space-between;box-shadow:6px 6px 0 var(--red)}
+</style>
+</head>
+<body>
+<div class="doc">
+
+<div class="cap">
+  <h1>Escola Digital CVB-RJ</h1>
+  <p>Como a plataforma online se liga ao site da escola, e três direções de visual para ela. A marca (vermelho da Cruz Vermelha, logotipo, fontes Archivo e Instrument Sans) continua; muda o jeito de apresentar. Conteúdo de exemplo, ilustrativo.</p>
+</div>
+
+<!-- ================= 1. LIGAÇÃO ================= -->
+<div class="sec"><span class="n">1</span><h2>Como o site e a Escola Digital se ligam</h2>
+<p>Uma conta só. O site da escola continua sendo a porta de entrada (anúncio, catálogo, cadastro); a Escola Digital é onde o aluno estuda. Os dois rodam no mesmo sistema e no mesmo banco de dados, então não existe segundo cadastro nem segunda senha.</p></div>
+<div class="fluxo">
+  <div class="box site"><h3>Site da escola</h3><span class="url">escola…/ (o de hoje)</span>
+    <ul><li>Botão <b>Escola Digital</b> no cabeçalho</li><li>Faixa na página inicial: "Estude online, no seu ritmo"</li><li>No catálogo, os cursos online com o selo <b>Online</b></li><li>Cadastro e login de sempre</li></ul></div>
+  <div class="seta">→</div>
+  <div class="box dig"><h3>Escola Digital</h3><span class="url">escola…/digital</span>
+    <ul><li>Visual próprio (uma das opções abaixo)</li><li>Vitrine dos cursos online, página de cada curso, matrícula e pagamento</li><li>Área de estudo: módulos, telas, testes, cenários</li><li>Certificado e cartão de bolso</li><li>Link "Site da escola" para voltar</li></ul></div>
+  <div class="seta">↔</div>
+  <div class="box conta"><h3>Minha conta</h3><span class="url">escola…/minha-conta</span>
+    <ul><li>Lista presencial e online juntos</li><li>No curso online: progresso e botão <b>Ir para a Escola Digital</b></li><li>Dentro da Escola Digital, o menu "Conta" leva para cá</li></ul></div>
+</div>
+<div class="nota"><b>Por que no endereço <code>/digital</code> e não num subdomínio</b> (tipo <code>digital.cruzvermelhariodejaneiro.org</code>): no mesmo endereço o login vale nos dois lados sem mexer em cookies, não precisa configurar domínio novo no Render nem certificado, e localmente funciona direto em <code>localhost:3000/digital</code>. Se depois quiserem um endereço próprio para divulgação, dá para apontar um subdomínio para lá sem mudar nada da plataforma.</div>
+
+<div style="margin-top:18px"><p class="rot">Como aparece no site da escola</p>
+<div class="mini">
+  <div class="tb">Cruz Vermelha Brasileira · Filial do Estado do Rio de Janeiro</div>
+  <div class="hd"><img src="../../src/public/img/logo-cvb-rj.webp" alt=""><div class="mn"><span>Início</span><span>Como funciona</span><span>Quem somos</span><span class="dg"><i></i>Escola Digital</span></div></div>
+  <div class="band"><div><b>Escola Digital CVB-RJ</b><span>Primeiros socorros online, no celular, no seu ritmo. Com certificado.</span></div><span class="bt">Conhecer →</span></div>
+  <div class="cards">
+    <div class="cd"><div class="im"></div><div class="tx"><span class="tag on">Online</span><b>Primeiros Socorros — Lei Lucas</b>R$ 79,90 · comece hoje</div></div>
+    <div class="cd"><div class="im" style="background:linear-gradient(160deg,#4b4b4b,#1d1d1d)"></div><div class="tx"><span class="tag pr">Presencial</span><b>Punção Venosa</b>início em 05/12</div></div>
+    <div class="cd"><div class="im" style="background:linear-gradient(160deg,#4b4b4b,#1d1d1d)"></div><div class="tx"><span class="tag pr">Presencial</span><b>Bombeiro Civil</b>turmas em breve</div></div>
+  </div>
+</div></div>
+
+<!-- ================= 2. VISUAL ================= -->
+<div class="sec"><span class="n">2</span><h2>Três direções de visual para a Escola Digital</h2>
+<p>As três usam a marca da Cruz Vermelha; o que muda é a personalidade. Cada uma mostra a mesma coisa: a tela inicial do aluno e uma tela de aula, no celular (onde o público vai estudar).</p></div>
+
+<!-- A -->
+<div class="opcao">
+  <div class="cab"><span class="l">A</span><h3>App claro</h3></div>
+  <p class="desc">Parece um aplicativo de celular: fundo branco, cards com sombra suave, menu de abas embaixo, o vermelho concentrado no que importa (o "continuar" e os alertas). Azul-marinho do site como cor de apoio.</p>
+  <div class="pc"><div class="p"><b>A favor</b><ul><li>O mais fácil de ler para quem não tem costume com curso online</li><li>Familiar: parece os apps que a pessoa já usa</li></ul></div><div class="c"><b>Contra</b><ul><li>Menos marcante: pode parecer "mais um app de curso"</li></ul></div></div>
+  <div class="row">
+    <div><p class="rot">Início do aluno</p><div class="phone"><div class="in A">
+      <div class="top"><img src="../../src/public/img/logo-cvb-rj.webp" alt=""><div class="nm">Escola Digital<small>CVB-RJ</small></div><span class="av">A</span></div>
+      <div class="ola"><h2>Olá, Ana</h2><p>Você estudou 18 min esta semana.</p></div>
+      <div class="hero"><small>Continue de onde parou</small><h3>Primeiros Socorros — Lei Lucas</h3><span style="font-size:12.5px;opacity:.9">Módulo 4 · Engasgo · Criança no recreio</span><div class="bar"><i></i></div><span style="font-size:11.5px;opacity:.85">38% · acesso até 27/10/2027</span><div class="cont"><span>Continuar</span><span>▶</span></div></div>
+      <div class="lt">Módulos</div>
+      <div class="mods">
+        <div class="m"><span class="ic ok">✓</span><div><b>Antes de tudo</b><small>Concluído · 20 min</small></div></div>
+        <div class="m"><span class="ic ok">✓</span><div><b>Parada cardíaca no adulto</b><small>Já sabia (pré-teste)</small></div></div>
+        <div class="m"><span class="ic at">4</span><div><b>Engasgo</b><small>Em andamento · restam 12 min</small></div></div>
+        <div class="m"><span class="ic lk">🔒</span><div><b>Mal súbito</b><small>Libera depois do 4</small></div></div>
+      </div>
+      <div class="tab"><span class="on"><i>⌂</i>Início</span><span><i>▤</i>Cursos</span><span><i>🎓</i>Certificados</span><span><i>☺</i>Conta</span></div>
+    </div></div></div>
+    <div><p class="rot">Tela de aula</p><div class="phone"><div class="in A lesson">
+      <div class="vh"><span class="bk">‹</span><span class="play"></span></div>
+      <div class="bd">
+        <span class="pl">Módulo 4 · Engasgo · tela 2 de 3</span>
+        <h3>Criança no recreio</h3>
+        <div class="chips"><span class="on">Situação</span><span>Revisão</span><span>Alerta</span><span>Teste</span></div>
+        <p style="margin:0;font-size:13.5px;color:#444">Uma criança de 6 anos para de rir, leva as mãos ao pescoço e não consegue falar. Ela ainda está respirando?</p>
+        <div class="rv"><div><b>1</b><br>Mãos no pescoço: sinal universal.</div><div><b>2</b><br>Tosse forte → leve. Incentive.</div></div>
+        <div class="al"><b>ALERTA</b>Se a criança tosse com força, não bata nas costas.</div>
+      </div>
+      <div class="nx"><span>Próximo: Teste rápido</span><span>→</span></div>
+    </div></div></div>
+  </div>
+</div>
+
+<!-- B -->
+<div class="opcao">
+  <div class="cab"><span class="l">B</span><h3>Foco escuro</h3></div>
+  <p class="desc">Fundo escuro, o vídeo como protagonista, módulos em "prateleiras" como numa plataforma de streaming. Passa a sensação de produto premium e deixa o vídeo e as fotos brilharem.</p>
+  <div class="pc"><div class="p"><b>A favor</b><ul><li>Bonito e moderno; valoriza vídeo e foto</li><li>Bem diferente do site: fica claro que é "outro lugar"</li></ul></div><div class="c"><b>Contra</b><ul><li>Texto longo em fundo escuro cansa mais, e o curso tem bastante leitura</li><li>Na rua, com sol, a tela escura é pior de ler</li></ul></div></div>
+  <div class="row">
+    <div><p class="rot">Início do aluno</p><div class="phone"><div class="in B">
+      <div class="top"><span class="lg"></span><div class="nm">Escola Digital<small>CVB-RJ</small></div><span class="av">A</span></div>
+      <div class="feat"><div class="tx"><small>Continue · Módulo 4</small><h3>Engasgo: criança no recreio</h3><div class="bar"><i></i></div><span class="go">▶ Continuar</span></div></div>
+      <div class="lt">Primeiros Socorros — Lei Lucas <span>38%</span></div>
+      <div class="shelf">
+        <div class="sm"><div class="th ok">1</div><b>Antes de tudo</b><small>20 min</small></div>
+        <div class="sm"><div class="th ok">2</div><b>Parada no adulto</b><small>25 min</small></div>
+        <div class="sm"><div class="th at">4</div><b>Engasgo</b><small>restam 12 min</small></div>
+      </div>
+      <div class="lt" style="margin-top:6px">Próximos <span>trancados</span></div>
+      <div class="shelf">
+        <div class="sm"><div class="th lk">5</div><b>Mal súbito</b><small>25 min</small></div>
+        <div class="sm"><div class="th lk">6</div><b>Sangramento</b><small>10 min</small></div>
+        <div class="sm"><div class="th lk">7</div><b>Lesões</b><small>15 min</small></div>
+      </div>
+      <div class="tab"><span class="on"><i>⌂</i>Início</span><span><i>▤</i>Cursos</span><span><i>🎓</i>Certificados</span><span><i>☺</i>Conta</span></div>
+    </div></div></div>
+    <div><p class="rot">Tela de aula</p><div class="phone"><div class="in B lesson">
+      <div class="vh"><span class="play"></span></div>
+      <div class="bd">
+        <span class="pl">Módulo 4 · tela 2 de 3</span>
+        <h3>Criança no recreio</h3>
+        <p>Uma criança de 6 anos para de rir, leva as mãos ao pescoço e não consegue falar. Ela ainda está respirando?</p>
+        <div class="rv"><div><b>1</b><br>Mãos no pescoço: sinal universal.</div><div><b>2</b><br>Tosse forte → leve. Incentive.</div></div>
+        <div class="al"><b>ALERTA</b>Se a criança tosse com força, não bata nas costas.</div>
+      </div>
+      <div class="nx"><span>Próximo: Teste rápido</span><span>→</span></div>
+    </div></div></div>
+  </div>
+</div>
+
+<!-- C -->
+<div class="opcao">
+  <div class="cab"><span class="l">C</span><h3>Manual de campo</h3></div>
+  <p class="desc">Inspirado no cartão de bolso e nos manuais de socorro: papel claro, linhas pretas firmes, números grandes, carimbos de status, o lema <b>OLHAR · LIGAR · CUIDAR</b> sempre à vista. Vermelho e preto, como sinalização de emergência.</p>
+  <div class="pc"><div class="p"><b>A favor</b><ul><li>Tem identidade própria: não parece nenhum outro curso online</li><li>Conversa com o cartão de bolso e com o lema; o aluno reconhece o material impresso</li><li>Muito contraste: boa leitura no sol</li></ul></div><div class="c"><b>Contra</b><ul><li>Mais "editorial": exige cuidado para não ficar pesado</li><li>Carimbos e fonte técnica precisam de critério para não virarem enfeite</li></ul></div></div>
+  <div class="row">
+    <div><p class="rot">Início do aluno</p><div class="phone"><div class="in C">
+      <div class="top"><span class="cz"></span><div class="nm">Escola Digital<small>CVB-RJ · PRIMEIROS SOCORROS</small></div><span class="av">ANA ▾</span></div>
+      <div class="ola"><small>// SEU CURSO</small><h2>Primeiros Socorros — Lei Lucas</h2></div>
+      <div class="lema"><span>OLHAR</span><span>LIGAR</span><span class="on">CUIDAR</span></div>
+      <div class="prog"><span>3/8</span><div class="tr"><i class="f"></i><i class="f"></i><i class="f"></i><i class="a"></i><i></i><i></i><i></i><i></i></div><span>38%</span></div>
+      <div class="lista">
+        <div class="it"><span class="num">01</span><div><b>Antes de tudo</b><small>20 MIN</small></div><span class="st ok">FEITO</span></div>
+        <div class="it"><span class="num">02</span><div><b>Parada cardíaca no adulto</b><small>25 MIN</small></div><span class="st ok">JÁ SABIA</span></div>
+        <div class="it"><span class="num">03</span><div><b>Parada na criança e no bebê</b><small>20 MIN</small></div><span class="st ok">FEITO</span></div>
+        <div class="it at"><span class="num">04</span><div><b>Engasgo</b><small>RESTAM 12 MIN</small></div><span class="st at">AGORA</span></div>
+        <div class="it lk"><span class="num">05</span><div><b>Mal súbito</b><small>25 MIN</small></div><span class="st lk">TRANCADO</span></div>
+      </div>
+      <div class="tab"><span class="on">INÍCIO</span><span>CURSOS</span><span>CERTIF.</span><span>CONTA</span></div>
+    </div></div></div>
+    <div><p class="rot">Tela de aula</p><div class="phone"><div class="in C lesson">
+      <div class="hd"><b>04</b><span>ENGASGO · TELA 2/3</span><span>12 MIN</span></div>
+      <div class="vh"><span class="pl2"></span><span class="tm">02:10 · LEGENDADO</span></div>
+      <div class="bd">
+        <span class="pl">// SITUAÇÃO</span>
+        <h3>Criança no recreio</h3>
+        <p style="margin:0;font-size:13.5px">Uma criança de 6 anos para de rir, leva as mãos ao pescoço e não consegue falar. Ela ainda está respirando?</p>
+        <div class="rv"><div class="rh">REVISÃO RÁPIDA</div><div class="rl"><b>1</b>Mãos no pescoço: sinal universal.</div><div class="rl"><b>2</b>Tosse forte → leve. Incentive a tossir.</div></div>
+        <div class="al"><b>⚠ ALERTA</b>Se a criança tosse com força, não bata nas costas.</div>
+      </div>
+      <div class="nx"><span>Próximo: Teste rápido</span><span>→</span></div>
+    </div></div></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
