@@ -46,6 +46,7 @@ model Usuario {
   ultimoLogin          DateTime?
   ultimaAtividade      DateTime?
   matriculas           Matricula[]
+  inscricoesOnline     InscricaoOnline[]
 
   @@index([papel])
   @@index([ultimaAtividade])
@@ -66,8 +67,15 @@ model Curso {
   ativo              Boolean    @default(true)
   criadoEm          DateTime   @default(now())
   descricaoLonga     String?
+  // Escola Digital: PRESENCIAL (padrão, tudo como era) ou ONLINE. Os dois prazos só
+  // valem para curso ONLINE; nulos nos cursos existentes.
+  modalidade               ModalidadeCurso @default(PRESENCIAL)
+  prazoAcessoDias          Int?
+  validadeCertificadoMeses Int?
   faqs               FaqCurso[]
   turmas             Turma[]
+  modulosOnline      ModuloOnline[]
+  inscricoesOnline   InscricaoOnline[]
 }
 
 model FaqCurso {
@@ -278,4 +286,259 @@ enum TipoPagamento {
 enum SituacaoAcademica {
   APROVADO
   REPROVADO
+}
+
+// ---------------------------------------------------------------------------
+// Escola Digital CVB-RJ (curso online). Só acréscimos: nada acima foi alterado
+// além das colunas/relações novas em Curso e Usuario.
+// ---------------------------------------------------------------------------
+
+enum ModalidadeCurso {
+  PRESENCIAL
+  ONLINE
+}
+
+enum SituacaoInscricaoOnline {
+  AGUARDANDO_PAGAMENTO
+  ATIVA
+  CONCLUIDA
+  EXPIRADA
+  CANCELADA
+}
+
+// Como o módulo foi dado por concluído.
+enum ComoConcluiu {
+  TELAS
+  PRE_TESTE
+  CENARIOS
+}
+
+enum TipoTeste {
+  TOPICO
+  PRE_TESTE
+}
+
+model ModuloOnline {
+  id          String  @id @default(uuid())
+  cursoId     String
+  chave       String
+  ordem       Int
+  titulo      String
+  minutos     Int     @default(0)
+  abertura    String?
+  imagemUrl   String?
+  temPreTeste Boolean @default(true)
+  final       Boolean @default(false)
+
+  curso      Curso             @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  topicos    TopicoOnline[]
+  cenarios   CenarioOnline[]
+  concluidos ModuloConcluido[]
+  tentativas TentativaTeste[]
+
+  @@unique([cursoId, chave])
+  @@index([cursoId])
+}
+
+model TopicoOnline {
+  id       String @id @default(uuid())
+  moduloId String
+  chave    String
+  ordem    Int
+  titulo   String
+
+  modulo     ModuloOnline     @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+  telas      TelaOnline[]
+  perguntas  PerguntaOnline[]
+  tentativas TentativaTeste[]
+
+  @@unique([moduloId, chave])
+}
+
+model TelaOnline {
+  id            String  @id @default(uuid())
+  topicoId      String
+  chave         String
+  ordem         Int
+  titulo        String
+  ancora        String
+  imagemUrl     String?
+  imagemAlt     String?
+  videoId       String?
+  videoTitulo   String?
+  videoSegundos Int?
+  revisao       Json    @default("[]")
+  alerta        String?
+  dica          String?
+
+  topico TopicoOnline @relation(fields: [topicoId], references: [id], onDelete: Cascade)
+  vistas TelaVista[]
+
+  @@unique([topicoId, chave])
+}
+
+model PerguntaOnline {
+  id           String  @id @default(uuid())
+  topicoId     String
+  chave        String
+  enunciado    String
+  alternativas Json
+  correta      Int
+  porque       String
+  ativa        Boolean @default(true)
+
+  topico TopicoOnline @relation(fields: [topicoId], references: [id], onDelete: Cascade)
+
+  @@unique([topicoId, chave])
+}
+
+model CenarioOnline {
+  id            String  @id @default(uuid())
+  moduloId      String
+  chave         String
+  ordem         Int
+  titulo        String
+  cena          String
+  imagemUrl     String?
+  tempoSugerido Int
+
+  modulo   ModuloOnline     @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+  decisoes DecisaoCenario[]
+  feitos   CenarioFeito[]
+
+  @@unique([moduloId, chave])
+}
+
+model DecisaoCenario {
+  id        String @id @default(uuid())
+  cenarioId String
+  ordem     Int
+  pergunta  String
+  opcoes    Json
+  correta   Int
+  fala      String
+
+  cenario CenarioOnline @relation(fields: [cenarioId], references: [id], onDelete: Cascade)
+
+  @@unique([cenarioId, ordem])
+}
+
+// Matrícula do aluno num curso ONLINE. alunoId e cursoId sem cascade (como Matricula):
+// apagar aluno ou curso com inscrição tem que ser decisão explícita.
+model InscricaoOnline {
+  id                   String                  @id @default(uuid())
+  alunoId              String
+  cursoId              String
+  situacao             SituacaoInscricaoOnline @default(AGUARDANDO_PAGAMENTO)
+  plano                PlanoPagamento?
+  forma                FormaPagamento?
+  parcelas             Int                     @default(1)
+  valor                Decimal?                @db.Decimal(10, 2)
+  ativadaEm            DateTime?
+  acessoAte            DateTime?
+  concluidaEm          DateTime?
+  certificadoValidoAte DateTime?
+  codigoCertificado    String?                 @unique
+  criadoEm             DateTime                @default(now())
+  atualizadoEm         DateTime                @updatedAt
+
+  aluno             Usuario           @relation(fields: [alunoId], references: [id])
+  curso             Curso             @relation(fields: [cursoId], references: [id])
+  pagamentos        PagamentoOnline[]
+  telasVistas       TelaVista[]
+  tentativas        TentativaTeste[]
+  modulosConcluidos ModuloConcluido[]
+  cenariosFeitos    CenarioFeito[]
+
+  @@unique([alunoId, cursoId])
+  @@index([cursoId])
+}
+
+model PagamentoOnline {
+  id              String          @id @default(uuid())
+  inscricaoId     String
+  metodo          FormaPagamento
+  parcelas        Int             @default(1)
+  valor           Decimal         @db.Decimal(10, 2)
+  status          StatusPagamento @default(PENDENTE)
+  gateway         String?
+  gatewayRef      String?
+  gatewayHash     String?
+  gatewayStatus   String?
+  gatewayResponse Json?
+  pixQrCode       String?         @db.Text
+  pixUrl          String?         @db.Text
+  pixBase64       String?         @db.Text
+  criadoEm        DateTime        @default(now())
+  atualizadoEm    DateTime        @updatedAt
+
+  inscricao InscricaoOnline @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+
+  @@index([inscricaoId])
+  @@index([gatewayRef])
+  @@index([gatewayHash])
+  @@index([status])
+}
+
+model TelaVista {
+  inscricaoId String
+  telaId      String
+  vistaEm     DateTime @default(now())
+
+  inscricao InscricaoOnline @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  tela      TelaOnline      @relation(fields: [telaId], references: [id], onDelete: Cascade)
+
+  @@id([inscricaoId, telaId])
+  @@index([telaId])
+}
+
+model TentativaTeste {
+  id          String    @id @default(uuid())
+  inscricaoId String
+  tipo        TipoTeste
+  topicoId    String?
+  moduloId    String?
+  perguntas   Json
+  respostas   Json      @default("[]")
+  acertos     Int       @default(0)
+  total       Int
+  aprovado    Boolean   @default(false)
+  finalizada  Boolean   @default(false)
+  criadoEm    DateTime  @default(now())
+
+  inscricao InscricaoOnline @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  topico    TopicoOnline?   @relation(fields: [topicoId], references: [id], onDelete: Cascade)
+  modulo    ModuloOnline?   @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+
+  @@index([inscricaoId])
+  @@index([topicoId])
+  @@index([moduloId])
+}
+
+model ModuloConcluido {
+  inscricaoId String
+  moduloId    String
+  como        ComoConcluiu
+  em          DateTime     @default(now())
+
+  inscricao InscricaoOnline @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  modulo    ModuloOnline    @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+
+  @@id([inscricaoId, moduloId])
+  @@index([moduloId])
+}
+
+model CenarioFeito {
+  inscricaoId String
+  cenarioId   String
+  escolhas    Json
+  acertos     Int
+  segundos    Int
+  em          DateTime @default(now())
+
+  inscricao InscricaoOnline @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  cenario   CenarioOnline   @relation(fields: [cenarioId], references: [id], onDelete: Cascade)
+
+  @@id([inscricaoId, cenarioId])
+  @@index([cenarioId])
 }
