@@ -1,0 +1,40 @@
+<%- include('_topo') %>
+<%
+// PIX da matrícula online: QR Code, copia e cola e consulta da situação a cada 5 s (js/escola-digital.js).
+var base = '/digital/pagamento/' + inscricaoId;
+%>
+<section class="ed-pagamento">
+  <p class="ed-rotulo">PAGAMENTO · PIX</p>
+  <h1>Pague com PIX</h1>
+  <p class="ed-mat-preco"><%= curso.nome %> · <span class="ed-nowrap"><%= valor %> à vista</span></p>
+
+  <div class="ed-pix" data-ed-consulta="<%= base %>/status?pagamento=<%= pagamentoId %>" data-ed-ok="/digital/estudo/<%= inscricaoId %>/continuar" data-ed-falha="<%= base %>?vencido=1">
+    <% if (qr) { %>
+    <img class="ed-pix-qr" src="<%= qr %>" alt="QR Code do PIX" width="240" height="240">
+    <% } %>
+    <div class="ed-campo">
+      <label for="pix-copia">PIX copia e cola</label>
+      <textarea id="pix-copia" class="ed-pix-codigo" readonly rows="3"><%= pixQrCode %></textarea>
+    </div>
+    <button type="button" class="ed-botao ed-botao-grande" data-ed-copiar="pix-copia">Copiar código PIX <span aria-hidden="true">⧉</span></button>
+    <p class="ed-pix-situacao" data-ed-status-texto aria-live="polite">Aguardando o pagamento. Esta página atualiza sozinha.</p>
+  </div>
+
+  <ol class="ed-passos">
+    <li>Abra o app do seu banco e escolha <b>PIX</b>.</li>
+    <li>Aponte a câmera para o QR Code ou cole o código.</li>
+    <li>Confirmado o pagamento, o curso abre aqui mesmo.</li>
+  </ol>
+
+  <% if (linkSimulado) { %>
+  <div class="ed-simulado">
+    <b>PAGAMENTO SIMULADO</b>
+    <p>Ambiente de teste: este QR Code não é de verdade. Abra o banco simulado para aprovar ou recusar.</p>
+    <a class="ed-botao" href="<%= linkSimulado %>">Abrir o banco simulado <span aria-hidden="true">→</span></a>
+  </div>
+  <% } %>
+
+  <p class="ed-mat-volta"><a href="<%= base %>?trocar=1">Escolher outra forma de pagamento</a></p>
+</section>
+<script src="<%= asset('/js/escola-digital.js') %>" defer></script>
+<%- include('_rodape') %>

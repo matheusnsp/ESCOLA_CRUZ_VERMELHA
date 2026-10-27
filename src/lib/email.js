@@ -574,7 +574,27 @@ async function enviarComprovanteRecusado(email, nome, { motivo, link }) {
   await enviar(email, 'Escola CVB-RJ: envie outro comprovante da área da saúde', html, 'Comprovante recusado', link);
 }
 
+// Escola Digital (curso online): o pagamento foi confirmado e o curso está liberado
+// (lib/escola-digital/pagamento.js). Leva o link do curso e o lembrete da senha inicial, porque a
+// conta pode ter sido criada na matrícula rápida.
+async function enviarMatriculaOnlineConfirmada(email, nome, { curso, link, acessoAte }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const html = moldura(
+    'Matrícula confirmada',
+    limpo(nome),
+    `O pagamento foi confirmado e o curso <strong>${limpo(curso)}</strong> já está liberado na Escola Digital. `
+      + 'Você estuda no seu ritmo, pelo celular ou pelo computador'
+      + (acessoAte ? `, até <strong>${limpo(acessoAte)}</strong>.` : '.')
+      + '<br><br>Para entrar: sua senha inicial são os 4 últimos dígitos do seu CPF — troque em Minha conta.',
+    'Começar o curso',
+    link,
+    'Escola Digital CVB-RJ · Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ.'
+  );
+  await enviar(email, `Matrícula confirmada — ${limpo(curso)}`, html, `Matrícula online confirmada (${curso})`, link);
+}
+
 module.exports = {
+  enviarMatriculaOnlineConfirmada,
   enviarComprovanteRecusado,
   enviarEncaixeMatriculaRapida,
   enviarPesquisaSatisfacao,

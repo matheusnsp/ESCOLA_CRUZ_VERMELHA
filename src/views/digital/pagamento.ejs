@@ -1,0 +1,134 @@
+<%- include('_topo') %>
+<%
+// Tela de pagamento da matrícula online (spec §5.3). `modo`: escolha | processando | indisponivel | encerrada.
+var acao = '/digital/pagamento/' + inscricaoId;
+function marcado(nome, valor) { return escolha && escolha[nome] === valor ? ' checked' : ''; }
+%>
+<section class="ed-pagamento">
+  <p class="ed-rotulo">PAGAMENTO</p>
+  <h1><%= curso.nome %></h1>
+
+  <% if (modo === 'encerrada') { %>
+    <div class="ed-encerrado">
+      <b>Inscrição encerrada</b>
+      <p>Sua inscrição neste curso foi encerrada. Fale com a secretaria.</p>
+      <p><a href="mailto:contato@cruzvermelhariodejaneiro.org">contato@cruzvermelhariodejaneiro.org</a></p>
+    </div>
+
+  <% } else if (modo === 'indisponivel') { %>
+    <div class="ed-encerrado">
+      <b>Pagamento indisponível no momento</b>
+      <p>Não conseguimos receber pagamentos agora. Sua matrícula fica guardada: volte a esta página mais tarde.</p>
+    </div>
+
+  <% } else if (modo === 'processando') { %>
+    <% if (pagamento.metodo === 'PIX') { %>
+    <div class="ed-andamento" data-ed-recarregar="5">
+      <b>Gerando o QR Code do PIX</b>
+      <p>Isso leva alguns segundos. Esta página atualiza sozinha.</p>
+    </div>
+    <% } else { %>
+    <div class="ed-andamento" data-ed-consulta="<%= acao %>/status?pagamento=<%= pagamento.id %>" data-ed-ok="/digital/estudo/<%= inscricaoId %>/continuar" data-ed-falha="<%= acao %>?recusado=1">
+      <b>Cartão em análise</b>
+      <p data-ed-status-texto aria-live="polite">Aguardando a resposta do banco. Esta página atualiza sozinha.</p>
+    </div>
+    <% } %>
+    <% if (linkSimulado) { %>
+    <div class="ed-simulado">
+      <b>PAGAMENTO SIMULADO</b>
+      <p>Ambiente de teste: nenhuma cobrança real. Abra a tela do banco simulado para aprovar ou recusar.</p>
+      <a class="ed-botao" href="<%= linkSimulado %>">Abrir o banco simulado <span aria-hidden="true">→</span></a>
+    </div>
+    <% } %>
+    <p class="ed-mat-volta"><a href="<%= acao %>?trocar=1">Escolher outra forma de pagamento</a></p>
+
+  <% } else { %>
+    <% if (aviso === 'recusado') { %>
+    <div class="ed-aviso" role="alert">
+      <b>Pagamento recusado</b>
+      <p><%= motivo %></p>
+      <p>Tente de novo com outro cartão ou pague com PIX.</p>
+    </div>
+    <form class="ed-pix-rapido" method="POST" action="<%= acao %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="opcao" value="A_VISTA:1">
+      <input type="hidden" name="forma" value="PIX">
+      <button type="submit" class="ed-botao ed-botao-grande">Pagar com PIX · <%= aVista %> <span aria-hidden="true">→</span></button>
+    </form>
+    <% } else if (aviso === 'vencido') { %>
+    <div class="ed-aviso" role="alert">
+      <b>QR Code vencido</b>
+      <p>O PIX anterior venceu. Escolha a forma de pagamento para gerar outro.</p>
+    </div>
+    <% } %>
+    <% if (erro) { %>
+    <div class="ed-aviso" role="alert">
+      <b>Confira</b>
+      <p><%= erro %></p>
+    </div>
+    <% } %>
+
+    <form class="ed-form ed-form-pagamento" method="POST" action="<%= acao %>" novalidate data-ed-pagamento>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <fieldset class="ed-grupo">
+        <legend><span class="ed-passo">1</span> Como você quer pagar</legend>
+        <label class="ed-opcao">
+          <input type="radio" name="opcao" value="A_VISTA:1"<%= marcado('opcao', 'A_VISTA:1') %>>
+          <span class="ed-opcao-texto"><b>À vista</b><small>PIX ou cartão de crédito</small></span>
+          <span class="ed-opcao-valor"><%= aVista %></span>
+        </label>
+        <% parceladas.forEach(function (o) { var v = 'PARCELADO:' + o.parcelas; %>
+        <label class="ed-opcao">
+          <input type="radio" name="opcao" value="<%= v %>" data-ed-parcelado<%= marcado('opcao', v) %>>
+          <span class="ed-opcao-texto"><b><%= o.parcelas %>× de <%= o.valorParcela %></b><small>no cartão · total <%= o.total %></small></span>
+        </label>
+        <% }) %>
+        <% if (parceladas.length && semJuros) { %>
+        <p class="ed-mat-nota">No parcelado, os juros do cartão são calculados pela operadora na hora do pagamento.</p>
+        <% } %>
+      </fieldset>
+
+      <fieldset class="ed-grupo">
+        <legend><span class="ed-passo">2</span> Forma de pagamento</legend>
+        <label class="ed-opcao">
+          <input type="radio" name="forma" value="PIX"<%= marcado('forma', 'PIX') %>>
+          <span class="ed-opcao-texto"><b>PIX</b><small>QR Code ou copia e cola · só à vista</small></span>
+        </label>
+        <label class="ed-opcao">
+          <input type="radio" name="forma" value="CREDITO"<%= marcado('forma', 'CREDITO') %>>
+          <span class="ed-opcao-texto"><b>Cartão de crédito</b><small>à vista ou parcelado</small></span>
+        </label>
+      </fieldset>
+
+      <fieldset class="ed-grupo" data-ed-cartao>
+        <legend><span class="ed-passo">3</span> Dados do cartão <small>(só para cartão)</small></legend>
+        <div class="ed-campo">
+          <label for="pg-numero">Número do cartão</label>
+          <input id="pg-numero" name="numero" type="text" inputmode="numeric" autocomplete="cc-number" maxlength="23" placeholder="0000 0000 0000 0000" data-ed-mascara="cartao">
+        </div>
+        <div class="ed-campo">
+          <label for="pg-titular">Nome impresso no cartão</label>
+          <input id="pg-titular" name="titular" type="text" autocomplete="cc-name" maxlength="120" placeholder="COMO ESTÁ NO CARTÃO" class="ed-caixa-alta">
+        </div>
+        <div class="ed-campo-par">
+          <div class="ed-campo">
+            <label for="pg-validade">Validade</label>
+            <input id="pg-validade" name="validade" type="text" inputmode="numeric" autocomplete="cc-exp" maxlength="5" placeholder="MM/AA" data-ed-mascara="validade">
+          </div>
+          <div class="ed-campo">
+            <label for="pg-cvv">CVV</label>
+            <input id="pg-cvv" name="cvv" type="text" inputmode="numeric" autocomplete="cc-csc" maxlength="4" placeholder="000">
+          </div>
+        </div>
+        <p class="ed-mat-nota">Os dados do cartão vão para a operadora e não ficam guardados aqui.</p>
+      </fieldset>
+
+      <button type="submit" class="ed-botao ed-botao-grande">Continuar para o pagamento <span aria-hidden="true">→</span></button>
+    </form>
+  <% } %>
+
+  <p class="ed-mat-volta"><a href="/digital/cursos/<%= slug %>">Voltar para o curso</a></p>
+</section>
+<script src="<%= asset('/js/escola-digital.js') %>" defer></script>
+<%- include('_rodape') %>

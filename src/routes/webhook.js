@@ -2,6 +2,7 @@ const express = require('express');
 const prisma = require('../db');
 const { aplicarStatus } = require('../lib/status-pagamento');
 const unicopag = require('../lib/unicopag');
+const pagamentoOnline = require('../lib/escola-digital/pagamento');
 
 const router = express.Router();
 
@@ -84,6 +85,25 @@ router.post('/webhook/unicopag', express.json(), async (req, res) => {
         if (pagamento) {
           console.log(`[WEBHOOK] Casado por e-mail (corrida de dados) — Pagamento ${pagamento.id}`);
         }
+      }
+    }
+
+    // 4) Escola Digital (curso online): só quando nenhum dos 3 caminhos acima achou um Pagamento.
+    //    Procura em PagamentoOnline pelo hash, pelo order_id "ED-<id>" ou por e-mail + valor
+    //    (lib/escola-digital/pagamento.js) e aplica com a regra própria do curso online.
+    if (!pagamento) {
+      const online = await pagamentoOnline.acharPorAviso({ hash, orderId, email: emailCliente, valor: amountBase });
+      if (online) {
+        if (hash && !online.gatewayRef) {
+          await prisma.pagamentoOnline.updateMany({
+            where: { id: online.id, gatewayRef: null },
+            data: { gatewayRef: hash, gatewayHash: online.gatewayHash || hash },
+          });
+          online.gatewayRef = hash;
+        }
+        const r = await pagamentoOnline.aplicarStatusOnline(online, { status, payload, tx, origem: 'webhook' });
+        if (r.info) return res.json({ ok: true, info: r.info });
+        return res.json({ ok: true });
       }
     }
 

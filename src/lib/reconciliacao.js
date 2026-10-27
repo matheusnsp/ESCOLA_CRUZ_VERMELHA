@@ -28,18 +28,19 @@ const CHAVE_RODADA = 'reconciliacao:rodada';
 const CHAVE_ULTIMA = 'reconciliacao:ultima';
 
 // Pega a vez desta passada. Devolve false se outro serviço já rodou nos últimos ~15 minutos.
-async function pegarVez() {
+// `chave`: a trava em Configuracao; a Escola Digital usa a sua ('reconciliacao-online:rodada').
+async function pegarVez(chave = CHAVE_RODADA) {
   const agora = new Date();
   const limite = new Date(agora.getTime() - (INTERVALO_MIN - 1) * 60000).toISOString();
   try {
-    await prisma.configuracao.create({ data: { chave: CHAVE_RODADA, valor: agora.toISOString() } });
+    await prisma.configuracao.create({ data: { chave, valor: agora.toISOString() } });
     return true;
   } catch (e) {
     if (e.code !== 'P2002') throw e;
   }
   // Datas ISO em UTC comparam certo como texto.
   const r = await prisma.configuracao.updateMany({
-    where: { chave: CHAVE_RODADA, valor: { lt: limite } },
+    where: { chave, valor: { lt: limite } },
     data: { valor: agora.toISOString() },
   });
   return r.count === 1;
@@ -106,12 +107,29 @@ async function reconciliarPendentes(opts = {}) {
   return resumo;
 }
 
+// Escola Digital (lib/escola-digital/pagamento.js): os PagamentoOnline pendentes, num laço à parte,
+// logo depois dos Pagamentos. Nunca lança: um erro aqui não atrapalha o laço de cima nem o próximo.
+// O require fica aqui dentro porque o pagamento online usa o pegarVez deste arquivo.
+async function rodarOnline() {
+  try {
+    await require('./escola-digital/pagamento').reconciliarOnline();
+  } catch (e) {
+    console.error('[RECONCILIACAO-ONLINE] falhou:', e.message);
+  }
+}
+
+// Uma passada: primeiro os Pagamentos (como sempre), depois os da Escola Digital.
+function rodar() {
+  return reconciliarPendentes()
+    .catch((e) => console.error('[RECONCILIACAO] falhou:', e.message))
+    .then(rodarOnline);
+}
+
 // Liga a passada periódica (server.js). A primeira sai 2 minutos depois de subir, para não pesar
 // no início do serviço.
 function agendar() {
-  const rodar = () => reconciliarPendentes().catch((e) => console.error('[RECONCILIACAO] falhou:', e.message));
   setTimeout(rodar, 2 * 60000).unref();
   setInterval(rodar, INTERVALO_MIN * 60000).unref();
 }
 
-module.exports = { reconciliarPendentes, agendar };
+module.exports = { reconciliarPendentes, agendar, rodar, pegarVez };

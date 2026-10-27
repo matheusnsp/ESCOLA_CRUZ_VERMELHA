@@ -13,7 +13,8 @@ router.use((req, res, next) => {
   return next();
 });
 
-// Sub-roteadores: só entram depois da trava acima. Os do estudo e da matrícula vêm nas tarefas seguintes.
+// Sub-roteadores: só entram depois da trava acima. O do estudo vem nas tarefas seguintes.
 router.use(require('./loja'));
+router.use(require('./pagamento'));
 
 module.exports = router;

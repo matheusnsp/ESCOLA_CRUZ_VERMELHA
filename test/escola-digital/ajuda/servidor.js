@@ -34,7 +34,8 @@ async function iniciarServidor({ env = {}, tempoMaxMs = 30000 } = {}) {
 
   const ambiente = { ...process.env };
   // Nada de serviços externos nos testes.
-  for (const k of ['RESEND_API_KEY', 'UNICOPAG_API_KEY', 'UNICOPAG_SECRET', 'ESCOLA_DIGITAL', 'ESCOLA_DIGITAL_PAGAMENTO_SIMULADO']) delete ambiente[k];
+  // As chaves da Únicopag são UNICOPAG_API_TOKEN e UNICOPAG_API_TOKEN_2 (lib/unicopag.js).
+  for (const k of ['RESEND_API_KEY', 'UNICOPAG_API_KEY', 'UNICOPAG_SECRET', 'UNICOPAG_API_TOKEN', 'UNICOPAG_API_TOKEN_2', 'ESCOLA_DIGITAL', 'ESCOLA_DIGITAL_PAGAMENTO_SIMULADO']) delete ambiente[k];
   Object.assign(ambiente, {
     NODE_ENV: 'development',
     PORT: String(porta),

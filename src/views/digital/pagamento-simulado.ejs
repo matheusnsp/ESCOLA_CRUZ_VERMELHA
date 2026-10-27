@@ -1,0 +1,33 @@
+<%- include('_topo') %>
+<%# Banco simulado (só fora de produção): responde à cobrança com a mesma função do aviso da Únicopag. %>
+<section class="ed-pagamento">
+  <p class="ed-rotulo">PAGAMENTO SIMULADO</p>
+  <h1>Banco simulado</h1>
+  <div class="ed-simulado">
+    <b>AMBIENTE DE TESTE</b>
+    <p>Nenhuma cobrança real acontece aqui. Os botões fazem o papel do banco e da Únicopag.</p>
+  </div>
+
+  <dl class="ed-resumo">
+    <div><dt>Curso</dt><dd><%= pagamento.curso %></dd></div>
+    <div><dt>Forma</dt><dd><%= pagamento.forma %></dd></div>
+    <div><dt>Valor</dt><dd><%= pagamento.valor %></dd></div>
+    <div><dt>Situação</dt><dd><%= pagamento.status %></dd></div>
+  </dl>
+
+  <div class="ed-simulado-acoes">
+    <form method="POST" action="/digital/simulado/<%= pagamento.id %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="acao" value="aprovar">
+      <button type="submit" class="ed-botao ed-botao-grande">Aprovar <span aria-hidden="true">✓</span></button>
+    </form>
+    <form method="POST" action="/digital/simulado/<%= pagamento.id %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="acao" value="recusar">
+      <button type="submit" class="ed-botao ed-botao-grande ed-botao-claro">Recusar <span aria-hidden="true">✕</span></button>
+    </form>
+  </div>
+
+  <p class="ed-mat-volta"><a href="/digital/pagamento/<%= pagamento.inscricaoId %>">Voltar para o pagamento</a></p>
+</section>
+<%- include('_rodape') %>
