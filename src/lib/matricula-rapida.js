@@ -212,7 +212,16 @@ async function encaixar({ inscricaoId, turmaId, porUsuarioId, appUrl }) {
   }
 
   const ja = await prisma.configuracao.findUnique({ where: { chave: CHAVE(inscricaoId) } });
-  if (ja) return { ok: false, msg: `${pessoa.nome} já foi encaixado(a) numa turma.` };
+  if (ja) {
+    // Anotação só de histórico (matrícula da escola) cuja matrícula foi cancelada/estornada ou não existe
+    // mais: não vale, segue como se não houvesse chave (ela é sobrescrita ao gravar o encaixe, abaixo).
+    const a = ler(ja.valor);
+    const mAnt = soHistorico(a) && a.matriculaId
+      ? await prisma.matricula.findUnique({ where: { id: a.matriculaId }, select: { statusPagamento: true } })
+      : null;
+    const historicoVelho = soHistorico(a) && (!mAnt || DESFEITA.includes(mAnt.statusPagamento));
+    if (!historicoVelho) return { ok: false, msg: `${pessoa.nome} já foi encaixado(a) numa turma.` };
+  }
   const email = String(pessoa.email || '').trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, msg: 'A inscrição não tem um e-mail válido; fale com a pessoa antes de encaixar.' };
 
@@ -251,7 +260,7 @@ async function encaixar({ inscricaoId, turmaId, porUsuarioId, appUrl }) {
       statusPagamento: { notIn: ['CANCELADO', 'ESTORNADO'] },
     },
   });
-  if (outraTurma) return { ok: false, msg: `${pessoa.nome} já tem matrícula numa turma desse curso pela escola.` };
+  if (outraTurma) return { ok: false, msg: `${pessoa.nome} já tem matrícula ativa noutra turma desse curso.` };
   const valores = await calcularValores(turma.curso, 'PARCELADO', aluno.id);
   // O que a pessoa pagou de fato: no cartão, com a taxa de processamento (ex.: R$ 103,95 por R$ 99).
   const taxa = pago && (pago.valorTotal || pago.valor) ? (pago.valorTotal || pago.valor) : Number(valores.valorTaxaMatricula);
@@ -276,8 +285,12 @@ async function encaixar({ inscricaoId, turmaId, porUsuarioId, appUrl }) {
       gatewayStatus: pago ? pago.status : 'matricula-rapida',
     },
   });
-  await prisma.configuracao.create({
-    data: { chave: CHAVE(inscricaoId), valor: JSON.stringify({ matriculaId: matricula.id, turmaId: turma.id, alunoId: aluno.id, por: porUsuarioId, em: new Date().toISOString(), contaCriada: criada, totalComTaxa: true }) },
+  // upsert: se havia uma chave só de histórico de matrícula desfeita, o encaixe novo a sobrescreve.
+  const valorChave = JSON.stringify({ matriculaId: matricula.id, turmaId: turma.id, alunoId: aluno.id, por: porUsuarioId, em: new Date().toISOString(), contaCriada: criada, totalComTaxa: true });
+  await prisma.configuracao.upsert({
+    where: { chave: CHAVE(inscricaoId) },
+    create: { chave: CHAVE(inscricaoId), valor: valorChave },
+    update: { valor: valorChave },
   });
 
   // E-mail: criar a senha (conta nova sem CPF), ou entrar (conta que já existia / senha pelo CPF).

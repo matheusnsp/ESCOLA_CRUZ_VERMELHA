@@ -158,6 +158,9 @@
                 // Inscrição devolvida não tem mais vaga a guardar: segue como antes.
                 var congelada = m.turma.status === 'CONGELADA' && !devolvido;
 
+                // Turma de espera (status EM_ESPERA): paga e garantida, mas sem data nem aulas ainda.
+                var emEspera = m.turma.status === 'EM_ESPERA' && !devolvido;
+
                 var labelPlano = m.plano === 'A_VISTA'   ? 'À vista'
                                : m.plano === 'PRESENCIAL' ? 'Presencial'
                                : 'Parcelado';
@@ -179,12 +182,20 @@
 
                   <div class="ct-insc-topo">
                     <h3><%= m.turma.curso.nome %></h3>
-                    <span class="ct-selo ct-selo-<%= cls %>"><%= m.statusPagamento %></span>
+                    <% if (emEspera) { %>
+                      <span class="ct-selo ct-selo-espera">EM ESPERA</span>
+                    <% } else { %>
+                      <span class="ct-selo ct-selo-<%= cls %>"><%= m.statusPagamento %></span>
+                    <% } %>
                   </div>
 
                   <p class="ct-insc-sub">
-                    <% if (m.turma.aulas && m.turma.aulas.length) { %><%= m.turma.aulas[0].horario %> · <% } %>
-                    <% if (congelada) { %>novas datas a confirmar<% } else { %>início em <b><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %></b><% } %>
+                    <% if (emEspera) { %>
+                      <b>Aguardando encaixe</b> · data ainda não definida
+                    <% } else { %>
+                      <% if (m.turma.aulas && m.turma.aulas.length) { %><%= m.turma.aulas[0].horario %> · <% } %>
+                      <% if (congelada) { %>novas datas a confirmar<% } else { %>início em <b><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %></b><% } %>
+                    <% } %>
                     · inscrito em <%= new Date(m.criadoEm).toLocaleDateString('pt-BR') %>
                   </p>
 
@@ -207,6 +218,11 @@
                         <i class="fa-solid fa-snowflake"></i> Turma pausada
                       </span>
                     <% } %>
+                    <% if (emEspera) { %>
+                      <span class="ct-pill ct-pill-espera-turma">
+                        <i class="fa-regular fa-hourglass-half"></i> Em espera
+                      </span>
+                    <% } %>
                   </div>
 
                   <%
@@ -219,6 +235,13 @@
                   <div class="ct-pausada">
                     <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
                     <span><b>Turma pausada pela escola.</b> Sua inscrição continua garantida. Quando a turma for retomada, as novas datas aparecem aqui<%= pago ? '' : ' e o pagamento volta a ficar disponível' %>.</span>
+                  </div>
+                  <% } %>
+
+                  <% if (emEspera) { %>
+                  <div class="ct-pausada">
+                    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                    <span><b>Você está na lista de espera.</b> Sua inscrição está paga e garantida; ainda não há data definida para a sua turma. Quando a secretaria encaixar você numa turma, a data aparece aqui e você recebe um e-mail.</span>
                   </div>
                   <% } %>
 
