@@ -280,7 +280,7 @@ ALTER TABLE "InscricaoOnline" ADD CONSTRAINT "InscricaoOnline_alunoId_fkey" FORE
 ALTER TABLE "InscricaoOnline" ADD CONSTRAINT "InscricaoOnline_cursoId_fkey" FOREIGN KEY ("cursoId") REFERENCES "Curso"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "PagamentoOnline" ADD CONSTRAINT "PagamentoOnline_inscricaoId_fkey" FOREIGN KEY ("inscricaoId") REFERENCES "InscricaoOnline"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "PagamentoOnline" ADD CONSTRAINT "PagamentoOnline_inscricaoId_fkey" FOREIGN KEY ("inscricaoId") REFERENCES "InscricaoOnline"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "TelaVista" ADD CONSTRAINT "TelaVista_inscricaoId_fkey" FOREIGN KEY ("inscricaoId") REFERENCES "InscricaoOnline"("id") ON DELETE CASCADE ON UPDATE CASCADE;

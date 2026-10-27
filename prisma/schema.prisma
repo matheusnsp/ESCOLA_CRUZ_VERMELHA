@@ -454,6 +454,7 @@ model InscricaoOnline {
   @@index([cursoId])
 }
 
+// Pagamento é registro financeiro: apagar a inscrição com pagamentos falha (Restrict).
 model PagamentoOnline {
   id              String          @id @default(uuid())
   inscricaoId     String
@@ -472,7 +473,7 @@ model PagamentoOnline {
   criadoEm        DateTime        @default(now())
   atualizadoEm    DateTime        @updatedAt
 
-  inscricao InscricaoOnline @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  inscricao InscricaoOnline @relation(fields: [inscricaoId], references: [id], onDelete: Restrict)
 
   @@index([inscricaoId])
   @@index([gatewayRef])
