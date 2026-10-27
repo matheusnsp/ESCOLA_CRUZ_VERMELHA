@@ -118,6 +118,8 @@
             </div>
             <% if (p.encaixe) { %>
               <span class="mr-estado ok"><i class="fa-solid fa-circle-check"></i> <%= p.encaixe.naEscola || p.encaixe.ligado ? 'Já matriculado(a) na escola' : 'Encaixado(a)' %></span>
+            <% } else if (p.espera) { %>
+              <span class="mr-estado espera"><i class="fa-regular fa-clock"></i> <%= p.espera.desde ? 'Na espera desde ' + dataBR(p.espera.desde) : 'Na espera' %></span>
             <% } else { %>
               <span class="mr-estado espera <%= dias !== null && dias >= 3 ? 'atrasado' : '' %>"><i class="fa-regular fa-clock"></i> <%= dias === null ? 'Aguardando' : (dias === 0 ? 'Pagou hoje' : 'Esperando há ' + dias + (dias === 1 ? ' dia' : ' dias')) %></span>
             <% } %>
@@ -170,9 +172,10 @@
                 <span class="mr-ajustado mr-dobro"><i class="fa-solid fa-triangle-exclamation"></i> Também pagou a inscrição online pela escola: confira se não pagou em dobro</span>
                 <% if (Array.isArray(p.encaixe.dobro)) { %><small class="mr-dobro-det">Pago na Únicopag da escola: <%= p.encaixe.dobro.map(function (d) { return (d.tipo === 'TAXA' ? 'taxa' : 'curso à vista (com a taxa)') + ' ' + formatBRL(d.valor) + ' · ' + (d.metodo === 'CREDITO' ? 'cartão' : String(d.metodo || '').toLowerCase()) + ' · ' + dataBR(d.em); }).join('; ') %></small><% } %>
               <% } %>
-              <% if (podeEncaixar && !p.encaixe.naEscola && !p.encaixe.ligado && !p.encaixe.erroLigar) { %>
+              <% if (podeEncaixar && !p.encaixe.erroLigar && !p.encaixe.dobro) { %>
                 <%
-                  // Só o encaixe feito por aqui tem Mover e Voltar para a espera (lib/matricula-rapida.js).
+                  // Mover e Voltar para a espera valem para toda matrícula do curso: encaixe daqui ou
+                  // matrícula pelo site da escola (lib/matricula-rapida.js, matriculaDoCurso).
                   var outras = turmas.filter(function (t) { return t.id !== p.encaixe.turmaId; });
                 %>
                 <div class="mr-acoes">
@@ -186,16 +189,22 @@
                       </select>
                       <button class="adm-btn adm-btn-sm"><i class="fa-solid fa-right-left"></i> Mover</button>
                     </form>
+                  <% } else { %>
+                    <span class="mr-pe-txt">Mover: nenhuma outra turma aberta deste curso</span>
+                    <a href="/turmas/nova" class="mr-pe-btn"><i class="fa-solid fa-plus"></i> Criar turma</a>
                   <% } %>
-                  <form method="POST" action="/matricula-rapida/<%= p.inscricaoId %>/espera" data-confirmar="Voltar <%= p.nome %> para a lista de espera? A inscrição paga continua valendo. A matrícula desta turma é desfeita e refeita no próximo encaixe." data-motivo="Por que está voltando para a espera" data-botao="Voltar para a espera">
+                  <form method="POST" action="/matricula-rapida/<%= p.inscricaoId %>/espera" data-confirmar="Voltar <%= p.nome %> para a lista de espera? A matrícula e o que já foi pago continuam valendo; a pessoa sai desta turma e recebe um e-mail." data-motivo="Por que está voltando para a espera" data-botao="Voltar para a espera">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <button class="mr-pe-btn"><i class="fa-solid fa-rotate-left"></i> Voltar para a espera</button>
                   </form>
                 </div>
               <% } %>
             <% } else if (podeEncaixar) { %>
+              <% if (p.espera) { %>
+                <a href="/alunos/<%= p.espera.alunoId %>/matriculas" class="mr-pe-link">Ver matrícula <i class="fa-solid fa-arrow-right"></i></a>
+              <% } %>
               <% if (turmas.length) { %>
-                <form method="POST" action="/matricula-rapida/<%= p.inscricaoId %>/encaixar" class="mr-form" data-confirmar="Encaixar <%= p.nome %> na turma escolhida? A pessoa ganha a conta na escola e recebe o e-mail para pagar o curso." data-botao="Encaixar">
+                <form method="POST" action="/matricula-rapida/<%= p.inscricaoId %>/encaixar" class="mr-form" data-confirmar="<%= p.espera ? 'Encaixar ' + p.nome + ' na turma escolhida? A matrícula sai da lista de espera (nada é cobrado de novo) e a pessoa recebe o e-mail com a data.' : 'Encaixar ' + p.nome + ' na turma escolhida? A pessoa ganha a conta na escola e recebe o e-mail para pagar o curso.' %>" data-botao="Encaixar">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                   <select name="turmaId" aria-label="Turma para <%= p.nome %>">
                     <% turmas.forEach(function (t) { %>
@@ -209,7 +218,7 @@
                 <a href="/turmas/nova" class="mr-pe-btn"><i class="fa-solid fa-plus"></i> Criar turma</a>
               <% } %>
             <% } else { %>
-              <span class="mr-pe-txt"><i class="fa-regular fa-clock"></i> Aguardando a secretaria encaixar</span>
+              <span class="mr-pe-txt"><i class="fa-regular fa-clock"></i> <%= p.espera ? 'Na lista de espera' : 'Aguardando a secretaria encaixar' %></span>
             <% } %>
           </footer>
         </article>

@@ -1237,6 +1237,7 @@ router.get('/turmas/:id/editar', requirePermissao('turmas:gerenciar'), async (re
     prisma.curso.findMany({ orderBy: { nome: 'asc' } }),
   ]);
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
+  if (turma.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não pode ser editada.'));
   await extras.anexar('turma', [turma]);
   res.render('admin/turma-form', { turma, aulas: turma.aulas, cursos, statusTurma: STATUS_TURMA, erro: null });
 });
@@ -1244,6 +1245,8 @@ router.get('/turmas/:id/editar', requirePermissao('turmas:gerenciar'), async (re
 router.post('/turmas/:id', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const existe = await prisma.turma.findUnique({ where: { id: req.params.id } });
   if (!existe) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
+  // A turma de espera (lib/turma-espera.js) é do sistema: data, vagas e status não se editam à mão.
+  if (existe.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não pode ser editada.'));
   const { dados, aulas, erro } = lerTurmaDoForm(req.body);
   if (erro) {
     const cursos = await prisma.curso.findMany({ orderBy: { nome: 'asc' } });
@@ -1292,6 +1295,8 @@ router.post('/turmas/:id/notas', requirePermissao('turmas:gerenciar'), async (re
     include: { matriculas: true },
   });
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
+  // Nota na espera travaria Mover / Voltar para a espera: a nota é da turma de verdade.
+  if (turma.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não tem notas.'));
 
   const nome = String(req.body.nome || '').trim();
   const peso = Number(String(req.body.peso || '1').replace(',', '.'));
@@ -1318,6 +1323,7 @@ router.post('/turmas/:id/notas', requirePermissao('turmas:gerenciar'), async (re
 router.post('/turmas/:id/excluir', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const turma = await prisma.turma.findUnique({ where: { id: req.params.id }, include: { curso: true } });
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
+  if (turma.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não pode ser excluída.'));
 
   const matriculas = await prisma.matricula.count({ where: { turmaId: turma.id } });
   if (matriculas > 0) {
@@ -1376,24 +1382,32 @@ router.post('/matricula-rapida/:inscricaoId/encaixar', requirePermissao('taxa:ap
   const r = await matriculaRapida.encaixar({
     inscricaoId: req.params.inscricaoId, turmaId: req.body.turmaId, porUsuarioId: req.session.usuarioId,
   });
-  if (r.ok) await auditar(req, 'ENCAIXOU_MATRICULA_RAPIDA', 'Matricula', r.matriculaId, { inscricaoSite: req.params.inscricaoId, turmaId: req.body.turmaId });
+  if (r.ok && r.daEspera) await auditar(req, 'ENCAIXOU_DA_ESPERA', 'Matricula', r.matriculaId, { inscricaoSite: req.params.inscricaoId, matriculaId: r.matriculaId, de: r.de, para: r.para });
+  else if (r.ok) await auditar(req, 'ENCAIXOU_MATRICULA_RAPIDA', 'Matricula', r.matriculaId, { inscricaoSite: req.params.inscricaoId, turmaId: req.body.turmaId });
   res.redirect('/matricula-rapida?' + (r.ok ? 'ok=' : 'erro=') + encodeURIComponent(r.msg));
 });
 
-// Mover o encaixe para outra turma do mesmo curso (lib/matricula-rapida.js, moverEncaixe).
+// Mover a matrícula do curso (encaixe ou escola) para outra turma do mesmo curso
+// (lib/matricula-rapida.js, moverEncaixe). Saindo da lista de espera, é o mesmo que Encaixar.
 router.post('/matricula-rapida/:inscricaoId/mover', requirePermissao('taxa:aprovar'), async (req, res) => {
   const r = await matriculaRapida.moverEncaixe({
     inscricaoId: req.params.inscricaoId, turmaId: req.body.turmaId, porUsuarioId: req.session.usuarioId,
   });
-  if (r.ok) await auditar(req, 'MOVEU_MATRICULA_RAPIDA', 'Matricula', r.matriculaId, { inscricaoSite: req.params.inscricaoId, de: r.de, para: r.para });
+  if (r.ok && r.daEspera) await auditar(req, 'ENCAIXOU_DA_ESPERA', 'Matricula', r.matriculaId, { inscricaoSite: req.params.inscricaoId, matriculaId: r.matriculaId, de: r.de, para: r.para });
+  else if (r.ok) await auditar(req, 'MOVEU_MATRICULA_RAPIDA', 'Matricula', r.matriculaId, { inscricaoSite: req.params.inscricaoId, de: r.de, para: r.para });
   res.redirect('/matricula-rapida?sit=encaixados&' + (r.ok ? 'ok=' : 'erro=') + encodeURIComponent(r.msg));
 });
 
-// Desfazer o encaixe: a pessoa volta para "Aguardando encaixe" (lib/matricula-rapida.js, voltarParaEspera).
+// Voltar para a espera: a matrícula do curso (encaixe ou escola) vai para a turma de espera e a pessoa
+// volta para "Aguardando encaixe"; nada é apagado (lib/matricula-rapida.js, voltarParaEspera).
 router.post('/matricula-rapida/:inscricaoId/espera', requirePermissao('taxa:aprovar'), async (req, res) => {
   const motivo = String(req.body.motivo || '').trim().slice(0, 200);
-  const r = await matriculaRapida.voltarParaEspera({ inscricaoId: req.params.inscricaoId, motivo });
-  if (r.ok) await auditar(req, 'VOLTOU_PARA_ESPERA_MATRICULA_RAPIDA', 'Matricula', r.matriculaId, r.snapshot);
+  const r = await matriculaRapida.voltarParaEspera({ inscricaoId: req.params.inscricaoId, motivo, porUsuarioId: req.session.usuarioId });
+  if (r.ok) {
+    await auditar(req, 'VOLTOU_PARA_ESPERA_MATRICULA_RAPIDA', 'Matricula', r.matriculaId, {
+      inscricaoSite: req.params.inscricaoId, matriculaId: r.matriculaId, de: r.de, esperaTurmaId: r.esperaTurmaId, motivo, origem: r.origem,
+    });
+  }
   res.redirect(r.ok ? '/matricula-rapida?ok=' + encodeURIComponent(r.msg) : '/matricula-rapida?sit=encaixados&erro=' + encodeURIComponent(r.msg));
 });
 
