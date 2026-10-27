@@ -7,7 +7,7 @@
 const prisma = require('../../db');
 const regras = require('./regras');
 
-// Endereços do estudo. `teste`, `preTeste` e `cenario` são das tarefas seguintes (testes e cenários).
+// Endereços do estudo. `cenario` é da tarefa dos cenários; `certificado` e `cartao`, da do certificado.
 const urls = {
   area: (insc) => `/digital/estudo/${insc}`,
   continuar: (insc) => `/digital/estudo/${insc}/continuar`,
@@ -16,6 +16,10 @@ const urls = {
   proximo: (insc, telaId) => `/digital/estudo/${insc}/tela/${telaId}/proximo`,
   teste: (insc, topicoId) => `/digital/estudo/${insc}/teste/${topicoId}`,
   preTeste: (insc, moduloId) => `/digital/estudo/${insc}/pre-teste/${moduloId}`,
+  tentativa: (insc, tentativaId, n) => `/digital/estudo/${insc}/tentativa/${tentativaId}${n ? `?n=${n}` : ''}`,
+  responder: (insc, tentativaId) => `/digital/estudo/${insc}/tentativa/${tentativaId}/responder`,
+  finalizar: (insc, tentativaId) => `/digital/estudo/${insc}/tentativa/${tentativaId}/finalizar`,
+  resultado: (insc, tentativaId) => `/digital/estudo/${insc}/tentativa/${tentativaId}/resultado`,
   cenario: (insc, cenarioId) => `/digital/estudo/${insc}/cenario/${cenarioId}`,
   certificado: (insc) => `/digital/estudo/${insc}/certificado.pdf`,
   cartao: (insc) => `/digital/estudo/${insc}/cartao.pdf`,

@@ -1,0 +1,44 @@
+<%- include('_topo') %>
+<%
+// Resultado de um teste finalizado (teste rápido ou "Já sei isso?").
+// Locals: ehTopico, nomeTeste, assunto, modulo, acertos, total, percentual, aprovado, moduloConcluido,
+// continuarLink, refazerLink, telasLink, moduloLink.
+%>
+<article class="ed-teste">
+  <header class="ed-teste-cab">
+    <b class="ed-tela-num"><%= modulo.numero %></b>
+    <span><%= nomeTeste %> · RESULTADO</span>
+    <a class="ed-teste-sair" href="<%= moduloLink %>">Módulo</a>
+  </header>
+
+  <div class="ed-teste-corpo ed-resultado <%= aprovado ? 'ed-resultado-ok' : 'ed-resultado-nao' %>">
+    <p class="ed-rotulo">// <%= assunto.toUpperCase() %></p>
+    <p class="ed-placar" aria-hidden="true"><b><%= acertos %></b>/<%= total %></p>
+    <p class="ed-mono"><%= percentual %>% DE ACERTOS · MÍNIMO 80%</p>
+
+    <% if (ehTopico && aprovado) { %>
+    <h1>Teste rápido aprovado</h1>
+    <p>Você acertou <%= acertos %> de <%= total %> perguntas.</p>
+    <% if (moduloConcluido) { %><p class="ed-selo-modulo"><span class="ed-carimbo ok">MÓDULO CONCLUÍDO</span></p><% } %>
+    <a class="ed-botao ed-botao-grande" href="<%= continuarLink %>"><span>Continuar</span> <span aria-hidden="true">→</span></a>
+
+    <% } else if (ehTopico) { %>
+    <h1>Ainda não foi dessa vez</h1>
+    <p>Você acertou <%= acertos %> de <%= total %> perguntas. Para passar, é preciso acertar pelo menos 80%. Quantas vezes quiser: cada tentativa traz outras perguntas, sempre que houver.</p>
+    <a class="ed-botao ed-botao-grande" href="<%= refazerLink %>"><span>Refazer com outras perguntas</span> <span aria-hidden="true">→</span></a>
+    <a class="ed-botao ed-botao-grande ed-botao-claro" href="<%= telasLink %>"><span>Rever as telas</span> <span aria-hidden="true">→</span></a>
+
+    <% } else if (aprovado) { %>
+    <h1>Módulo concluído — você já sabia</h1>
+    <p>Você acertou <%= acertos %> de <%= total %> perguntas do "Já sei isso?". Este módulo está concluído e você pode seguir para o próximo.</p>
+    <a class="ed-botao ed-botao-grande" href="<%= continuarLink %>"><span>Continuar</span> <span aria-hidden="true">→</span></a>
+
+    <% } else { %>
+    <h1>Vamos às telas</h1>
+    <p>Você acertou <%= acertos %> de <%= total %> perguntas. Sem penalidade: as telas deste módulo vão mostrar o que falta, e depois você faz o teste rápido de cada tópico.</p>
+    <a class="ed-botao ed-botao-grande" href="<%= telasLink %>"><span>Ir para as telas</span> <span aria-hidden="true">→</span></a>
+    <a class="ed-botao ed-botao-grande ed-botao-claro" href="<%= moduloLink %>"><span>Voltar ao módulo</span> <span aria-hidden="true">→</span></a>
+    <% } %>
+  </div>
+</article>
+<%- include('_rodape') %>

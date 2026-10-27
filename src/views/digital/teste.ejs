@@ -1,0 +1,86 @@
+<%- include('_topo') %>
+<%
+// Uma pergunta por página (spec §5.5), sem JavaScript.
+// etapa PERGUNTA: pergunta com alternativas e "Responder".
+// etapa FEEDBACK (só no teste rápido): certa/errada, o porquê e "Próxima pergunta" / "Ver resultado".
+// etapa FIM ("Já sei isso?" com tudo respondido): só falta "Ver resultado".
+// Locals: etapa, ehTopico, nomeTeste, assunto, modulo, moduloLink, n, total, respondidas, pergunta,
+// feedback, ultima, responderAction, finalizarAction, proximaLink.
+%>
+<article class="ed-teste">
+  <header class="ed-teste-cab">
+    <b class="ed-tela-num"><%= modulo.numero %></b>
+    <span><%= nomeTeste %> · <%= etapa === 'FIM' ? total + ' PERGUNTAS' : 'PERGUNTA ' + n + '/' + total %></span>
+    <a class="ed-teste-sair" href="<%= moduloLink %>">Sair</a>
+  </header>
+
+  <ol class="ed-passos" aria-label="Progresso do teste">
+    <% for (var i = 1; i <= total; i++) { %>
+    <li class="<%= i <= respondidas ? 'feito' : (i === n && etapa !== 'FIM' ? 'atual' : '') %>"><span class="ed-so-leitor">Pergunta <%= i %><%= i <= respondidas ? ' respondida' : '' %></span></li>
+    <% } %>
+  </ol>
+
+  <% if (etapa === 'FIM') { %>
+  <div class="ed-teste-corpo">
+    <p class="ed-rotulo">// <%= assunto.toUpperCase() %></p>
+    <h1>Você respondeu todas as perguntas</h1>
+    <p>Veja o resultado do "Já sei isso?" deste módulo.</p>
+    <form method="post" action="<%= finalizarAction %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="ed-botao ed-botao-grande"><span>Ver resultado</span> <span aria-hidden="true">→</span></button>
+    </form>
+  </div>
+
+  <% } else if (etapa === 'PERGUNTA') { %>
+  <form class="ed-teste-corpo" method="post" action="<%= responderAction %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="perguntaId" value="<%= pergunta.id %>">
+    <fieldset class="ed-grupo ed-pergunta">
+      <legend>
+        <span class="ed-rotulo">// <%= assunto.toUpperCase() %></span>
+        <span class="ed-enunciado"><%= pergunta.enunciado %></span>
+      </legend>
+      <% pergunta.alternativas.forEach(function (a, i) { %>
+      <label class="ed-opcao">
+        <input type="radio" name="alternativa" value="<%= a.indice %>" required>
+        <span class="ed-opcao-texto"><b><%= a.texto %></b></span>
+      </label>
+      <% }) %>
+    </fieldset>
+    <button type="submit" class="ed-botao ed-botao-grande"><span>Responder</span> <span aria-hidden="true">→</span></button>
+    <% if (!ehTopico) { %><p class="ed-mono">O resultado aparece só no fim.</p><% } %>
+  </form>
+
+  <% } else { %>
+  <div class="ed-teste-corpo">
+    <fieldset class="ed-grupo ed-pergunta" disabled>
+      <legend>
+        <span class="ed-rotulo">// <%= assunto.toUpperCase() %></span>
+        <span class="ed-enunciado"><%= pergunta.enunciado %></span>
+      </legend>
+      <% pergunta.alternativas.forEach(function (a) { %>
+      <div class="ed-alt<%= a.certa ? ' ed-alt-certa' : '' %><%= a.escolhida && !a.certa ? ' ed-alt-errada' : '' %>">
+        <span class="ed-alt-marca" aria-hidden="true"><%= a.certa ? '✓' : (a.escolhida ? '✗' : '') %></span>
+        <span class="ed-alt-texto"><%= a.texto %></span>
+        <% if (a.certa) { %><span class="ed-alt-tag">CERTA</span><% } else if (a.escolhida) { %><span class="ed-alt-tag">SUA RESPOSTA</span><% } %>
+      </div>
+      <% }) %>
+    </fieldset>
+
+    <section class="ed-retorno <%= feedback.certa ? 'ed-retorno-certa' : 'ed-retorno-errada' %>" aria-live="polite">
+      <b><%= feedback.certa ? 'RESPOSTA CERTA' : 'RESPOSTA ERRADA' %></b>
+      <p><%= feedback.porque %></p>
+    </section>
+
+    <% if (ultima) { %>
+    <form method="post" action="<%= finalizarAction %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="ed-botao ed-botao-grande"><span>Ver resultado</span> <span aria-hidden="true">→</span></button>
+    </form>
+    <% } else { %>
+    <a class="ed-botao ed-botao-grande" href="<%= proximaLink %>"><span>Próxima pergunta</span> <span aria-hidden="true">→</span></a>
+    <% } %>
+  </div>
+  <% } %>
+</article>
+<%- include('_rodape') %>

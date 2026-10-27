@@ -1,7 +1,7 @@
 // routes/escola-digital/estudo.js
 //
 // Área de estudo da Escola Digital (spec §5.4–5.5): painel do curso, "Continuar", página do
-// módulo, tela de aula e o botão "Próximo". Montado em routes/escola-digital/index.js depois da
+// módulo, tela de aula, o botão "Próximo" e os testes ("Teste rápido" e "Já sei isso?"). Montado em routes/escola-digital/index.js depois da
 // chave de liga/desliga. Todas as rotas exigem login e passam por `carregarInscricao` (dono,
 // situação, prazo). A regra fica em lib/escola-digital/estudo.js; aqui só tela e redirecionamento.
 //
@@ -12,6 +12,8 @@ const asyncHandler = require('../../lib/asyncHandler');
 const config = require('../../lib/escola-digital/config');
 const regras = require('../../lib/escola-digital/regras');
 const estudo = require('../../lib/escola-digital/estudo');
+const testes = require('../../lib/escola-digital/testes');
+const prisma = require('../../db');
 const { carregarInscricao, dataBR } = require('../../lib/escola-digital/acesso');
 const { requireLogin } = require('../../middleware/auth');
 const { precisaTrocarSenha } = require('../../lib/seguranca');
@@ -252,6 +254,232 @@ router.post('/digital/estudo/:id/tela/:telaId/proximo', asyncHandler(async (req,
   }
   const destino = await estudo.destinoAposTela(insc.id, estrutura, prog, achada, { jaConcluido: jaConcluido || !gravar, gravar });
   return res.redirect(destino);
+}));
+
+// ---------- testes: teste rápido (tópico) e "Já sei isso?" (módulo) ----------
+//
+// Uma pergunta por página, sem JavaScript. O teste de tópico mostra certa/errada e o porquê logo
+// depois de cada resposta; o "Já sei isso?" só mostra o resultado no fim. A regra fica em
+// lib/escola-digital/testes.js. Em revisão (inscrição CONCLUIDA) nada começa nem grava: volta
+// para a página do módulo. Os ids de tópico, módulo e tentativa só valem dentro do curso da
+// inscrição (carregarEstrutura) e da própria inscrição; o resto é 404.
+
+const acharTopico = (estrutura, topicoId) => {
+  for (const modulo of estrutura) {
+    const topico = modulo.topicos.find((t) => t.id === topicoId);
+    if (topico) return { modulo, topico };
+  }
+  return null;
+};
+
+const erroDeTeste = (res, status, mensagem, inscricaoId) => res.status(status).render('digital/erro', {
+  titulo: 'Não foi possível registrar', mensagem, aba: 'cursos', voltaHref: urls.area(inscricaoId), voltaTexto: 'Voltar ao curso',
+});
+
+router.get('/digital/estudo/:id/teste/:topicoId', asyncHandler(async (req, res) => {
+  const insc = req.inscricao;
+  const { estrutura, prog, estados } = await contexto(req);
+  const achado = acharTopico(estrutura, req.params.topicoId);
+  if (!achado) return naoEncontrado(res, 'Teste não encontrado', 'Este teste não faz parte do seu curso.', insc.id);
+  const { modulo, topico } = achado;
+  if (req.modoRevisao || modulo.final) return res.redirect(urls.modulo(insc.id, modulo.id));
+  if (estados.get(modulo.id) === 'TRANCADO') return res.redirect(urls.area(insc.id));
+  // O teste vem depois das telas do tópico: se falta alguma, o aluno vai para ela.
+  const faltando = topico.telas.find((x) => !prog.vistas.has(x.id));
+  if (faltando) return res.redirect(urls.tela(insc.id, faltando.id));
+
+  const tentativa = await testes.iniciarTeste(insc.id, { tipo: 'TOPICO', topicoId: topico.id });
+  if (!tentativa) {
+    return res.status(200).render('digital/erro', {
+      titulo: 'Teste indisponível', mensagem: 'Este teste ainda não tem perguntas. Volte ao módulo e siga em frente por enquanto.',
+      aba: 'cursos', voltaHref: urls.modulo(insc.id, modulo.id), voltaTexto: 'Voltar ao módulo',
+    });
+  }
+  return res.redirect(urls.tentativa(insc.id, tentativa.id));
+}));
+
+router.get('/digital/estudo/:id/pre-teste/:moduloId', asyncHandler(async (req, res) => {
+  const insc = req.inscricao;
+  const { estrutura, estados } = await contexto(req);
+  const modulo = estrutura.find((m) => m.id === req.params.moduloId);
+  if (!modulo) return naoEncontrado(res, 'Teste não encontrado', 'Este teste não faz parte do seu curso.', insc.id);
+  if (req.modoRevisao || modulo.final || !modulo.temPreTeste) return res.redirect(urls.modulo(insc.id, modulo.id));
+  const estado = estados.get(modulo.id);
+  if (estado === 'TRANCADO') return res.redirect(urls.area(insc.id));
+  if (estado !== 'AGORA') return res.redirect(urls.modulo(insc.id, modulo.id)); // já concluído
+
+  const tentativa = await testes.iniciarTeste(insc.id, { tipo: 'PRE_TESTE', moduloId: modulo.id });
+  if (!tentativa) {
+    return res.status(200).render('digital/erro', {
+      titulo: 'Teste indisponível', mensagem: 'Este módulo ainda não tem perguntas para o "Já sei isso?". Comece pelas telas.',
+      aba: 'cursos', voltaHref: urls.modulo(insc.id, modulo.id), voltaTexto: 'Voltar ao módulo',
+    });
+  }
+  return res.redirect(urls.tentativa(insc.id, tentativa.id));
+}));
+
+// Tudo sob /tentativa/:tentativaId: a tentativa tem de ser da inscrição da URL e de um tópico ou
+// módulo do curso dela.
+router.use('/digital/estudo/:id/tentativa/:tentativaId', asyncHandler(async (req, res, next) => {
+  const insc = req.inscricao;
+  const tentativa = await prisma.tentativaTeste.findUnique({ where: { id: String(req.params.tentativaId) } });
+  if (!tentativa || tentativa.inscricaoId !== insc.id) {
+    return naoEncontrado(res, 'Teste não encontrado', 'Não encontramos este teste na sua inscrição.', insc.id);
+  }
+  const estrutura = await estudo.carregarEstrutura(insc.cursoId);
+  let modulo = null;
+  let topico = null;
+  if (tentativa.tipo === 'TOPICO') {
+    const achado = tentativa.topicoId ? acharTopico(estrutura, tentativa.topicoId) : null;
+    if (achado) ({ modulo, topico } = achado);
+  } else {
+    modulo = estrutura.find((m) => m.id === tentativa.moduloId) || null;
+  }
+  if (!modulo) return naoEncontrado(res, 'Teste não encontrado', 'Não encontramos este teste na sua inscrição.', insc.id);
+  req.tentativa = tentativa;
+  req.estruturaCurso = estrutura;
+  req.alvoTeste = { modulo, topico };
+  return next();
+}));
+
+const listaDe = (valor) => (Array.isArray(valor) ? valor : []);
+
+// Página da pergunta (ou do certa/errada + porquê, no teste de tópico).
+router.get('/digital/estudo/:id/tentativa/:tentativaId', asyncHandler(async (req, res) => {
+  const insc = req.inscricao;
+  const { tentativa, alvoTeste } = req;
+  if (tentativa.finalizada) return res.redirect(urls.resultado(insc.id, tentativa.id));
+  if (req.modoRevisao) return res.redirect(urls.modulo(insc.id, alvoTeste.modulo.id));
+
+  const perguntas = listaDe(tentativa.perguntas);
+  const respostas = listaDe(tentativa.respostas);
+  const respostaDe = (p) => respostas.find((r) => r.perguntaId === p.id);
+  const total = perguntas.length;
+  const primeiraSemResposta = perguntas.findIndex((p) => !respostaDe(p));
+  const ehTopico = tentativa.tipo === 'TOPICO';
+
+  // Qual pergunta mostrar: no teste de tópico, a que acabou de ser respondida (?n=) ou, com todas
+  // respondidas, a última; senão, a primeira sem resposta.
+  let indice = primeiraSemResposta;
+  const pedido = Number.parseInt(req.query.n, 10);
+  if (ehTopico && pedido >= 1 && pedido <= total && respostaDe(perguntas[pedido - 1])) indice = pedido - 1;
+  else if (ehTopico && primeiraSemResposta === -1) indice = total - 1;
+
+  const nomeTeste = ehTopico ? 'TESTE RÁPIDO' : 'JÁ SEI ISSO?';
+  const dados = {
+    titulo: `${ehTopico ? 'Teste rápido' : 'Já sei isso?'} | ${alvoTeste.modulo.titulo} | ${config.NOME}`,
+    rastrear: false,
+    aba: 'inicio',
+    semAbas: true,
+    corpoClasse: 'ed-corpo-teste',
+    inscricaoId: insc.id,
+    ehTopico,
+    nomeTeste,
+    assunto: ehTopico ? alvoTeste.topico.titulo : alvoTeste.modulo.titulo,
+    modulo: { numero: doisDigitos(alvoTeste.modulo.ordem), titulo: alvoTeste.modulo.titulo },
+    moduloLink: urls.modulo(insc.id, alvoTeste.modulo.id),
+    total,
+    respondidas: respostas.length,
+    responderAction: urls.responder(insc.id, tentativa.id),
+    finalizarAction: urls.finalizar(insc.id, tentativa.id),
+    proximaLink: urls.tentativa(insc.id, tentativa.id),
+  };
+
+  if (indice === -1) {
+    // "Já sei isso?" com todas respondidas: só falta ver o resultado.
+    return res.render('digital/teste', { ...dados, etapa: 'FIM', n: total, pergunta: null, feedback: null });
+  }
+
+  const pergunta = perguntas[indice];
+  const resposta = respostaDe(pergunta);
+  const alternativas = listaDe(pergunta.alternativas).map((texto, i) => ({
+    indice: i,
+    texto,
+    certa: Boolean(resposta) && i === pergunta.correta,
+    escolhida: Boolean(resposta) && i === resposta.alternativa,
+  }));
+  return res.render('digital/teste', {
+    ...dados,
+    etapa: resposta ? 'FEEDBACK' : 'PERGUNTA',
+    n: indice + 1,
+    pergunta: { id: pergunta.id, enunciado: pergunta.enunciado, alternativas },
+    feedback: resposta ? { certa: Boolean(resposta.certa), porque: pergunta.porque } : null,
+    ultima: indice === total - 1,
+  });
+}));
+
+router.post('/digital/estudo/:id/tentativa/:tentativaId/responder', asyncHandler(async (req, res) => {
+  const insc = req.inscricao;
+  const { tentativa, alvoTeste } = req;
+  if (req.modoRevisao) return res.redirect(urls.modulo(insc.id, alvoTeste.modulo.id));
+  if (tentativa.finalizada) return res.redirect(urls.resultado(insc.id, tentativa.id));
+
+  const perguntas = listaDe(tentativa.perguntas);
+  const perguntaId = String(req.body.perguntaId || '');
+  const indice = perguntas.findIndex((p) => p.id === perguntaId);
+  if (indice === -1) return erroDeTeste(res, 400, 'Esta pergunta não faz parte do seu teste.', insc.id);
+  const bruto = req.body.alternativa;
+  // Nenhuma alternativa marcada: volta para a mesma pergunta, sem gravar.
+  if (bruto === undefined || bruto === '') return res.redirect(urls.tentativa(insc.id, tentativa.id));
+  const alternativa = /^\d{1,3}$/.test(String(bruto)) ? Number(bruto) : NaN;
+
+  try {
+    await testes.responder(tentativa.id, perguntaId, alternativa);
+  } catch (e) {
+    if (e instanceof testes.ErroTeste) return erroDeTeste(res, 400, 'Não foi possível registrar esta resposta.', insc.id);
+    throw e;
+  }
+  // Teste de tópico: mostra o certa/errada e o porquê; "Já sei isso?": segue direto.
+  return res.redirect(tentativa.tipo === 'TOPICO' ? urls.tentativa(insc.id, tentativa.id, indice + 1) : urls.tentativa(insc.id, tentativa.id));
+}));
+
+router.post('/digital/estudo/:id/tentativa/:tentativaId/finalizar', asyncHandler(async (req, res) => {
+  const insc = req.inscricao;
+  const { tentativa, alvoTeste } = req;
+  if (req.modoRevisao) return res.redirect(urls.modulo(insc.id, alvoTeste.modulo.id));
+  try {
+    await testes.finalizar(tentativa.id);
+  } catch (e) {
+    // Faltam perguntas: volta para a que falta.
+    if (e instanceof testes.ErroTeste && e.codigo === 'INCOMPLETA') return res.redirect(urls.tentativa(insc.id, tentativa.id));
+    throw e;
+  }
+  return res.redirect(urls.resultado(insc.id, tentativa.id));
+}));
+
+router.get('/digital/estudo/:id/tentativa/:tentativaId/resultado', asyncHandler(async (req, res) => {
+  const insc = req.inscricao;
+  const { tentativa, alvoTeste, estruturaCurso } = req;
+  if (!tentativa.finalizada) return res.redirect(urls.tentativa(insc.id, tentativa.id));
+
+  const { modulo, topico } = alvoTeste;
+  const ehTopico = tentativa.tipo === 'TOPICO';
+  const prog = await estudo.progresso(insc.id);
+  const telasDoAlvo = (ehTopico ? topico.telas : modulo.topicos.flatMap((t) => t.telas));
+  const aprovado = Boolean(tentativa.aprovado);
+
+  return res.render('digital/teste-resultado', {
+    titulo: `Resultado | ${modulo.titulo} | ${config.NOME}`,
+    rastrear: false,
+    aba: 'inicio',
+    semAbas: true,
+    corpoClasse: 'ed-corpo-teste',
+    inscricaoId: insc.id,
+    ehTopico,
+    nomeTeste: ehTopico ? 'TESTE RÁPIDO' : 'JÁ SEI ISSO?',
+    assunto: ehTopico ? topico.titulo : modulo.titulo,
+    modulo: { numero: doisDigitos(modulo.ordem), titulo: modulo.titulo },
+    acertos: tentativa.acertos,
+    total: tentativa.total,
+    percentual: tentativa.total ? Math.round((tentativa.acertos / tentativa.total) * 100) : 0,
+    aprovado,
+    moduloConcluido: Boolean(prog.concluidos[modulo.id]),
+    // Aprovado: segue o mesmo caminho do "Continuar" (próxima tela/teste ou abertura do módulo seguinte).
+    continuarLink: aprovado ? await estudo.destinoContinuar(insc.id, estruturaCurso, prog, { gravar: false }) : null,
+    refazerLink: ehTopico ? urls.teste(insc.id, topico.id) : null,
+    telasLink: telasDoAlvo[0] ? urls.tela(insc.id, telasDoAlvo[0].id) : urls.modulo(insc.id, modulo.id),
+    moduloLink: urls.modulo(insc.id, modulo.id),
+  });
 }));
 
 module.exports = router;
