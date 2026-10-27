@@ -111,7 +111,7 @@ app.use(
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
         imgSrc: ["'self'", 'data:', 'https:'],
         // Mapa da sede na home (Google Maps incorporado, sem chave).
-        frameSrc: ["'self'", 'https://www.google.com'],
+        frameSrc: ["'self'", 'https://www.google.com', 'https://www.youtube-nocookie.com'],
         // 💡 CORRIGIDO: Libera a execução do script que mostra/esconde os inputs do cartão na tela inscrever.ejs
         // googletagmanager (GA4) e connect.facebook.net (Meta Pixel): sem eles o CSP barrava
         // os dois scripts e nada era medido.
@@ -321,7 +321,9 @@ siteAluno.use(visitas.registrar);
 // Buscadores: só as páginas públicas; o painel da secretaria fica fora de tudo.
 siteAluno.get('/robots.txt', (req, res) => res.type('text/plain').send(
   'User-agent: *\nDisallow: /minha-conta\nDisallow: /inscrever/\nDisallow: /inscricao/\nDisallow: /completar-dados\n'
-  + 'Disallow: /turmas/\nDisallow: /compartilhar/\nDisallow: /integracao/\n\nSitemap: ' + res.locals.urlSite + '/sitemap.xml\n'));
+  + 'Disallow: /turmas/\nDisallow: /compartilhar/\nDisallow: /integracao/\nDisallow: /digital/estudo/\n\nSitemap: ' + res.locals.urlSite + '/sitemap.xml\n'));
+// Escola Digital (cursos online): só responde com ESCOLA_DIGITAL=1; desligada, passa adiante.
+siteAluno.use(require('./routes/escola-digital'));
 siteAluno.use(authRoutes);
 siteAluno.use(cursosRoutes);
 siteAluno.use(painelRoutes);

@@ -4,6 +4,8 @@
   "private": true,
   "description": "Escola de Capacitação da Cruz Vermelha Brasileira (RJ) — backend e área autenticada",
   "scripts": {
+    "test": "node --test --test-concurrency=1 \"test/**/*.test.js\"",
+    "digital:carregar": "node scripts/digital-carregar.js",
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "postinstall": "prisma generate",
