@@ -573,6 +573,39 @@ async function enviarMudancaTurmaMatriculaRapida(email, nome, { curso, inicioAnt
   await enviar(email, `Sua turma mudou de data — ${limpo(curso)}`, html, `Matrícula rápida movida de turma (${curso})`, link);
 }
 
+// Lista de espera (lib/matricula-rapida.js, voltarParaEspera): a secretaria tirou a pessoa da turma e
+// a pôs na espera do curso. A matrícula e o que foi pago continuam; ainda não há data.
+async function enviarEntradaNaEspera(email, nome, { curso, link }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const html = moldura(
+    'Você está na lista de espera',
+    limpo(nome),
+    `A secretaria colocou você na lista de espera do curso <strong>${limpo(curso)}</strong>. `
+      + 'A sua inscrição continua paga e garantida, e o que você já pagou continua valendo. '
+      + 'Assim que a turma e a data forem definidas, a secretaria avisa você por e-mail. Veja a matrícula no site da escola pelo botão abaixo.',
+    'Ver minha matrícula',
+    link,
+    'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.'
+  );
+  await enviar(email, `Você está na lista de espera — ${limpo(curso)}`, html, `Entrada na lista de espera (${curso})`, link);
+}
+
+// Saída da lista de espera (lib/matricula-rapida.js, Encaixar / Mover de quem estava na espera): a
+// secretaria encaixou a pessoa numa turma com data.
+async function enviarTurmaDefinida(email, nome, { curso, inicio, link }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const html = moldura(
+    'Sua turma foi definida',
+    limpo(nome),
+    `A sua turma do curso <strong>${limpo(curso)}</strong> foi definida e começa em <strong>${limpo(inicio)}</strong>. `
+      + 'O que você já pagou continua valendo. Veja a matrícula no site da escola pelo botão abaixo.',
+    'Ver minha matrícula',
+    link,
+    'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.'
+  );
+  await enviar(email, `Sua turma foi definida — ${limpo(curso)}`, html, `Turma definida, saiu da lista de espera (${curso})`, link);
+}
+
 // Comprovante da área da saúde recusado pela secretaria (lib/comprovante-saude.js).
 async function enviarComprovanteRecusado(email, nome, { motivo, link }) {
   const limpo = (t) => String(t).replace(/[<>&"]/g, '');
@@ -594,6 +627,8 @@ module.exports = {
   enviarComprovanteRecusado,
   enviarEncaixeMatriculaRapida,
   enviarMudancaTurmaMatriculaRapida,
+  enviarEntradaNaEspera,
+  enviarTurmaDefinida,
   enviarPesquisaSatisfacao,
   enviarAvisoContas,
   enviarBoasVindasTurma,

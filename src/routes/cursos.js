@@ -273,6 +273,11 @@ const tentativasAvaliar = new Map();
 const MSG_TURMA_CONGELADA = 'Esta turma está pausada pela escola. Sua inscrição continua garantida; quando a turma for retomada, as novas datas e o pagamento voltam a aparecer em "Minha conta".';
 const turmaCongelada = (turma) => !!turma && turma.status === 'CONGELADA';
 
+// Turma EM_ESPERA (lista de espera do curso, sem data): a matrícula está paga e garantida, mas não há
+// o que pagar nem agenda até a secretaria encaixar o aluno numa turma real.
+const MSG_TURMA_EM_ESPERA = 'Sua matrícula está na lista de espera: o pagamento volta a ficar disponível quando a turma for definida.';
+const turmaEmEspera = (turma) => !!turma && turma.status === 'EM_ESPERA';
+
 async function turmaDoQr(req) {
   const id = String(req.params.turmaId || '');
   if (!/^[\w-]{1,64}$/.test(id) || !pesquisa.tokenTurmaValido(id, req.params.token)) return null;
@@ -316,6 +321,7 @@ router.get('/turmas/:turmaId/agenda.ics', (req, res, next) => (async () => {
   });
   if (!turma || turma.status === 'CANCELADA') return res.status(404).render('erro', { mensagem: 'Turma não encontrada.' });
   if (turmaCongelada(turma)) return res.status(409).render('erro', { mensagem: MSG_TURMA_CONGELADA });
+  if (turmaEmEspera(turma)) return res.status(409).render('erro', { mensagem: MSG_TURMA_EM_ESPERA });
   const nome = vitrine.slugCurso(turma.curso.nome);
   res.set('Content-Type', 'text/calendar; charset=utf-8');
   res.set('Content-Disposition', `attachment; filename="aulas-${nome}.ics"`);
@@ -846,6 +852,8 @@ router.get('/inscrever/:turmaId/pagar-taxa', requireLogin, async (req, res) => {
     return res.status(404).render('erro', { mensagem: 'Inscrição não encontrada.' });
   if (turmaCongelada(matricula.turma))
     return res.status(409).render('erro', { mensagem: MSG_TURMA_CONGELADA });
+  if (turmaEmEspera(matricula.turma))
+    return res.status(409).render('erro', { mensagem: MSG_TURMA_EM_ESPERA });
 
   if (matricula.taxaConfirmada)
     return res.redirect(`/inscrever/${req.params.turmaId}/pagar-curso`);
@@ -884,6 +892,8 @@ router.post('/inscrever/:turmaId/pagar-taxa', requireLogin, async (req, res) => 
     return res.status(404).render('erro', { mensagem: 'Inscrição não encontrada.' });
   if (turmaCongelada(matricula.turma))
     return res.status(409).render('erro', { mensagem: MSG_TURMA_CONGELADA });
+  if (turmaEmEspera(matricula.turma))
+    return res.status(409).render('erro', { mensagem: MSG_TURMA_EM_ESPERA });
   if (matricula.taxaConfirmada)
     return res.redirect(`/inscrever/${req.params.turmaId}/pagar-curso`);
 
@@ -1023,6 +1033,8 @@ router.get('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) => 
     return res.status(404).render('erro', { mensagem: 'Inscrição não encontrada.' });
   if (turmaCongelada(matricula.turma))
     return res.status(409).render('erro', { mensagem: MSG_TURMA_CONGELADA });
+  if (turmaEmEspera(matricula.turma))
+    return res.status(409).render('erro', { mensagem: MSG_TURMA_EM_ESPERA });
   if (!matricula.taxaConfirmada)
     return res.redirect(`/inscrever/${req.params.turmaId}/pagar-taxa`);
   if (['PAGO', 'PARCELADO', 'CANCELADO', 'ESTORNADO'].includes(matricula.statusPagamento))
@@ -1079,6 +1091,8 @@ router.post('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) =>
     return res.status(404).render('erro', { mensagem: 'Inscrição não encontrada.' });
   if (turmaCongelada(matricula.turma))
     return res.status(409).render('erro', { mensagem: MSG_TURMA_CONGELADA });
+  if (turmaEmEspera(matricula.turma))
+    return res.status(409).render('erro', { mensagem: MSG_TURMA_EM_ESPERA });
   if (!matricula.taxaConfirmada)
     return res.redirect(`/inscrever/${req.params.turmaId}/pagar-taxa`);
   if (['PAGO', 'PARCELADO', 'CANCELADO', 'ESTORNADO'].includes(matricula.statusPagamento))
@@ -1157,6 +1171,8 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
   // Turma pausada: não abre cobrança nova (o PIX já emitido, acima, segue valendo).
   if (turmaCongelada(matricula.turma))
     return res.status(409).render('erro', { mensagem: MSG_TURMA_CONGELADA });
+  if (turmaEmEspera(matricula.turma))
+    return res.status(409).render('erro', { mensagem: MSG_TURMA_EM_ESPERA });
   // Se já está tudo pago, não faz sentido reabrir a cobrança.
   if (etapaAtual === 'taxa' && matricula.taxaConfirmada)
     return res.redirect(`/inscrever/${matricula.turmaId}/pagar-curso`);
@@ -1238,6 +1254,8 @@ router.post('/inscricao/cartao/:matriculaId', requireLogin, async (req, res) => 
     return res.status(404).json({ ok: false, mensagem: 'Inscrição não encontrada.' });
   if (turmaCongelada(matricula.turma))
     return res.status(409).json({ ok: false, mensagem: MSG_TURMA_CONGELADA });
+  if (turmaEmEspera(matricula.turma))
+    return res.status(409).json({ ok: false, mensagem: MSG_TURMA_EM_ESPERA });
 
   const etapa = req.body.etapa === 'taxa' ? 'taxa' : 'curso';
 

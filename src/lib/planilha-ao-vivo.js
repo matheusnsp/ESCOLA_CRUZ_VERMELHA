@@ -101,7 +101,7 @@ async function chaveValida(chave) {
 const ROTULO_PLANO = { A_VISTA: 'À vista', PARCELADO: 'Parcelado', PRESENCIAL: 'Presencial' };
 const ROTULO_FORMA = { PIX: 'PIX', DEBITO: 'Débito', CREDITO: 'Crédito', DINHEIRO: 'Dinheiro' };
 // No banco a turma concluída fica ENCERRADA; na tela aparece CONCLUÍDA (server.js rotuloTurma).
-const ROTULO_TURMA = { ABERTA: 'Aberta', CONFIRMADA: 'Confirmada', CANCELADA: 'Cancelada', ENCERRADA: 'Concluída', CONGELADA: 'Congelada' };
+const ROTULO_TURMA = { ABERTA: 'Aberta', CONFIRMADA: 'Confirmada', CANCELADA: 'Cancelada', ENCERRADA: 'Concluída', CONGELADA: 'Congelada', EM_ESPERA: 'Em espera' };
 const ROTULO_SITUACAO = { APROVADO: 'Aprovado', REPROVADO: 'Reprovado' };
 
 // Situação do pagamento como na legenda do painel (legenda-status.ejs): o cartão parcelado
@@ -142,7 +142,10 @@ const codigoMatricula = (id) => `MAT-${String(id).slice(0, 8).toUpperCase()}`;
 const codigoTurma = (id) => `TUR-${String(id).slice(0, 8).toUpperCase()}`;
 // Nome da turma para a pessoa escolher numa lista: "Curso — dd/mm/aaaa".
 const dataBR = (d, tz) => data(d, tz).split('-').reverse().join('/');
-const nomeTurma = (t) => `${t?.curso?.nome || '—'} — ${dataBR(t?.inicioPrevisto, 'UTC')}`;
+// A turma de espera (EM_ESPERA) tem data fictícia (2099): no lugar dela, "Em espera".
+const nomeTurma = (t) => `${t?.curso?.nome || '—'} — ${t?.status === 'EM_ESPERA' ? 'Em espera' : dataBR(t?.inicioPrevisto, 'UTC')}`;
+// Data de início da turma para as planilhas: a turma de espera não tem data (a de 2099 é fictícia), fica em branco.
+const inicioTurma = (t) => (t?.status === 'EM_ESPERA' ? '' : data(t?.inicioPrevisto, 'UTC'));
 // CPF com pontos: só dígitos, o Excel leria como número e comeria o zero da frente.
 const documento = (u) => (u?.cpfCnpj ? formatar(u.cpfCnpj) : u?.passaporte || '');
 
@@ -183,7 +186,7 @@ async function tabelaMatriculas() {
       m.turma?.curso?.nome,
       nomeTurma(m.turma),
       codigoTurma(m.turmaId),
-      data(m.turma?.inicioPrevisto, 'UTC'),
+      inicioTurma(m.turma),
       ROTULO_TURMA[statusTurma(m.turma, ultimaAula)],
       ROTULO_PLANO[m.plano] || m.plano,
       ROTULO_FORMA[m.forma] || m.forma,
@@ -270,6 +273,8 @@ async function tabelaCursos() {
     ],
     linhas: cursos.map((c) => {
       const mats = c.turmas.flatMap((t) => t.matriculas);
+      // Quem está na lista de espera tem a inscrição paga, mas ainda não ocupa vaga em turma nenhuma.
+      const matsComVaga = c.turmas.filter((t) => t.status !== 'EM_ESPERA').flatMap((t) => t.matriculas);
       const abertas = c.turmas.filter((t) => turmaAtiva(statusTurma(t, ultimaAula)));
       const proxima = abertas.map((t) => t.inicioPrevisto).sort((a, b) => a - b)[0];
       return [
@@ -281,10 +286,10 @@ async function tabelaCursos() {
         c.parcelas,
         num(c.valorParcela),
         c.taxaMatricula == null ? '' : num(c.taxaMatricula),
-        c.turmas.length,
+        c.turmas.filter((t) => t.status !== 'EM_ESPERA').length, // a turma de espera não conta
         abertas.length,
         data(proxima, 'UTC'),
-        mats.filter(ocupaVaga).length,
+        matsComVaga.filter(ocupaVaga).length,
         mats.filter(pagouTudo).length,
       ];
     }),
@@ -312,19 +317,21 @@ async function tabelaTurmas() {
       col('Falta pagar o curso', 'inteiro'), col('Aguardando taxa', 'inteiro'), col('Criada em', 'data'),
     ],
     linhas: turmas.map((t) => {
-      const comVaga = t.matriculas.filter(ocupaVaga).length;
+      // Turma de espera: ninguém ocupa vaga nela (a matrícula só ganha vaga ao ser encaixada).
+      const espera = t.status === 'EM_ESPERA';
+      const comVaga = espera ? 0 : t.matriculas.filter(ocupaVaga).length;
       return [
         nomeTurma(t),
         codigoTurma(t.id),
         t.curso?.nome,
-        data(t.inicioPrevisto, 'UTC'),
+        inicioTurma(t),
         ROTULO_TURMA[statusTurma(t, ultimaAula)],
-        t.vagas,
+        espera ? '' : t.vagas, // a turma de espera tem 9999 vagas só de fachada
         t.minimoAlunos,
         t.aulas.length,
         t.aulas.map(aulaBR).join('; '),
         comVaga,
-        Math.max(0, (t.vagas || 0) - comVaga),
+        espera ? 0 : Math.max(0, (t.vagas || 0) - comVaga),
         t.matriculas.filter(pagouTudo).length,
         t.matriculas.filter((m) => m.taxaConfirmada && m.statusPagamento === 'PENDENTE').length,
         t.matriculas.filter((m) => !m.taxaConfirmada && m.statusPagamento === 'PENDENTE').length,
