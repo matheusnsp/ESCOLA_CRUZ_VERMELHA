@@ -185,6 +185,8 @@ function statusBadge(s) {
 
 const ESCOLARIDADES = ['', 'Ensino Fundamental', 'Ensino Médio', 'Ensino Superior'];
 // CONGELADA: turma pausada (some do site e das rotinas automáticas; os alunos continuam).
+// EM_ESPERA fica de fora de propósito: é a turma de espera do curso (lib/turma-espera.js), criada
+// sozinha; ninguém a cria ou edita à mão (um status postado fora desta lista é ignorado).
 const STATUS_TURMA = ['ABERTA', 'CONFIRMADA', 'CONGELADA', 'CANCELADA', 'ENCERRADA'];
 
 const DEVICE_2FA_COOKIE = 'cvbrj_admin_2fa';
@@ -1124,6 +1126,8 @@ router.post('/cursos/:id/ativar', requirePermissao('cursos:gerenciar'), async (r
 router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
   await concluirTurmasPassadas(); // a lista já abre com as turmas de ontem como CONCLUÍDA
   const turmas = await prisma.turma.findMany({
+    // A turma de espera (EM_ESPERA) não é turma de verdade: fica fora das abas e da lista.
+    where: { status: { not: 'EM_ESPERA' } },
     orderBy: { inicioPrevisto: 'asc' },
     include: {
       curso: true,
@@ -1807,7 +1811,9 @@ router.get('/inscricoes', requirePermissao(
       },
     }),
 
+    // Filtro de turma: a turma de espera não entra (aparece como "Em espera" na própria linha).
     prisma.turma.findMany({
+      where: { status: { not: 'EM_ESPERA' } },
       orderBy: { criadoEm: 'desc' },
       include: { curso: true },
     }),
@@ -2525,7 +2531,8 @@ router.get('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), 
   });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
   const turmas = await prisma.turma.findMany({
-    where: { id: { not: m.turmaId } },
+    // A turma de espera não é destino de transferência (voltar para a espera é na Matrícula rápida).
+    where: { id: { not: m.turmaId }, status: { not: 'EM_ESPERA' } },
     orderBy: { criadoEm: 'desc' },
     include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
   });
@@ -2553,7 +2560,7 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
 
   const reRenderErro = async (erro) => {
     const turmas = await prisma.turma.findMany({
-      where: { id: { not: m.turmaId } },
+      where: { id: { not: m.turmaId }, status: { not: 'EM_ESPERA' } },
       orderBy: { criadoEm: 'desc' },
       include: {
         curso: true,
@@ -2589,7 +2596,7 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
     include: { curso: true },
   });
 
-  if (!destino) {
+  if (!destino || destino.status === 'EM_ESPERA') {
     return reRenderErro('Turma de destino nao encontrada.');
   }
 
@@ -2669,7 +2676,7 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), asy
         }
       }),
       prisma.usuario.count({ where }),
-      prisma.turma.findMany({ orderBy: { criadoEm: 'desc' }, include: { curso: true } }),
+      prisma.turma.findMany({ where: { status: { not: 'EM_ESPERA' } }, orderBy: { criadoEm: 'desc' }, include: { curso: true } }),
 
       // 💡 NOVO — Turmas realmente abertas e que ainda não começaram. É o que
       // o texto de prospecção vai oferecer, puxado na hora pra nunca citar
@@ -2991,7 +2998,8 @@ router.get('/pendentes', requirePermissao('pendentes:gerenciar'), async (req, re
       where: {
         statusPagamento: 'PENDENTE',
         // Turma congelada (pausada) não é "fora de prazo": fica fora de Pendentes até ser retomada.
-        turma: { status: { not: 'CONGELADA' } },
+        // Turma em espera (sem data) também não: não há prazo a vencer.
+        turma: { status: { notIn: ['CONGELADA', 'EM_ESPERA'] } },
         OR: [
           { turma: { status: { notIn: STATUS_TURMA_ATIVA } } },
           { turma: { inicioPrevisto: { lte: agora } } },

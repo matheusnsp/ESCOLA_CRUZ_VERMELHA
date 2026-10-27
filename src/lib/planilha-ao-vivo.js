@@ -101,7 +101,7 @@ async function chaveValida(chave) {
 const ROTULO_PLANO = { A_VISTA: 'À vista', PARCELADO: 'Parcelado', PRESENCIAL: 'Presencial' };
 const ROTULO_FORMA = { PIX: 'PIX', DEBITO: 'Débito', CREDITO: 'Crédito', DINHEIRO: 'Dinheiro' };
 // No banco a turma concluída fica ENCERRADA; na tela aparece CONCLUÍDA (server.js rotuloTurma).
-const ROTULO_TURMA = { ABERTA: 'Aberta', CONFIRMADA: 'Confirmada', CANCELADA: 'Cancelada', ENCERRADA: 'Concluída', CONGELADA: 'Congelada' };
+const ROTULO_TURMA = { ABERTA: 'Aberta', CONFIRMADA: 'Confirmada', CANCELADA: 'Cancelada', ENCERRADA: 'Concluída', CONGELADA: 'Congelada', EM_ESPERA: 'Em espera' };
 const ROTULO_SITUACAO = { APROVADO: 'Aprovado', REPROVADO: 'Reprovado' };
 
 // Situação do pagamento como na legenda do painel (legenda-status.ejs): o cartão parcelado
@@ -142,7 +142,8 @@ const codigoMatricula = (id) => `MAT-${String(id).slice(0, 8).toUpperCase()}`;
 const codigoTurma = (id) => `TUR-${String(id).slice(0, 8).toUpperCase()}`;
 // Nome da turma para a pessoa escolher numa lista: "Curso — dd/mm/aaaa".
 const dataBR = (d, tz) => data(d, tz).split('-').reverse().join('/');
-const nomeTurma = (t) => `${t?.curso?.nome || '—'} — ${dataBR(t?.inicioPrevisto, 'UTC')}`;
+// A turma de espera (EM_ESPERA) tem data fictícia (2099): no lugar dela, "Em espera".
+const nomeTurma = (t) => `${t?.curso?.nome || '—'} — ${t?.status === 'EM_ESPERA' ? 'Em espera' : dataBR(t?.inicioPrevisto, 'UTC')}`;
 // CPF com pontos: só dígitos, o Excel leria como número e comeria o zero da frente.
 const documento = (u) => (u?.cpfCnpj ? formatar(u.cpfCnpj) : u?.passaporte || '');
 
@@ -281,7 +282,7 @@ async function tabelaCursos() {
         c.parcelas,
         num(c.valorParcela),
         c.taxaMatricula == null ? '' : num(c.taxaMatricula),
-        c.turmas.length,
+        c.turmas.filter((t) => t.status !== 'EM_ESPERA').length, // a turma de espera não conta
         abertas.length,
         data(proxima, 'UTC'),
         mats.filter(ocupaVaga).length,
