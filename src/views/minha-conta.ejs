@@ -192,6 +192,8 @@
                   <p class="ct-insc-sub">
                     <% if (emEspera) { %>
                       <b>Aguardando encaixe</b> · data ainda não definida
+                    <% } else if (m.turma.status === 'EM_ESPERA') { %>
+                      data não definida
                     <% } else { %>
                       <% if (m.turma.aulas && m.turma.aulas.length) { %><%= m.turma.aulas[0].horario %> · <% } %>
                       <% if (congelada) { %>novas datas a confirmar<% } else { %>início em <b><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %></b><% } %>

@@ -318,19 +318,20 @@ async function tabelaTurmas() {
     ],
     linhas: turmas.map((t) => {
       // Turma de espera: ninguém ocupa vaga nela (a matrícula só ganha vaga ao ser encaixada).
-      const comVaga = t.status === 'EM_ESPERA' ? 0 : t.matriculas.filter(ocupaVaga).length;
+      const espera = t.status === 'EM_ESPERA';
+      const comVaga = espera ? 0 : t.matriculas.filter(ocupaVaga).length;
       return [
         nomeTurma(t),
         codigoTurma(t.id),
         t.curso?.nome,
         inicioTurma(t),
         ROTULO_TURMA[statusTurma(t, ultimaAula)],
-        t.vagas,
+        espera ? '' : t.vagas, // a turma de espera tem 9999 vagas só de fachada
         t.minimoAlunos,
         t.aulas.length,
         t.aulas.map(aulaBR).join('; '),
         comVaga,
-        Math.max(0, (t.vagas || 0) - comVaga),
+        espera ? 0 : Math.max(0, (t.vagas || 0) - comVaga),
         t.matriculas.filter(pagouTudo).length,
         t.matriculas.filter((m) => m.taxaConfirmada && m.statusPagamento === 'PENDENTE').length,
         t.matriculas.filter((m) => !m.taxaConfirmada && m.statusPagamento === 'PENDENTE').length,
