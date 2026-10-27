@@ -7,6 +7,9 @@
 // "1234") e tudo é apagado no fim. Cada teste recomeça a inscrição do aluno do zero.
 const { test, before, after, beforeEach } = require('node:test');
 const assert = require('node:assert');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const { ehBancoLocal } = require('../../../src/lib/escola-digital/conteudo');
 const { iniciarServidor } = require('../ajuda/servidor');
 
@@ -23,6 +26,9 @@ let prisma;
 let estudo;      // lib/escola-digital/estudo.js
 let servidor;
 let curso;
+let cursoAlheio; // segundo curso online (cópia do conteúdo com outro nome), para provar o isolamento entre cursos
+let modulosAlheios;
+let pastaTemp;
 let modulos;     // [{ id, ordem, final, temPreTeste, topicos: [{ id, telas: [{ id }] }] }]
 let alunoA;      // dono da inscrição
 let alunoB;      // outro aluno
@@ -114,6 +120,22 @@ before(async () => {
   });
   assert.ok(modulos.length >= 4);
 
+  // Cópia do conteúdo com outro nome: um curso online de verdade, de outra turma de alunos.
+  pastaTemp = fs.mkdtempSync(path.join(os.tmpdir(), 'estudo-ead-')) + '/curso';
+  fs.mkdirSync(pastaTemp, { recursive: true });
+  const origem = resolverPasta('primeiros-socorros');
+  for (const f of fs.readdirSync(origem)) {
+    const dados = JSON.parse(fs.readFileSync(path.join(origem, f), 'utf8'));
+    if (f === 'curso.json') dados.nome = `Curso Alheio Estudo ${EXEC}`;
+    fs.writeFileSync(path.join(pastaTemp, f), JSON.stringify(dados));
+  }
+  await carregarCurso(pastaTemp, prisma);
+  cursoAlheio = await prisma.curso.findFirst({ where: { modalidade: 'ONLINE', nome: `Curso Alheio Estudo ${EXEC}` } });
+  modulosAlheios = await prisma.moduloOnline.findMany({
+    where: { cursoId: cursoAlheio.id }, orderBy: { ordem: 'asc' },
+    include: { topicos: { orderBy: { ordem: 'asc' }, include: { telas: { orderBy: { ordem: 'asc' } } } } },
+  });
+
   const senhaHash = await hashSenha('1234');
   const criar = (n) => prisma.usuario.create({ data: { nome: `Aluno Estudo ${n}`, email: `e${EXEC}x${n}@${DOMINIO}`, papel: 'ALUNO', senhaHash } });
   alunoA = await criar(1);
@@ -156,6 +178,17 @@ after(async () => {
   await prisma.logAuditoria.deleteMany({ where: { atorId: { in: ids } } });
   await prisma.tokenAuth.deleteMany({ where: { usuarioId: { in: ids } } });
   await prisma.usuario.deleteMany({ where: { id: { in: ids } } });
+  if (cursoAlheio) {
+    const modulo = { cursoId: cursoAlheio.id };
+    await prisma.decisaoCenario.deleteMany({ where: { cenario: { modulo } } });
+    await prisma.cenarioOnline.deleteMany({ where: { modulo } });
+    await prisma.perguntaOnline.deleteMany({ where: { topico: { modulo } } });
+    await prisma.telaOnline.deleteMany({ where: { topico: { modulo } } });
+    await prisma.topicoOnline.deleteMany({ where: { modulo } });
+    await prisma.moduloOnline.deleteMany({ where: modulo });
+    await prisma.curso.delete({ where: { id: cursoAlheio.id } });
+  }
+  if (pastaTemp) fs.rmSync(path.dirname(pastaTemp), { recursive: true, force: true });
   await prisma.$disconnect();
 });
 
@@ -181,11 +214,18 @@ test('(a) inscrição de outro aluno e id inexistente: o mesmo 404, em todas as 
   assert.strictEqual((await vistas()).length, 0);
 });
 
-test('sem login: vai para o login e guarda o destino', { skip }, async () => {
-  const anon = cliente();
-  const r = await anon.get(base());
+test('sem login: vai para o login e, depois de entrar, volta para o endereço pedido', { skip }, async () => {
+  const c = cliente();
+  const destino = `${base()}/modulo/${mod(1).id}`;
+  const r = await c.get(destino);
   assert.strictEqual(r.status, 302);
   assert.match(r.headers.get('location'), /\/login/);
+  // Mesmo "pote de cookies": entra de verdade e cai de volta no endereço original.
+  const f = await c.get('/login');
+  const l = await c.post('/login', { _csrf: lerCsrf(await f.text()), identificador: alunoA.email, senha: '1234' });
+  assert.strictEqual(l.status, 302);
+  assert.strictEqual(l.headers.get('location'), destino);
+  assert.strictEqual((await c.get(destino)).status, 200);
 });
 
 test('AGUARDANDO_PAGAMENTO vai para o pagamento', { skip }, async () => {
@@ -263,7 +303,17 @@ test('(d) tela e módulo trancados voltam para a área do curso', { skip }, asyn
   assert.strictEqual((await vistas()).length, 0, 'tela trancada não grava');
 });
 
-test('tela ou módulo de outro curso (id que não é do curso da inscrição) dá 404', { skip }, async () => {
+test('tela e módulo REAIS de outro curso (com a inscrição do aluno) dão 404 no GET e no POST, sem gravar nada', { skip }, async () => {
+  const telaAlheia = telasDe(modulosAlheios[0])[0];
+  const moduloAlheio = modulosAlheios[0];
+  assert.ok(telaAlheia && moduloAlheio && cursoAlheio.id !== curso.id);
+  assert.strictEqual((await clienteA.get(`${base()}/tela/${telaAlheia.id}`)).status, 404);
+  assert.strictEqual((await clienteA.get(`${base()}/modulo/${moduloAlheio.id}`)).status, 404);
+  const r = await clienteA.post(`${base()}/tela/${telaAlheia.id}/proximo`, { _csrf: clienteA.csrf });
+  assert.strictEqual(r.status, 404);
+  assert.strictEqual(await prisma.telaVista.count({ where: { inscricaoId: inscricao.id } }), 0);
+  assert.strictEqual(await prisma.telaVista.count({ where: { telaId: telaAlheia.id } }), 0);
+  // E ids que nem existem também.
   assert.strictEqual((await clienteA.get(`${base()}/tela/id-que-nao-existe`)).status, 404);
   assert.strictEqual((await clienteA.get(`${base()}/modulo/id-que-nao-existe`)).status, 404);
 });
@@ -385,6 +435,29 @@ test('continuar com tentativa de "Já sei isso?" no módulo pula a abertura', { 
   });
   const r = await clienteA.get(`${base()}/continuar`);
   assert.strictEqual(r.headers.get('location'), `${base()}/tela/${telasDe(m1)[0].id}`);
+});
+
+test('continuar conclui sozinho o módulo pronto (tudo visto, testes aprovados, sem marca) uma vez, e não grava em revisão', { skip }, async () => {
+  const m1 = mod(1);
+  for (const t of telasDe(m1)) await prisma.telaVista.create({ data: { inscricaoId: inscricao.id, telaId: t.id } });
+  for (const t of m1.topicos) await aprovarTopico(t.id);
+  assert.strictEqual((await concluidos()).length, 0);
+  let r = await clienteA.get(`${base()}/continuar`);
+  assert.strictEqual(r.status, 302);
+  assert.strictEqual(r.headers.get('location'), `${base()}/modulo/${mod(2).id}`);
+  let lidos = await concluidos();
+  assert.deepStrictEqual(lidos.map((c) => [c.moduloId, c.como]), [[m1.id, 'TELAS']]);
+  await clienteA.get(`${base()}/continuar`);
+  assert.strictEqual((await concluidos()).length, 1, 'idempotente');
+
+  // Em revisão (CONCLUIDA) o continuar nunca grava.
+  await limparProgresso();
+  for (const t of telasDe(m1)) await prisma.telaVista.create({ data: { inscricaoId: inscricao.id, telaId: t.id } });
+  for (const t of m1.topicos) await aprovarTopico(t.id);
+  await prisma.inscricaoOnline.update({ where: { id: inscricao.id }, data: { situacao: 'CONCLUIDA', concluidaEm: new Date() } });
+  r = await clienteA.get(`${base()}/continuar`);
+  assert.strictEqual(r.status, 302);
+  assert.strictEqual((await concluidos()).length, 0, 'revisão não grava');
 });
 
 test('continuar no módulo final vai para a página do módulo; com tudo concluído, para a área do curso', { skip }, async () => {
@@ -509,4 +582,18 @@ test('tela: âncora, vídeo (ou aviso de vídeo em produção), revisão, alerta
 
   await prisma.telaOnline.update({ where: { id: tela.id }, data: telasAlteradas.get(tela.id) });
   telasAlteradas.delete(tela.id);
+});
+
+test('tópico sem telas mostra o "Teste rápido" como disponível (coerente com proximoPasso)', { skip }, async () => {
+  await concluirAte(4);
+  const m4 = mod(4);
+  const vazio = await prisma.topicoOnline.create({ data: { moduloId: m4.id, chave: `vazio-${EXEC}`, ordem: 99, titulo: 'Tópico só de teste' } });
+  try {
+    const html = await (await clienteA.get(`${base()}/modulo/${m4.id}`)).text();
+    assert.ok(html.includes(`href="${base()}/teste/${vazio.id}"`), 'link do teste do tópico vazio');
+    // Os outros tópicos, ainda sem as telas vistas, seguem com o teste bloqueado.
+    assert.ok(!html.includes(`href="${base()}/teste/${m4.topicos[1].id}"`));
+  } finally {
+    await prisma.topicoOnline.delete({ where: { id: vazio.id } });
+  }
 });

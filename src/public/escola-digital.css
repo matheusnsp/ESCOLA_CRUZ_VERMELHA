@@ -304,7 +304,8 @@ body.ed {
 .ed-tela-lk { opacity: .5; }
 
 /* tela de aula */
-body.ed-corpo-tela { padding-bottom: 96px; }
+/* a barra do Próximo é fixa no celular (cerca de 80px): o fim da página nunca fica embaixo dela */
+body.ed-corpo-tela { padding-bottom: 120px; }
 .ed-estudo { display: block; }
 .ed-lateral { display: none; }
 .ed-tela { display: block; }
@@ -408,6 +409,7 @@ body.ed-corpo-tela { padding-bottom: 96px; }
   .ed-menu-topicos { display: none; }
   .ed-tela-corpo { padding: 22px 0 24px; max-width: none; }
   .ed-tela-corpo h1 { font-size: 40px; }
-  .ed-prox { position: sticky; bottom: 0; padding: 14px 0 18px; }
+  /* no computador o botão acompanha o fim do conteúdo (não cobre nada): fixo só no celular */
+  .ed-prox { position: static; padding: 18px 0 8px; }
   .ed-prox .ed-botao { display: flex; width: auto; max-width: 340px; }
 }

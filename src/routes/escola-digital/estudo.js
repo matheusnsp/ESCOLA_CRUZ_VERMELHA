@@ -129,6 +129,9 @@ router.get('/digital/estudo/:id', asyncHandler(async (req, res) => {
 
 // ---------- continuar ----------
 
+// Continuar também "se cura": se o módulo atual está com tudo visto e todos os testes aprovados mas
+// sem a marca de conclusão (ex.: progresso gravado fora do fluxo normal), destinoContinuar chama
+// concluirModuloSePronto e segue. Só com inscrição ATIVA: em revisão (CONCLUIDA) nada é gravado.
 router.get('/digital/estudo/:id/continuar', asyncHandler(async (req, res) => {
   const { estrutura, prog } = await contexto(req);
   const destino = await estudo.destinoContinuar(req.inscricao.id, estrutura, prog, { gravar: !req.modoRevisao });

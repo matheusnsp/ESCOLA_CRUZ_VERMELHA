@@ -1,12 +1,13 @@
 <%
 // Lista de tópicos e telas de um módulo, com o estado de cada item (vista, atual, teste rápido).
 // Usada na lateral da tela de aula (computador), no menu (celular) e na página do módulo.
+// Tópico sem telas: o teste rápido já está disponível (mesma regra de proximoPasso: sem tela pendente, vai ao teste).
 // Locals: topicos [{ titulo, aprovado, link, telas: [{ id, titulo, vista, link }] }], telaAtualId (opcional).
 var _atual = typeof telaAtualId !== 'undefined' ? telaAtualId : null;
 %>
 <ol class="ed-topicos">
   <% topicos.forEach(function (t, i) {
-       var todasVistas = t.telas.length > 0 && t.telas.every(function (x) { return x.vista; }); %>
+       var todasVistas = t.telas.every(function (x) { return x.vista; }); %>
   <li class="ed-topico">
     <p class="ed-topico-tit"><span class="ed-topico-n"><%= i + 1 %></span> <%= t.titulo %></p>
     <ul class="ed-telas">
