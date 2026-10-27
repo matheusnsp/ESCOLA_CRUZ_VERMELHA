@@ -1,0 +1,123 @@
+<%- include('_topo') %>
+<%
+// Cenário do módulo final (spec §5.6): a cena, o relógio e uma decisão por página, sem JavaScript.
+// etapa DECISAO: a pergunta com as opções (na 1ª decisão, os três botões grandes OLHAR / LIGAR / CUIDAR).
+// etapa RETORNO: a escolha foi esperada ou não, a fala do instrutor e "Próxima decisão" / "Concluir".
+// O relógio é só um espelho (js/escola-digital.js lê data-inicio / data-sugerido); o tempo que vale é medido no servidor.
+// Locals: etapa, modulo, moduloLink, cenario, treino, relogio, total, respondidas, ordem, pergunta, primeira,
+// opcoes, retorno, decidirAction.
+var GLIFOS = { OLHAR: '◉', LIGAR: '☎', CUIDAR: '✚' };
+%>
+<article class="ed-teste ed-cenario-pag">
+  <header class="ed-teste-cab">
+    <b class="ed-tela-num"><%= modulo.numero %></b>
+    <span>CENÁRIO <%= cenario.numero %>/<%= cenario.de %> · DECISÃO <%= ordem %> DE <%= total %></span>
+    <a class="ed-teste-sair" href="<%= moduloLink %>">Sair</a>
+  </header>
+
+  <ol class="ed-passos" aria-label="Progresso do cenário">
+    <% for (var i = 1; i <= total; i++) { %>
+    <li class="<%= i <= respondidas ? 'feito' : (i === ordem && etapa === 'DECISAO' ? 'atual' : '') %>"><span class="ed-so-leitor">Decisão <%= i %><%= i <= respondidas ? ' respondida' : '' %></span></li>
+    <% } %>
+  </ol>
+
+  <div class="ed-teste-corpo">
+    <div class="ed-cen-topo">
+      <div>
+        <p class="ed-rotulo">// CENÁRIO</p>
+        <h1><%= cenario.titulo %></h1>
+      </div>
+      <div class="ed-relogio<%= relogio.passou ? ' ed-relogio-passou' : '' %>" data-ed-relogio data-inicio="<%= relogio.inicio %>" data-agora="<%= relogio.agora %>" data-sugerido="<%= relogio.sugerido %>" role="timer" aria-label="Tempo do cenário">
+        <span class="ed-relogio-rot">TEMPO SUGERIDO</span>
+        <b class="ed-relogio-sug"><%= relogio.sugeridoTexto %></b>
+        <span class="ed-relogio-rot">VOCÊ</span>
+        <b class="ed-relogio-tempo" data-ed-relogio-tempo><%= relogio.texto %></b>
+      </div>
+    </div>
+    <p class="ed-relogio-aviso" data-ed-relogio-aviso<%= relogio.passou ? '' : ' hidden' %>>Passou do tempo sugerido. Sem problema: o tempo é guardado, mas não reprova.</p>
+
+    <% if (treino) { %>
+    <p class="ed-mono ed-cen-treino">TREINO · você já fez este cenário. Refazer não muda o que ficou guardado.</p>
+    <% } %>
+
+    <% if (etapa === 'DECISAO') { %>
+    <% if (ordem === 1) { %>
+    <section class="ed-cena" aria-label="A cena">
+      <p class="ed-rotulo">// A CENA</p>
+      <% if (cenario.imagem) { %><img class="ed-tela-img" src="<%= cenario.imagem %>" alt="" loading="lazy"><% } %>
+      <% cenario.paragrafos.forEach(function (p) { %><p><%= p %></p><% }) %>
+    </section>
+    <% } else { %>
+    <details class="ed-cena ed-cena-recolhida">
+      <summary>Rever a cena</summary>
+      <% if (cenario.imagem) { %><img class="ed-tela-img" src="<%= cenario.imagem %>" alt="" loading="lazy"><% } %>
+      <% cenario.paragrafos.forEach(function (p) { %><p><%= p %></p><% }) %>
+    </details>
+    <% } %>
+
+    <form class="ed-decisao" method="post" action="<%= decidirAction %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="ordem" value="<%= ordem %>">
+      <fieldset class="ed-grupo ed-pergunta">
+        <legend>
+          <span class="ed-rotulo">// PERGUNTA <%= ordem %> DE <%= total %></span>
+          <span class="ed-enunciado"><%= pergunta %></span>
+        </legend>
+        <% if (primeira) { %>
+        <div class="ed-lema-botoes">
+          <% opcoes.forEach(function (o) { %>
+          <button type="submit" name="opcao" value="<%= o.indice %>" class="ed-lema-botao">
+            <span class="ed-lema-glifo" aria-hidden="true"><%= GLIFOS[o.texto] || '' %></span>
+            <b><%= o.texto %></b>
+          </button>
+          <% }) %>
+        </div>
+        <% } else { %>
+        <div class="ed-decisao-opcoes">
+          <% opcoes.forEach(function (o, i) { %>
+          <button type="submit" name="opcao" value="<%= o.indice %>" class="ed-opcao-botao">
+            <span class="ed-opcao-letra" aria-hidden="true"><%= String.fromCharCode(65 + i) %></span>
+            <b><%= o.texto %></b>
+          </button>
+          <% }) %>
+        </div>
+        <% } %>
+      </fieldset>
+    </form>
+
+    <% } else { %>
+    <section class="ed-retorno <%= retorno.esperada ? 'ed-retorno-certa' : 'ed-retorno-errada' %>" aria-live="polite">
+      <b><%= retorno.esperada ? 'ESCOLHA ESPERADA' : 'NÃO ERA A ESPERADA' %></b>
+      <p class="ed-enunciado ed-retorno-pergunta"><%= pergunta %></p>
+    </section>
+
+    <div class="ed-grupo ed-pergunta">
+      <% opcoes.forEach(function (o) { %>
+      <div class="ed-alt<%= o.esperada ? ' ed-alt-certa' : '' %><%= o.escolhida && !o.esperada ? ' ed-alt-errada' : '' %>">
+        <span class="ed-alt-marca" aria-hidden="true"><%= o.esperada ? '✓' : (o.escolhida ? '✗' : '') %></span>
+        <span class="ed-alt-texto"><%= o.texto %></span>
+        <% if (o.esperada && o.escolhida) { %><span class="ed-alt-tag">ESPERADA · SUA ESCOLHA</span>
+        <% } else if (o.esperada) { %><span class="ed-alt-tag">ESPERADA</span>
+        <% } else if (o.escolhida) { %><span class="ed-alt-tag">SUA ESCOLHA</span><% } %>
+      </div>
+      <% }) %>
+    </div>
+
+    <blockquote class="ed-instrutor">
+      <b>INSTRUTOR</b>
+      <p>“<%= retorno.fala %>”</p>
+    </blockquote>
+
+    <% if (retorno.ultima) { %>
+    <form method="post" action="<%= retorno.concluirAction %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="ed-botao ed-botao-grande"><span>Concluir cenário</span> <span aria-hidden="true">→</span></button>
+    </form>
+    <% } else { %>
+    <a class="ed-botao ed-botao-grande" href="<%= retorno.proximaLink %>"><span>Próxima decisão</span> <span aria-hidden="true">→</span></a>
+    <% } %>
+    <% } %>
+  </div>
+</article>
+<script src="<%= asset('/js/escola-digital.js') %>" defer></script>
+<%- include('_rodape') %>

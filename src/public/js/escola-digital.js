@@ -4,6 +4,9 @@
 //   [data-ed-recarregar]  recarrega a página depois de N segundos (PIX ainda sendo gerado)
 //   [data-ed-copiar]      copia o texto do campo indicado (PIX copia e cola)
 //   [data-ed-pagamento]   formulário de pagamento: parcelado só no cartão; dados do cartão só com cartão
+//   [data-ed-relogio]     relógio do cenário: mostra o tempo corrido (mm:ss) a partir de data-inicio (epoch em ms),
+//                         ao lado do tempo sugerido (data-sugerido, em segundos). Passou do sugerido, só muda o
+//                         estilo e mostra o aviso: nunca bloqueia. Sem JavaScript a página mostra o tempo de quando abriu.
 (function () {
   'use strict';
 
@@ -104,7 +107,33 @@
     }
   }
 
+  function doisDigitos(n) { return n < 10 ? '0' + n : String(n); }
+
+  // O servidor manda também a hora dele (data-agora): a diferença para o relógio do aparelho é
+  // descontada, então um aparelho com hora errada não adianta nem atrasa o contador.
+  function relogioCenario(el) {
+    var inicio = Number(el.getAttribute('data-inicio'));
+    var sugerido = Number(el.getAttribute('data-sugerido'));
+    var agoraServidor = Number(el.getAttribute('data-agora'));
+    var tempo = el.querySelector('[data-ed-relogio-tempo]');
+    var aviso = document.querySelector('[data-ed-relogio-aviso]');
+    if (!tempo || !isFinite(inicio)) return;
+    var desvio = isFinite(agoraServidor) && agoraServidor > 0 ? agoraServidor - Date.now() : 0;
+
+    function atualizar() {
+      var s = Math.max(0, Math.floor((Date.now() + desvio - inicio) / 1000));
+      var m = Math.min(99, Math.floor(s / 60));
+      tempo.textContent = doisDigitos(m) + ':' + doisDigitos(s % 60);
+      var passou = isFinite(sugerido) && s > sugerido;
+      if (el.classList) el.classList.toggle('ed-relogio-passou', passou);
+      if (aviso) aviso.hidden = !passou;
+    }
+    atualizar();
+    setInterval(atualizar, 1000);
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-ed-relogio]'), relogioCenario);
     Array.prototype.forEach.call(document.querySelectorAll('[data-ed-consulta]'), consultarSituacao);
     Array.prototype.forEach.call(document.querySelectorAll('[data-ed-copiar]'), function (b) {
       b.addEventListener('click', function () { copiar(b); });

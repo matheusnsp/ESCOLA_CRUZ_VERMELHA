@@ -1,0 +1,32 @@
+<%- include('_topo') %>
+<%
+// Resultado de um cenário (spec §5.6): acertos, tempo contra o sugerido (nunca reprova) e o caminho seguinte.
+// Locals: modulo, moduloLink, cenario, acertos, total, tempoTexto, sugeridoTexto, passou, treino,
+// moduloConcluido, refazerLink, proximo, areaLink.
+%>
+<article class="ed-teste">
+  <header class="ed-teste-cab">
+    <b class="ed-tela-num"><%= modulo.numero %></b>
+    <span>CENÁRIO <%= cenario.numero %>/<%= cenario.de %> · RESULTADO</span>
+    <a class="ed-teste-sair" href="<%= moduloLink %>">Módulo</a>
+  </header>
+
+  <div class="ed-teste-corpo ed-resultado ed-resultado-ok">
+    <p class="ed-rotulo">// <%= cenario.titulo.toUpperCase() %></p>
+    <p class="ed-placar" aria-hidden="true"><b><%= acertos %></b>/<%= total %></p>
+    <h1>Você acertou <%= acertos %> de <%= total %> decisões</h1>
+    <p class="ed-cen-tempo">Você levou <b><%= tempoTexto %></b> — sugerido <%= sugeridoTexto %>.</p>
+    <% if (passou) { %><p class="ed-mono">Passou um pouco do tempo sugerido. Sem problema: o tempo é guardado, mas não reprova.</p><% } %>
+    <% if (treino) { %><p class="ed-mono">TREINO · o que fica guardado é o resultado da primeira vez que você fez este cenário.</p><% } %>
+    <% if (moduloConcluido) { %><p class="ed-selo-modulo"><span class="ed-carimbo ok">CENÁRIOS CONCLUÍDOS</span></p><% } %>
+
+    <% if (proximo) { %>
+    <a class="ed-botao ed-botao-grande" href="<%= proximo.link %>"><span>Próximo cenário</span> <span aria-hidden="true">→</span></a>
+    <a class="ed-botao ed-botao-grande ed-botao-claro" href="<%= refazerLink %>"><span>Refazer este cenário</span> <span aria-hidden="true">→</span></a>
+    <% } else { %>
+    <a class="ed-botao ed-botao-grande" href="<%= areaLink %>"><span>Voltar ao curso</span> <span aria-hidden="true">→</span></a>
+    <a class="ed-botao ed-botao-grande ed-botao-claro" href="<%= refazerLink %>"><span>Refazer este cenário</span> <span aria-hidden="true">→</span></a>
+    <% } %>
+  </div>
+</article>
+<%- include('_rodape') %>

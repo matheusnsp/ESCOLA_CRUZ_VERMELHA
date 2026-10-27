@@ -1,7 +1,7 @@
 // routes/escola-digital/estudo.js
 //
 // Área de estudo da Escola Digital (spec §5.4–5.5): painel do curso, "Continuar", página do
-// módulo, tela de aula, o botão "Próximo" e os testes ("Teste rápido" e "Já sei isso?"). Montado em routes/escola-digital/index.js depois da
+// módulo, tela de aula, o botão "Próximo", os testes ("Teste rápido" e "Já sei isso?") e os cenários do módulo final. Montado em routes/escola-digital/index.js depois da
 // chave de liga/desliga. Todas as rotas exigem login e passam por `carregarInscricao` (dono,
 // situação, prazo). A regra fica em lib/escola-digital/estudo.js; aqui só tela e redirecionamento.
 //
@@ -13,6 +13,7 @@ const config = require('../../lib/escola-digital/config');
 const regras = require('../../lib/escola-digital/regras');
 const estudo = require('../../lib/escola-digital/estudo');
 const testes = require('../../lib/escola-digital/testes');
+const cenarios = require('../../lib/escola-digital/cenarios');
 const prisma = require('../../db');
 const { carregarInscricao, dataBR } = require('../../lib/escola-digital/acesso');
 const { requireLogin } = require('../../middleware/auth');
@@ -479,6 +480,212 @@ router.get('/digital/estudo/:id/tentativa/:tentativaId/resultado', asyncHandler(
     refazerLink: ehTopico ? urls.teste(insc.id, topico.id) : null,
     telasLink: telasDoAlvo[0] ? urls.tela(insc.id, telasDoAlvo[0].id) : urls.modulo(insc.id, modulo.id),
     moduloLink: urls.modulo(insc.id, modulo.id),
+  });
+}));
+
+// ---------- cenários do módulo final (spec §5.6) ----------
+//
+// Uma decisão por página, sem JavaScript: o servidor decide o que é certo e mede o tempo. O
+// andamento fica na sessão: req.session.cenarios[cenarioId] = { inicio: epochMs, escolhas: [] },
+// criado no GET e apagado ao concluir. Só `concluir` grava (CenarioFeito) e só com inscrição
+// ATIVA; em revisão (CONCLUIDA) dá para refazer como treino, sem gravar nada. O resultado da
+// rodada fica em req.session.resultadosCenario[cenarioId] para a página de resultado sobreviver ao F5.
+// O relógio da página (js/escola-digital.js) é só um espelho: nada que o navegador mande vale.
+
+const mmss = (segundos) => `${doisDigitos(Math.floor(segundos / 60))}:${doisDigitos(segundos % 60)}`;
+const msss = (segundos) => `${Math.floor(segundos / 60)}:${doisDigitos(segundos % 60)}`;
+const inteiroOuNaN = (v) => (/^\d{1,3}$/.test(String(v)) ? Number(v) : NaN);
+
+// Ids de cenário só valem dentro do curso da inscrição (carregarEstrutura); alheio ou inexistente é 404.
+// O cenário precisa ser do módulo final e esse módulo não pode estar TRANCADO (senão, painel).
+router.use('/digital/estudo/:id/cenario/:cenarioId', asyncHandler(async (req, res, next) => {
+  const insc = req.inscricao;
+  const { estrutura, prog, estados } = await contexto(req);
+  const cenarioId = String(req.params.cenarioId);
+  const modulo = estrutura.find((m) => m.cenarios.some((c) => c.id === cenarioId));
+  if (!modulo) return naoEncontrado(res, 'Cenário não encontrado', 'Este cenário não faz parte do seu curso.', insc.id);
+  if (!modulo.final || estados.get(modulo.id) === 'TRANCADO') return res.redirect(urls.area(insc.id));
+  const cenario = await prisma.cenarioOnline.findUnique({ where: { id: cenarioId }, include: { decisoes: { orderBy: { ordem: 'asc' } } } });
+  if (!cenario) return naoEncontrado(res, 'Cenário não encontrado', 'Este cenário não faz parte do seu curso.', insc.id);
+  req.cenarioCtx = { prog, modulo, cenario, posicao: modulo.cenarios.findIndex((c) => c.id === cenarioId) };
+  return next();
+}));
+
+// O express-session manda o começo da resposta antes de terminar de gravar a sessão; o navegador
+// segue o redirect na hora e poderia ler a sessão velha. Gravar à mão antes de responder evita a corrida.
+const salvarSessao = (req) => new Promise((resolve, reject) => req.session.save((e) => (e ? reject(e) : resolve())));
+
+// Andamento deste cenário na sessão. Com `criar`, começa um novo (e o relógio) quando falta ou está
+// estragado (ex.: o cenário ganhou ou perdeu decisões desde então).
+function andamentoDoCenario(req, cenario, { criar }) {
+  const sessao = req.session;
+  if (!sessao.cenarios || typeof sessao.cenarios !== 'object' || Array.isArray(sessao.cenarios)) {
+    if (!criar) return null;
+    sessao.cenarios = {};
+  }
+  let a = sessao.cenarios[cenario.id];
+  const decisoes = cenario.decisoes;
+  const valido = a && Number.isFinite(a.inicio) && Array.isArray(a.escolhas) && a.escolhas.length <= decisoes.length
+    && a.escolhas.every((e, i) => Number.isInteger(e) && e >= 0 && e < listaDe(decisoes[i].opcoes).length);
+  if (!valido) {
+    if (!criar) return null;
+    a = { inicio: Date.now(), escolhas: [] };
+    sessao.cenarios[cenario.id] = a;
+  }
+  return a;
+}
+
+router.get('/digital/estudo/:id/cenario/:cenarioId', asyncHandler(async (req, res) => {
+  const insc = req.inscricao;
+  const { prog, modulo, cenario, posicao } = req.cenarioCtx;
+  const existia = Boolean(andamentoDoCenario(req, cenario, { criar: false }));
+  const andamento = andamentoDoCenario(req, cenario, { criar: true });
+  if (!existia) await salvarSessao(req);
+  const total = cenario.decisoes.length;
+  const respondidas = andamento.escolhas.length;
+  const aqui = urls.cenario(insc.id, cenario.id);
+
+  // ?fb=k mostra o retorno da decisão k (já respondida). Sem ?fb: a próxima decisão; com todas
+  // respondidas, o retorno da última, onde fica o "Concluir".
+  let fb = null;
+  if (req.query.fb !== undefined) {
+    fb = inteiroOuNaN(req.query.fb);
+    if (!(fb >= 1 && fb <= respondidas)) return res.redirect(aqui);
+  } else if (respondidas === total) {
+    fb = total;
+  }
+
+  const agora = Date.now();
+  const decisao = cenario.decisoes[(fb || respondidas + 1) - 1];
+  const opcoes = listaDe(decisao.opcoes);
+  const sugerido = cenario.tempoSugerido;
+  const gasto = Math.max(0, Math.floor((agora - andamento.inicio) / 1000));
+  const dados = {
+    titulo: `${cenario.titulo} | ${modulo.titulo} | ${config.NOME}`,
+    rastrear: false,
+    aba: 'inicio',
+    semAbas: true,
+    corpoClasse: 'ed-corpo-teste',
+    inscricaoId: insc.id,
+    modulo: { numero: doisDigitos(modulo.ordem), titulo: modulo.titulo },
+    moduloLink: urls.modulo(insc.id, modulo.id),
+    cenario: {
+      titulo: cenario.titulo, paragrafos: paragrafos(cenario.cena), imagem: imagemSegura(cenario.imagemUrl),
+      numero: posicao + 1, de: modulo.cenarios.length,
+    },
+    treino: req.modoRevisao || prog.cenarios.has(cenario.id),
+    relogio: {
+      inicio: andamento.inicio, agora, sugerido, texto: mmss(Math.min(gasto, 5999)), sugeridoTexto: mmss(sugerido), passou: gasto > sugerido,
+    },
+    total,
+    respondidas,
+    ordem: fb || respondidas + 1,
+    pergunta: decisao.pergunta,
+    decidirAction: `${aqui}/decidir`,
+  };
+
+  if (fb === null) {
+    return res.render('digital/cenario', {
+      ...dados, etapa: 'DECISAO', primeira: dados.ordem === 1,
+      opcoes: opcoes.map((texto, indice) => ({ indice, texto })), retorno: null,
+    });
+  }
+  const escolhida = andamento.escolhas[fb - 1];
+  return res.render('digital/cenario', {
+    ...dados, etapa: 'RETORNO', primeira: false,
+    opcoes: opcoes.map((texto, indice) => ({ indice, texto, esperada: indice === decisao.correta, escolhida: indice === escolhida })),
+    retorno: {
+      esperada: escolhida === decisao.correta,
+      fala: decisao.fala,
+      ultima: fb === total,
+      // Voltando a um retorno antigo, "Próxima decisão" leva ao retorno seguinte; no último respondido, à decisão pendente.
+      proximaLink: fb < respondidas ? `${aqui}?fb=${fb + 1}` : aqui,
+      concluirAction: `${aqui}/concluir`,
+    },
+  });
+}));
+
+router.post('/digital/estudo/:id/cenario/:cenarioId/decidir', asyncHandler(async (req, res) => {
+  const insc = req.inscricao;
+  const { cenario } = req.cenarioCtx;
+  const aqui = urls.cenario(insc.id, cenario.id);
+  const andamento = andamentoDoCenario(req, cenario, { criar: false });
+  if (!andamento) return res.redirect(aqui); // o GET abre o andamento (e o relógio)
+  const ordem = inteiroOuNaN(req.body.ordem);
+  const opcao = inteiroOuNaN(req.body.opcao);
+  const proxima = andamento.escolhas.length + 1;
+  const decisao = cenario.decisoes[proxima - 1];
+  // Só vale a próxima decisão esperada, com uma opção que existe; o resto é ignorado.
+  if (!decisao || ordem !== proxima || !(opcao < listaDe(decisao.opcoes).length)) return res.redirect(aqui);
+  andamento.escolhas.push(opcao);
+  await salvarSessao(req);
+  return res.redirect(`${aqui}?fb=${ordem}`);
+}));
+
+router.post('/digital/estudo/:id/cenario/:cenarioId/concluir', asyncHandler(async (req, res) => {
+  const insc = req.inscricao;
+  const { cenario } = req.cenarioCtx;
+  const aqui = urls.cenario(insc.id, cenario.id);
+  const andamento = andamentoDoCenario(req, cenario, { criar: false });
+  if (!andamento || andamento.escolhas.length !== cenario.decisoes.length) return res.redirect(aqui);
+
+  // O tempo é medido aqui, do começo guardado na sessão; o navegador não manda nada que conte.
+  const segundos = cenarios.limitarSegundos((Date.now() - andamento.inicio) / 1000);
+  const escolhas = [...andamento.escolhas];
+  let novo = false;
+  let moduloConcluido = false;
+  if (!req.modoRevisao) {
+    try {
+      ({ novo, moduloConcluido } = await cenarios.registrarCenario(insc.id, cenario.id, { escolhas, segundos }));
+    } catch (e) {
+      if (e instanceof cenarios.ErroCenario) return erroDeTeste(res, 400, 'Não foi possível registrar este cenário.', insc.id);
+      throw e;
+    }
+  }
+  delete req.session.cenarios[cenario.id];
+  if (!req.session.resultadosCenario || typeof req.session.resultadosCenario !== 'object') req.session.resultadosCenario = {};
+  req.session.resultadosCenario[cenario.id] = {
+    acertos: cenarios.contarAcertos(cenario.decisoes, escolhas), total: cenario.decisoes.length, segundos,
+    // Refazer (ou rever, na inscrição concluída) é treino: o que vale é a primeira vez.
+    treino: req.modoRevisao || !novo, moduloConcluido,
+  };
+  await salvarSessao(req);
+  return res.redirect(`${aqui}/resultado`);
+}));
+
+router.get('/digital/estudo/:id/cenario/:cenarioId/resultado', asyncHandler(async (req, res) => {
+  const insc = req.inscricao;
+  const { modulo, cenario, posicao } = req.cenarioCtx;
+  const aqui = urls.cenario(insc.id, cenario.id);
+  const guardado = req.session.resultadosCenario && req.session.resultadosCenario[cenario.id];
+  let r = guardado && Number.isInteger(guardado.acertos) && Number.isFinite(guardado.segundos) ? guardado : null;
+  if (!r) {
+    // Sem rodada recente na sessão: mostra o que ficou gravado, se o aluno já fez.
+    const feito = await prisma.cenarioFeito.findUnique({ where: { inscricaoId_cenarioId: { inscricaoId: insc.id, cenarioId: cenario.id } } });
+    if (!feito) return res.redirect(aqui);
+    r = { acertos: feito.acertos, total: cenario.decisoes.length, segundos: feito.segundos, treino: false, moduloConcluido: false };
+  }
+  const proximo = modulo.cenarios[posicao + 1];
+  return res.render('digital/cenario-resultado', {
+    titulo: `Resultado | ${cenario.titulo} | ${config.NOME}`,
+    rastrear: false,
+    aba: 'inicio',
+    semAbas: true,
+    corpoClasse: 'ed-corpo-teste',
+    inscricaoId: insc.id,
+    modulo: { numero: doisDigitos(modulo.ordem), titulo: modulo.titulo },
+    moduloLink: urls.modulo(insc.id, modulo.id),
+    cenario: { titulo: cenario.titulo, numero: posicao + 1, de: modulo.cenarios.length },
+    acertos: r.acertos,
+    total: r.total,
+    tempoTexto: msss(r.segundos),
+    sugeridoTexto: msss(cenario.tempoSugerido),
+    passou: r.segundos > cenario.tempoSugerido,
+    treino: Boolean(r.treino),
+    moduloConcluido: Boolean(r.moduloConcluido),
+    refazerLink: aqui,
+    proximo: proximo ? { link: urls.cenario(insc.id, proximo.id), titulo: proximo.titulo } : null,
+    areaLink: urls.area(insc.id),
   });
 }));
 

@@ -457,3 +457,56 @@ body.ed-corpo-teste { padding-bottom: 32px; }
   .ed-teste-corpo h1 { font-size: 36px; }
   .ed-enunciado { font-size: 25px; }
 }
+
+/* ---- cenários do módulo final ---- */
+.ed-cen-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.ed-cen-topo > div:first-child { min-width: 0; display: grid; gap: 4px; }
+.ed-relogio { flex: none; display: grid; grid-template-columns: auto auto; column-gap: 8px; align-items: baseline; border: 2px solid var(--ed-tinta); background: #fff; padding: 8px 10px; }
+.ed-relogio-rot { font: 700 9px var(--ed-mono); letter-spacing: .05em; color: var(--ed-cinza); }
+.ed-relogio b { font: 900 22px/1.1 var(--ed-titulo); letter-spacing: -.03em; font-variant-numeric: tabular-nums; text-align: right; }
+.ed-relogio-sug { color: var(--ed-cinza); }
+.ed-relogio-passou { border-color: var(--ed-vermelho); }
+.ed-relogio-passou .ed-relogio-tempo { color: var(--ed-vermelho); }
+.ed-relogio-aviso { font: 600 13px/1.35 var(--ed-texto); border-left: 6px solid var(--ed-vermelho); background: #fff; padding: 8px 12px; }
+.ed-relogio-aviso[hidden] { display: none; }
+.ed-cen-treino { border: 2px dashed var(--ed-tinta); padding: 8px 12px; background: transparent; color: var(--ed-tinta); }
+.ed-cena { border: 2px solid var(--ed-tinta); background: #fff; padding: 14px 16px; display: grid; gap: 10px; font-size: 16.5px; line-height: 1.5; }
+.ed-cena .ed-tela-img { margin: 0; }
+.ed-cena-recolhida { display: block; padding: 0; }
+.ed-cenario-pag .ed-teste-corpo { padding-bottom: 28px; }
+.ed-cena-recolhida summary { cursor: pointer; padding: 12px 16px; min-height: 48px; display: flex; align-items: center; font: 700 12px var(--ed-mono); letter-spacing: .04em; text-transform: uppercase; }
+.ed-cena-recolhida summary { justify-content: space-between; list-style: none; }
+.ed-cena-recolhida summary::-webkit-details-marker { display: none; }
+.ed-cena-recolhida summary::after { content: "▾"; font-size: 14px; }
+.ed-cena-recolhida[open] summary::after { content: "▴"; }
+.ed-cena-recolhida[open] summary { border-bottom: 1px solid var(--ed-linha); }
+.ed-cena-recolhida > p, .ed-cena-recolhida > img { margin: 12px 16px; }
+.ed-cena-recolhida > p:last-child { margin-bottom: 14px; }
+/* os três botões da 1ª decisão: o lema OLHAR · LIGAR · CUIDAR */
+.ed-lema-botoes { display: grid; gap: 10px; }
+.ed .ed-lema-botao, .ed .ed-opcao-botao {
+  display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; cursor: pointer;
+  background: #fff; color: var(--ed-tinta); border: 2px solid var(--ed-tinta); box-shadow: 5px 5px 0 var(--ed-tinta);
+  font-family: var(--ed-titulo);
+}
+.ed .ed-lema-botao { min-height: 72px; padding: 12px 16px; }
+.ed-lema-botao b { font: 900 26px/1 var(--ed-titulo); letter-spacing: .02em; }
+.ed-lema-glifo { width: 40px; height: 40px; flex: none; display: grid; place-items: center; background: var(--ed-tinta); color: #fff; font: 900 20px/1 var(--ed-texto); }
+.ed .ed-lema-botao:hover, .ed .ed-opcao-botao:hover { background: var(--ed-vermelho); color: #fff; border-color: var(--ed-vermelho); box-shadow: 5px 5px 0 var(--ed-tinta); }
+.ed .ed-lema-botao:hover .ed-lema-glifo { background: #fff; color: var(--ed-vermelho); }
+.ed .ed-lema-botao:focus-visible, .ed .ed-opcao-botao:focus-visible { outline: 3px solid var(--ed-vermelho); outline-offset: 3px; }
+.ed-decisao-opcoes { display: grid; gap: 10px; }
+.ed .ed-opcao-botao { min-height: 64px; padding: 12px 14px; }
+.ed-opcao-botao b { font: 600 16.5px/1.3 var(--ed-texto); letter-spacing: 0; }
+.ed-opcao-letra { flex: none; width: 30px; height: 30px; display: grid; place-items: center; border: 2px solid currentColor; font: 800 14px/1 var(--ed-mono); }
+.ed-decisao .ed-pergunta { gap: 0; }
+.ed-retorno-pergunta { font-size: 17px; }
+.ed-instrutor { margin: 0; border: 2px solid var(--ed-tinta); background: #fff; padding: 14px 16px; display: grid; gap: 6px; box-shadow: 5px 5px 0 var(--ed-vermelho); }
+.ed-instrutor b { font: 700 10.5px var(--ed-mono); letter-spacing: .06em; color: var(--ed-vermelho); }
+.ed-instrutor p { font-size: 17px; line-height: 1.45; }
+.ed-cen-tempo { font-size: 18px; }
+.ed-cen-tempo b { font: 900 24px var(--ed-titulo); letter-spacing: -.02em; }
+@media (min-width: 900px) {
+  .ed-lema-botoes { grid-template-columns: repeat(3, 1fr); }
+  .ed .ed-lema-botao { flex-direction: column; align-items: flex-start; min-height: 120px; justify-content: space-between; }
+}
