@@ -1,16 +1,5 @@
 # Plataforma da Escola — Cruz Vermelha Brasileira (RJ)
 
-Site do aluno e painel da secretaria da Escola de Educação e Saúde CVB-RJ, num app só.
-
-| Endereço | O que é |
-|---|---|
-| escola.cursoscruzvermelha.org (e escola.cruzvermelhariodejaneiro.org) | Site do aluno: cursos, conta, inscrição e pagamento |
-| secretaria.cursoscruzvermelha.org | Painel da secretaria (mesmo app, escolhido pelo subdomínio) |
-
-Roda no **Render** (publica a `main` sozinho e roda `prisma migrate deploy` no build), com o banco
-**Postgres no Supabase**, compartilhado pelos 3 serviços do Render. Como colocar no ar e a lista de
-variáveis: [DEPLOY.md](DEPLOY.md).
-
 ## Stack
 
 - **Node.js + Express**, páginas **EJS** renderizadas no servidor (sem etapa de build)
