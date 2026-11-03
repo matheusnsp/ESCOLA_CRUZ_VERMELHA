@@ -305,7 +305,7 @@ const _trilha = _totalPassos === 2
 
         <% if (ehPassaporte) { %>
         <!-- ── Passaporte: à vista, pago na secretaria ─────────────────── -->
-        <form method="POST" action="/inscrever/<%= turma.id %>" novalidate>
+        <form data-cobranca method="POST" action="/inscrever/<%= turma.id %>" novalidate>
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <input type="hidden" name="plano" value="A_VISTA">
 
@@ -398,7 +398,7 @@ const _trilha = _totalPassos === 2
 
         <!-- ── À vista ──────────────────────────────────────────────────── -->
         <div id="blocoAVista">
-          <form method="POST" action="/inscrever/<%= turma.id %>" novalidate id="formAVista">
+          <form data-cobranca method="POST" action="/inscrever/<%= turma.id %>" novalidate id="formAVista">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <input type="hidden" name="plano" value="A_VISTA">
 
@@ -554,7 +554,7 @@ const _trilha = _totalPassos === 2
       </div>
 
       <div id="blocoTaxaPix" hidden class="anima" style="--d:3">
-        <form method="POST" action="/inscrever/<%= turma.id %>/pagar-taxa" novalidate>
+        <form data-cobranca method="POST" action="/inscrever/<%= turma.id %>/pagar-taxa" novalidate>
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <input type="hidden" name="forma" value="PIX">
           <div class="chk-aviso">
@@ -570,7 +570,7 @@ const _trilha = _totalPassos === 2
       </div>
 
       <div id="blocoTaxaCredito" hidden class="anima" style="--d:3">
-        <form method="POST" action="/inscrever/<%= turma.id %>/pagar-taxa" novalidate>
+        <form data-cobranca method="POST" action="/inscrever/<%= turma.id %>/pagar-taxa" novalidate>
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <input type="hidden" name="forma" value="CREDITO">
           <div class="chk-aviso">
@@ -618,7 +618,7 @@ const _trilha = _totalPassos === 2
         você escolhe na hora.</span>
       </div>
 
-      <form method="POST" action="/inscrever/<%= turma.id %>/pagar-curso" novalidate>
+      <form data-cobranca method="POST" action="/inscrever/<%= turma.id %>/pagar-curso" novalidate>
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input type="hidden" name="plano" value="PRESENCIAL">
         <div class="chk-acao">
@@ -693,7 +693,7 @@ const _trilha = _totalPassos === 2
       </p>
       <% } %>
 
-      <form method="POST" action="/inscrever/<%= turma.id %>/pagar-curso" novalidate class="anima" style="--d:4">
+      <form data-cobranca method="POST" action="/inscrever/<%= turma.id %>/pagar-curso" novalidate class="anima" style="--d:4">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input type="hidden" name="forma" value="CREDITO">
         <input type="hidden" name="parcelas" value="<%= numParcelas %>">
@@ -885,5 +885,8 @@ const _trilha = _totalPassos === 2
 })();
 </script>
 <% } %>
+
+<%# Botão de pagar: desabilita após o clique ("Gerando cobrança…"); ver o arquivo. %>
+<script src="<%= asset('/js/cobranca-botao.js') %>"></script>
 
 <%- include('partials/site-footer') %>

@@ -13,6 +13,7 @@ const financeiroContas = require('../lib/financeiro-contas');
 const { contaDoGateway: unicopagContaDoGateway } = require('../lib/unicopag');
 const pesquisa = require('../lib/pesquisa');
 const comprovanteSaude = require('../lib/comprovante-saude');
+const cobrancaGuarda = require('../lib/cobranca-guarda');
 const prisma = require('../db');
 const { verificarSenha, hashSenha } = require('../lib/password');
 const { criarCodigo2fa, codigo2faRecente, verificarCodigo2fa, consumirToken, criarTokenDesbloqueio, verificarTokenDesbloqueio, criarTokenReset, verificarTokenReset } = require('../lib/tokens');
@@ -651,6 +652,8 @@ router.get('/', async (req, res) => {
   }).catch(() => ({ ok: false }));
   const visitasPromessa = visitasSite.resumo().catch(() => null); // visitantes sem login (lib/visitas.js)
   const visitasAlunosPromessa = visitasSite.resumoAlunos().catch(() => null); // alunos logados no site, por dia
+  // Tentativas de pagamento em rajada nas últimas 24 h (lib/cobranca-guarda.js), para o aviso no topo.
+  const rajadasPromessa = cobrancaGuarda.rajadasDoDia().catch(() => ({ total: 0, alunos: [] }));
 
   const cincoMinAtras = new Date(
     Date.now() - 5 * 60 * 1000
@@ -822,6 +825,7 @@ router.get('/', async (req, res) => {
 
   res.render('admin/dashboard', {
     comprovantesParaConferir,
+    rajadas: await rajadasPromessa,
 
     stats: {
       totalCursos,
@@ -2891,6 +2895,7 @@ router.get('/alunos/:id/matriculas', requirePermissao('aluno:gerenciar', 'painel
   res.render('admin/aluno-matriculas', {
     aluno,
     matriculas,
+    rajadas: await cobrancaGuarda.rajadasDasMatriculas(matriculas.map((m) => m.id)).catch(() => ({})),
     comprovante: await comprovanteSaude.daPessoa(aluno.id),
     formatBRL,
     statusBadge,

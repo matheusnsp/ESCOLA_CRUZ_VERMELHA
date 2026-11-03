@@ -18,6 +18,8 @@ const { icsDaTurma } = require('../lib/agenda');
 const pesquisa = require('../lib/pesquisa');
 const comprovanteSaude = require('../lib/comprovante-saude');
 const sharp = require('sharp');
+const rateLimit = require('express-rate-limit');
+const { podeCobrar, criarCobrancaTravada, aguardarPagamento, MSG_LIMITE } = require('../lib/cobranca-guarda');
 
 const router = express.Router();
 
@@ -139,6 +141,34 @@ const SELECT_ALUNO_CHECKOUT = {
 // tela zerar quando uma transação nova começa e continuar de onde parou num
 // simples reload. Não precisa de campo no Prisma.
 // ─────────────────────────────────────────────────────────────────────────
+// Proteção contra rajadas de cobrança (lib/cobranca-guarda.js): além do limite por matrícula,
+// no máximo 10 pedidos de cobrança por IP a cada 15 min nas quatro rotas que criam Pagamento.
+// Acima disso, a mesma mensagem do limite por matrícula, com 429: na página de erro para os
+// formulários e no JSON de sempre ({ ok, mensagem }) para o cartão, que é chamado por fetch.
+const cobrancaLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: MSG_LIMITE,
+  handler: (req, res, next, options) => {
+    console.warn(`[COBRANÇA] Limite por IP atingido (${req.ip}) em ${req.originalUrl}.`);
+    if (req.path.startsWith('/inscricao/cartao/'))
+      return res.status(options.statusCode).json({ ok: false, mensagem: options.message });
+    return res.status(options.statusCode).render('erro', { mensagem: options.message });
+  },
+});
+
+// PIX que não foi criado porque outro pedido da mesma matrícula está no meio (duplo clique,
+// rajada) ou porque a matrícula estourou o limite. No primeiro caso espera o QR do outro pedido e
+// leva à mesma tela; se o outro falhou, mostra o mesmo erro que ele mostraria.
+async function responderPixNaoCriado(res, criado, { urlPix, reRenderErro, msgFalha }) {
+  if (criado.motivo === 'limite') return reRenderErro(criado.msg, 429);
+  const atual = await aguardarPagamento(criado.pagamento.id);
+  if (atual && atual.status === 'PENDENTE') return res.redirect(urlPix);
+  return reRenderErro(msgFalha);
+}
+
 function urlRetorno(matriculaId, { pix = false, etapa = 'curso' } = {}) {
   return `/inscricao/retorno?matriculaId=${matriculaId}`
        + `&pix=${pix ? '1' : '0'}&etapa=${etapa}&t=${Date.now()}`;
@@ -566,7 +596,7 @@ router.post('/inscrever/:turmaId/comprovante', requireLogin, comprovanteSaude.re
   return volta('comprovante=enviado');
 });
 
-router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
+router.post('/inscrever/:turmaId', requireLogin, cobrancaLimiter, async (req, res) => {
   const turma = await prisma.turma.findUnique({
     where: { id: req.params.turmaId },
     include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
@@ -597,7 +627,7 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   });
   const ehPassaporte = aluno?.tipoDocumento === 'PASSAPORTE';
 
-  const reRenderErro = async (msg, etapaAtual = 'escolha') => {
+  const reRenderErro = async (msg, etapaAtual = 'escolha', status = 400) => {
     const aVista = await calcularValores(turma.curso, 'A_VISTA', req.session.usuarioId);
     let parcelado = null, parceladoComJuros = null;
     const numParcelas = Number(turma.curso.parcelas) || 1;
@@ -605,7 +635,7 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       parcelado = await calcularValores(turma.curso, 'PARCELADO', req.session.usuarioId);
       parceladoComJuros = await montarParceladoComJuros(parcelado, numParcelas);
     }
-    return res.status(400).render('inscrever', {
+    return res.status(status).render('inscrever', {
       turma, curso: turma.curso, formatBRL,
       aVista, parcelado, parceladoComJuros,
       ehPassaporte, etapaAtual, erro: msg,
@@ -642,15 +672,18 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
         statusPagamento: 'PENDENTE',
       });
 
-      await prisma.pagamento.create({
-        data: {
-          matriculaId: matricula.id,
-          tipo: 'CURSO',
-          metodo: forma,
-          valor: total,
-          status: 'PENDENTE',
-        },
+      // Sem gateway aqui, mas o limite de tentativas e a trava contra pedido duplicado valem.
+      const guarda = await podeCobrar({
+        matriculaId: matricula.id, tipo: 'CURSO', metodo: forma,
+        ip: req.ip, alunoId: req.session.usuarioId, gateway: false,
       });
+      if (!guarda.ok) return reRenderErro(guarda.msg, 'escolha', 429);
+      const criado = await criarCobrancaTravada({
+        matriculaId: matricula.id, tipo: 'CURSO', metodo: forma, valor: total,
+        ip: req.ip, alunoId: req.session.usuarioId,
+      });
+      // 'andamento' = outro pedido simultâneo já registrou: segue igual.
+      if (!criado.ok && criado.motivo === 'limite') return reRenderErro(criado.msg, 'escolha', 429);
     } catch (err) {
       console.error('[Inscrição] Erro ao criar matrícula:', err.message);
       return reRenderErro('Não foi possível concluir a inscrição.');
@@ -702,34 +735,28 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
     // 💡 NOVO — Mesma proteção da taxa: reaproveita o QR recente em vez de
     // gerar outro. Ver a explicação completa em /pagar-taxa, mais abaixo.
     // Cada clique gerava uma cobrança nova, e cada cobrança é pagável.
-    const JANELA_PIX_MS = 30 * 60 * 1000;
-    const pixRecente = await prisma.pagamento.findFirst({
-      where: {
-        matriculaId: matricula.id,
-        tipo: 'CURSO',
-        status: 'PENDENTE',
-        metodo: 'PIX',
-        pixQrCode: { not: null },
-        criadoEm: { gt: new Date(Date.now() - JANELA_PIX_MS) },
-      },
-      orderBy: { criadoEm: 'desc' },
+    // O reaproveitamento, o limite e o disjuntor do gateway ficam em lib/cobranca-guarda.js.
+    const guarda = await podeCobrar({
+      matriculaId: matricula.id, tipo: 'CURSO', metodo: 'PIX', ip: req.ip, alunoId: req.session.usuarioId,
     });
-
-    if (pixRecente) {
-      console.log(`[PIX] Reaproveitando QR existente (${pixRecente.id}) da matrícula ${matricula.id}.`);
+    if (guarda.reaproveitar) {
+      console.log(`[PIX] Reaproveitando QR existente (${guarda.reaproveitar.id}) da matrícula ${matricula.id}.`);
       return res.redirect(urlRetorno(matricula.id, { pix: true, etapa: 'curso' }));
     }
+    if (!guarda.ok) return reRenderErro(guarda.msg, 'escolha', 429);
 
-    const pagamentoPendente = await prisma.pagamento.create({
-      data: {
-        matriculaId: matricula.id,
-        tipo: 'CURSO',
-        gateway: 'unicopag',
-        metodo: 'PIX',
-        valor: total,
-        status: 'PENDENTE',
-      },
+    const criado = await criarCobrancaTravada({
+      matriculaId: matricula.id, tipo: 'CURSO', metodo: 'PIX', gateway: 'unicopag', valor: total,
+      ip: req.ip, alunoId: req.session.usuarioId,
     });
+    if (!criado.ok) {
+      return responderPixNaoCriado(res, criado, {
+        urlPix: urlRetorno(matricula.id, { pix: true, etapa: 'curso' }),
+        reRenderErro: (msg, status) => reRenderErro(msg, 'escolha', status),
+        msgFalha: 'Houve um problema ao processar o pagamento. Tente novamente.',
+      });
+    }
+    const pagamentoPendente = criado.pagamento;
 
     try {
       const resultadoGateway = await criarTransacao({
@@ -875,7 +902,7 @@ router.get('/inscrever/:turmaId/pagar-taxa', requireLogin, async (req, res) => {
   });
 });
 
-router.post('/inscrever/:turmaId/pagar-taxa', requireLogin, async (req, res) => {
+router.post('/inscrever/:turmaId/pagar-taxa', requireLogin, cobrancaLimiter, async (req, res) => {
   const matricula = await prisma.matricula.findUnique({
     where: { alunoId_turmaId: { alunoId: req.session.usuarioId, turmaId: req.params.turmaId } },
     include: { turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } },
@@ -899,7 +926,7 @@ router.post('/inscrever/:turmaId/pagar-taxa', requireLogin, async (req, res) => 
   );
   const valorTaxa = Number(valores.valorTaxaMatricula);
 
-  const reRenderErro = (msg) => res.status(400).render('inscrever', {
+  const reRenderErro = (msg, status = 400) => res.status(status).render('inscrever', {
     turma: matricula.turma, curso: matricula.turma.curso, formatBRL,
     valorTaxa, etapaAtual: 'pagar-taxa', erro: msg,
   });
@@ -929,34 +956,30 @@ router.post('/inscrever/:turmaId/pagar-taxa', requireLogin, async (req, res) => 
   // lado da Woovi. Reaproveitar um QR de ontem mostraria um código vencido,
   // que é pior do que gerar outro — a pessoa tentaria pagar e falharia sem
   // entender.
-  const JANELA_PIX_MS = 30 * 60 * 1000;
-  const pixRecente = await prisma.pagamento.findFirst({
-    where: {
-      matriculaId: matricula.id,
-      tipo: 'TAXA',
-      status: 'PENDENTE',
-      metodo: 'PIX',
-      pixQrCode: { not: null },   // só serve se o QR de fato existe
-      criadoEm: { gt: new Date(Date.now() - JANELA_PIX_MS) },
-    },
-    orderBy: { criadoEm: 'desc' },
+  //
+  // A busca do QR recente agora mora em lib/cobranca-guarda.js (podeCobrar), junto com o limite
+  // de tentativas e o disjuntor do gateway; a criação passa pela trava por matrícula.
+  const guarda = await podeCobrar({
+    matriculaId: matricula.id, tipo: 'TAXA', metodo: 'PIX', ip: req.ip, alunoId: req.session.usuarioId,
   });
-
-  if (pixRecente) {
-    console.log(`[PIX] Reaproveitando QR existente (${pixRecente.id}) da matrícula ${matricula.id}.`);
+  if (guarda.reaproveitar) {
+    console.log(`[PIX] Reaproveitando QR existente (${guarda.reaproveitar.id}) da matrícula ${matricula.id}.`);
     return res.redirect(urlRetorno(matricula.id, { pix: true, etapa: 'taxa' }));
   }
+  if (!guarda.ok) return reRenderErro(guarda.msg, 429);
 
-  const pagamentoPendente = await prisma.pagamento.create({
-    data: {
-      matriculaId: matricula.id,
-      tipo: 'TAXA',
-      gateway: 'unicopag',
-      metodo: 'PIX',
-      valor: valorTaxa,
-      status: 'PENDENTE',
-    },
+  const criado = await criarCobrancaTravada({
+    matriculaId: matricula.id, tipo: 'TAXA', metodo: 'PIX', gateway: 'unicopag', valor: valorTaxa,
+    ip: req.ip, alunoId: req.session.usuarioId,
   });
+  if (!criado.ok) {
+    return responderPixNaoCriado(res, criado, {
+      urlPix: urlRetorno(matricula.id, { pix: true, etapa: 'taxa' }),
+      reRenderErro,
+      msgFalha: 'Houve um problema ao processar o pagamento da taxa. Tente novamente.',
+    });
+  }
+  const pagamentoPendente = criado.pagamento;
 
   try {
     const resultadoGateway = await criarTransacao({
@@ -1070,7 +1093,7 @@ router.get('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) => 
   });
 });
 
-router.post('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) => {
+router.post('/inscrever/:turmaId/pagar-curso', requireLogin, cobrancaLimiter, async (req, res) => {
   const matricula = await prisma.matricula.findUnique({
     where: { alunoId_turmaId: { alunoId: req.session.usuarioId, turmaId: req.params.turmaId } },
     include: { turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } },
@@ -1088,24 +1111,31 @@ router.post('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) =>
   // e confirma a inscrição. O valor será cobrado na secretaria. ----------------
   if (matricula.plano === 'PRESENCIAL') {
     const valores = await calcularValores(matricula.turma.curso, 'A_VISTA', req.session.usuarioId);
+    const renderErro = (msg, status = 400) => res.status(status).render('inscrever', {
+      turma: matricula.turma, curso: matricula.turma.curso, formatBRL,
+      valorCurso: Number(valores.valorCurso), numParcelas: 1, parceladoComJuros: null,
+      plano: matricula.plano, etapaAtual: 'pagar-curso',
+      erro: msg,
+    });
     try {
-      await prisma.pagamento.create({
-        data: {
-          matriculaId: matricula.id,
-          tipo: 'CURSO',
-          metodo: 'DINHEIRO', // forma real é escolhida na secretaria
-          valor: Number(valores.valorCurso),
-          status: 'PENDENTE',
-        },
+      // Sem gateway, mas com limite de tentativas e trava contra pedido duplicado (um clique
+      // repetido dentro de 2 min cai no registro que já existe e segue igual).
+      const guarda = await podeCobrar({
+        matriculaId: matricula.id, tipo: 'CURSO', metodo: 'DINHEIRO',
+        ip: req.ip, alunoId: req.session.usuarioId, gateway: false,
       });
+      if (!guarda.ok) return renderErro(guarda.msg, 429);
+      const criado = await criarCobrancaTravada({
+        matriculaId: matricula.id,
+        tipo: 'CURSO',
+        metodo: 'DINHEIRO', // forma real é escolhida na secretaria
+        valor: Number(valores.valorCurso),
+        ip: req.ip, alunoId: req.session.usuarioId,
+      });
+      if (!criado.ok && criado.motivo === 'limite') return renderErro(criado.msg, 429);
     } catch (err) {
       console.error('[Inscrição] Erro ao registrar pagamento presencial:', err.message);
-      return res.status(400).render('inscrever', {
-        turma: matricula.turma, curso: matricula.turma.curso, formatBRL,
-        valorCurso: Number(valores.valorCurso), numParcelas: 1, parceladoComJuros: null,
-        plano: matricula.plano, etapaAtual: 'pagar-curso',
-        erro: 'Não foi possível confirmar a inscrição. Tente novamente.',
-      });
+      return renderErro('Não foi possível confirmar a inscrição. Tente novamente.');
     }
     return res.redirect('/minha-conta?inscrito=1');
   }
@@ -1229,7 +1259,7 @@ async function calcularCobrancaCartao(matricula, etapa, alunoId) {
 //   status: 'PROCESSANDO' (webhook confirma) | ausente em caso de erro
 // ========================================================================
 
-router.post('/inscricao/cartao/:matriculaId', requireLogin, async (req, res) => {
+router.post('/inscricao/cartao/:matriculaId', requireLogin, cobrancaLimiter, async (req, res) => {
   const matricula = await prisma.matricula.findFirst({
     where: { id: req.params.matriculaId, alunoId: req.session.usuarioId },
     include: { turma: { include: { curso: true } } },
@@ -1314,16 +1344,32 @@ router.post('/inscricao/cartao/:matriculaId', requireLogin, async (req, res) => 
     select: SELECT_ALUNO_CHECKOUT,
   });
 
-  const pagamentoPendente = await prisma.pagamento.create({
-    data: {
-      matriculaId: matricula.id,
-      tipo: cobranca.tipo,
-      gateway: 'unicopag',
-      metodo: 'CREDITO',
-      valor: cobranca.valorBase, // valor BASE — casa com o amount do postback
-      status: 'PENDENTE',
-    },
+  // Limite de tentativas e disjuntor do gateway (lib/cobranca-guarda.js); cartão não se
+  // reaproveita (a resposta é imediata). A criação passa pela trava por matrícula: um envio
+  // simultâneo cai no mesmo 409 de "cobrança em andamento" lá de cima.
+  const guarda = await podeCobrar({
+    matriculaId: matricula.id, tipo: cobranca.tipo, metodo: 'CREDITO', ip: req.ip, alunoId: req.session.usuarioId,
   });
+  if (!guarda.ok) return res.status(429).json({ ok: false, mensagem: guarda.msg });
+
+  const criado = await criarCobrancaTravada({
+    matriculaId: matricula.id,
+    tipo: cobranca.tipo,
+    gateway: 'unicopag',
+    metodo: 'CREDITO',
+    valor: cobranca.valorBase, // valor BASE — casa com o amount do postback
+    ip: req.ip, alunoId: req.session.usuarioId,
+  });
+  if (!criado.ok && criado.motivo === 'limite')
+    return res.status(429).json({ ok: false, mensagem: criado.msg });
+  if (!criado.ok) {
+    console.warn(`[CARTÃO] Envio simultâneo barrado. Matrícula ${matricula.id}, etapa ${etapa}, pagamento em andamento ${criado.pagamento.id}.`);
+    return res.status(409).json({
+      ok: false,
+      mensagem: 'Já existe uma cobrança em andamento para esta etapa. Aguarde alguns instantes — se o banco aprovar, a página avança sozinha.',
+    });
+  }
+  const pagamentoPendente = criado.pagamento;
 
   // 💡 CORRIGIDO — aqui havia um update gravando valorCurso com o total COM
   // JUROS, ANTES de saber se a cobrança seria aprovada. Consequência real,
