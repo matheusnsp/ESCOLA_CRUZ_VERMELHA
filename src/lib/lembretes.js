@@ -374,6 +374,10 @@ async function enviarLembreteAvulso(matriculaId) {
   if (m.turma && m.turma.status === 'CONGELADA') {
     return { ok: false, motivo: 'A turma está congelada: sem lembretes até ela ser retomada.' };
   }
+  // Turma em espera (sem data): sem lembrete até o aluno ser encaixado numa turma.
+  if (m.turma && m.turma.status === 'EM_ESPERA') {
+    return { ok: false, motivo: 'O aluno está na lista de espera: sem lembretes até ser encaixado numa turma.' };
+  }
 
   const pendencia = montarPendencia(m);
   if (!pendencia.podeEmail) {

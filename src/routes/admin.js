@@ -185,6 +185,8 @@ function statusBadge(s) {
 
 const ESCOLARIDADES = ['', 'Ensino Fundamental', 'Ensino Médio', 'Ensino Superior'];
 // CONGELADA: turma pausada (some do site e das rotinas automáticas; os alunos continuam).
+// EM_ESPERA fica de fora de propósito: é a turma de espera do curso (lib/turma-espera.js), criada
+// sozinha; ninguém a cria ou edita à mão (um status postado fora desta lista é ignorado).
 const STATUS_TURMA = ['ABERTA', 'CONFIRMADA', 'CONGELADA', 'CANCELADA', 'ENCERRADA'];
 
 const DEVICE_2FA_COOKIE = 'cvbrj_admin_2fa';
@@ -1124,6 +1126,8 @@ router.post('/cursos/:id/ativar', requirePermissao('cursos:gerenciar'), async (r
 router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
   await concluirTurmasPassadas(); // a lista já abre com as turmas de ontem como CONCLUÍDA
   const turmas = await prisma.turma.findMany({
+    // A turma de espera (EM_ESPERA) não é turma de verdade: fica fora das abas e da lista.
+    where: { status: { not: 'EM_ESPERA' } },
     orderBy: { inicioPrevisto: 'asc' },
     include: {
       curso: true,
@@ -1233,6 +1237,7 @@ router.get('/turmas/:id/editar', requirePermissao('turmas:gerenciar'), async (re
     prisma.curso.findMany({ orderBy: { nome: 'asc' } }),
   ]);
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
+  if (turma.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não pode ser editada.'));
   await extras.anexar('turma', [turma]);
   res.render('admin/turma-form', { turma, aulas: turma.aulas, cursos, statusTurma: STATUS_TURMA, erro: null });
 });
@@ -1240,6 +1245,8 @@ router.get('/turmas/:id/editar', requirePermissao('turmas:gerenciar'), async (re
 router.post('/turmas/:id', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const existe = await prisma.turma.findUnique({ where: { id: req.params.id } });
   if (!existe) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
+  // A turma de espera (lib/turma-espera.js) é do sistema: data, vagas e status não se editam à mão.
+  if (existe.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não pode ser editada.'));
   const { dados, aulas, erro } = lerTurmaDoForm(req.body);
   if (erro) {
     const cursos = await prisma.curso.findMany({ orderBy: { nome: 'asc' } });
@@ -1288,6 +1295,8 @@ router.post('/turmas/:id/notas', requirePermissao('turmas:gerenciar'), async (re
     include: { matriculas: true },
   });
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
+  // Nota na espera travaria Mover / Voltar para a espera: a nota é da turma de verdade.
+  if (turma.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não tem notas.'));
 
   const nome = String(req.body.nome || '').trim();
   const peso = Number(String(req.body.peso || '1').replace(',', '.'));
@@ -1314,6 +1323,7 @@ router.post('/turmas/:id/notas', requirePermissao('turmas:gerenciar'), async (re
 router.post('/turmas/:id/excluir', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const turma = await prisma.turma.findUnique({ where: { id: req.params.id }, include: { curso: true } });
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
+  if (turma.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não pode ser excluída.'));
 
   const matriculas = await prisma.matricula.count({ where: { turmaId: turma.id } });
   if (matriculas > 0) {
@@ -1351,7 +1361,9 @@ router.get('/matricula-rapida', requirePermissao('turmas:gerenciar', 'painel:lei
   const curso = cursos.some((c) => c.chave === req.query.curso) ? req.query.curso : '';
   const doCurso = d.pessoas.filter(horariosSite.doCurso(curso));
   const sit = ['aguardando', 'encaixados', 'todos'].includes(req.query.sit) ? req.query.sit : 'aguardando';
-  const lista = sit === 'todos' ? doCurso : doCurso.filter((p) => (sit === 'encaixados') === !!p.encaixe);
+  // Matrícula desfeita (p.cancelada) não está nem em turma nem aguardando: aparece só em "Todos".
+  const aguarda = (p) => !p.encaixe && !p.cancelada;
+  const lista = sit === 'todos' ? doCurso : doCurso.filter((p) => (sit === 'encaixados' ? !!p.encaixe : aguarda(p)));
   const pagas = d.pessoas.map((p) => p.pagamento).filter((pg) => pg && matriculaRapida.situacaoPagamento(pg.status) === 'pago');
   res.render('admin/matricula-rapida', {
     ...base, erro: null, d, lista, cursos,
@@ -1359,7 +1371,7 @@ router.get('/matricula-rapida', requirePermissao('turmas:gerenciar', 'painel:lei
     situacao: matriculaRapida.situacaoPagamento, dataPago: matriculaRapida.dataPago,
     hs: horariosSite, R: d.dados.rotulos,
     resumo: {
-      aguardando: doCurso.filter((p) => !p.encaixe).length,
+      aguardando: doCurso.filter(aguarda).length,
       encaixados: doCurso.filter((p) => p.encaixe).length,
       todos: doCurso.length,
       pagos: pagas.length,
@@ -1372,24 +1384,32 @@ router.post('/matricula-rapida/:inscricaoId/encaixar', requirePermissao('taxa:ap
   const r = await matriculaRapida.encaixar({
     inscricaoId: req.params.inscricaoId, turmaId: req.body.turmaId, porUsuarioId: req.session.usuarioId,
   });
-  if (r.ok) await auditar(req, 'ENCAIXOU_MATRICULA_RAPIDA', 'Matricula', r.matriculaId, { inscricaoSite: req.params.inscricaoId, turmaId: req.body.turmaId });
+  if (r.ok && r.daEspera) await auditar(req, 'ENCAIXOU_DA_ESPERA', 'Matricula', r.matriculaId, { inscricaoSite: req.params.inscricaoId, matriculaId: r.matriculaId, de: r.de, para: r.para });
+  else if (r.ok) await auditar(req, 'ENCAIXOU_MATRICULA_RAPIDA', 'Matricula', r.matriculaId, { inscricaoSite: req.params.inscricaoId, turmaId: req.body.turmaId });
   res.redirect('/matricula-rapida?' + (r.ok ? 'ok=' : 'erro=') + encodeURIComponent(r.msg));
 });
 
-// Mover o encaixe para outra turma do mesmo curso (lib/matricula-rapida.js, moverEncaixe).
+// Mover a matrícula do curso (encaixe ou escola) para outra turma do mesmo curso
+// (lib/matricula-rapida.js, moverEncaixe). Saindo da lista de espera, é o mesmo que Encaixar.
 router.post('/matricula-rapida/:inscricaoId/mover', requirePermissao('taxa:aprovar'), async (req, res) => {
   const r = await matriculaRapida.moverEncaixe({
     inscricaoId: req.params.inscricaoId, turmaId: req.body.turmaId, porUsuarioId: req.session.usuarioId,
   });
-  if (r.ok) await auditar(req, 'MOVEU_MATRICULA_RAPIDA', 'Matricula', r.matriculaId, { inscricaoSite: req.params.inscricaoId, de: r.de, para: r.para });
+  if (r.ok && r.daEspera) await auditar(req, 'ENCAIXOU_DA_ESPERA', 'Matricula', r.matriculaId, { inscricaoSite: req.params.inscricaoId, matriculaId: r.matriculaId, de: r.de, para: r.para });
+  else if (r.ok) await auditar(req, 'MOVEU_MATRICULA_RAPIDA', 'Matricula', r.matriculaId, { inscricaoSite: req.params.inscricaoId, de: r.de, para: r.para });
   res.redirect('/matricula-rapida?sit=encaixados&' + (r.ok ? 'ok=' : 'erro=') + encodeURIComponent(r.msg));
 });
 
-// Desfazer o encaixe: a pessoa volta para "Aguardando encaixe" (lib/matricula-rapida.js, voltarParaEspera).
+// Voltar para a espera: a matrícula do curso (encaixe ou escola) vai para a turma de espera e a pessoa
+// volta para "Aguardando encaixe"; nada é apagado (lib/matricula-rapida.js, voltarParaEspera).
 router.post('/matricula-rapida/:inscricaoId/espera', requirePermissao('taxa:aprovar'), async (req, res) => {
   const motivo = String(req.body.motivo || '').trim().slice(0, 200);
-  const r = await matriculaRapida.voltarParaEspera({ inscricaoId: req.params.inscricaoId, motivo });
-  if (r.ok) await auditar(req, 'VOLTOU_PARA_ESPERA_MATRICULA_RAPIDA', 'Matricula', r.matriculaId, r.snapshot);
+  const r = await matriculaRapida.voltarParaEspera({ inscricaoId: req.params.inscricaoId, motivo, porUsuarioId: req.session.usuarioId });
+  if (r.ok) {
+    await auditar(req, 'VOLTOU_PARA_ESPERA_MATRICULA_RAPIDA', 'Matricula', r.matriculaId, {
+      inscricaoSite: req.params.inscricaoId, matriculaId: r.matriculaId, de: r.de, esperaTurmaId: r.esperaTurmaId, motivo, origem: r.origem,
+    });
+  }
   res.redirect(r.ok ? '/matricula-rapida?ok=' + encodeURIComponent(r.msg) : '/matricula-rapida?sit=encaixados&erro=' + encodeURIComponent(r.msg));
 });
 
@@ -1487,6 +1507,15 @@ router.get('/turmas/:id/pesquisa-qr.png', requirePermissao('turmas:gerenciar', '
   res.set('Content-Type', 'image/png');
   res.set('Content-Disposition', `attachment; filename="qr-pesquisa-${nome}.png"`);
   res.send(png);
+});
+
+// A turma de espera (lib/turma-espera.js) não tem boas-vindas nem certificados: ninguém começa nela.
+router.use(['/turmas/:id/boas-vindas', '/turmas/:id/certificados'], async (req, res, next) => {
+  try {
+    const t = await prisma.turma.findUnique({ where: { id: req.params.id }, select: { status: true } });
+    if (t && t.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não tem boas-vindas nem certificados.'));
+    next();
+  } catch (err) { next(err); }
 });
 
 router.get('/turmas/:id/boas-vindas', requirePermissao('turmas:gerenciar'), async (req, res) => {
@@ -1807,7 +1836,9 @@ router.get('/inscricoes', requirePermissao(
       },
     }),
 
+    // Filtro de turma: a turma de espera não entra (aparece como "Em espera" na própria linha).
     prisma.turma.findMany({
+      where: { status: { not: 'EM_ESPERA' } },
       orderBy: { criadoEm: 'desc' },
       include: { curso: true },
     }),
@@ -2525,7 +2556,8 @@ router.get('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), 
   });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
   const turmas = await prisma.turma.findMany({
-    where: { id: { not: m.turmaId } },
+    // A turma de espera não é destino de transferência (voltar para a espera é na Matrícula rápida).
+    where: { id: { not: m.turmaId }, status: { not: 'EM_ESPERA' } },
     orderBy: { criadoEm: 'desc' },
     include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
   });
@@ -2553,7 +2585,7 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
 
   const reRenderErro = async (erro) => {
     const turmas = await prisma.turma.findMany({
-      where: { id: { not: m.turmaId } },
+      where: { id: { not: m.turmaId }, status: { not: 'EM_ESPERA' } },
       orderBy: { criadoEm: 'desc' },
       include: {
         curso: true,
@@ -2589,7 +2621,7 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
     include: { curso: true },
   });
 
-  if (!destino) {
+  if (!destino || destino.status === 'EM_ESPERA') {
     return reRenderErro('Turma de destino nao encontrada.');
   }
 
@@ -2669,7 +2701,7 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), asy
         }
       }),
       prisma.usuario.count({ where }),
-      prisma.turma.findMany({ orderBy: { criadoEm: 'desc' }, include: { curso: true } }),
+      prisma.turma.findMany({ where: { status: { not: 'EM_ESPERA' } }, orderBy: { criadoEm: 'desc' }, include: { curso: true } }),
 
       // 💡 NOVO — Turmas realmente abertas e que ainda não começaram. É o que
       // o texto de prospecção vai oferecer, puxado na hora pra nunca citar
@@ -2991,7 +3023,8 @@ router.get('/pendentes', requirePermissao('pendentes:gerenciar'), async (req, re
       where: {
         statusPagamento: 'PENDENTE',
         // Turma congelada (pausada) não é "fora de prazo": fica fora de Pendentes até ser retomada.
-        turma: { status: { not: 'CONGELADA' } },
+        // Turma em espera (sem data) também não: não há prazo a vencer.
+        turma: { status: { notIn: ['CONGELADA', 'EM_ESPERA'] } },
         OR: [
           { turma: { status: { notIn: STATUS_TURMA_ATIVA } } },
           { turma: { inicioPrevisto: { lte: agora } } },

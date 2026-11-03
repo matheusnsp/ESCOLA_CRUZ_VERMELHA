@@ -21,7 +21,7 @@
     <div>
       <span>Curso</span>
       <strong><%= m.turma.curso.nome %></strong>
-      <small><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %></small>
+      <small><%= m.turma.status === 'EM_ESPERA' ? 'Em espera · sem data' : new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %></small>
     </div>
     <div>
       <span>Média final (ponderada)</span>

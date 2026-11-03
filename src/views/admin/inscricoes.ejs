@@ -144,7 +144,11 @@
               <br>
 
               <small class="adm-mut">
-                <%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
+                <% if (m.turma.status === 'EM_ESPERA') { %>
+                  Em espera · sem data
+                <% } else { %>
+                  <%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
+                <% } %>
 
                 <% if (m.turma.aulas && m.turma.aulas.length) { %>
                   · <%= m.turma.aulas[0].horario %>

@@ -246,6 +246,7 @@ enum StatusTurma {
   CANCELADA
   ENCERRADA
   CONGELADA
+  EM_ESPERA
 }
 
 enum PlanoPagamento {

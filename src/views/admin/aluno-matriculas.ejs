@@ -112,13 +112,17 @@
               <small class="adm-mut">
                 <i class="fa-regular fa-calendar"></i>
                 Turma:
-                <%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR', {
-                  timeZone: 'America/Sao_Paulo',
-                  weekday: 'long',
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric'
-                }) %>
+                <% if (m.turma.status === 'EM_ESPERA') { %>
+                  Em espera · sem data
+                <% } else { %>
+                  <%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR', {
+                    timeZone: 'America/Sao_Paulo',
+                    weekday: 'long',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                  }) %>
+                <% } %>
               </small>
 
               <!-- DATA DA INSCRIÇÃO -->

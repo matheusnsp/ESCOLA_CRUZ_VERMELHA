@@ -60,6 +60,8 @@ function calcularRetomada(m) {
   if (m.statusPagamento !== 'PENDENTE') return null;
   // Turma congelada (pausada pela secretaria): sem botão de pagar até ela ser retomada.
   if (m.turma && m.turma.status === 'CONGELADA') return null;
+  // Turma em espera (sem data): sem botão de pagar até o aluno ser encaixado numa turma.
+  if (m.turma && m.turma.status === 'EM_ESPERA') return null;
 
   if (!m.taxaConfirmada) {
     // A_VISTA cobra taxa e curso na MESMA transação, então não há etapa

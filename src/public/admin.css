@@ -1715,6 +1715,7 @@ a.mr-num:hover { border-color: var(--linha); }
 .mr-estado.ok { background: var(--ok-bg); color: var(--ok-tx); }
 .mr-estado.espera { background: var(--bg); color: var(--tinta-60); }
 .mr-estado.espera.atrasado { background: var(--alerta-bg); color: var(--alerta-tx); }
+.mr-estado.cancelada { background: var(--bg); color: var(--tinta-60); } /* matrícula desfeita: trata-se em Inscrições */
 
 .mr-card-meio { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin: 0 18px; border: 1px solid var(--linha2); border-radius: 12px; background: var(--linha2); overflow: hidden; }
 .mr-bloco { display: grid; gap: 3px; align-content: start; padding: 11px 13px; background: var(--card); min-width: 0; }
@@ -1756,11 +1757,12 @@ a.mr-num:hover { border-color: var(--linha); }
 .mr-form { display: flex; gap: 8px; width: 100%; margin: 0; }
 .mr-form select { flex: 1; min-width: 0; height: 38px; font: inherit; font-size: 13.5px; padding: 0 10px; border: 1px solid var(--linha); border-radius: 10px; background: var(--campo); color: var(--tinta); }
 .mr-form .adm-btn { flex: none; height: 38px; padding: 0 14px; }
-/* Mover de turma + Voltar para a espera, no rodapé do cartão de quem já foi encaixado */
+/* Mover de turma + Voltar para a espera, no rodapé do cartão de quem tem turma (encaixe ou escola) */
 .mr-acoes { display: flex; gap: 8px; width: 100%; flex-wrap: wrap; align-items: center; }
 .mr-acoes form { margin: 0; }
-.mr-acoes .mr-form { flex: 1 1 240px; width: auto; }
-.mr-acoes .mr-pe-btn { height: 38px; font-family: inherit; cursor: pointer; } /* aqui é <button>, não <a> */
+.mr-acoes .mr-form { flex: 1 1 240px; width: auto; min-width: 0; } /* min-width: 0 evita estourar o card no celular (390px) */
+.mr-acoes .mr-pe-btn { height: 38px; font-family: inherit; cursor: pointer; } /* o Voltar é <button>, não <a> */
+.mr-acoes > .mr-pe-txt { flex: 1 1 200px; color: var(--tinta-60); } /* sem outra turma para Mover */
 
 .mr-vazio { display: grid; justify-items: center; gap: 6px; padding: 48px 20px; border: 1px dashed var(--linha); border-radius: 16px; background: var(--card); text-align: center; }
 .mr-vazio[hidden] { display: none; }

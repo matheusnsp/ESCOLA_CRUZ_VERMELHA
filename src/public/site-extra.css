@@ -1927,6 +1927,7 @@ body > section { flex: 1 0 auto; }
   .ct-selo-pago      { background: #dcfce7; color: #166534; }
   .ct-selo-pendente  { background: #fef9c3; color: #854d0e; }
   .ct-selo-cancelado { background: #fee2e2; color: #991b1b; }
+  .ct-selo-espera    { background: #fef3c7; color: #92400e; }
   
   .ct-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
   .ct-pill {
