@@ -2416,6 +2416,20 @@ router.post('/inscricoes/:id/reembolso-concluido', requirePermissao('financeiro:
   res.redirect(back(req, 'Reembolso marcado como concluido.'));
 });
 
+// Estorno recusado pela Únicopag: a tela mostra o que o gateway respondeu e o caminho a seguir.
+// 403 "Acesso negado para essa ação!" = a chave da escola cobra, mas não tem permissão de reembolso
+// (liberar no painel da Únicopag ou com o suporte deles); até lá, o estorno sai pelo painel da
+// Únicopag e aqui se marca "estorno apenas contábil".
+function mensagemEstornoRecusado({ http, mensagem }) {
+  const detalhe = [http ? `HTTP ${http}` : null, mensagem ? `"${String(mensagem).slice(0, 160)}"` : null].filter(Boolean).join(' · ');
+  const cabeca = 'A Únicopag não aceitou o estorno da matrícula. Nada foi alterado.' + (detalhe ? ` Resposta do gateway: ${detalhe}.` : '');
+  if (http === 401 || http === 403) {
+    return cabeca + ' A chave de API da escola cria cobranças, mas não tem permissão para reembolsar: libere o estorno por API no painel da Únicopag (ou com o suporte deles). '
+      + 'Enquanto isso, faça o estorno no painel da Únicopag e, aqui, clique em Estornar marcando "estorno apenas contábil".';
+  }
+  return cabeca + ' Verifique a transação no painel da Únicopag e tente de novo. Se o estorno já foi feito por lá, use a opção "estorno apenas contábil".';
+}
+
 router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:reembolsar'), async (req, res) => {
   const m = await prisma.matricula.findUnique({ where: { id: req.params.id } });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
@@ -2436,9 +2450,9 @@ router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:reembolsar'
       resultado = await estornarTransacao(ref);
     } catch (e) {
       console.error(`[A3] Erro ao chamar refund (${tipo}):`, e.message);
-      return { ok: false, semRef: false };
+      return { ok: false, semRef: false, http: null, mensagem: e.message };
     }
-    if (!resultado.success) return { ok: false, semRef: false };
+    if (!resultado.success) return { ok: false, semRef: false, http: resultado.http || null, mensagem: resultado.mensagem || '' };
 
     await prisma.pagamento.updateMany({
       where: { id: pago.id },
@@ -2458,9 +2472,7 @@ router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:reembolsar'
           mensagem: 'Não encontrei a transação da matrícula no gateway para estornar. Se o pagamento foi feito fora da Únicopag (dinheiro/presencial), use a opção "estorno apenas contábil".',
         });
       }
-      return res.status(502).render('admin/erro', {
-        mensagem: 'O gateway não confirmou o estorno da matrícula. Nada foi alterado. Verifique no painel da Únicopag e tente novamente.',
-      });
+      return res.status(502).render('admin/erro', { mensagem: mensagemEstornoRecusado(curso) });
     }
 
     const taxa = await estornarPagamento('TAXA');
