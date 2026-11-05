@@ -261,5 +261,151 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     voltar(res, `/ead/curso/${m.cursoOnlineId}`, 'ok', `Módulo "${m.titulo}" apagado.`);
   });
 
+  // ─── Tópicos ──────────────────────────────────────────────────────────────────────────────────
+  router.post('/ead/modulo/:id/topicos', async (req, res) => {
+    const m = edb.ehId(req.params.id) ? await prisma.moduloEad.findUnique({ where: { id: req.params.id } }) : null;
+    if (!m) return naoAchou(res);
+    if (m.final) return voltar(res, urlModulo(m.id), 'erro', 'O módulo final tem cenários, não tópicos.');
+    const r = ead.schemaTopico.safeParse(req.body);
+    if (!r.success) return voltar(res, urlModulo(m.id), 'erro', 'Tópico: ' + ead.primeiroErro(r));
+    const t = await escrever(req, m.id, `novo tópico "${r.data.titulo}"`, async (tx) =>
+      tx.topicoEad.create({ data: { moduloId: m.id, titulo: r.data.titulo, ordem: await edb.proximaOrdem(tx, 'topicoEad', 'moduloId', m.id) } }));
+    await auditar(req, 'EAD_CRIOU_TOPICO', 'TopicoEad', t.id, { moduloId: m.id, titulo: t.titulo });
+    voltar(res, urlModulo(m.id), 'ok', 'Tópico criado.');
+  });
+
+  router.post('/ead/topico/:id', async (req, res) => {
+    const alvo = await edb.moduloDe('topico', req.params.id);
+    if (!alvo) return naoAchou(res);
+    const r = ead.schemaTopico.safeParse(req.body);
+    if (!r.success) return voltar(res, urlModulo(alvo.moduloId), 'erro', 'Tópico: ' + ead.primeiroErro(r));
+    await escrever(req, alvo.moduloId, `tópico renomeado para "${r.data.titulo}"`, (tx) => tx.topicoEad.update({ where: { id: req.params.id }, data: { titulo: r.data.titulo } }));
+    voltar(res, urlModulo(alvo.moduloId), 'ok', 'Tópico renomeado.');
+  });
+
+  // Subir/descer de tópico, tela, cenário e decisão: mesma regra.
+  const MOVIVEIS = { topico: ['topicoEad', 'moduloId'], tela: ['telaEad', 'topicoId'], cenario: ['cenarioEad', 'moduloId'], decisao: ['decisaoCenario', 'cenarioId'] };
+  router.post('/ead/:tipo(topico|tela|cenario|decisao)/:id/:direcao(subir|descer)', async (req, res) => {
+    const { tipo, id, direcao } = req.params;
+    const alvo = await edb.moduloDe(tipo, id);
+    if (!alvo) return naoAchou(res);
+    const [modelo, pai] = MOVIVEIS[tipo];
+    await prisma.$transaction(async (tx) => {
+      if (await edb.mover(tx, modelo, id, direcao, pai)) await edb.invalidarSeValidado(tx, alvo.moduloId, ator(req), `ordem (${tipo})`);
+    });
+    if (tipo === 'decisao') {
+      const d = await prisma.decisaoCenario.findUnique({ where: { id }, select: { cenarioId: true } });
+      return res.redirect(`/ead/cenario/${d.cenarioId}/editar`);
+    }
+    res.redirect(urlModulo(alvo.moduloId));
+  });
+
+  router.post('/ead/topico/:id/excluir', async (req, res) => {
+    const alvo = await edb.moduloDe('topico', req.params.id);
+    if (!alvo) return naoAchou(res);
+    const t = await prisma.topicoEad.findUnique({ where: { id: req.params.id }, include: { telas: { select: { fotoUrl: true } } } });
+    await escrever(req, alvo.moduloId, `tópico "${t.titulo}" apagado`, (tx) => tx.topicoEad.delete({ where: { id: t.id } }));
+    for (const tela of t.telas) if (tela.fotoUrl) await removerFotoCurso(tela.fotoUrl);
+    await auditar(req, 'EAD_EXCLUIU_TOPICO', 'TopicoEad', t.id, { moduloId: alvo.moduloId, titulo: t.titulo });
+    voltar(res, urlModulo(alvo.moduloId), 'ok', `Tópico "${t.titulo}" apagado.`);
+  });
+
+  // ─── Telas ────────────────────────────────────────────────────────────────────────────────────
+  // Lê o form da tela. Devolve { dados } ou { erro } (o vídeo é normalizado aqui).
+  function lerTelaDoForm(body) {
+    const r = ead.schemaTela.safeParse({
+      titulo: body.titulo, ancora: body.ancora, videoTitulo: body.videoTitulo, revisaoTitulo: body.revisaoTitulo,
+      alerta: body.alerta, dicaProfissional: body.dicaProfissional,
+      revisaoItens: [0, 1, 2, 3].map((i) => String(body['revisao' + i] || '')),
+    });
+    if (!r.success) return { erro: ead.primeiroErro(r) };
+    const dados = { ...r.data, videoUrl: null, videoDuracaoSeg: null };
+    if (String(body.videoUrl || '').trim()) {
+      const v = ead.normalizarVideo(body.videoUrl);
+      if (v.erro) return { erro: v.erro };
+      dados.videoUrl = v.url;
+    }
+    if (String(body.videoDuracao || '').trim()) {
+      const seg = ead.lerMmSs(body.videoDuracao);
+      if (seg === null || seg > 3600) return { erro: 'Duração do vídeo: use minutos:segundos, ex.: 2:10.' };
+      dados.videoDuracaoSeg = seg;
+    }
+    return { dados };
+  }
+  // O form mostra a duração em mm:ss e as 4 linhas da revisão separadas.
+  const telaParaForm = (t) => ({ ...t, videoDuracao: t.videoDuracaoSeg ? ead.mmSs(t.videoDuracaoSeg) : '', ...Object.fromEntries([0, 1, 2, 3].map((i) => ['revisao' + i, (t.revisaoItens || [])[i] || ''])) });
+
+  async function contextoTopico(topicoId) {
+    if (!edb.ehId(topicoId)) return null;
+    return prisma.topicoEad.findUnique({ where: { id: topicoId }, include: { modulo: { include: { cursoOnline: { include: { curso: { select: { nome: true } } } } } } } });
+  }
+
+  router.get('/ead/topico/:id/telas/nova', async (req, res) => {
+    const topico = await contextoTopico(req.params.id);
+    if (!topico) return naoAchou(res);
+    res.render('admin/ead/tela-form', { topico, tela: null, valores: {}, erro: null });
+  });
+
+  router.post('/ead/topico/:id/telas/nova', uploadFoto, async (req, res) => {
+    const topico = await contextoTopico(req.params.id);
+    if (!topico) return naoAchou(res);
+    const { dados, erro } = lerTelaDoForm(req.body);
+    if (req.uploadErro || erro) return res.status(400).render('admin/ead/tela-form', { topico, tela: null, valores: req.body, erro: req.uploadErro || erro });
+    dados.fotoUrl = req.file ? await salvarFotoCurso(req.file) : null;
+    const tela = await escrever(req, topico.moduloId, `nova tela "${dados.titulo}"`, async (tx) =>
+      tx.telaEad.create({ data: { ...dados, topicoId: topico.id, ordem: await edb.proximaOrdem(tx, 'telaEad', 'topicoId', topico.id) } }));
+    await auditar(req, 'EAD_CRIOU_TELA', 'TelaEad', tela.id, { moduloId: topico.moduloId, titulo: tela.titulo });
+    voltar(res, urlModulo(topico.moduloId), 'ok', `Tela "${tela.titulo}" criada.`);
+  });
+
+  async function acharTela(id) {
+    if (!edb.ehId(id)) return null;
+    return prisma.telaEad.findUnique({ where: { id }, include: { topico: { include: { modulo: { include: { cursoOnline: { include: { curso: { select: { nome: true } } } } } } } } } });
+  }
+
+  router.get('/ead/tela/:id/editar', async (req, res) => {
+    const tela = await acharTela(req.params.id);
+    if (!tela) return naoAchou(res);
+    res.render('admin/ead/tela-form', { topico: tela.topico, tela, valores: telaParaForm(tela), erro: null });
+  });
+
+  router.post('/ead/tela/:id/editar', uploadFoto, async (req, res) => {
+    const tela = await acharTela(req.params.id);
+    if (!tela) return naoAchou(res);
+    const { dados, erro } = lerTelaDoForm(req.body);
+    if (req.uploadErro || erro) return res.status(400).render('admin/ead/tela-form', { topico: tela.topico, tela, valores: { ...req.body, fotoUrl: tela.fotoUrl }, erro: req.uploadErro || erro });
+    const fotoNova = req.file ? await salvarFotoCurso(req.file) : null;
+    const tirar = req.body.removerFoto === 'on';
+    if (fotoNova || tirar) dados.fotoUrl = fotoNova;
+    await escrever(req, tela.topico.moduloId, `tela "${dados.titulo}"`, (tx) => tx.telaEad.update({ where: { id: tela.id }, data: dados }));
+    if ((fotoNova || tirar) && tela.fotoUrl) await removerFotoCurso(tela.fotoUrl);
+    voltar(res, urlModulo(tela.topico.moduloId), 'ok', `Tela "${dados.titulo}" salva.`);
+  });
+
+  router.post('/ead/tela/:id/excluir', async (req, res) => {
+    const tela = await acharTela(req.params.id);
+    if (!tela) return naoAchou(res);
+    await escrever(req, tela.topico.moduloId, `tela "${tela.titulo}" apagada`, (tx) => tx.telaEad.delete({ where: { id: tela.id } }));
+    if (tela.fotoUrl) await removerFotoCurso(tela.fotoUrl);
+    await auditar(req, 'EAD_EXCLUIU_TELA', 'TelaEad', tela.id, { moduloId: tela.topico.moduloId, titulo: tela.titulo });
+    voltar(res, urlModulo(tela.topico.moduloId), 'ok', `Tela "${tela.titulo}" apagada.`);
+  });
+
+  // "Ver como o aluno": a mesma partial do link de teste (views/partials/ead-tela.ejs).
+  router.get('/ead/tela/:id/ver', async (req, res) => {
+    const tela = await acharTela(req.params.id);
+    if (!tela) return naoAchou(res);
+    const modulo = await edb.carregarModulo(tela.topico.moduloId);
+    const ctx = eadTeste.contextoDaTela(modulo, await numeroDoModulo(modulo), tela.id, (id) => `/ead/tela/${id}/ver`);
+    res.set('Referrer-Policy', 'strict-origin-when-cross-origin'); // o player do YouTube exige o domínio de origem
+    res.render('admin/ead/tela-ver', { ...ctx, cssExtra: [...CSS, '/ead.css'] });
+  });
+
+  // Posição do módulo como o aluno vê (comuns por ordem; o final por último).
+  async function numeroDoModulo(modulo) {
+    const mods = ordenarFinalPorUltimo(await prisma.moduloEad.findMany({ where: { cursoOnlineId: modulo.cursoOnlineId }, orderBy: edb.POR_ORDEM, select: { id: true, final: true } }));
+    return mods.findIndex((m) => m.id === modulo.id) + 1;
+  }
+
   return router;
 };

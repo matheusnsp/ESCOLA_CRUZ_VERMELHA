@@ -1,0 +1,75 @@
+<%#
+  Uma tela do curso online, como o aluno vê (layout do "Exemplo A" do documento do EAD).
+  Usada pela pré-visualização do painel e pelo link de teste do site; a etapa 2 reaproveita.
+  Locais: cursoNome, moduloNumero, modulo, topicos, tela, topicoIndex, urlTela(id), anterior (url|null),
+          proxima ({ titulo, url } | null), fimUrl (para onde ir depois da última; opcional),
+          fimTitulo (opcional), menuUrl (opcional).
+%>
+<%
+  var dur = tela.videoDuracaoSeg ? Math.floor(tela.videoDuracaoSeg / 60) + ':' + String(tela.videoDuracaoSeg % 60).padStart(2, '0') : '';
+  var seguinte = proxima || (typeof fimUrl !== 'undefined' && fimUrl ? { titulo: (typeof fimTitulo !== 'undefined' && fimTitulo) || 'Fim do módulo', url: fimUrl } : null);
+%>
+<div class="ead-app">
+  <div class="ead-barra">
+    <span class="ead-marca"><span aria-hidden="true">✚</span> <%= cursoNome %></span>
+    <% if (typeof menuUrl !== 'undefined' && menuUrl) { %><a href="<%= menuUrl %>">Menu</a><% } %>
+  </div>
+
+  <div class="ead-modcab">
+    <span class="ead-modnum"><%= moduloNumero %></span>
+    <div><small>MÓDULO <%= moduloNumero %></small><strong><%= modulo.titulo %></strong></div>
+  </div>
+
+  <div class="ead-corpo">
+    <details class="ead-menu" open>
+      <summary>Tópicos deste módulo</summary>
+      <ol>
+        <% topicos.forEach(function (t, ti) { %>
+          <li class="<%= ti === topicoIndex ? 'atual' : '' %>"><span><%= t.titulo %></span>
+            <% if (t.telas.length) { %><ul><% t.telas.forEach(function (x) { %>
+              <li class="<%= x.id === tela.id ? 'atual' : '' %>"><a href="<%= urlTela(x.id) %>"><%= x.titulo %></a></li>
+            <% }) %></ul><% } %>
+          </li>
+        <% }) %>
+      </ol>
+    </details>
+
+    <article class="ead-tela">
+      <p class="ead-topico-rot">TÓPICO <%= topicoIndex + 1 %></p>
+      <h1><%= topicos[topicoIndex].titulo %></h1>
+
+      <section class="ead-ancora <%= tela.fotoUrl ? '' : 'sem-foto' %>">
+        <div><h2><%= tela.titulo %></h2><% if (tela.ancora) { %><p><%= tela.ancora %></p><% } %></div>
+        <% if (tela.fotoUrl) { %><img src="<%= tela.fotoUrl %>" alt="" loading="lazy"><% } %>
+      </section>
+
+      <% if (tela.videoUrl) { %>
+        <section class="ead-video">
+          <div class="ead-video-rot"><strong>▶ Assista</strong><% if (tela.videoTitulo) { %><span><%= tela.videoTitulo %><%= dur ? ' — ' + dur : '' %></span><% } %></div>
+          <div class="ead-video-quadro"><iframe src="<%= tela.videoUrl %>" title="<%= tela.videoTitulo || 'Vídeo' %>" allow="fullscreen; picture-in-picture; encrypted-media" allowfullscreen loading="lazy"></iframe></div>
+        </section>
+      <% } %>
+
+      <% if (tela.revisaoItens && tela.revisaoItens.length) { %>
+        <section class="ead-revisao">
+          <h3>⟲ Revisão rápida<%= tela.revisaoTitulo ? ': ' + tela.revisaoTitulo : '' %></h3>
+          <ol><% tela.revisaoItens.forEach(function (it) { %><li><%= it %></li><% }) %></ol>
+        </section>
+      <% } %>
+
+      <% if (tela.alerta) { %>
+        <section class="ead-alerta" role="note"><strong>ALERTA</strong><p><%= tela.alerta %></p></section>
+      <% } %>
+      <% if (tela.dicaProfissional) { %>
+        <section class="ead-dica"><strong>Dica de profissional</strong><p><%= tela.dicaProfissional %></p></section>
+      <% } %>
+
+      <nav class="ead-nav">
+        <% if (anterior) { %><a class="ead-voltar" href="<%= anterior %>">‹ Voltar</a><% } else { %><span></span><% } %>
+        <% if (seguinte) { %>
+          <a class="ead-seguir" href="<%= seguinte.url %>"><span>A seguir: <strong><%= seguinte.titulo %></strong></span><em>Continuar ›</em></a>
+        <% } %>
+      </nav>
+    </article>
+  </div>
+</div>

@@ -1,0 +1,8 @@
+<%- include('../head', { titulo: tela.titulo + ' · como o aluno vê' }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Como o aluno vê</h1>
+  <span class="ead-acoes"><a href="/ead/tela/<%= tela.id %>/editar" class="adm-link">Editar esta tela</a> · <a href="/ead/modulo/<%= modulo.id %>" class="adm-link">← Módulo</a></span>
+</div>
+<%- include('../../partials/ead-tela', { fimUrl: '/ead/modulo/' + modulo.id, fimTitulo: 'Voltar ao módulo no painel' }) %>
+<%- include('../foot') %>

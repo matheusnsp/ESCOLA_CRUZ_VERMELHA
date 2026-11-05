@@ -33,4 +33,21 @@ async function cursoDoCodigo(codigo) {
   return c ? c.chave.slice(PREFIXO.length) : null;
 }
 
-module.exports = { codigoDoCurso, gerarCodigo, desligar, cursoDoCodigo };
+// O que a tela do aluno precisa saber: onde está (tópico, número do módulo) e para onde ir
+// (anterior e próxima dentro do módulo, pulando tópicos sem tela). Sem banco.
+// modulo = árvore de lib/ead-db.js carregarModulo; urlTela(id) monta o link de cada tela.
+function contextoDaTela(modulo, moduloNumero, telaId, urlTela) {
+  const seq = [];
+  modulo.topicos.forEach((t, ti) => t.telas.forEach((tela) => seq.push({ tela, ti })));
+  const i = seq.findIndex((x) => x.tela.id === telaId);
+  if (i < 0) return null;
+  const prox = seq[i + 1];
+  return {
+    cursoNome: modulo.cursoOnline.curso.nome, moduloNumero, modulo, topicos: modulo.topicos,
+    tela: seq[i].tela, topicoIndex: seq[i].ti, urlTela,
+    anterior: i > 0 ? urlTela(seq[i - 1].tela.id) : null,
+    proxima: prox ? { titulo: prox.tela.titulo, url: urlTela(prox.tela.id) } : null,
+  };
+}
+
+module.exports = { codigoDoCurso, gerarCodigo, desligar, cursoDoCodigo, contextoDaTela };

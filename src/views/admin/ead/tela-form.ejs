@@ -1,0 +1,63 @@
+<% var nova = !tela; var v = valores || {}; var validado = topico.modulo.status === 'VALIDADO'; %>
+<%- include('../head', { titulo: nova ? 'Nova tela' : 'Editar tela' }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= nova ? 'Nova tela' : 'Editar tela' %></h1>
+  <span class="ead-acoes"><% if (!nova) { %><a href="/ead/tela/<%= tela.id %>/ver" class="adm-link"><i class="fa-solid fa-eye"></i> Ver como o aluno</a> · <% } %><a href="/ead/modulo/<%= topico.moduloId %>" class="adm-link">← <%= topico.modulo.titulo %></a></span>
+</div>
+<p class="adm-mut"><%= topico.modulo.cursoOnline.curso.nome %> · tópico “<%= topico.titulo %>”</p>
+<%- include('_mensagens', { ok: null }) %>
+<% if (validado) { %><div class="ead-faixa-validado"><i class="fa-solid fa-triangle-exclamation"></i> Este módulo está validado. Salvar uma mudança o volta para rascunho até ser validado de novo.</div><% } %>
+
+<form method="POST" action="<%= nova ? '/ead/topico/' + topico.id + '/telas/nova' : '/ead/tela/' + tela.id + '/editar' %>?_csrf=<%= csrfToken %>"
+      enctype="multipart/form-data" class="adm-box adm-box-pad"
+      <% if (validado) { %>data-confirmar="Este módulo está validado. Salvar uma mudança o volta para rascunho até ser validado de novo." data-botao="Salvar mesmo assim"<% } %>>
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="adm-form adm-campos">
+    <h2 class="adm-form-secao full">Âncora (a situação + por que importa agora)</h2>
+    <label class="full">Título da tela
+      <input type="text" name="titulo" required maxlength="120" value="<%= v.titulo || '' %>" placeholder="Ex.: Criança no recreio">
+    </label>
+    <label class="full">Texto da âncora (2–3 frases, 60–90 palavras)
+      <textarea name="ancora" rows="4" maxlength="600"><%= v.ancora || '' %></textarea>
+    </label>
+    <label class="full">Foto de cena (JPG, PNG ou WEBP, até 3 MB)
+      <input type="file" name="foto" accept="image/jpeg,image/png,image/webp">
+    </label>
+    <% if (v.fotoUrl) { %><div class="full"><img src="<%= v.fotoUrl %>" alt="" style="max-width:220px;border-radius:10px;display:block;margin-bottom:6px">
+      <label class="check"><input type="checkbox" name="removerFoto"> Remover a foto</label></div><% } %>
+
+    <h2 class="adm-form-secao full">Vídeo (até 3 min)</h2>
+    <label class="full">Link do vídeo (YouTube, inclusive não listado, ou Vimeo)
+      <input type="url" name="videoUrl" maxlength="300" value="<%= v.videoUrl || '' %>" placeholder="https://youtu.be/…">
+    </label>
+    <label>Título do vídeo
+      <input type="text" name="videoTitulo" maxlength="120" value="<%= v.videoTitulo || '' %>" placeholder="Ex.: Como diferenciar o engasgo leve do grave">
+    </label>
+    <label>Duração (min:seg)
+      <input type="text" name="videoDuracao" maxlength="6" value="<%= v.videoDuracao || '' %>" placeholder="2:10" inputmode="numeric">
+    </label>
+
+    <h2 class="adm-form-secao full">Revisão rápida (até 4 frases curtas: viram cartões)</h2>
+    <label class="full">Título da revisão
+      <input type="text" name="revisaoTitulo" maxlength="120" value="<%= v.revisaoTitulo || '' %>" placeholder="Ex.: os 4 sinais">
+    </label>
+    <% [0, 1, 2, 3].forEach(function (i) { %>
+      <label>Cartão <%= i + 1 %>
+        <input type="text" name="revisao<%= i %>" maxlength="200" value="<%= v['revisao' + i] || '' %>">
+      </label>
+    <% }) %>
+
+    <h2 class="adm-form-secao full">Alerta e dica</h2>
+    <label class="full">Alerta (1 exceção ou erro comum)
+      <textarea name="alerta" rows="2" maxlength="400"><%= v.alerta || '' %></textarea>
+    </label>
+    <label class="full">Dica de profissional (opcional, 1 frase)
+      <input type="text" name="dicaProfissional" maxlength="400" value="<%= v.dicaProfissional || '' %>">
+    </label>
+  </div>
+  <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> <%= nova ? 'Criar tela' : 'Salvar' %></button>
+</form>
+
+<%- include('../foot') %>
