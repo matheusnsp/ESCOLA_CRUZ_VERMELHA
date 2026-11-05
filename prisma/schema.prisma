@@ -52,22 +52,24 @@ model Usuario {
 }
 
 model Curso {
-  id                 String     @id @default(uuid())
+  id                 String       @id @default(uuid())
   nome               String
   descricao          String?
   cargaHoraria       Int
   escolaridadeMinima String?
   imagemUrl          String?
-  precoAvista        Decimal    @db.Decimal(10, 2)
-  precoCheio         Decimal    @db.Decimal(10, 2)
-  parcelas           Int        @default(1)
-  valorParcela       Decimal    @db.Decimal(10, 2)
-  taxaMatricula      Decimal?   @db.Decimal(10, 2)
-  ativo              Boolean    @default(true)
-  criadoEm          DateTime   @default(now())
+  precoAvista        Decimal      @db.Decimal(10, 2)
+  precoCheio         Decimal      @db.Decimal(10, 2)
+  parcelas           Int          @default(1)
+  valorParcela       Decimal      @db.Decimal(10, 2)
+  taxaMatricula      Decimal?     @db.Decimal(10, 2)
+  ativo              Boolean      @default(true)
+  criadoEm           DateTime     @default(now())
   descricaoLonga     String?
   faqs               FaqCurso[]
   turmas             Turma[]
+  // EAD: só a relação do Prisma; não gera coluna em "Curso" (a FK fica em "CursoOnline").
+  online             CursoOnline?
 }
 
 model FaqCurso {
@@ -85,7 +87,7 @@ model FaqCurso {
 model Turma {
   id             String      @id @default(uuid())
   cursoId        String
-  inicioPrevisto DateTime @default(now())
+  inicioPrevisto DateTime    @default(now())
   vagas          Int         @default(30)
   minimoAlunos   Int         @default(15)
   status         StatusTurma @default(ABERTA)
@@ -107,51 +109,51 @@ model AulaData {
 }
 
 model Matricula {
-  id                  String             @id @default(uuid())
-  alunoId             String
-  turmaId             String
-  plano               PlanoPagamento
-  forma               FormaPagamento
-  valorCurso          Decimal            @db.Decimal(10, 2)
-  valorTaxaMatricula  Decimal            @default(0) @db.Decimal(10, 2)
-  alimentoEntregue    Boolean            @default(false)
-  alimentoEntreguePor String?
-  alimentoEntregueEm  DateTime?
-  taxaConfirmada      Boolean            @default(false)
-  taxaConfirmadaPor   String?
-  taxaConfirmadaEm    DateTime?
-  statusPagamento     StatusPagamento    @default(PENDENTE)
+  id                     String             @id @default(uuid())
+  alunoId                String
+  turmaId                String
+  plano                  PlanoPagamento
+  forma                  FormaPagamento
+  valorCurso             Decimal            @db.Decimal(10, 2)
+  valorTaxaMatricula     Decimal            @default(0) @db.Decimal(10, 2)
+  alimentoEntregue       Boolean            @default(false)
+  alimentoEntreguePor    String?
+  alimentoEntregueEm     DateTime?
+  taxaConfirmada         Boolean            @default(false)
+  taxaConfirmadaPor      String?
+  taxaConfirmadaEm       DateTime?
+  statusPagamento        StatusPagamento    @default(PENDENTE)
   // avisoPagamentoEm    DateTime?
   // avisoPagamentoPor   String?
   // Prazo pra pagar o curso (3 dias antes do início da turma), calculado
   // no momento em que a taxa é confirmada. Null enquanto a taxa não foi
   // paga, ou se o plano não for PARCELADO (único que separa taxa/curso).
-  prazoPagamentoCurso DateTime?
-  lembreteImediatoEm  DateTime?
-  lembreteVesperaEm   DateTime?
-  nota                Float?
-  situacao            SituacaoAcademica?
-  confirmadaPor       String?
-  confirmadaEm        DateTime?
-  criadoEm            DateTime           @default(now())
-  atualizadoEm        DateTime           @updatedAt
-  avaliacoes          Avaliacao[]
-  aluno               Usuario            @relation(fields: [alunoId], references: [id])
-  turma               Turma              @relation(fields: [turmaId], references: [id])
-  pagamentos          Pagamento[]
+  prazoPagamentoCurso    DateTime?
+  lembreteImediatoEm     DateTime?
+  lembreteVesperaEm      DateTime?
+  nota                   Float?
+  situacao               SituacaoAcademica?
+  confirmadaPor          String?
+  confirmadaEm           DateTime?
+  criadoEm               DateTime           @default(now())
+  atualizadoEm           DateTime           @updatedAt
+  avaliacoes             Avaliacao[]
+  aluno                  Usuario            @relation(fields: [alunoId], references: [id])
+  turma                  Turma              @relation(fields: [turmaId], references: [id])
+  pagamentos             Pagamento[]
   diferencaTransferencia Decimal?
 
   @@unique([alunoId, turmaId])
 }
 
 model Pagamento {
-  id              String          @id @default(uuid())
-  matriculaId     String
+  id          String @id @default(uuid())
+  matriculaId String
 
   // NOVO: distingue se este Pagamento é a taxa de inscrição ou o valor do
   // curso. O webhook usa este campo para saber se deve atualizar
   // Matricula.taxaConfirmada ou Matricula.statusPagamento quando confirma.
-  tipo            TipoPagamento   @default(CURSO)
+  tipo TipoPagamento @default(CURSO)
 
   gateway         String?
   gatewayRef      String?
@@ -279,4 +281,157 @@ enum TipoPagamento {
 enum SituacaoAcademica {
   APROVADO
   REPROVADO
+}
+
+// ─── EAD (curso 100% online) ───────────────────────────────────────────────────────────────────
+// Só tabelas novas: nada aqui acrescenta coluna em tabela que já existe (ver lib/extras.js, 30/09).
+// Árvore: CursoOnline → ModuloEad → TopicoEad → (TelaEad, PerguntaEad → AlternativaEad)
+//                               └→ CenarioEad → DecisaoCenario → OpcaoDecisao  (só no módulo final)
+
+enum StatusModuloEad {
+  RASCUNHO
+  VALIDADO
+}
+
+enum TipoPerguntaEad {
+  UNICA
+  MULTIPLA
+  VF
+}
+
+model CursoOnline {
+  id             String      @id @default(uuid())
+  cursoId        String      @unique
+  notaMinimaQuiz Int         @default(80)
+  criadoEm       DateTime    @default(now())
+  atualizadoEm   DateTime    @updatedAt
+  // Restrict: apagar o curso não leva o conteúdo junto por acidente (POST /cursos/:id/excluir avisa).
+  curso          Curso       @relation(fields: [cursoId], references: [id], onDelete: Restrict)
+  modulos        ModuloEad[]
+}
+
+model ModuloEad {
+  id               String          @id @default(uuid())
+  cursoOnlineId    String
+  ordem            Int             @default(0)
+  titulo           String
+  minutosEstimados Int             @default(0)
+  introducao       String?
+  fotoIntroUrl     String?
+  final            Boolean         @default(false)
+  status           StatusModuloEad @default(RASCUNHO)
+  validadoPor      String?
+  validadoEm       DateTime?
+  criadoEm         DateTime        @default(now())
+  atualizadoEm     DateTime        @updatedAt
+  cursoOnline      CursoOnline     @relation(fields: [cursoOnlineId], references: [id], onDelete: Cascade)
+  topicos          TopicoEad[]
+  cenarios         CenarioEad[]
+
+  @@index([cursoOnlineId])
+}
+
+model TopicoEad {
+  id           String        @id @default(uuid())
+  moduloId     String
+  ordem        Int           @default(0)
+  titulo       String
+  criadoEm     DateTime      @default(now())
+  atualizadoEm DateTime      @updatedAt
+  modulo       ModuloEad     @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+  telas        TelaEad[]
+  perguntas    PerguntaEad[]
+
+  @@index([moduloId])
+}
+
+model TelaEad {
+  id               String    @id @default(uuid())
+  topicoId         String
+  ordem            Int       @default(0)
+  titulo           String
+  ancora           String?
+  fotoUrl          String?
+  videoUrl         String?
+  videoTitulo      String?
+  videoDuracaoSeg  Int?
+  revisaoTitulo    String?
+  revisaoItens     String[]
+  alerta           String?
+  dicaProfissional String?
+  criadoEm         DateTime  @default(now())
+  atualizadoEm     DateTime  @updatedAt
+  topico           TopicoEad @relation(fields: [topicoId], references: [id], onDelete: Cascade)
+
+  @@index([topicoId])
+}
+
+model PerguntaEad {
+  id           String           @id @default(uuid())
+  topicoId     String
+  tipo         TipoPerguntaEad  @default(UNICA)
+  enunciado    String
+  feedback     String?
+  ativa        Boolean          @default(true)
+  criadoEm     DateTime         @default(now())
+  atualizadoEm DateTime         @updatedAt
+  topico       TopicoEad        @relation(fields: [topicoId], references: [id], onDelete: Cascade)
+  alternativas AlternativaEad[]
+
+  @@index([topicoId])
+}
+
+model AlternativaEad {
+  id         String      @id @default(uuid())
+  perguntaId String
+  ordem      Int         @default(0)
+  texto      String
+  correta    Boolean     @default(false)
+  criadoEm   DateTime    @default(now())
+  pergunta   PerguntaEad @relation(fields: [perguntaId], references: [id], onDelete: Cascade)
+
+  @@index([perguntaId])
+}
+
+model CenarioEad {
+  id               String           @id @default(uuid())
+  moduloId         String
+  ordem            Int              @default(0)
+  titulo           String
+  cena             String?
+  fotoUrl          String?
+  videoUrl         String?
+  tempoSugeridoSeg Int              @default(240)
+  criadoEm         DateTime         @default(now())
+  atualizadoEm     DateTime         @updatedAt
+  modulo           ModuloEad        @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+  decisoes         DecisaoCenario[]
+
+  @@index([moduloId])
+}
+
+model DecisaoCenario {
+  id           String         @id @default(uuid())
+  cenarioId    String
+  ordem        Int            @default(0)
+  pergunta     String
+  criadoEm     DateTime       @default(now())
+  atualizadoEm DateTime       @updatedAt
+  cenario      CenarioEad     @relation(fields: [cenarioId], references: [id], onDelete: Cascade)
+  opcoes       OpcaoDecisao[]
+
+  @@index([cenarioId])
+}
+
+model OpcaoDecisao {
+  id        String         @id @default(uuid())
+  decisaoId String
+  ordem     Int            @default(0)
+  texto     String
+  correta   Boolean        @default(false)
+  feedback  String?
+  criadoEm  DateTime       @default(now())
+  decisao   DecisaoCenario @relation(fields: [decisaoId], references: [id], onDelete: Cascade)
+
+  @@index([decisaoId])
 }
