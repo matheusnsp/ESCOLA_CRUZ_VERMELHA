@@ -47,6 +47,9 @@ describe('/ead-teste: aluno', { skip: temBanco ? false : 'sem DATABASE_URL local
   });
   after(async () => {
     server.close();
+    // certificados emitidos nos testes da etapa 3 (número e Redação ficam no LogAuditoria)
+    const acsTeste = await prisma.alunoCursoEad.findMany({ where: { cursoOnlineId: co.id }, select: { id: true } });
+    await prisma.logAuditoria.deleteMany({ where: { alvoId: { in: acsTeste.map((x) => x.id) } } });
     await prisma.usuario.deleteMany({ where: { id: { in: [ana.id, bia.id] } } });
     await eadTeste.desligar(co.id);
     await prisma.cursoOnline.delete({ where: { id: co.id } });
@@ -167,5 +170,32 @@ describe('/ead-teste: aluno', { skip: temBanco ? false : 'sem DATABASE_URL local
     assert.equal(g2.status, 200);
     assert.match(await g2.text(), /Em preparação/);
     await prisma.cenarioEad.delete({ where: { id: vazio.id } });
+  });
+
+  test('[etapa 3] certificado e cartão: sem login vai ao login; sem concluir volta à capa sem emitir', async () => {
+    assert.match((await req(`${base}/certificado`, null)).headers.get('location') || '', /\/login$/);
+    assert.match((await req(`${base}/cartao-de-bolso.pdf`, null)).headers.get('location') || '', /\/login$/);
+    const caio = await prisma.usuario.create({ data: { nome: 'Caio Rota', email: `caio-rota-${Date.now()}@teste.local`, papel: 'ALUNO' } });
+    try {
+      for (const u of ['certificado', 'cartao-de-bolso.pdf']) {
+        const r = await req(`${base}/${u}`, caio);
+        assert.equal(r.status, 302); assert.match(r.headers.get('location'), new RegExp(`/ead-teste/${codigo}$`));
+      }
+      const ac = await prisma.alunoCursoEad.findFirst({ where: { usuarioId: caio.id } });
+      assert.equal(await prisma.logAuditoria.count({ where: { id: `certificado-${ac.id}` } }), 0);
+    } finally { await prisma.usuario.delete({ where: { id: caio.id } }); }
+  });
+
+  test('[etapa 3] concluído: certificado com selo e Livro; cartão em PDF para baixar', async () => {
+    const r = await req(`${base}/certificado`, ana);
+    assert.equal(r.status, 200);
+    const html = await r.text();
+    assert.match(html, /CURSO ONLINE/); assert.match(html, /Ana Rota/); assert.match(html, /Livro/);
+    assert.match(html, /Baixar cartão de bolso/);
+    const c = await req(`${base}/cartao-de-bolso.pdf`, ana);
+    assert.equal(c.status, 200);
+    assert.match(c.headers.get('content-type'), /application\/pdf/);
+    assert.match(c.headers.get('content-disposition'), /attachment; filename="cartao-de-bolso-/);
+    assert.equal(Buffer.from(await c.arrayBuffer()).subarray(0, 5).toString(), '%PDF-');
   });
 });

@@ -12,6 +12,7 @@ const asyncHandler = require('../lib/asyncHandler');
 const ead = require('../lib/ead');
 const edb = require('../lib/ead-db');
 const eadTeste = require('../lib/ead-teste');
+const { gerarCartao } = require('../lib/ead-cartao');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 
 const CSS = ['/ead-admin.css'];
@@ -150,6 +151,16 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     await eadTeste.gerarCodigo(co.id);
     await auditar(req, tinha ? 'EAD_LINK_TESTE_TROCOU' : 'EAD_LINK_TESTE_GEROU', 'CursoOnline', co.id, null);
     voltar(res, `/ead/curso/${co.id}`, 'ok', tinha ? 'Link trocado: o anterior não abre mais.' : 'Link de teste criado.');
+  });
+
+  // Prévia do cartão de bolso (etapa 3): o mesmo PDF que o aluno baixa ao concluir.
+  router.get('/ead/curso/:id/cartao-de-bolso.pdf', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co) return naoAchou(res);
+    const { buffer, nomeArquivo } = await gerarCartao(co.id);
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', `attachment; filename="${nomeArquivo}"`);
+    res.send(buffer);
   });
 
   // ─── Módulos ──────────────────────────────────────────────────────────────────────────────────

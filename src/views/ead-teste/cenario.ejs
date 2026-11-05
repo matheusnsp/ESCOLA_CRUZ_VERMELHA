@@ -87,7 +87,11 @@
             <div><small>Escolhas erradas</small><b><%= feito.erros %></b><span>de <%= total %> decisão(ões)</span></div>
           </div>
           <p><%= feito.tempoSeg > sug ? 'Passou do tempo sugerido: isso não reprova. Na vida real, cada segundo conta; vale refazer para ganhar agilidade.' : 'Dentro do tempo sugerido. Muito bem.' %></p>
-          <% if (proximoCenario) { %>
+          <% if (ctx.estado.concluido) { %>
+            <p>Você concluiu o curso. Seu certificado e o cartão de bolso estão prontos.</p>
+            <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= base %>/certificado">Ver meu certificado →</a>
+            <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/cartao-de-bolso.pdf">Baixar cartão de bolso (PDF)</a>
+          <% } else if (proximoCenario) { %>
             <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= base %>/cenario/<%= proximoCenario.id %>">Próximo cenário: <%= proximoCenario.titulo %> →</a>
           <% } else { %>
             <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= base %>">Voltar ao menu do curso →</a>

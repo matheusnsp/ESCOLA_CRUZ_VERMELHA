@@ -24,8 +24,11 @@
         <p class="ea-kicker"><%= ctx.estado.concluido ? 'Curso concluído' : 'Seu progresso' %></p>
         <h2><%= ctx.estado.percentual %>% concluído<span style="color:var(--r)">.</span></h2>
         <span class="ea-progresso-trilho ea-progresso-grande"><span style="width: <%= ctx.estado.percentual %>%"></span></span>
-        <p><%= ctx.estado.concluido ? 'Você terminou todos os módulos. O certificado entra na próxima etapa da plataforma.' : (ctx.estado.sequencial ? 'Nos primeiros 7 dias os módulos abrem em sequência. Depois, na ordem que você quiser.' : 'Os módulos estão liberados na ordem que você quiser; o final abre quando os outros terminarem.') %></p>
-        <% if (!ctx.estado.concluido) { %><a class="ea-pilula ea-pilula-red" href="<%= continuarUrl %>">Continuar de onde parou →</a><% } %>
+        <p><%= ctx.estado.concluido ? 'Você terminou todos os módulos. Seu certificado e o cartão de bolso estão prontos.' : (ctx.estado.sequencial ? 'Nos primeiros 7 dias os módulos abrem em sequência. Depois, na ordem que você quiser.' : 'Os módulos estão liberados na ordem que você quiser; o final abre quando os outros terminarem.') %></p>
+        <% if (!ctx.estado.concluido) { %><a class="ea-pilula ea-pilula-red" href="<%= continuarUrl %>">Continuar de onde parou →</a><% } else { %>
+        <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= base %>/certificado">Ver meu certificado →</a>
+        <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/cartao-de-bolso.pdf">Baixar cartão de bolso (PDF)</a>
+        <% } %>
       <% } else { %>
         <p class="ea-kicker">Comece agora</p>
         <h2><%= primeiro ? 'Módulo 1: ' + primeiro.titulo : 'Em preparação' %></h2>

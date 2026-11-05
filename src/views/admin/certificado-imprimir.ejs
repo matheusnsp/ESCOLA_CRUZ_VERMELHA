@@ -12,6 +12,17 @@
 </head>
 <body>
   <%# Layout do modelo em Word da escola (IMPRIMIR_PULSÃO.docx): A4 deitado, frente e verso. %>
+<% if (typeof barraAluno !== 'undefined' && barraAluno) { -%>
+  <%# Aluno do curso online (link de teste, etapa 3 do EAD): baixar o PDF, o cartão e voltar. %>
+  <header class="cert-barra cert-barra-aluno">
+    <div>
+      <b>Seu certificado</b>
+      <small>Para baixar em PDF: clique em "Baixar PDF" e escolha "Salvar como PDF". Use papel A4 deitado.</small>
+      <a href="<%= barraAluno.cartaoUrl %>">Baixar cartão de bolso</a> · <a href="<%= barraAluno.voltarUrl %>">Voltar ao curso</a>
+    </div>
+    <button type="button" id="certImprimir">Baixar PDF / imprimir</button>
+  </header>
+<% } else { -%>
   <header class="cert-barra">
     <div>
       <b><%= lista.length %> <%= lista.length === 1 ? 'certificado' : 'certificados' %></b> · <%= lista.length * 2 %> páginas (frente e verso)
@@ -24,6 +35,7 @@
     </div>
     <button type="button" id="certImprimir">Imprimir</button>
   </header>
+<% } -%>
 
   <% lista.forEach(function (c) { %>
     <section class="cert-pagina cert-frente">
@@ -83,7 +95,11 @@
           <p>Ministrado pela Cruz Vermelha Brasileira<br>Filial Rio de Janeiro</p>
           <p>Data: <%= c.periodo.curta %><br>Carga Horária: <%= c.cargaHoraria %></p>
           <p><b>Aluno</b><br><%= c.nome %><% if (c.documento) { %><br><%= c.documento.tipo %> <%= c.documento.numero %><% } %></p>
+<% if (c.online) { -%>
+          <p><b>Modalidade</b><br>A distância (100% online)</p>
+<% } else { -%>
           <p><b>Instrutor</b><br><%= c.instrutorNome || '—' %></p>
+<% } -%>
           <p>Certificado Registrado no<br><b>Livro</b> Nº <%= c.livro %><br><b>Registro:</b> Nº <%= c.registro %></p>
           <% if (c.validade) { %><p><b><%= c.validade %></b></p><% } %>
           <% if (c.verificacao) { %><p>Código de verificação<br><b><%= c.verificacao.codigo %></b></p><% } %>

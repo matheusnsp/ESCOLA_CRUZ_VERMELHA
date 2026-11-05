@@ -7,7 +7,11 @@
       <span class="ea-resultado-icone" aria-hidden="true"><%= passou ? '✓' : '↻' %></span>
       <p class="ea-kicker"><%= quiz ? 'Teste rápido' : 'Pré-teste' %></p>
       <h1 class="ea-titulo">Você acertou <%= t.acertos %> de <%= t.total %><span>.</span></h1>
-      <% if (quiz && passou) { %>
+      <% if (passou && typeof cursoConcluido !== 'undefined' && cursoConcluido) { %>
+        <p>Você concluiu o curso. Seu certificado e o cartão de bolso estão prontos.</p>
+        <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= base %>/certificado">Ver meu certificado →</a>
+        <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/cartao-de-bolso.pdf">Baixar cartão de bolso (PDF)</a>
+      <% } else if (quiz && passou) { %>
         <p>Tópico concluído. Siga para o próximo passo.</p>
         <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= seguirUrl %>">Seguir →</a>
       <% } else if (quiz) { %>

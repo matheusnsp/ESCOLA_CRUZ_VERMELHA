@@ -14,6 +14,20 @@ const { estadoDoCurso } = require('../lib/ead-progresso');
 const { cadastroIncompleto } = require('../lib/ead-conta');
 const { precisaTrocarSenha } = require('../lib/seguranca');
 const { requireLogin } = require('../middleware/auth');
+const { emitirCertificadoEad } = require('../lib/ead-certificado');
+const { gerarCartao } = require('../lib/ead-cartao');
+
+// Etapa 3: ao concluir o curso, emite o certificado (número, Redação, e-mail) SEM esperar.
+function dispararEmissao(alunoCursoId, req) {
+  const site = (process.env.APP_URL || 'http://localhost:3000').replace(/\/+$/, '');
+  const link = `${site}/ead-teste/${req.params.codigo}/certificado`;
+  emitirCertificadoEad(alunoCursoId, { enviarEmail: true, linkCertificado: link, documentoAluno: req.app.locals.documentoAluno })
+    .catch((e) => console.error('[EAD] emissão do certificado:', e.message));
+}
+async function concluirCurso(alunoCursoId, req) {
+  await pdb.marcarCursoConcluido(alunoCursoId);
+  dispararEmissao(alunoCursoId, req);
+}
 
 const router = express.Router();
 
@@ -42,6 +56,11 @@ async function contexto(req, co, curso) {
   const alunoCurso = await pdb.garantirAlunoCurso(usuarioId, co.id);
   const progresso = await pdb.carregarProgresso(alunoCurso.id);
   const estado = estadoDoCurso(curso, progresso, new Date());
+  // Curso que termina numa tela vista (ou cujo certificado não saiu): conclui e emite aqui.
+  if (estado.concluido && !alunoCurso.concluidoEm) {
+    await concluirCurso(alunoCurso.id, req);
+    alunoCurso.concluidoEm = new Date();
+  }
   const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } });
   const avisos = { senha: await precisaTrocarSenha(usuarioId), cadastro: cadastroIncompleto(usuario) };
   return { alunoCurso, progresso, estado, avisos, usuario };
@@ -194,11 +213,11 @@ router.get('/ead-teste/:codigo/tentativa/:id', comCurso(async (req, res, co, bas
   }
   // Resultado: recalcula o estado (o quiz ou o pré-teste pode ter concluído o módulo ou o curso).
   const estado = estadoDoCurso(curso, await pdb.carregarProgresso(ctx.alunoCurso.id), new Date());
-  if (estado.concluido) await pdb.marcarCursoConcluido(ctx.alunoCurso.id);
+  if (estado.concluido) await concluirCurso(ctx.alunoCurso.id, req);
   const primeiraDoTopico = info.topico && info.topico.telas[0];
   const primeiraDoModulo = info.modulo.topicos.flatMap((x) => x.telas)[0];
   res.render('ead-teste/resultado', {
-    co, base, ctx, t, ...info, notaMinima: co.notaMinimaQuiz,
+    co, base, ctx, t, ...info, notaMinima: co.notaMinimaQuiz, cursoConcluido: estado.concluido,
     seguirUrl: urlDoPasso(co, base, estado.proximo),
     reverUrl: primeiraDoTopico ? `${base}/tela/${primeiraDoTopico.id}` : `${base}/modulo/${info.modulo.id}`,
     moduloUrl: primeiraDoModulo ? `${base}/tela/${primeiraDoModulo.id}` : `${base}/modulo/${info.modulo.id}`,
@@ -264,7 +283,7 @@ router.get('/ead-teste/:codigo/cenario/:cenarioId', comCurso(async (req, res, co
     feito = await pdb.acertarCenarioSemDecisao(feito, d.cenario.decisoes.length);
     if (!antes && feito.concluidoEm) {
       const estado = estadoDoCurso(curso, await pdb.carregarProgresso(d.ctx.alunoCurso.id), new Date());
-      if (estado.concluido) await pdb.marcarCursoConcluido(d.ctx.alunoCurso.id);
+      if (estado.concluido) await concluirCurso(d.ctx.alunoCurso.id, req);
     }
   }
   renderCenario(res, { ...d, co, base, feito, escolha: null });
@@ -284,13 +303,38 @@ router.post('/ead-teste/:codigo/cenario/:cenarioId/escolher', comCurso(async (re
   if (r.ignorada) return res.redirect(`${base}/cenario/${d.cenario.id}`);
   if (r.fechou) {
     const estado = estadoDoCurso(curso, await pdb.carregarProgresso(d.ctx.alunoCurso.id), new Date());
-    if (estado.concluido) await pdb.marcarCursoConcluido(d.ctx.alunoCurso.id);
+    if (estado.concluido) await concluirCurso(d.ctx.alunoCurso.id, req);
   }
   // Mostra a fala do instrutor para a opção escolhida, na própria decisão.
   res.render('ead-teste/cenario', {
     ...d, co, base, feito: r.feito, decisao: r.decisao, total: d.cenario.decisoes.length, agora: new Date(), emAndamento: true, jogada: null,
     escolha: { opcao: r.opcao, certa: r.certa, fechou: r.fechou }, proximoCenario: null,
   });
+}));
+
+// ─── Certificado e cartão de bolso (etapa 3) ─────────────────────────────────────────────────────
+router.get('/ead-teste/:codigo/certificado', comCurso(async (req, res, co, base, curso) => {
+  const ctx = await contexto(req, co, curso);
+  if (!ctx) return pedirLogin(req, res, base);
+  if (!ctx.estado.concluido) return res.redirect(base);
+  const r = await emitirCertificadoEad(ctx.alunoCurso.id, { documentoAluno: req.app.locals.documentoAluno });
+  if (!r) return res.redirect(base);
+  if (r.avisoRedacao) console.warn('[EAD] certificado sem QR:', r.avisoRedacao);
+  res.render('admin/certificado-imprimir', {
+    lista: [{ id: ctx.alunoCurso.id, ...r.dados, verificacao: r.verificacao }],
+    turma: { curso: { nome: co.curso.nome } }, avisoRedacao: null,
+    barraAluno: { voltarUrl: base, cartaoUrl: `${base}/cartao-de-bolso.pdf` },
+  });
+}));
+
+router.get('/ead-teste/:codigo/cartao-de-bolso.pdf', comCurso(async (req, res, co, base, curso) => {
+  const ctx = await contexto(req, co, curso);
+  if (!ctx) return pedirLogin(req, res, base);
+  if (!ctx.estado.concluido) return res.redirect(base);
+  const { buffer, nomeArquivo } = await gerarCartao(co.id);
+  res.set('Content-Type', 'application/pdf');
+  res.set('Content-Disposition', `attachment; filename="${nomeArquivo}"`);
+  res.send(buffer);
 }));
 
 // Qualquer outro caminho abaixo de /ead-teste: 404 aqui mesmo, sem cair na contagem de visitas
