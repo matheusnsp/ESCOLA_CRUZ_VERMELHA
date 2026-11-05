@@ -64,6 +64,19 @@
   </table></div>
   <% } %>
 </div>
+<div class="adm-box adm-espaco">
+  <div class="ead-topico-cab"><h3>Telas com mais dúvidas</h3><a class="adm-link" href="/ead/duvidas?curso=<%= co.id %>">Abrir a central de dúvidas →</a></div>
+  <% if (!d.duvidasPorTela.length) { %><p class="ead-vazio">Nenhuma dúvida mandada ainda.</p><% } else { %>
+  <div class="ead-tabela-rolagem"><table class="adm-table">
+    <thead><tr><th>Tela</th><th>Módulo</th><th class="centro">Dúvidas</th><th></th></tr></thead>
+    <tbody>
+      <% d.duvidasPorTela.forEach(function (t) { %>
+        <tr><td><%= t.titulo %></td><td><%= t.modulo %></td><td class="centro"><%= t.total %></td><td><a class="adm-btn adm-btn-out" href="/ead/tela/<%= t.telaId %>/ver">Ver a tela</a></td></tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
 <p class="adm-nota"><i class="fa-solid fa-circle-info"></i> O % de erro soma testes rápidos e pré-testes. Cenários: só as jogadas concluídas; "erros por jogada" é a média de escolhas erradas até acertar tudo.</p>
 
 <%- include('../foot') %>

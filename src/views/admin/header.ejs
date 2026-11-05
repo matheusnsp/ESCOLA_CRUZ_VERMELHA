@@ -19,6 +19,7 @@
   <nav class="adm-nav">
   <% if (modo === 'online') { %>
     <a href="/ead" class="<%= secaoAtiva === 'ead' ? 'on' : '' %>"><i class="fa-solid fa-laptop-medical"></i> Cursos online</a>
+    <a href="/ead/duvidas" class="<%= secaoAtiva === 'duvidas' ? 'on' : '' %>"><i class="fa-solid fa-comments"></i> Dúvidas<% if (typeof duvidasAguardando === 'number' && duvidasAguardando > 0) { %> <span class="adm-badge" title="Aguardando resposta"><%= duvidasAguardando %></span><% } %></a>
   <% } else { %>
     <a href="/" class="<%= secaoAtiva === 'home' ? 'on' : '' %>"><i class="fa-solid fa-gauge"></i> Painel</a>
     <a href="/cursos" class="<%= secaoAtiva === 'cursos' ? 'on' : '' %>"><i class="fa-solid fa-book"></i> Cursos</a>

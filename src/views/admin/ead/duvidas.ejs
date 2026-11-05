@@ -1,0 +1,94 @@
+<%
+  var quando = function (d) { return d ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; };
+  var ABAS = [['AGUARDANDO', 'Aguardando'], ['RESPONDIDA', 'Respondidas'], ['DESCARTADA', 'Descartadas'], ['OCULTA', 'Fora do ar']];
+  var qCurso = cursoOnlineId ? '&curso=' + cursoOnlineId : '';
+  var volta = '/ead/duvidas?status=' + status + qCurso;
+%>
+<%- include('../head', { titulo: 'Dúvidas dos alunos' }) %>
+<%- include('../header', { ativo: 'duvidas' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Dúvidas dos alunos</h1>
+  <span class="adm-mut">Respondidas aparecem para os outros alunos da aula, com o primeiro nome e a inicial.</span>
+</div>
+<%- include('_mensagens') %>
+
+<nav class="adm-abas" aria-label="Situação">
+  <% ABAS.forEach(function (a) { %>
+    <a href="/ead/duvidas?status=<%= a[0] %><%= qCurso %>" class="adm-aba <%= status === a[0] ? 'on' : '' %>"><%= a[1] %> <span class="adm-badge-sutil"><%= contas[a[0]] || 0 %></span></a>
+  <% }) %>
+</nav>
+
+<form method="GET" action="/ead/duvidas" class="ead-filtro-curso">
+  <input type="hidden" name="status" value="<%= status %>">
+  <label>Curso
+    <select name="curso">
+      <option value="">Todos os cursos online</option>
+      <% cursos.forEach(function (c) { %><option value="<%= c.id %>" <%= cursoOnlineId === c.id ? 'selected' : '' %>><%= c.curso.nome %></option><% }) %>
+    </select>
+  </label>
+  <button type="submit" class="adm-btn adm-btn-out">Filtrar</button>
+</form>
+
+<% if (!lista.length) { %>
+  <div class="adm-box adm-box-pad"><p class="ead-vazio"><%= status === 'AGUARDANDO' ? 'Nenhuma dúvida esperando resposta.' : 'Nada aqui.' %></p></div>
+<% } %>
+
+<% lista.forEach(function (l) { var d = l.duvida; %>
+  <article class="adm-box adm-box-pad adm-espaco ead-duvida-card" id="d-<%= d.id %>">
+    <header class="ead-duvida-cab">
+      <div>
+        <strong><%= l.aluno.nome %></strong> <span class="adm-mut"><%= l.aluno.email %></span>
+        <span class="ead-selo <%= l.origem === 'Pago' ? 'validado' : 'final' %>"><%= l.origem %></span>
+      </div>
+      <small class="adm-mut"><%= quando(d.criadoEm) %></small>
+    </header>
+    <p class="ead-duvida-onde">
+      <%= l.curso %> · <%= l.modulo %> · <a href="/ead/tela/<%= l.tela.id %>/ver" target="_blank" rel="noopener"><%= l.tela.titulo %> ↗</a>
+    </p>
+    <p class="ead-duvida-texto"><%= d.texto %></p>
+
+    <% if (d.resposta && d.status !== 'AGUARDANDO') { %>
+      <div class="ead-duvida-resposta">
+        <small>Resposta<%= d.respondidaEm ? ' · ' + quando(d.respondidaEm) : '' %></small>
+        <p class="ead-duvida-texto"><%= d.resposta %></p>
+      </div>
+    <% } %>
+    <% if (d.status === 'DESCARTADA' && d.motivoDescarte) { %><p class="adm-mut">Motivo (interno): <%= d.motivoDescarte %></p><% } %>
+
+    <div class="ead-duvida-acoes">
+      <% if (d.status === 'AGUARDANDO') { %>
+        <form method="POST" action="/ead/duvidas/<%= d.id %>/responder" class="ead-duvida-responder">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="volta" value="<%= volta %>">
+          <label>Resposta<textarea name="resposta" rows="3" maxlength="2000" required placeholder="A resposta vai para a aula e por e-mail para o aluno"></textarea></label>
+          <button type="submit" class="adm-btn"><i class="fa-solid fa-reply"></i> Responder</button>
+        </form>
+        <form method="POST" action="/ead/duvidas/<%= d.id %>/descartar" class="ead-duvida-descartar" data-confirmar="Descartar esta dúvida? Ela não aparece para os outros alunos; o autor vê &quot;não publicada&quot;." data-botao="Descartar">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="volta" value="<%= volta %>">
+          <label>Motivo (opcional, só aqui)<input type="text" name="motivo" maxlength="500" placeholder="Ex.: repetida, fora do assunto"></label>
+          <button type="submit" class="adm-btn adm-btn-out"><i class="fa-solid fa-ban"></i> Descartar</button>
+        </form>
+      <% } else if (d.status === 'RESPONDIDA') { %>
+        <details class="ead-duvida-editar">
+          <summary>Corrigir a resposta</summary>
+          <form method="POST" action="/ead/duvidas/<%= d.id %>/editar">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="volta" value="<%= volta %>">
+            <textarea name="resposta" rows="3" maxlength="2000" required><%= d.resposta %></textarea>
+            <button type="submit" class="adm-btn adm-btn-out">Salvar correção</button>
+          </form>
+        </details>
+        <form method="POST" action="/ead/duvidas/<%= d.id %>/ocultar" data-confirmar="Tirar esta dúvida do ar? Ela some da aula para todos, inclusive para o autor." data-botao="Tirar do ar">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="volta" value="<%= volta %>">
+          <button type="submit" class="adm-btn adm-btn-out"><i class="fa-solid fa-eye-slash"></i> Tirar do ar</button>
+        </form>
+      <% } else { %>
+        <form method="POST" action="/ead/duvidas/<%= d.id %>/reabrir">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="volta" value="<%= volta %>">
+          <button type="submit" class="adm-btn adm-btn-out"><i class="fa-solid fa-rotate-left"></i> Voltar para Aguardando</button>
+        </form>
+      <% } %>
+    </div>
+  </article>
+<% }) %>
+
+<%- include('../foot') %>

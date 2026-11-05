@@ -15,6 +15,7 @@ const { transacao } = require('../lib/transacao');
 const eadTeste = require('../lib/ead-teste');
 const publicacao = require('../lib/ead-publicacao');
 const relatorios = require('../lib/ead-relatorios');
+const duv = require('../lib/ead-duvidas');
 const { emitirCertificadoEad } = require('../lib/ead-certificado');
 const { gerarCartao } = require('../lib/ead-cartao');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
@@ -34,6 +35,11 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
 
   // Tudo do EAD: só DEV, e o menu do painel no modo Online.
   router.use('/ead', requireDev, (req, res, next) => { res.locals.modoPainel = 'online'; res.locals.cssExtra = CSS; next(); });
+  // Número de dúvidas aguardando resposta, para o menu do modo Online (etapa 5). Falhar não derruba a página.
+  router.use('/ead', (req, res, next) => {
+    if (req.method !== 'GET') return next();
+    duv.contarAguardando().then((n) => { res.locals.duvidasAguardando = n; next(); }, () => next());
+  });
 
   const ator = (req) => req.session.usuarioId || 'SISTEMA';
   const voltar = (res, url, tipo, msg) => res.redirect(url + (url.includes('?') ? '&' : '?') + tipo + '=' + encodeURIComponent(msg));
@@ -203,6 +209,43 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.set('Content-Disposition', `attachment; filename="ead-${nome}.xlsx"`);
     res.send(await relatorios.planilhaDoCurso(co.id));
+  });
+
+  // ─── Central de dúvidas (etapa 5) ─────────────────────────────────────────────────────────────
+  const STATUS_DUVIDA = ['AGUARDANDO', 'RESPONDIDA', 'DESCARTADA', 'OCULTA'];
+  router.get('/ead/duvidas', async (req, res) => {
+    const status = STATUS_DUVIDA.includes(req.query.status) ? req.query.status : 'AGUARDANDO';
+    const cursoOnlineId = edb.ehId(req.query.curso) ? req.query.curso : null;
+    const [lista, cursos, contagens] = await Promise.all([
+      duv.listarCentral({ status, cursoOnlineId }),
+      prisma.cursoOnline.findMany({ select: { id: true, curso: { select: { nome: true } } }, orderBy: { criadoEm: 'asc' } }),
+      prisma.duvidaEad.groupBy({ by: ['status'], where: cursoOnlineId ? { alunoCurso: { cursoOnlineId } } : {}, _count: { _all: true } }),
+    ]);
+    const contas = Object.fromEntries(contagens.map((c) => [c.status, c._count._all]));
+    res.render('admin/ead/duvidas', { lista, cursos, status, cursoOnlineId, contas, ...flash(req) });
+  });
+
+  const MSG_ACAO = {
+    responder: 'Resposta publicada e e-mail enviado.', descartar: 'Dúvida descartada.', editar: 'Resposta corrigida.',
+    ocultar: 'Dúvida tirada do ar.', reabrir: 'Dúvida de volta para Aguardando.',
+  };
+  const ERRO_ACAO = {
+    vazia: 'Escreva a resposta.', longa: 'A resposta pode ter até 2000 caracteres.', ja_respondida: 'Essa dúvida já tinha sido respondida.',
+    nao_achou: 'Dúvida não encontrada.', status: 'Essa ação não vale para a situação atual da dúvida.',
+  };
+  router.post('/ead/duvidas/:id/:acao(responder|descartar|editar|ocultar|reabrir)', async (req, res) => {
+    const { id, acao } = req.params;
+    const quem = ator(req);
+    let r;
+    if (acao === 'responder') {
+      const [linha] = edb.ehId(id) ? (await duv.listarCentral({ status: 'AGUARDANDO' })).filter((x) => x.duvida.id === id) : [];
+      r = await duv.responder(id, req.body.resposta, quem, { linkBase: linha ? linha.linkBase : null });
+    } else if (acao === 'descartar') r = await duv.descartar(id, req.body.motivo, quem);
+    else if (acao === 'editar') r = await duv.editarResposta(id, req.body.resposta, quem);
+    else if (acao === 'ocultar') r = await duv.tirarDoAr(id, quem);
+    else r = await duv.reabrir(id, quem);
+    const volta = String(req.body.volta || '').startsWith('/ead/duvidas') ? req.body.volta : '/ead/duvidas';
+    voltar(res, volta, r.ok ? 'ok' : 'erro', r.ok ? MSG_ACAO[acao] : ERRO_ACAO[r.erro] || 'Não foi possível.');
   });
 
   // ─── Venda no site (etapa 4) ──────────────────────────────────────────────────────────────────

@@ -129,7 +129,7 @@ const pct = (parte, total) => (total ? Math.round((parte / total) * 100) : 0);
 // médio, % acima do tempo sugerido, erros médios; só os concluídos) e pré-teste por módulo.
 // Erros por decisão não existem no banco (o cenário guarda só o total da jogada): ficam os erros médios.
 async function desempenhoDoCurso(cursoOnlineId) {
-  if (!ehId(cursoOnlineId)) return { perguntas: [], cenarios: [], preTestes: [] };
+  if (!ehId(cursoOnlineId)) return { perguntas: [], cenarios: [], preTestes: [], duvidasPorTela: [] };
   const [tentativas, perguntas, cenarios, feitos, modulos] = await Promise.all([
     prisma.tentativaEad.findMany({ where: { alunoCurso: { cursoOnlineId } }, select: { tipo: true, moduloId: true, aprovado: true, concluidaEm: true, respostas: true } }),
     prisma.perguntaEad.findMany({ where: { topico: { modulo: { cursoOnlineId } } }, select: { id: true, enunciado: true, topico: { select: { titulo: true } } } }),
@@ -168,7 +168,16 @@ async function desempenhoDoCurso(cursoOnlineId) {
     return { moduloId: m.id, titulo: m.titulo, tentativas: ts.length, pctAprovacao: pct(ts.filter((t) => t.aprovado).length, ts.length) };
   }).filter((p) => p.tentativas > 0);
 
-  return { perguntas: listaPerguntas, cenarios: listaCenarios, preTestes };
+  // Etapa 5: as 10 telas com mais dúvidas (todas as situações contam: é onde o aluno travou).
+  const grupos = await prisma.duvidaEad.groupBy({ by: ['telaId'], where: { tela: { topico: { modulo: { cursoOnlineId } } } }, _count: { _all: true } });
+  const telas = grupos.length ? await prisma.telaEad.findMany({ where: { id: { in: grupos.map((g) => g.telaId) } }, select: { id: true, titulo: true, topico: { select: { modulo: { select: { titulo: true } } } } } }) : [];
+  const porId = new Map(telas.map((t) => [t.id, t]));
+  const duvidasPorTela = grupos
+    .map((g) => ({ telaId: g.telaId, titulo: porId.get(g.telaId)?.titulo || '(apagada)', modulo: porId.get(g.telaId)?.topico.modulo.titulo || '', total: g._count._all }))
+    .sort((a, b) => b.total - a.total || a.titulo.localeCompare(b.titulo, 'pt-BR'))
+    .slice(0, 10);
+
+  return { perguntas: listaPerguntas, cenarios: listaCenarios, preTestes, duvidasPorTela };
 }
 
 // Excel com o que as telas mostram: Alunos, Concluintes e Perguntas.

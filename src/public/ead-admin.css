@@ -80,3 +80,25 @@
 .ead-resumo small { display: block; color: var(--tinta-60); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .ead-resumo b { font-size: 18px; }
 .ead-quebra { overflow-wrap: anywhere; font-size: 14px !important; }
+
+/* Etapa 5: central de dúvidas */
+.adm-badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: var(--vermelho); color: #fff; font-size: 11.5px; font-weight: 800; }
+.ead-filtro-curso { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 0 0 16px; }
+.ead-filtro-curso label { display: grid; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--tinta-60); }
+.ead-filtro-curso select { min-width: 260px; padding: 10px 12px; border: 1px solid var(--linha); border-radius: var(--r-s); background: var(--campo); color: var(--tinta); font: inherit; }
+.ead-duvida-cab { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; }
+.ead-duvida-cab > div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.ead-duvida-onde { margin: 8px 0 0; font-size: 13px; color: var(--tinta-60); }
+.ead-duvida-texto { margin: 10px 0 0; white-space: pre-line; overflow-wrap: anywhere; line-height: 1.55; }
+.ead-duvida-resposta { margin-top: 12px; padding: 10px 14px; border-left: 4px solid var(--vermelho); background: var(--bg); border-radius: 0 var(--r-s) var(--r-s) 0; }
+.ead-duvida-resposta small { color: var(--tinta-60); font-weight: 700; }
+.ead-duvida-acoes { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; margin-top: 14px; align-items: end; }
+.ead-duvida-acoes form, .ead-duvida-acoes details form { display: grid; gap: 8px; }
+.ead-duvida-acoes label { display: grid; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--tinta-60); }
+.ead-duvida-acoes textarea, .ead-duvida-acoes input[type=text] { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--linha); border-radius: var(--r-s); background: var(--campo); color: var(--tinta); font: inherit; }
+.ead-duvida-acoes .adm-btn, .ead-duvida-acoes .adm-btn-out { justify-self: start; }
+.ead-duvida-editar summary { cursor: pointer; font-weight: 700; color: var(--vermelho); margin-bottom: 8px; }
+@media (max-width: 720px) { .ead-duvida-acoes { grid-template-columns: 1fr; } .ead-filtro-curso select { min-width: 0; width: 100%; } }
+.adm-aba.on .adm-badge-sutil { color: #fff; background: rgba(255,255,255,.22); }
+.ead-duvida-onde a { color: var(--vermelho); font-weight: 700; text-decoration: none; }
+.ead-duvida-onde a:hover { text-decoration: underline; }
