@@ -12,9 +12,10 @@ Vermelha Rio" (Núcleo de Comunicação, out/2026, v2). É a primeira de quatro 
 
 ## 1. Objetivo
 
-A secretaria (e quem mais tiver a permissão) cadastra, pelo painel, o conteúdo de um curso 100% online
-no formato do documento: módulos → tópicos → telas (Modelo 1), banco de perguntas (Modelo 3) e cenários
-(Modelo 4). A área técnica vê cada tela como o aluno verá e marca o **módulo** como validado. Nada do
+Uma conta **DEV** cadastra, pelo painel, o conteúdo de um curso 100% online no formato do documento:
+módulos → tópicos → telas (Modelo 1), banco de perguntas (Modelo 3) e cenários (Modelo 4); vê cada tela
+como o aluno verá e marca o **módulo** como validado depois do aval da área técnica (dado fora do sistema
+nesta etapa). Nada do
 EAD aparece ainda para o aluno. O presencial não muda.
 
 ## 2. Decisões
@@ -24,7 +25,9 @@ EAD aparece ainda para o aluno. O presencial não muda.
 | Ligação com o curso | Tabela nova `CursoOnline`, 1:1 com um `Curso` existente (`cursoId` único). Nome, preço, foto, catálogo e certificado continuam no `Curso`. |
 | Migração | **Só `CREATE TYPE` e `CREATE TABLE`** (mais índices e chaves estrangeiras das tabelas novas). Nenhuma coluna nova em tabela existente: em 30/09 uma versão que dependia de coluna nova derrubou a produção (ver `lib/extras.js`). O campo de relação `online CursoOnline?` em `model Curso` é só do Prisma; não gera coluna. |
 | Entrada do conteúdo | Telas de cadastro no painel (formulários), item a item. Sem importação por planilha nesta etapa. |
-| Validação clínica | **Selo por módulo**: `RASCUNHO` → `VALIDADO`, por quem tem `ead:validar`. Qualquer mudança dentro de um módulo validado o devolve a `RASCUNHO`. |
+| Validação clínica | **Selo por módulo**: `RASCUNHO` → `VALIDADO`, por uma conta **DEV**. Qualquer mudança dentro de um módulo validado o devolve a `RASCUNHO`. |
+| Quem acessa | **Só contas DEV** (decidido em 05/11). Nenhum outro papel vê o item EAD ou abre as rotas, nem por permissão: não há permissões novas, as rotas usam o `requireDev` que já existe. Quando a área técnica e a secretaria precisarem entrar, isso vira uma etapa própria (permissões `ead:*`). |
+| Banco de perguntas | Mínimo **3 perguntas ativas por tópico** e **8 por módulo** para validar (decidido em 05/11). A meta do documento (10 por tópico) é só orientação, mostrada no painel; com exatamente 3, o quiz do tópico repete as mesmas 3 a cada tentativa até o banco crescer. |
 | Vídeo | **Só link** de YouTube (inclusive não listado) ou Vimeo, incorporado num `<iframe>`. Sem upload de vídeo. |
 | Foto | Upload pelo pipeline atual (`lib/upload.js`: WEBP + Supabase Storage). |
 | Código | `src/routes/ead.js` montado no `admin.js` como o `contas.js` (`require('./ead')({ requirePermissao, auditar, ADMIN_URL })`); regras em `src/lib/ead.js`; telas em `src/views/admin/ead/`. |
@@ -103,7 +106,7 @@ Aceita e devolve a URL de embed, ou `null` + mensagem de erro:
 `frameSrc`) ganha `https://www.youtube-nocookie.com` e `https://player.vimeo.com`.
 
 ### 4.4 Pendências (`pendencias(moduloId)`)
-Lista de frases do que impede validar. Módulo **comum**:
+Lista de frases do que impede validar (`pendencias`) e, à parte, avisos que não impedem (`avisos`). Módulo **comum**:
 - título e introdução preenchidos; `minutosEstimados > 0`;
 - pelo menos 1 tópico; todo tópico com pelo menos 1 tela;
 - toda tela com título, âncora e vídeo;
@@ -114,34 +117,36 @@ Lista de frases do que impede validar. Módulo **comum**:
 Módulo **final**: título e introdução; pelo menos 1 cenário; todo cenário com cena, pelo menos 1 decisão;
 toda decisão com **exatamente 3** opções, **exatamente 1** correta e feedback em todas.
 
+Avisos (não bloqueiam): tópico com menos de 10 perguntas ativas ("meta do documento: 10; com 3, o quiz
+repete as mesmas perguntas").
+
 Cada frase aponta o item ("Tópico 'Reconhecer o engasgo': só 2 perguntas ativas (mínimo 3)").
 
 ### 4.5 Selo
-- **Validar** (`POST /ead/modulo/:id/validar`, `ead:validar`): só com `pendencias()` vazia; grava
+- **Validar** (`POST /ead/modulo/:id/validar`, DEV): só com `pendencias()` vazia; grava
   `status=VALIDADO`, `validadoPor`, `validadoEm`; auditoria `EAD_VALIDOU_MODULO`.
-- **Voltar para rascunho** à mão (`POST /ead/modulo/:id/reabrir`, `ead:validar`): auditoria
+- **Voltar para rascunho** à mão (`POST /ead/modulo/:id/reabrir`, DEV): auditoria
   `EAD_REABRIU_MODULO`.
 - **Mudança dentro de módulo validado**: toda rota que cria, altera, apaga ou reordena algo do módulo
   (o próprio módulo, tópico, tela, pergunta, alternativa, cenário, decisão, opção) chama
   `invalidarSeValidado(tx, moduloId, req, oQueMudou)` na mesma transação: volta para `RASCUNHO`, limpa
   `validadoPor/validadoEm` e grava `EAD_INVALIDOU_MODULO` `{ moduloId, oQueMudou }`. Nesses formulários,
   quando o módulo está validado, aparece uma faixa amarela "Este módulo está validado. Salvar uma mudança
-  o volta para rascunho até a área técnica validar de novo." e o `<form>` leva `data-confirmar` com a
+  o volta para rascunho até ser validado de novo." e o `<form>` leva `data-confirmar` com a
   mesma frase (modal que o painel já tem).
 - Mudar a ordem dos **módulos** entre si invalida os dois módulos trocados.
 
 ## 5. Painel da secretaria
 
-### 5.1 Permissões (`lib/permissoes.js`)
-- `ead:gerenciar` — criar/editar/apagar/reordenar conteúdo EAD e ativar EAD num curso. Entra no padrão
-  da SECRETARIA (e por isso do COORDENADOR).
-- `ead:validar` — validar e reabrir módulo. Entra no padrão do COORDENADOR. O DEV atribui a outros papéis
-  na tela de Permissões. Ambas ganham descrição na lista de "o que cada permissão libera".
-- Ver (sem botões): `ead:gerenciar`, `ead:validar` ou `painel:leitura`.
+### 5.1 Acesso
+- Todas as rotas `/ead…` (ver e escrever) passam por `requireDev` (`admin.js`, `req.session.papel === 'DEV'`),
+  repassado ao módulo: `require('./ead')({ requireDev, auditar, ADMIN_URL })`.
+- `lib/permissoes.js` **não muda**: nenhuma permissão nova, nada aparece na tela de Permissões.
+- Outro papel que digitar o endereço recebe o mesmo bloqueio que já recebe em `/dev/usuarios`.
 
 ### 5.2 Menu
-Item **EAD** (`fa-solid fa-laptop-medical`) depois de "Turmas", com `secaoAtiva === 'ead'`, visível para
-quem pode ver (5.1).
+Item **EAD** (`fa-solid fa-laptop-medical`) depois de "Turmas", com `secaoAtiva === 'ead'`, dentro do bloco
+`<% if (admPapel === 'DEV') { %>` que já existe em `header.ejs`.
 
 ### 5.3 Rotas e telas (`src/routes/ead.js`, `src/views/admin/ead/`)
 
@@ -161,7 +166,7 @@ quem pode ver (5.1).
 | `GET/POST /ead/modulo/:id/cenarios/novo`, `GET/POST /ead/cenario/:id/editar`, `POST /ead/cenario/:id/subir`, `/descer`, `/excluir` | `cenario-form.ejs`: título, cena, foto, link do vídeo, tempo sugerido (mm:ss). Abaixo, as decisões do cenário. |
 | `POST /ead/cenario/:id/decisoes`, `GET/POST /ead/decisao/:id/editar`, `POST /ead/decisao/:id/subir`, `/descer`, `/excluir` | `decisao-form.ejs`: pergunta + 3 opções (texto, correta, fala do instrutor). |
 
-Todas as escritas exigem `ead:gerenciar` (exceto 4.5), passam pelo CSRF que já existe, validam com Zod e,
+Todas as rotas exigem DEV (5.1); as escritas passam pelo CSRF que já existe, validam com Zod e,
 no erro, devolvem o formulário com as mensagens e o que foi digitado. Toda criação/exclusão grava
 auditoria `EAD_CRIOU_<ITEM>` / `EAD_EXCLUIU_<ITEM>` com `{ moduloId, titulo }`; edição não grava (a
 invalidação já registra quando importa). Exclusões usam `data-confirmar` dizendo o que vai junto
@@ -173,7 +178,7 @@ enunciado 600; alternativa/opção 300; feedback 800; cena 1000.
 ## 6. Não muda
 Site do aluno, catálogo, inscrição, pagamento, webhook, certificados, e-mails, rotinas automáticas,
 turmas, financeiro, planilha ao vivo. A única mudança fora do EAD é a trava de 3.3 na exclusão de curso,
-o item de menu e as duas permissões.
+o item de menu (só DEV) e o CSP do vídeo.
 
 ## 7. Verificação
 - `node --check` em todos os `.js`; todos os EJS novos compilados.
@@ -186,5 +191,6 @@ o item de menu e as duas permissões.
   ver pendências → completar até zerar → validar → ver a tela como o aluno → editar uma tela e conferir a
   volta para rascunho e o `EAD_INVALIDOU_MODULO` na auditoria → módulo final com o cenário "Pânico na
   hora do lanche" (Exemplo C) → tentar excluir o curso (recusado) → desativar o EAD.
-- Papel CONSULTA vê as telas sem botões; SECRETARIA não vê Validar.
+- SECRETARIA, COORDENADOR, FINANCEIRO e CONSULTA não veem o item EAD no menu e são bloqueados em `GET /ead`
+  e num `POST /ead/…` direto.
 - PR para `main` **sem merge**; o usuário aprova depois de ver o ciclo.
