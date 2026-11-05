@@ -17,7 +17,9 @@ if (!arquivo) { console.error('Uso: node scripts/checar-migracao-ead.js <arquivo
 const problemas = [];
 fs.readFileSync(arquivo, 'utf8').split('\n').forEach((linha, i) => {
   const l = linha.replace(/--.*$/, '');
-  const proibido = /\bDROP\b|\bALTER\s+TYPE\b|\bALTER\s+COLUMN\b|\bRENAME\b|\bTRUNCATE\b/i.test(l) || /^\s*(DELETE|UPDATE)\b/i.test(l);
+  // Única mudança de tipo aceita: o status ONLINE da turma (etapa 4), só acrescentando.
+  const addOnline = /^\s*ALTER\s+TYPE\s+"StatusTurma"\s+ADD\s+VALUE\s+IF\s+NOT\s+EXISTS\s+'ONLINE'\s*;?\s*$/i.test(l);
+  const proibido = (!addOnline && /\bALTER\s+TYPE\b/i.test(l)) || /\bDROP\b|\bALTER\s+COLUMN\b|\bRENAME\b|\bTRUNCATE\b/i.test(l) || /^\s*(DELETE|UPDATE)\b/i.test(l);
   const alter = l.match(/\bALTER\s+TABLE\s+(?:ONLY\s+)?"?([A-Za-z_]+)"?/i);
   if (proibido || (alter && !TABELAS_EAD.includes(alter[1]))) problemas.push(`${i + 1}: ${linha.trim()}`);
 });

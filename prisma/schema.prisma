@@ -250,6 +250,7 @@ enum StatusTurma {
   ENCERRADA
   CONGELADA
   EM_ESPERA
+  ONLINE
 }
 
 enum PlanoPagamento {
@@ -304,6 +305,9 @@ model CursoOnline {
   id             String          @id @default(uuid())
   cursoId        String          @unique
   notaMinimaQuiz Int             @default(80)
+  // Etapa 4: preço próprio do online (o Curso pode ser presencial também) e o interruptor do site.
+  precoOnline    Decimal?        @db.Decimal(10, 2)
+  publicado      Boolean         @default(false)
   criadoEm       DateTime        @default(now())
   atualizadoEm   DateTime        @updatedAt
   // Restrict: apagar o curso não leva o conteúdo junto por acidente (POST /cursos/:id/excluir avisa).
