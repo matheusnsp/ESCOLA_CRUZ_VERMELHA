@@ -245,3 +245,28 @@ button.ea-seguir { border: 0; text-align: left; width: 100%; }
 .ea-resultado form { margin: 0; }
 @media (min-width: 820px) { .ea-pergunta, .ea-resultado { padding: 36px 40px 40px; } }
 .ea-resultado p.ea-kicker { color: var(--r); }
+
+/* ── cenário ── */
+.ea-crono { display: flex; flex-direction: column; gap: 2px; align-items: flex-end; font-size: 12.5px; color: var(--mut); margin-left: auto; }
+.ea-crono b { font-size: 24px; font-weight: 900; letter-spacing: -.04em; color: #16a369; font-variant-numeric: tabular-nums; }
+.ea-crono.estourou b { color: var(--r); }
+.ea-cena { background: #fff; border: 1px solid var(--ln); border-radius: 20px; padding: 18px; margin-bottom: 18px; }
+.ea-cena p:not(.ea-kicker) { margin: 0; font-size: 16px; line-height: 1.6; }
+.ea-cena img { width: 100%; max-height: 240px; object-fit: cover; border-radius: 14px; margin-bottom: 12px; display: block; }
+.ea-cena .ea-video-quadro { margin-top: 14px; border-radius: 14px; overflow: hidden; }
+.ea-opcoes { display: grid; gap: 10px; margin: 16px 0 20px; }
+.ea-opcao { display: block; width: 100%; text-align: center; font: 800 18px 'Inter', system-ui; letter-spacing: .04em; padding: 18px; border-radius: 16px; border: 2px solid var(--r); background: #fff; color: var(--r2); cursor: pointer; }
+button.ea-opcao:hover { background: #fff1f2; }
+.ea-opcao.certa { background: #f0fdf4; border-color: #16a369; color: #14653a; }
+.ea-opcao.errada { background: #fff1f2; }
+.ea-opcao.apagada { opacity: .35; }
+.ea-instrutor { border-radius: 18px; padding: 16px 18px; margin-bottom: 18px; background: #fff8e6; border-left: 5px solid #d99a06; }
+.ea-instrutor.ok { background: #f0fdf4; border-color: #16a369; }
+.ea-instrutor p { margin: 6px 0 0; line-height: 1.55; font-size: 15.5px; }
+.ea-placar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 14px; }
+.ea-placar div { background: #fff; border: 1px solid var(--ln); border-radius: 18px; padding: 14px; }
+.ea-placar small { display: block; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); }
+.ea-placar b { display: block; font-size: 30px; font-weight: 900; letter-spacing: -.05em; }
+.ea-placar b.passou { color: var(--r); }
+.ea-placar span { font-size: 12.5px; color: var(--mut); }
+.ea-pilula-bloco { white-space: normal; text-align: center; line-height: 1.25; }

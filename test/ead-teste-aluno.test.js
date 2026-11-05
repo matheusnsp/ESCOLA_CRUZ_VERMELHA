@@ -101,4 +101,35 @@ describe('/ead-teste: aluno', { skip: temBanco ? false : 'sem DATABASE_URL local
     assert.equal(await prisma.tentativaEad.count({ where: { moduloId: m1.id, tipo: 'PRE_TESTE' } }), 1);
   });
 
+  test('cenário com o final bloqueado: volta ao módulo; de outro curso: 404', async () => {
+    const r = await req(`${base}/cenario/${cen.id}`, ana);
+    assert.equal(r.status, 302);
+    assert.match(r.headers.get('location'), new RegExp(`/modulo/${fin.id}$`));
+    assert.equal((await req(`${base}/cenario/00000000-0000-4000-8000-000000000000`, ana)).status, 404);
+  });
+
+  test('cenário liberado: começar, errar (fala do instrutor), acertar e concluir', async () => {
+    // libera o final: conclui M1 e M2 da Ana pelo pré-teste aprovado (gravado direto)
+    const ac = await prisma.alunoCursoEad.findFirst({ where: { usuarioId: ana.id, cursoOnlineId: co.id } });
+    for (const m of [m1, m2]) await prisma.tentativaEad.create({ data: { alunoCursoId: ac.id, tipo: 'PRE_TESTE', moduloId: m.id, perguntaIds: [], total: 8, acertos: 8, aprovado: true, concluidaEm: new Date() } });
+    const pag = await req(`${base}/cenario/${cen.id}`, ana);
+    assert.equal(pag.status, 200);
+    assert.match(await pag.text(), /Começar/);
+    assert.equal((await post(`${base}/cenario/${cen.id}/comecar`, ana)).status, 302);
+    const andamento = await (await req(`${base}/cenario/${cen.id}`, ana)).text();
+    assert.match(andamento, /data-inicio=/);
+    assert.doesNotMatch(andamento, /fala 2/); // a fala só aparece depois da escolha
+    const d = await prisma.decisaoCenario.findFirst({ where: { cenarioId: cen.id }, include: { opcoes: { orderBy: { ordem: 'asc' } } } });
+    const errada = await post(`${base}/cenario/${cen.id}/escolher`, ana, { decisaoId: d.id, opcaoId: d.opcoes[0].id });
+    assert.equal(errada.status, 200);
+    const htmlErrada = await errada.text();
+    assert.match(htmlErrada, /fala 0/); assert.match(htmlErrada, /Tentar de novo/);
+    const certa = await post(`${base}/cenario/${cen.id}/escolher`, ana, { decisaoId: d.id, opcaoId: d.opcoes[2].id });
+    assert.match(await certa.text(), /fala 2/);
+    const feito = await prisma.cenarioFeitoEad.findFirst({ where: { alunoCursoId: ac.id, cenarioId: cen.id } });
+    assert.ok(feito.concluidoEm); assert.equal(feito.erros, 1);
+    assert.ok((await prisma.alunoCursoEad.findUnique({ where: { id: ac.id } })).concluidoEm, 'curso concluído');
+    // repetir a escolha depois de concluído: só volta para a página
+    assert.equal((await post(`${base}/cenario/${cen.id}/escolher`, ana, { decisaoId: d.id, opcaoId: d.opcoes[2].id })).status, 302);
+  });
 });

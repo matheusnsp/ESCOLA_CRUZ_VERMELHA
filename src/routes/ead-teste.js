@@ -221,6 +221,65 @@ router.post('/ead-teste/:codigo/tentativa/:id/responder', comCurso(async (req, r
   });
 }));
 
+// ─── Cenários (módulo final) ────────────────────────────────────────────────────────────────────
+// Cenário do curso, com decisões e opções; null se não for do módulo final deste curso.
+async function acharCenario(co, cenarioId) {
+  const final = co.modulos.find((m) => m.final);
+  if (!final || !final.cenarios.some((c) => c.id === cenarioId)) return null;
+  const cenario = await prisma.cenarioEad.findUnique({
+    where: { id: cenarioId },
+    include: { decisoes: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }], include: { opcoes: { orderBy: { ordem: 'asc' } } } } },
+  });
+  return cenario ? { cenario, final, numero: co.modulos.indexOf(final) + 1 } : null;
+}
+
+// Checagens comuns: cenário do curso (404), login, módulo final liberado. Devolve null se já respondeu.
+async function prepararCenario(req, res, co, base, curso) {
+  const achado = await acharCenario(co, req.params.cenarioId);
+  if (!achado) { naoAchou(res); return null; }
+  const ctx = await contexto(req, co, curso);
+  if (!ctx) { pedirLogin(req, res, base); return null; }
+  if (estadoDoModulo(ctx, achado.final.id).estado === 'bloqueado') { res.redirect(`${base}/modulo/${achado.final.id}`); return null; }
+  return { ...achado, ctx };
+}
+
+function renderCenario(res, dados) {
+  const { cenario, feito } = dados;
+  const ordem = cenario.decisoes;
+  const proximoCenario = dados.final.cenarios.find((c) => c.id !== cenario.id && !dados.ctx.progresso.cenarios.some((f) => f.cenarioId === c.id && f.concluidoEm));
+  res.render('ead-teste/cenario', { ...dados, decisao: feito && !feito.concluidoEm ? ordem[feito.decisaoAtual] : null, total: ordem.length, proximoCenario, agora: new Date() });
+}
+
+router.get('/ead-teste/:codigo/cenario/:cenarioId', comCurso(async (req, res, co, base, curso) => {
+  const d = await prepararCenario(req, res, co, base, curso);
+  if (!d) return;
+  const feito = await prisma.cenarioFeitoEad.findUnique({ where: { alunoCursoId_cenarioId: { alunoCursoId: d.ctx.alunoCurso.id, cenarioId: d.cenario.id } } });
+  renderCenario(res, { ...d, co, base, feito, escolha: null });
+}));
+
+router.post('/ead-teste/:codigo/cenario/:cenarioId/comecar', comCurso(async (req, res, co, base, curso) => {
+  const d = await prepararCenario(req, res, co, base, curso);
+  if (!d) return;
+  await pdb.comecarCenario(d.ctx.alunoCurso.id, d.cenario.id);
+  res.redirect(`${base}/cenario/${d.cenario.id}`);
+}));
+
+router.post('/ead-teste/:codigo/cenario/:cenarioId/escolher', comCurso(async (req, res, co, base, curso) => {
+  const d = await prepararCenario(req, res, co, base, curso);
+  if (!d) return;
+  const r = await pdb.escolherNoCenario(d.ctx.alunoCurso.id, d.cenario.id, String(req.body.decisaoId || ''), String(req.body.opcaoId || ''));
+  if (r.ignorada) return res.redirect(`${base}/cenario/${d.cenario.id}`);
+  if (r.fechou) {
+    const estado = estadoDoCurso(curso, await pdb.carregarProgresso(d.ctx.alunoCurso.id), new Date());
+    if (estado.concluido) await pdb.marcarCursoConcluido(d.ctx.alunoCurso.id);
+  }
+  // Mostra a fala do instrutor para a opção escolhida, na própria decisão.
+  res.render('ead-teste/cenario', {
+    ...d, co, base, feito: r.feito, decisao: r.decisao, total: d.cenario.decisoes.length, agora: new Date(),
+    escolha: { opcao: r.opcao, certa: r.certa, fechou: r.fechou }, proximoCenario: null,
+  });
+}));
+
 // Qualquer outro caminho abaixo de /ead-teste: 404 aqui mesmo, sem cair na contagem de visitas
 // nem no 404 do site. Erros também ficam aqui (a página de erro do site tem rastreamento).
 router.use('/ead-teste', (req, res) => naoAchou(res));
