@@ -237,9 +237,15 @@ const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
     <% } %>
 
     <div class="cc-rodape">
+      <% if (typeof destinoFinal !== 'undefined' && destinoFinal && destinoFinal.indexOf('/online/') === 0) { %>
+      <a href="<%= destinoFinal %>">
+        <i class="fa-solid fa-arrow-left"></i> Ir para o curso
+      </a>
+      <% } else { %>
       <a href="/minha-conta?sec=inscricoes">
         <i class="fa-solid fa-arrow-left"></i> Ver minhas inscrições
       </a>
+      <% } %>
     </div>
 
   </div>
@@ -437,7 +443,7 @@ const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
       setTimeout(function () {
         location.href = ETAPA === 'taxa'
           ? '/inscrever/' + TURMA_ID + '/pagar-curso'
-          : '/minha-conta?inscrito=1';
+          : <%- JSON.stringify(typeof destinoFinal !== 'undefined' && destinoFinal ? destinoFinal : '/minha-conta?inscrito=1') %>;
       }, 1200);
     }, 900);
   }
@@ -661,9 +667,15 @@ const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
 
     <!-- ══ Rodapé ══════════════════════════════════════════════════════════ -->
     <div class="pix-rodape">
+      <% if (typeof destinoFinal !== 'undefined' && destinoFinal && destinoFinal.indexOf('/online/') === 0) { %>
+      <a href="<%= destinoFinal %>">
+        <i class="fa-solid fa-arrow-left"></i> Ir para o curso
+      </a>
+      <% } else { %>
       <a href="/minha-conta?sec=inscricoes">
         <i class="fa-solid fa-arrow-left"></i> Ver minhas inscrições
       </a>
+      <% } %>
     </div>
 
   </div>
@@ -812,7 +824,7 @@ const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
       setTimeout(function () {
         location.href = ETAPA === 'taxa'
           ? '/inscrever/' + m.turmaId + '/pagar-curso'
-          : '/minha-conta?inscrito=1';
+          : <%- JSON.stringify(typeof destinoFinal !== 'undefined' && destinoFinal ? destinoFinal : '/minha-conta?inscrito=1') %>;
       }, 2200);
     } catch (e) {
       // Falha momentânea de rede — silencia e tenta no próximo tick.

@@ -2,6 +2,9 @@
   var totalMin = co.modulos.reduce(function (s, m) { return s + m.minutosEstimados; }, 0);
   var horas = totalMin >= 60 ? Math.floor(totalMin / 60) + 'h' + (totalMin % 60 ? String(totalMin % 60).padStart(2, '0') : '') : totalMin + ' min';
   var primeiro = co.modulos[0];
+  var pago = typeof modo !== 'undefined' && modo === 'pago';
+  var compra = typeof compra !== 'undefined' ? compra : null;
+  var brl = function (v) { return 'R$ ' + Number(v).toFixed(2).replace('.', ','); };
 %>
 <%- include('_topo', { titulo: co.curso.nome }) %>
 <%- include('_avisos') %>
@@ -20,7 +23,40 @@
       </div>
     </div>
     <div class="ea-cartao">
-      <% if (ctx) { %>
+      <% if (compra) { %>
+        <%# Modo pago sem acesso liberado: compra, pagamento em andamento ou inscrição cancelada. %>
+        <% if (compra.situacao === 'pendente') { %>
+          <p class="ea-kicker">Pagamento em andamento</p>
+          <h2>Falta só confirmar o pagamento<span style="color:var(--r)">.</span></h2>
+          <p>Assim que o banco confirmar, o curso abre aqui e você recebe um e-mail. O PIX costuma confirmar em segundos.</p>
+          <% if (compra.retornoUrl) { %><a class="ea-pilula ea-pilula-red" href="<%= compra.retornoUrl %>">Ver o pagamento →</a><% } %>
+        <% } else if (compra.situacao === 'cancelado') { %>
+          <p class="ea-kicker">Inscrição cancelada</p>
+          <h2>Sua inscrição foi cancelada<span style="color:var(--r)">.</span></h2>
+          <p>O pagamento foi cancelado ou devolvido, então o curso e o certificado ficam fechados. Para voltar a estudar, faça uma nova compra.</p>
+        <% } else { %>
+          <p class="ea-kicker">Curso online</p>
+          <h2><%= compra.preco !== null ? brl(compra.preco) : 'Em breve' %><span style="color:var(--r)">.</span></h2>
+          <p>Pagamento único, por PIX ou cartão. Acesso pelo celular, no seu ritmo, com certificado ao concluir. Capacitação teórica, sem prática em manequim.</p>
+        <% } %>
+        <% if (compra.erro) { %><p class="ea-obs" role="alert"><b><%= compra.erro %></b></p><% } %>
+        <% if (compra.preco !== null && (co.publicado || compra.situacao === 'pendente')) { %>
+          <% if (compra.logado) { %>
+          <form method="POST" action="<%= compra.comprarUrl %>" class="ea-compra">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <fieldset class="ea-compra-formas">
+              <legend class="ea-obs"><%= compra.situacao === 'pendente' ? 'Pagar de outro jeito' : 'Forma de pagamento' %></legend>
+              <label><input type="radio" name="forma" value="PIX" checked> PIX</label>
+              <label><input type="radio" name="forma" value="CREDITO"> Cartão de crédito</label>
+            </fieldset>
+            <button type="submit" class="ea-pilula <%= compra.situacao === 'pendente' ? 'ea-pilula-clara' : 'ea-pilula-red' %>">Comprar · <%= brl(compra.preco) %></button>
+          </form>
+          <% } else { %>
+          <a class="ea-pilula ea-pilula-red" href="<%= base %>/criar-conta">Comprar · <%= brl(compra.preco) %></a>
+          <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/continuar">Já tenho conta</a>
+          <% } %>
+        <% } %>
+      <% } else if (ctx) { %>
         <p class="ea-kicker"><%= ctx.estado.concluido ? 'Curso concluído' : 'Seu progresso' %></p>
         <h2><%= ctx.estado.percentual %>% concluído<span style="color:var(--r)">.</span></h2>
         <span class="ea-progresso-trilho ea-progresso-grande"><span style="width: <%= ctx.estado.percentual %>%"></span></span>
@@ -48,8 +84,9 @@
   <ol class="ea-modulos">
     <% co.modulos.forEach(function (m, i) { var telas = m.topicos.reduce(function (s, t) { return s + t.telas.length; }, 0); var em = ctx ? ctx.estado.modulos[i] : null; %>
       <li>
-        <a class="ea-mod <%= m.final ? 'final' : '' %> <%= em ? 'est-' + em.estado : '' %>" href="<%= base %>/modulo/<%= m.id %>">
-          <span class="ea-mod-topo"><span class="ea-mod-num"><%= String(i + 1).padStart(2, '0') %></span><span class="ea-selo <%= m.status === 'VALIDADO' ? 'ok' : '' %>"><%= m.status === 'VALIDADO' ? 'Validado' : 'Rascunho' %></span></span>
+        <%# Modo pago sem acesso: a lista mostra o conteúdo, mas não abre o módulo. O selo é só do teste. %>
+        <<%= compra ? 'div' : 'a' %> class="ea-mod <%= m.final ? 'final' : '' %> <%= em ? 'est-' + em.estado : '' %>"<% if (!compra) { %> href="<%= base %>/modulo/<%= m.id %>"<% } %>>
+          <span class="ea-mod-topo"><span class="ea-mod-num"><%= String(i + 1).padStart(2, '0') %></span><% if (!pago) { %><span class="ea-selo <%= m.status === 'VALIDADO' ? 'ok' : '' %>"><%= m.status === 'VALIDADO' ? 'Validado' : 'Rascunho' %></span><% } %></span>
           <h3><%= m.titulo %></h3>
           <span class="ea-mod-meta"><%= m.minutosEstimados %> min · <%= m.final ? m.cenarios.length + ' cenário(s) para decidir' : m.topicos.length + ' tópico(s) · ' + telas + ' tela(s)' %></span>
           <% if (em && em.estado === 'bloqueado') { %>
@@ -57,9 +94,9 @@
           <% } else if (em && em.estado === 'concluido') { %>
             <span class="ea-mod-pe ea-mod-ok"><span>✓ Concluído</span><span>Rever →</span></span>
           <% } else { %>
-            <span class="ea-mod-pe"><span><%= m.final ? 'Juntando tudo' : 'Módulo ' + (i + 1) %></span><span>Abrir →</span></span>
+            <span class="ea-mod-pe"><span><%= m.final ? 'Juntando tudo' : 'Módulo ' + (i + 1) %></span><% if (!compra) { %><span>Abrir →</span><% } %></span>
           <% } %>
-        </a>
+        </<%= compra ? 'div' : 'a' %>>
       </li>
     <% }) %>
   </ol>

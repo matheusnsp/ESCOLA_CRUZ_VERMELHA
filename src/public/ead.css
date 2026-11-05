@@ -270,3 +270,11 @@ button.ea-opcao:hover { background: #fff1f2; }
 .ea-placar b.passou { color: var(--r); }
 .ea-placar span { font-size: 12.5px; color: var(--mut); }
 .ea-pilula-bloco { white-space: normal; text-align: center; line-height: 1.25; }
+
+/* Etapa 4: compra no cartão do herói (modo pago). */
+.ea-compra { display: grid; gap: 12px; }
+.ea-compra-formas { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.ea-compra-formas legend { width: 100%; margin-bottom: 6px; padding: 0; }
+.ea-compra-formas label { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.ea-compra-formas input { accent-color: var(--r); width: 18px; height: 18px; }
+div.ea-mod { cursor: default; }

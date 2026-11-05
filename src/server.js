@@ -318,7 +318,9 @@ const visitas = require('./lib/visitas');
 visitas.iniciar();
 // Antes de contar visita: o Excel atualizando a planilha não é visitante.
 siteAluno.use(require('./routes/integracao'));
-// Link secreto de teste do EAD: antes da contagem de visitas (não é visitante do site).
+// EAD: o link secreto de teste e o curso online pago (/online/<curso>), antes da contagem de visitas
+// (o endereço do teste é o segredo; as telas do curso não são visitas do site). A compra vem primeiro.
+siteAluno.use(require('./routes/ead-online'));
 siteAluno.use(require('./routes/ead-teste'));
 siteAluno.use(visitas.registrar);
 // Buscadores: só as páginas públicas; o painel da secretaria fica fora de tudo.

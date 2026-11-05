@@ -57,6 +57,16 @@ async function avisarMatriculaConfirmada(matriculaId) {
 
     const base = process.env.APP_URL || 'https://escola-cruz-vermelha.onrender.com';
 
+    // Curso online (turma ONLINE): no lugar do e-mail da turma presencial, o de curso liberado, com o
+    // link do curso. (Lido na hora do envio: os testes trocam a função por um espião.)
+    if (m.turma.status === 'ONLINE') {
+      await require('./email').enviarCursoOnlineLiberado(m.aluno.email, String(m.aluno.nome).split(' ')[0], {
+        curso: m.turma.curso.nome,
+        link: `${base.replace(/\/+$/, '')}/online/${m.turma.cursoId}`,
+      });
+      return;
+    }
+
     // ── Duas formatações de data, e a diferença importa ──────────────────
     //
     // Turma.inicioPrevisto é um TIMESTAMP (gravado ao meio-dia). Representa

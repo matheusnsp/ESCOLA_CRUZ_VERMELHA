@@ -85,4 +85,16 @@ async function iniciarCobrancaAVista({ matricula, nomeCurso, total, forma, aluno
   }
 }
 
-module.exports = { iniciarCobrancaAVista, urlRetorno, JANELA_PIX_MS };
+// Cartão da turma ONLINE: o valor é o da matrícula (preço do curso online, sem taxa), numa vez só. As
+// contas do presencial (calcularValores) usariam o preço do curso presencial.
+function cobrancaCartaoOnline(matricula) {
+  const v = Number(matricula.valorCurso);
+  return { valorCobranca: v, valorBase: v, numParcelas: 1, valorParcela: null, tipo: 'CURSO' };
+}
+
+// Para onde a tela de retorno leva quando o pagamento confirma.
+const destinoAposPagamento = (matricula) => (matricula && matricula.turma && matricula.turma.status === 'ONLINE'
+  ? `/online/${matricula.turma.cursoId}`
+  : '/minha-conta?inscrito=1');
+
+module.exports = { iniciarCobrancaAVista, urlRetorno, JANELA_PIX_MS, cobrancaCartaoOnline, destinoAposPagamento };

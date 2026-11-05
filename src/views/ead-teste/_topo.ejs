@@ -23,4 +23,4 @@
     <% if (typeof voltarMenu !== 'undefined' && voltarMenu) { %><a class="ea-pilula ea-pilula-clara" href="<%= base %>">☰ <span class="ea-so-pc">Menu do curso</span><span class="ea-so-cel">Menu</span></a><% } %>
   </div>
 </header>
-<div class="ea-teste">Versão de teste · só quem tem este link consegue abrir · não divulgue</div>
+<% if (typeof eadModo === 'undefined' || eadModo !== 'pago') { %><div class="ea-teste">Versão de teste · só quem tem este link consegue abrir · não divulgue</div><% } %>

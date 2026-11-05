@@ -10,7 +10,7 @@ const {
   taxaExibicao,
 } = require('../lib/matricula');
 const { criarTransacao, obterOpcaoParcelamento } = require('../lib/unicopag');
-const { iniciarCobrancaAVista, urlRetorno } = require('../lib/cobranca-avista');
+const { iniciarCobrancaAVista, urlRetorno, cobrancaCartaoOnline, destinoAposPagamento } = require('../lib/cobranca-avista');
 const { lerOrigem } = require('../lib/origem-da-visita');
 const cacheRapido = require('../lib/cache-rapido');
 const extras = require('../lib/extras');
@@ -1090,6 +1090,7 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
       isPix,
       etapa: etapaAtual,
       transacaoRef: String(t || matricula?.id || ''),
+      destinoFinal: destinoAposPagamento(matricula),
       pixQrCode: pagamento?.pixQrCode || null,
       pixUrl: pagamento?.pixUrl || null,
       pixBase64: pagamento?.pixBase64 || null,
@@ -1106,7 +1107,7 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
   if (etapaAtual === 'taxa' && matricula.taxaConfirmada)
     return res.redirect(`/inscrever/${matricula.turmaId}/pagar-curso`);
   if (etapaAtual === 'curso' && ['PAGO', 'PARCELADO'].includes(matricula.statusPagamento))
-    return res.redirect('/minha-conta?inscrito=1');
+    return res.redirect(destinoAposPagamento(matricula));
 
   const { valorCobranca, numParcelas, valorParcela } =
     await calcularCobrancaCartao(matricula, etapaAtual, req.session.usuarioId);
@@ -1122,6 +1123,7 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
       numParcelas,
       valorParcela,
       transacaoRef: String(t || matricula.id),
+      destinoFinal: destinoAposPagamento(matricula),
     });
 });
 
@@ -1134,6 +1136,8 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────
 async function calcularCobrancaCartao(matricula, etapa, alunoId) {
   const curso = matricula.turma.curso;
+  // Curso online: o valor é o da matrícula (preço do online, sem taxa), não o do presencial.
+  if (ehOnline(matricula.turma)) return cobrancaCartaoOnline(matricula);
 
   if (etapa === 'taxa') {
     const valores = await calcularValores(

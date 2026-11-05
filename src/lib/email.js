@@ -640,7 +640,25 @@ async function enviarCertificadoEadPronto(email, nome, { curso, link }) {
   await enviar(email, `Seu certificado está pronto: ${limpo(curso)}`, html, `Certificado do curso online pronto (${curso})`, link);
 }
 
+// Etapa 4: compra do curso online confirmada (lib/status-pagamento.js, turma ONLINE).
+async function enviarCursoOnlineLiberado(email, nome, { curso, link }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const html = moldura(
+    'Seu curso online está liberado',
+    limpo(nome),
+    `Recebemos o seu pagamento. O curso online <strong>${limpo(curso)}</strong> já está liberado: entre com o seu login `
+      + 'e estude pelo celular, no seu ritmo. Nos primeiros 7 dias os módulos abrem em sequência; depois, na ordem que você quiser. '
+      + 'Ao concluir, o certificado sai na hora.'
+      + '<br><br>Lembre: é uma capacitação teórica. O treinamento prático em manequim é oferecido nos cursos presenciais da Escola.',
+    'Começar o curso',
+    link,
+    'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.'
+  );
+  await enviar(email, `Seu curso online está liberado: ${limpo(curso)}`, html, `Curso online liberado (${curso})`, link);
+}
+
 module.exports = {
+  enviarCursoOnlineLiberado,
   enviarCertificadoEadPronto,
   enviarComprovanteRecusado,
   enviarEncaixeMatriculaRapida,
