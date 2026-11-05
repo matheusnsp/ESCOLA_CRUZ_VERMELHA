@@ -12,15 +12,15 @@ datasource db {
 }
 
 model Usuario {
-  id                   String         @id @default(uuid())
+  id                   String          @id @default(uuid())
   nome                 String
-  email                String         @unique
+  email                String          @unique
   tipoDocumento        TipoDocumento?
-  cpfCnpj              String?        @unique
-  passaporte           String?        @unique
+  cpfCnpj              String?         @unique
+  passaporte           String?         @unique
   paisOrigem           String?
   senhaHash            String?
-  papel                Papel          @default(ALUNO)
+  papel                Papel           @default(ALUNO)
   escolaridade         String?
   escolaridadeSituacao String?
   genero               String?
@@ -31,21 +31,22 @@ model Usuario {
   bairro               String?
   cidade               String?
   uf                   String?
-  emailVerificado      Boolean        @default(false)
-  loginFalhas          Int            @default(0)
+  emailVerificado      Boolean         @default(false)
+  loginFalhas          Int             @default(0)
   bloqueadoAte         DateTime?
-  loginStrikes         Int            @default(0)
-  bloqueioTotal        Boolean        @default(false)
+  loginStrikes         Int             @default(0)
+  bloqueioTotal        Boolean         @default(false)
   avatarUrl            String?
   consentimentoLgpdEm  DateTime?
   consentimentoVersao  String?
-  criadoEm             DateTime       @default(now())
-  atualizadoEm         DateTime       @updatedAt
+  criadoEm             DateTime        @default(now())
+  atualizadoEm         DateTime        @updatedAt
   celular              String?
   rg                   String?
   ultimoLogin          DateTime?
   ultimaAtividade      DateTime?
   matriculas           Matricula[]
+  cursosEad            AlunoCursoEad[]
 
   @@index([papel])
   @@index([ultimaAtividade])
@@ -300,14 +301,15 @@ enum TipoPerguntaEad {
 }
 
 model CursoOnline {
-  id             String      @id @default(uuid())
-  cursoId        String      @unique
-  notaMinimaQuiz Int         @default(80)
-  criadoEm       DateTime    @default(now())
-  atualizadoEm   DateTime    @updatedAt
+  id             String          @id @default(uuid())
+  cursoId        String          @unique
+  notaMinimaQuiz Int             @default(80)
+  criadoEm       DateTime        @default(now())
+  atualizadoEm   DateTime        @updatedAt
   // Restrict: apagar o curso não leva o conteúdo junto por acidente (POST /cursos/:id/excluir avisa).
-  curso          Curso       @relation(fields: [cursoId], references: [id], onDelete: Restrict)
+  curso          Curso           @relation(fields: [cursoId], references: [id], onDelete: Restrict)
   modulos        ModuloEad[]
+  alunos         AlunoCursoEad[]
 }
 
 model ModuloEad {
@@ -327,28 +329,30 @@ model ModuloEad {
   cursoOnline      CursoOnline     @relation(fields: [cursoOnlineId], references: [id], onDelete: Cascade)
   topicos          TopicoEad[]
   cenarios         CenarioEad[]
+  tentativas       TentativaEad[]
 
   @@index([cursoOnlineId])
 }
 
 model TopicoEad {
-  id           String        @id @default(uuid())
+  id           String         @id @default(uuid())
   moduloId     String
-  ordem        Int           @default(0)
+  ordem        Int            @default(0)
   titulo       String
-  criadoEm     DateTime      @default(now())
-  atualizadoEm DateTime      @updatedAt
-  modulo       ModuloEad     @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+  criadoEm     DateTime       @default(now())
+  atualizadoEm DateTime       @updatedAt
+  modulo       ModuloEad      @relation(fields: [moduloId], references: [id], onDelete: Cascade)
   telas        TelaEad[]
   perguntas    PerguntaEad[]
+  tentativas   TentativaEad[]
 
   @@index([moduloId])
 }
 
 model TelaEad {
-  id               String    @id @default(uuid())
+  id               String         @id @default(uuid())
   topicoId         String
-  ordem            Int       @default(0)
+  ordem            Int            @default(0)
   titulo           String
   ancora           String?
   fotoUrl          String?
@@ -359,9 +363,10 @@ model TelaEad {
   revisaoItens     String[]
   alerta           String?
   dicaProfissional String?
-  criadoEm         DateTime  @default(now())
-  atualizadoEm     DateTime  @updatedAt
-  topico           TopicoEad @relation(fields: [topicoId], references: [id], onDelete: Cascade)
+  criadoEm         DateTime       @default(now())
+  atualizadoEm     DateTime       @updatedAt
+  topico           TopicoEad      @relation(fields: [topicoId], references: [id], onDelete: Cascade)
+  vistas           TelaVistaEad[]
 
   @@index([topicoId])
 }
@@ -394,18 +399,19 @@ model AlternativaEad {
 }
 
 model CenarioEad {
-  id               String           @id @default(uuid())
+  id               String            @id @default(uuid())
   moduloId         String
-  ordem            Int              @default(0)
+  ordem            Int               @default(0)
   titulo           String
   cena             String?
   fotoUrl          String?
   videoUrl         String?
-  tempoSugeridoSeg Int              @default(240)
-  criadoEm         DateTime         @default(now())
-  atualizadoEm     DateTime         @updatedAt
-  modulo           ModuloEad        @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+  tempoSugeridoSeg Int               @default(240)
+  criadoEm         DateTime          @default(now())
+  atualizadoEm     DateTime          @updatedAt
+  modulo           ModuloEad         @relation(fields: [moduloId], references: [id], onDelete: Cascade)
   decisoes         DecisaoCenario[]
+  feitos           CenarioFeitoEad[]
 
   @@index([moduloId])
 }
@@ -434,4 +440,84 @@ model OpcaoDecisao {
   decisao   DecisaoCenario @relation(fields: [decisaoId], references: [id], onDelete: Cascade)
 
   @@index([decisaoId])
+}
+
+// ─── EAD: progresso do aluno (etapa 2) ─────────────────────────────────────────────────────────
+// Só tabelas novas. "Concluído/bloqueado" não é gravado: lib/ead-progresso.js calcula a partir daqui.
+
+enum TipoTentativaEad {
+  QUIZ
+  PRE_TESTE
+}
+
+model AlunoCursoEad {
+  id            String            @id @default(uuid())
+  usuarioId     String
+  cursoOnlineId String
+  iniciadoEm    DateTime          @default(now())
+  concluidoEm   DateTime?
+  criadoEm      DateTime          @default(now())
+  atualizadoEm  DateTime          @updatedAt
+  // Cascade: a exclusão de conta (lib/excluir-conta.js) apaga o Usuario.
+  usuario       Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  cursoOnline   CursoOnline       @relation(fields: [cursoOnlineId], references: [id], onDelete: Cascade)
+  telasVistas   TelaVistaEad[]
+  tentativas    TentativaEad[]
+  cenarios      CenarioFeitoEad[]
+
+  @@unique([usuarioId, cursoOnlineId])
+  @@index([cursoOnlineId])
+}
+
+model TelaVistaEad {
+  id           String        @id @default(uuid())
+  alunoCursoId String
+  telaId       String
+  vistaEm      DateTime      @default(now())
+  alunoCurso   AlunoCursoEad @relation(fields: [alunoCursoId], references: [id], onDelete: Cascade)
+  tela         TelaEad       @relation(fields: [telaId], references: [id], onDelete: Cascade)
+
+  @@unique([alunoCursoId, telaId])
+  @@index([telaId])
+}
+
+model TentativaEad {
+  id           String           @id @default(uuid())
+  alunoCursoId String
+  tipo         TipoTentativaEad
+  moduloId     String
+  topicoId     String?
+  perguntaIds  String[]
+  respostas    Json             @default("[]")
+  acertos      Int              @default(0)
+  total        Int
+  aprovado     Boolean?
+  concluidaEm  DateTime?
+  criadoEm     DateTime         @default(now())
+  atualizadoEm DateTime         @updatedAt
+  alunoCurso   AlunoCursoEad    @relation(fields: [alunoCursoId], references: [id], onDelete: Cascade)
+  modulo       ModuloEad        @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+  topico       TopicoEad?       @relation(fields: [topicoId], references: [id], onDelete: Cascade)
+
+  @@index([alunoCursoId])
+  @@index([moduloId])
+  @@index([topicoId])
+}
+
+model CenarioFeitoEad {
+  id           String        @id @default(uuid())
+  alunoCursoId String
+  cenarioId    String
+  iniciadoEm   DateTime      @default(now())
+  decisaoAtual Int           @default(0)
+  erros        Int           @default(0)
+  tempoSeg     Int?
+  concluidoEm  DateTime?
+  criadoEm     DateTime      @default(now())
+  atualizadoEm DateTime      @updatedAt
+  alunoCurso   AlunoCursoEad @relation(fields: [alunoCursoId], references: [id], onDelete: Cascade)
+  cenario      CenarioEad    @relation(fields: [cenarioId], references: [id], onDelete: Cascade)
+
+  @@unique([alunoCursoId, cenarioId])
+  @@index([cenarioId])
 }
