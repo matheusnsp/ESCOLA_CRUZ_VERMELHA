@@ -407,5 +407,85 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     return mods.findIndex((m) => m.id === modulo.id) + 1;
   }
 
+  // ─── Perguntas ────────────────────────────────────────────────────────────────────────────────
+  // Form: tipo, enunciado, feedback, alt[0..4][texto|correta] (UNICA/MULTIPLA) ou vf=0|1 (VF).
+  function lerPerguntaDoForm(body) {
+    const r = ead.schemaPergunta.safeParse({ tipo: body.tipo, enunciado: body.enunciado, feedback: body.feedback });
+    if (!r.success) return { erro: ead.primeiroErro(r) };
+    let itens;
+    if (r.data.tipo === 'VF') itens = [{ correta: body.vf === '0' }, { correta: body.vf === '1' }];
+    else {
+      const alt = body.alt || {};
+      itens = [0, 1, 2, 3, 4].map((i) => ({ texto: String((alt[i] && alt[i].texto) || ''), correta: !!(alt[i] && alt[i].correta) }));
+      const longa = itens.find((i) => !ead.schemaAlternativaTexto.safeParse(i.texto).success);
+      if (longa) return { erro: 'Alternativa: no máximo 300 caracteres.' };
+    }
+    const a = ead.normalizarAlternativas(r.data.tipo, itens);
+    if (a.erro) return { erro: a.erro };
+    return { dados: r.data, alternativas: a.alternativas };
+  }
+  // Valores do form a partir da pergunta salva.
+  const perguntaParaForm = (q) => ({
+    tipo: q.tipo, enunciado: q.enunciado, feedback: q.feedback,
+    vf: q.tipo === 'VF' ? String(q.alternativas.findIndex((a) => a.correta)) : '',
+    alt: q.tipo === 'VF' ? [] : q.alternativas.map((a) => ({ texto: a.texto, correta: a.correta })),
+  });
+
+  router.get('/ead/topico/:id/perguntas/nova', async (req, res) => {
+    const topico = await contextoTopico(req.params.id);
+    if (!topico) return naoAchou(res);
+    res.render('admin/ead/pergunta-form', { topico, pergunta: null, valores: { tipo: 'UNICA' }, erro: null, ok: req.query.ok || null });
+  });
+
+  router.post('/ead/topico/:id/perguntas/nova', async (req, res) => {
+    const topico = await contextoTopico(req.params.id);
+    if (!topico) return naoAchou(res);
+    const { dados, alternativas, erro } = lerPerguntaDoForm(req.body);
+    if (erro) return res.status(400).render('admin/ead/pergunta-form', { topico, pergunta: null, valores: req.body, erro });
+    const q = await escrever(req, topico.moduloId, 'nova pergunta', (tx) =>
+      tx.perguntaEad.create({ data: { ...dados, topicoId: topico.id, alternativas: { create: alternativas } } }));
+    await auditar(req, 'EAD_CRIOU_PERGUNTA', 'PerguntaEad', q.id, { moduloId: topico.moduloId, titulo: q.enunciado.slice(0, 80) });
+    if (req.body.depois === 'outra') return voltar(res, `/ead/topico/${topico.id}/perguntas/nova`, 'ok', 'Pergunta salva. Escreva a próxima.');
+    voltar(res, urlModulo(topico.moduloId), 'ok', 'Pergunta criada.');
+  });
+
+  async function acharPergunta(id) {
+    if (!edb.ehId(id)) return null;
+    return prisma.perguntaEad.findUnique({ where: { id }, include: { alternativas: { orderBy: { ordem: 'asc' } }, topico: { include: { modulo: { include: { cursoOnline: { include: { curso: { select: { nome: true } } } } } } } } } });
+  }
+
+  router.get('/ead/pergunta/:id/editar', async (req, res) => {
+    const q = await acharPergunta(req.params.id);
+    if (!q) return naoAchou(res);
+    res.render('admin/ead/pergunta-form', { topico: q.topico, pergunta: q, valores: perguntaParaForm(q), erro: null });
+  });
+
+  router.post('/ead/pergunta/:id/editar', async (req, res) => {
+    const q = await acharPergunta(req.params.id);
+    if (!q) return naoAchou(res);
+    const { dados, alternativas, erro } = lerPerguntaDoForm(req.body);
+    if (erro) return res.status(400).render('admin/ead/pergunta-form', { topico: q.topico, pergunta: q, valores: req.body, erro });
+    await escrever(req, q.topico.moduloId, `pergunta "${dados.enunciado.slice(0, 60)}"`, async (tx) => {
+      await tx.alternativaEad.deleteMany({ where: { perguntaId: q.id } });
+      await tx.perguntaEad.update({ where: { id: q.id }, data: { ...dados, alternativas: { create: alternativas } } });
+    });
+    voltar(res, urlModulo(q.topico.moduloId), 'ok', 'Pergunta salva.');
+  });
+
+  router.post('/ead/pergunta/:id/ativar', async (req, res) => {
+    const q = await acharPergunta(req.params.id);
+    if (!q) return naoAchou(res);
+    await escrever(req, q.topico.moduloId, `pergunta ${q.ativa ? 'desativada' : 'ativada'}`, (tx) => tx.perguntaEad.update({ where: { id: q.id }, data: { ativa: !q.ativa } }));
+    voltar(res, urlModulo(q.topico.moduloId), 'ok', q.ativa ? 'Pergunta desativada (fora do sorteio).' : 'Pergunta ativada.');
+  });
+
+  router.post('/ead/pergunta/:id/excluir', async (req, res) => {
+    const q = await acharPergunta(req.params.id);
+    if (!q) return naoAchou(res);
+    await escrever(req, q.topico.moduloId, 'pergunta apagada', (tx) => tx.perguntaEad.delete({ where: { id: q.id } }));
+    await auditar(req, 'EAD_EXCLUIU_PERGUNTA', 'PerguntaEad', q.id, { moduloId: q.topico.moduloId, titulo: q.enunciado.slice(0, 80) });
+    voltar(res, urlModulo(q.topico.moduloId), 'ok', 'Pergunta apagada.');
+  });
+
   return router;
 };
