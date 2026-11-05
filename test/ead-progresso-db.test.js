@@ -116,16 +116,70 @@ describe('ead-progresso-db', { skip: temBanco ? false : 'sem DATABASE_URL local'
   });
 
   test('cenário: errada soma erro, fora de ordem ignora, certa na última conclui', async () => {
-    await pdb.comecarCenario(ac.id, cen.id);
+    let f0 = await pdb.comecarCenario(ac.id, cen.id);
     const ds = await prisma.decisaoCenario.findMany({ where: { cenarioId: cen.id }, orderBy: { ordem: 'asc' }, include: { opcoes: { orderBy: { ordem: 'asc' } } } });
-    const r1 = await pdb.escolherNoCenario(ac.id, cen.id, ds[0].id, ds[0].opcoes[0].id);
+    const r1 = await pdb.escolherNoCenario(ac.id, cen.id, ds[0].id, ds[0].opcoes[0].id, pdb.jogadaDe(f0));
     assert.equal(r1.certa, false); assert.equal(r1.opcao.feedback, 'fala 0'); assert.equal(r1.feito.erros, 1);
-    assert.equal((await pdb.escolherNoCenario(ac.id, cen.id, ds[1].id, ds[1].opcoes[2].id)).ignorada, true);
-    assert.equal((await pdb.escolherNoCenario(ac.id, cen.id, ds[0].id, ds[0].opcoes[2].id)).certa, true);
-    const r4 = await pdb.escolherNoCenario(ac.id, cen.id, ds[1].id, ds[1].opcoes[2].id);
+    assert.equal((await pdb.escolherNoCenario(ac.id, cen.id, ds[1].id, ds[1].opcoes[2].id, pdb.jogadaDe(r1.feito))).ignorada, true);
+    const r3 = await pdb.escolherNoCenario(ac.id, cen.id, ds[0].id, ds[0].opcoes[2].id, pdb.jogadaDe(r1.feito));
+    assert.equal(r3.certa, true);
+    const r4 = await pdb.escolherNoCenario(ac.id, cen.id, ds[1].id, ds[1].opcoes[2].id, pdb.jogadaDe(r3.feito));
     assert.equal(r4.fechou, true); assert.ok(r4.feito.concluidoEm); assert.ok(r4.feito.tempoSeg >= 0);
     const re = await pdb.comecarCenario(ac.id, cen.id);
-    assert.equal(re.erros, 0); assert.equal(re.decisaoAtual, 0); assert.equal(re.concluidoEm, null);
+    assert.equal(re.erros, 0); assert.equal(re.decisaoAtual, 0); assert.equal(pdb.cenarioEmAndamento(re), true);
+  });
+
+  test('[revisão #1] abrir pré-teste e quiz em paralelo: 1 tentativa só', async () => {
+    const u = await prisma.usuario.create({ data: { nome: 'Corrida Teste', email: `corrida-${Date.now()}@teste.local`, papel: 'ALUNO' } });
+    const x = await pdb.garantirAlunoCurso(u.id, co.id);
+    const pts = await Promise.all([1, 2, 3, 4].map(() => pdb.abrirPreTeste(x.id, mod2.id)));
+    assert.equal(await prisma.tentativaEad.count({ where: { alunoCursoId: x.id, tipo: 'PRE_TESTE' } }), 1);
+    assert.equal(pts.filter(Boolean).length, 1);
+    const qs = await Promise.all([1, 2, 3].map(() => pdb.abrirQuiz(x.id, top.id)));
+    assert.equal(new Set(qs.map((q) => q.id)).size, 1);
+    assert.equal(await prisma.tentativaEad.count({ where: { alunoCursoId: x.id, tipo: 'QUIZ' } }), 1);
+    await prisma.usuario.delete({ where: { id: u.id } });
+  });
+
+  test('[revisão #3/#4] refazer cenário concluído mantém a conclusão; erro repetido (mesma jogada) conta 1 vez', async () => {
+    const u = await prisma.usuario.create({ data: { nome: 'Refaz Teste', email: `refaz-${Date.now()}@teste.local`, papel: 'ALUNO' } });
+    const x = await pdb.garantirAlunoCurso(u.id, co.id);
+    const ds = await prisma.decisaoCenario.findMany({ where: { cenarioId: cen.id }, orderBy: { ordem: 'asc' }, include: { opcoes: { orderBy: { ordem: 'asc' } } } });
+    let f = await pdb.comecarCenario(x.id, cen.id);
+    const jogada = (feito) => pdb.jogadaDe(feito);
+    const r = await Promise.all([1, 2].map(() => pdb.escolherNoCenario(x.id, cen.id, ds[0].id, ds[0].opcoes[0].id, jogada(f))));
+    assert.equal(r.filter((y) => !y.ignorada).length, 1);
+    f = await prisma.cenarioFeitoEad.findFirst({ where: { alunoCursoId: x.id, cenarioId: cen.id } });
+    assert.equal(f.erros, 1);
+    assert.equal((await pdb.escolherNoCenario(x.id, cen.id, ds[0].id, ds[0].opcoes[2].id, 'jogada-velha')).ignorada, true);
+    for (const d of ds) { f = (await pdb.escolherNoCenario(x.id, cen.id, d.id, d.opcoes[2].id, jogada(f))).feito; }
+    const concluido = f.concluidoEm;
+    assert.ok(concluido);
+    const re = await pdb.comecarCenario(x.id, cen.id);
+    assert.equal(re.concluidoEm.getTime(), concluido.getTime(), 'refazer não desfaz a conclusão');
+    assert.equal(pdb.cenarioEmAndamento(re), true);
+    const prog = await pdb.carregarProgresso(x.id);
+    assert.ok(prog.cenarios.find((c) => c.cenarioId === cen.id).concluidoEm);
+    let g = re;
+    for (const d of ds) { g = (await pdb.escolherNoCenario(x.id, cen.id, d.id, d.opcoes[2].id, jogada(g))).feito; }
+    assert.equal(pdb.cenarioEmAndamento(g), false);
+    assert.ok(g.concluidoEm.getTime() >= concluido.getTime());
+    await prisma.usuario.delete({ where: { id: u.id } });
+  });
+
+  test('[revisão #7] exclusão anonimizada (com matrícula paga) também apaga o progresso', async () => {
+    const u = await prisma.usuario.create({ data: { nome: 'Anon Teste', email: `anon-${Date.now()}@teste.local`, papel: 'ALUNO' } });
+    const turma = await prisma.turma.create({ data: { cursoId: curso.id } });
+    await prisma.matricula.create({ data: { alunoId: u.id, turmaId: turma.id, plano: 'A_VISTA', forma: 'PIX', valorCurso: 10, statusPagamento: 'PAGO' } });
+    await pdb.garantirAlunoCurso(u.id, co.id);
+    const r = await require('../src/lib/excluir-conta').excluir(u);
+    assert.equal(r, 'anonimizada');
+    assert.equal(await prisma.alunoCursoEad.count({ where: { usuarioId: u.id } }), 0);
+    await prisma.pagamento.deleteMany({ where: { matricula: { alunoId: u.id } } });
+    await prisma.matricula.deleteMany({ where: { alunoId: u.id } });
+    await prisma.turma.delete({ where: { id: turma.id } });
+    await prisma.logAuditoria.deleteMany({ where: { atorId: u.id } });
+    await prisma.usuario.delete({ where: { id: u.id } });
   });
 
   test('excluir o usuário apaga o progresso (cascata)', async () => {

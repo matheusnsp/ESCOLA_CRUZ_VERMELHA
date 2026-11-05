@@ -64,30 +64,39 @@ async function marcarTelaVista(alunoCursoId, telaId) {
   });
 }
 
-async function idsAtivos(where) {
-  return (await prisma.perguntaEad.findMany({ where: { ...where, ativa: true }, select: { id: true } })).map((p) => p.id);
+async function idsAtivos(where, db = prisma) {
+  return (await db.perguntaEad.findMany({ where: { ...where, ativa: true }, select: { id: true } })).map((p) => p.id);
 }
+
+// Trava a linha do aluno no curso: duas aberturas ao mesmo tempo (duplo clique) viram uma só.
+const travarAluno = (tx, alunoCursoId) => tx.$queryRaw`SELECT id FROM "AlunoCursoEad" WHERE id = ${alunoCursoId} FOR UPDATE`;
 
 // Reaproveita o quiz aberto do tópico; senão sorteia 3, evitando as da tentativa anterior.
 async function abrirQuiz(alunoCursoId, topicoId) {
-  const aberta = await prisma.tentativaEad.findFirst({ where: { alunoCursoId, topicoId, tipo: 'QUIZ', concluidaEm: null }, orderBy: { criadoEm: 'desc' } });
+  return prisma.$transaction(async (tx) => {
+  await travarAluno(tx, alunoCursoId);
+  const aberta = await tx.tentativaEad.findFirst({ where: { alunoCursoId, topicoId, tipo: 'QUIZ', concluidaEm: null }, orderBy: { criadoEm: 'desc' } });
   if (aberta) return aberta;
-  const topico = await prisma.topicoEad.findUnique({ where: { id: topicoId }, select: { moduloId: true } });
-  const ids = await idsAtivos({ topicoId });
+  const topico = await tx.topicoEad.findUnique({ where: { id: topicoId }, select: { moduloId: true } });
+  const ids = await idsAtivos({ topicoId }, tx);
   if (!topico || !ids.length) return null;
-  const anterior = await prisma.tentativaEad.findFirst({ where: { alunoCursoId, topicoId, tipo: 'QUIZ' }, orderBy: { criadoEm: 'desc' } });
+  const anterior = await tx.tentativaEad.findFirst({ where: { alunoCursoId, topicoId, tipo: 'QUIZ' }, orderBy: { criadoEm: 'desc' } });
   const perguntaIds = sortear(ids, QUIZ_N, anterior ? anterior.perguntaIds : []);
-  return prisma.tentativaEad.create({ data: { alunoCursoId, tipo: 'QUIZ', moduloId: topico.moduloId, topicoId, perguntaIds, total: perguntaIds.length } });
+  return tx.tentativaEad.create({ data: { alunoCursoId, tipo: 'QUIZ', moduloId: topico.moduloId, topicoId, perguntaIds, total: perguntaIds.length } });
+  });
 }
 
 // Uma tentativa por módulo. null se já tentou ou se o módulo tem menos de 8 perguntas ativas.
 async function abrirPreTeste(alunoCursoId, moduloId) {
-  if (await prisma.tentativaEad.count({ where: { alunoCursoId, moduloId, tipo: 'PRE_TESTE' } })) return null;
-  const ids = await idsAtivos({ topico: { moduloId } });
-  const n = tamanhoPreTeste(ids.length);
-  if (!n) return null;
-  const perguntaIds = sortear(ids, n);
-  return prisma.tentativaEad.create({ data: { alunoCursoId, tipo: 'PRE_TESTE', moduloId, perguntaIds, total: perguntaIds.length } });
+  return prisma.$transaction(async (tx) => {
+    await travarAluno(tx, alunoCursoId);
+    if (await tx.tentativaEad.count({ where: { alunoCursoId, moduloId, tipo: 'PRE_TESTE' } })) return null;
+    const ids = await idsAtivos({ topico: { moduloId } }, tx);
+    const n = tamanhoPreTeste(ids.length);
+    if (!n) return null;
+    const perguntaIds = sortear(ids, n);
+    return tx.tentativaEad.create({ data: { alunoCursoId, tipo: 'PRE_TESTE', moduloId, perguntaIds, total: perguntaIds.length } });
+  });
 }
 
 // Recalcula a tentativa só com as perguntas que ainda existem (alguma pode ter sido apagada no painel).
@@ -145,21 +154,40 @@ async function responder(tentativaId, alunoCursoId, perguntaId, alternativaIds) 
   });
 }
 
-// Começa (ou recomeça do zero) um cenário.
+// Em andamento: nunca concluído, ou recomeçado depois de concluído (refazer para treinar).
+const cenarioEmAndamento = (feito) => !!feito && (!feito.concluidoEm || feito.iniciadoEm > feito.concluidoEm);
+
+// Identifica a jogada atual (início + decisão + erros): a mesma escolha enviada duas vezes (duplo clique,
+// F5 no retorno) só conta uma vez, porque depois da primeira a jogada muda.
+const jogadaDe = (feito) => `${new Date(feito.iniciadoEm).getTime()}-${feito.decisaoAtual}-${feito.erros}`;
+
+// Começa ou recomeça um cenário. Refazer um cenário concluído NÃO desfaz a conclusão (o curso continua
+// concluído): só zera a jogada (decisão, erros) e marca um novo início.
 async function comecarCenario(alunoCursoId, cenarioId) {
-  const zerado = { iniciadoEm: new Date(), decisaoAtual: 0, erros: 0, tempoSeg: null, concluidoEm: null };
+  const jogada = { iniciadoEm: new Date(), decisaoAtual: 0, erros: 0 };
   return prisma.cenarioFeitoEad.upsert({
     where: { alunoCursoId_cenarioId: { alunoCursoId, cenarioId } },
-    update: zerado,
-    create: { alunoCursoId, cenarioId, ...zerado },
+    update: jogada,
+    create: { alunoCursoId, cenarioId, ...jogada },
   });
 }
 
-async function escolherNoCenario(alunoCursoId, cenarioId, decisaoId, opcaoId) {
+// Cenário em andamento cuja decisão atual não existe mais (apagada no painel): conclui se ainda há
+// decisões (as que faltavam sumiram); devolve o registro atualizado.
+async function acertarCenarioSemDecisao(feito, totalDecisoes) {
+  if (!cenarioEmAndamento(feito) || feito.decisaoAtual < totalDecisoes || totalDecisoes === 0) return feito;
+  return prisma.cenarioFeitoEad.update({
+    where: { id: feito.id },
+    data: { concluidoEm: new Date(), tempoSeg: Math.max(0, Math.round((Date.now() - feito.iniciadoEm.getTime()) / 1000)) },
+  });
+}
+
+async function escolherNoCenario(alunoCursoId, cenarioId, decisaoId, opcaoId, jogada) {
   return prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "CenarioFeitoEad" WHERE "alunoCursoId" = ${alunoCursoId} AND "cenarioId" = ${cenarioId} FOR UPDATE`;
     const feito = await tx.cenarioFeitoEad.findUnique({ where: { alunoCursoId_cenarioId: { alunoCursoId, cenarioId } } });
-    if (!feito || feito.concluidoEm) return { ignorada: true };
+    if (!cenarioEmAndamento(feito)) return { ignorada: true };
+    if (jogada !== undefined && jogada !== jogadaDe(feito)) return { ignorada: true };
     const decisoes = await tx.decisaoCenario.findMany({ where: { cenarioId }, orderBy: POR_ORDEM, include: { opcoes: { orderBy: { ordem: 'asc' } } } });
     const atual = decisoes[feito.decisaoAtual];
     const opcao = atual && atual.id === decisaoId ? atual.opcoes.find((o) => o.id === opcaoId) : null;
@@ -185,5 +213,5 @@ async function marcarCursoConcluido(alunoCursoId) {
 module.exports = {
   carregarCursoParaAluno, garantirAlunoCurso, carregarProgresso, marcarTelaVista,
   abrirQuiz, abrirPreTeste, tentativaDoAluno, perguntaAtual, responder,
-  comecarCenario, escolherNoCenario, marcarCursoConcluido,
+  comecarCenario, escolherNoCenario, marcarCursoConcluido, cenarioEmAndamento, jogadaDe, acertarCenarioSemDecisao,
 };

@@ -120,16 +120,52 @@ describe('/ead-teste: aluno', { skip: temBanco ? false : 'sem DATABASE_URL local
     assert.match(andamento, /data-inicio=/);
     assert.doesNotMatch(andamento, /fala 2/); // a fala só aparece depois da escolha
     const d = await prisma.decisaoCenario.findFirst({ where: { cenarioId: cen.id }, include: { opcoes: { orderBy: { ordem: 'asc' } } } });
-    const errada = await post(`${base}/cenario/${cen.id}/escolher`, ana, { decisaoId: d.id, opcaoId: d.opcoes[0].id });
+    const jog = async () => (andamento.match(/name="jogada" value="([^"]+)"/) || [])[1];
+    const errada = await post(`${base}/cenario/${cen.id}/escolher`, ana, { decisaoId: d.id, opcaoId: d.opcoes[0].id, jogada: await jog() });
     assert.equal(errada.status, 200);
     const htmlErrada = await errada.text();
     assert.match(htmlErrada, /fala 0/); assert.match(htmlErrada, /Tentar de novo/);
-    const certa = await post(`${base}/cenario/${cen.id}/escolher`, ana, { decisaoId: d.id, opcaoId: d.opcoes[2].id });
+    const depoisDoErro = await (await req(`${base}/cenario/${cen.id}`, ana)).text();
+    const jogada2 = (depoisDoErro.match(/name="jogada" value="([^"]+)"/) || [])[1];
+    const certa = await post(`${base}/cenario/${cen.id}/escolher`, ana, { decisaoId: d.id, opcaoId: d.opcoes[2].id, jogada: jogada2 });
     assert.match(await certa.text(), /fala 2/);
     const feito = await prisma.cenarioFeitoEad.findFirst({ where: { alunoCursoId: ac.id, cenarioId: cen.id } });
     assert.ok(feito.concluidoEm); assert.equal(feito.erros, 1);
     assert.ok((await prisma.alunoCursoEad.findUnique({ where: { id: ac.id } })).concluidoEm, 'curso concluído');
     // repetir a escolha depois de concluído: só volta para a página
     assert.equal((await post(`${base}/cenario/${cen.id}/escolher`, ana, { decisaoId: d.id, opcaoId: d.opcoes[2].id })).status, 302);
+  });
+
+  test('[revisão #8] responder sem marcar nada não grava (volta para a pergunta)', async () => {
+    const q = await post(`${base}/topico/${t1.id}/quiz`, ana);
+    const tid = q.headers.get('location').split('/').pop();
+    const t = await prisma.tentativaEad.findUnique({ where: { id: tid } });
+    const antes = t.respostas.length;
+    const pendente = t.perguntaIds[antes];
+    const v = await post(`${base}/tentativa/${tid}/responder`, ana, { perguntaId: pendente });
+    assert.equal(v.status, 302);
+    assert.equal((await prisma.tentativaEad.findUnique({ where: { id: tid } })).respostas.length, antes);
+  });
+
+  test('[revisão #2] cenário com a decisão atual apagada ou sem decisões: sem 500', async () => {
+    const ac = await prisma.alunoCursoEad.findFirst({ where: { usuarioId: bia.id, cursoOnlineId: co.id } });
+    for (const m of [m1, m2]) {
+      if (!(await prisma.tentativaEad.count({ where: { alunoCursoId: ac.id, moduloId: m.id, aprovado: true } }))) {
+        await prisma.tentativaEad.create({ data: { alunoCursoId: ac.id, tipo: 'PRE_TESTE', moduloId: m.id, perguntaIds: [], total: 8, acertos: 8, aprovado: true, concluidaEm: new Date() } });
+      }
+    }
+    // decisaoAtual além do fim (a decisão foi apagada depois de o aluno começar)
+    await prisma.cenarioFeitoEad.create({ data: { alunoCursoId: ac.id, cenarioId: cen.id, decisaoAtual: 5 } });
+    const g = await req(`${base}/cenario/${cen.id}`, bia);
+    assert.equal(g.status, 200);
+    assert.match(await g.text(), /Cenário concluído/);
+    // cenário sem nenhuma decisão
+    const vazio = await prisma.cenarioEad.create({ data: { moduloId: fin.id, titulo: 'Vazio', ordem: 9 } });
+    assert.equal((await req(`${base}/cenario/${vazio.id}`, bia)).status, 200);
+    await post(`${base}/cenario/${vazio.id}/comecar`, bia);
+    const g2 = await req(`${base}/cenario/${vazio.id}`, bia);
+    assert.equal(g2.status, 200);
+    assert.match(await g2.text(), /Em preparação/);
+    await prisma.cenarioEad.delete({ where: { id: vazio.id } });
   });
 });

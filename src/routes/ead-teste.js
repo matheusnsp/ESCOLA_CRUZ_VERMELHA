@@ -208,7 +208,10 @@ router.get('/ead-teste/:codigo/tentativa/:id', comCurso(async (req, res, co, bas
 router.post('/ead-teste/:codigo/tentativa/:id/responder', comCurso(async (req, res, co, base, curso) => {
   const ctx = await contexto(req, co, curso);
   if (!ctx) return pedirLogin(req, res, base);
-  const r = await pdb.responder(req.params.id, ctx.alunoCurso.id, String(req.body.perguntaId || ''), alternativasDoForm(req.body));
+  const marcadas = alternativasDoForm(req.body);
+  // Nada marcado (ex.: múltipla escolha enviada sem querer): não grava, volta para a pergunta.
+  if (!marcadas.length) return res.redirect(`${base}/tentativa/${req.params.id}`);
+  const r = await pdb.responder(req.params.id, ctx.alunoCurso.id, String(req.body.perguntaId || ''), marcadas);
   if (!r.tentativa) return naoAchou(res);
   const voltar = `${base}/tentativa/${req.params.id}`;
   if (r.ignorada || r.tentativa.tipo === 'PRE_TESTE') return res.redirect(voltar);
@@ -247,13 +250,23 @@ function renderCenario(res, dados) {
   const { cenario, feito } = dados;
   const ordem = cenario.decisoes;
   const proximoCenario = dados.final.cenarios.find((c) => c.id !== cenario.id && !dados.ctx.progresso.cenarios.some((f) => f.cenarioId === c.id && f.concluidoEm));
-  res.render('ead-teste/cenario', { ...dados, decisao: feito && !feito.concluidoEm ? ordem[feito.decisaoAtual] : null, total: ordem.length, proximoCenario, agora: new Date() });
+  const emAndamento = pdb.cenarioEmAndamento(feito);
+  res.render('ead-teste/cenario', { ...dados, emAndamento, decisao: emAndamento ? ordem[feito.decisaoAtual] || null : null, jogada: emAndamento ? pdb.jogadaDe(feito) : null, total: ordem.length, proximoCenario, agora: new Date() });
 }
 
 router.get('/ead-teste/:codigo/cenario/:cenarioId', comCurso(async (req, res, co, base, curso) => {
   const d = await prepararCenario(req, res, co, base, curso);
   if (!d) return;
-  const feito = await prisma.cenarioFeitoEad.findUnique({ where: { alunoCursoId_cenarioId: { alunoCursoId: d.ctx.alunoCurso.id, cenarioId: d.cenario.id } } });
+  let feito = await prisma.cenarioFeitoEad.findUnique({ where: { alunoCursoId_cenarioId: { alunoCursoId: d.ctx.alunoCurso.id, cenarioId: d.cenario.id } } });
+  // Decisão atual apagada no painel depois de o aluno começar: dá o cenário por concluído.
+  if (feito) {
+    const antes = feito.concluidoEm;
+    feito = await pdb.acertarCenarioSemDecisao(feito, d.cenario.decisoes.length);
+    if (!antes && feito.concluidoEm) {
+      const estado = estadoDoCurso(curso, await pdb.carregarProgresso(d.ctx.alunoCurso.id), new Date());
+      if (estado.concluido) await pdb.marcarCursoConcluido(d.ctx.alunoCurso.id);
+    }
+  }
   renderCenario(res, { ...d, co, base, feito, escolha: null });
 }));
 
@@ -267,7 +280,7 @@ router.post('/ead-teste/:codigo/cenario/:cenarioId/comecar', comCurso(async (req
 router.post('/ead-teste/:codigo/cenario/:cenarioId/escolher', comCurso(async (req, res, co, base, curso) => {
   const d = await prepararCenario(req, res, co, base, curso);
   if (!d) return;
-  const r = await pdb.escolherNoCenario(d.ctx.alunoCurso.id, d.cenario.id, String(req.body.decisaoId || ''), String(req.body.opcaoId || ''));
+  const r = await pdb.escolherNoCenario(d.ctx.alunoCurso.id, d.cenario.id, String(req.body.decisaoId || ''), String(req.body.opcaoId || ''), String(req.body.jogada || ''));
   if (r.ignorada) return res.redirect(`${base}/cenario/${d.cenario.id}`);
   if (r.fechou) {
     const estado = estadoDoCurso(curso, await pdb.carregarProgresso(d.ctx.alunoCurso.id), new Date());
@@ -275,7 +288,7 @@ router.post('/ead-teste/:codigo/cenario/:cenarioId/escolher', comCurso(async (re
   }
   // Mostra a fala do instrutor para a opção escolhida, na própria decisão.
   res.render('ead-teste/cenario', {
-    ...d, co, base, feito: r.feito, decisao: r.decisao, total: d.cenario.decisoes.length, agora: new Date(),
+    ...d, co, base, feito: r.feito, decisao: r.decisao, total: d.cenario.decisoes.length, agora: new Date(), emAndamento: true, jogada: null,
     escolha: { opcao: r.opcao, certa: r.certa, fechou: r.fechou }, proximoCenario: null,
   });
 }));
