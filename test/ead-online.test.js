@@ -98,7 +98,10 @@ describe('/online: compra e acesso pago', { skip: temBanco ? false : 'sem DATABA
     assert.match(r.headers.get('location'), /^\/inscricao\/retorno\?matriculaId=[0-9a-f-]{36}&pix=1&etapa=curso/);
     const m = await matriculaDe(ana);
     assert.equal(m.plano, 'A_VISTA'); assert.equal(m.forma, 'PIX'); assert.equal(Number(m.valorCurso), 49.9);
-    assert.equal(Number(m.valorTaxaMatricula), 0); assert.equal(m.taxaConfirmada, true); assert.equal(m.statusPagamento, 'PENDENTE');
+    assert.equal(Number(m.valorTaxaMatricula), 0); assert.equal(m.statusPagamento, 'PENDENTE');
+    // [revisão C1] sem pagar, nada conta como taxa recebida (o Painel e o Financeiro leem taxaConfirmada)
+    assert.equal(m.taxaConfirmada, false); assert.equal(m.taxaConfirmadaEm, null);
+    assert.equal(await prisma.matricula.count({ where: { id: m.id, taxaConfirmada: true, statusPagamento: { notIn: ['PAGO', 'PARCELADO', 'ESTORNADO'] } } }), 0);
     assert.equal(m.pagamentos.length, 1); assert.equal(m.pagamentos[0].status, 'PENDENTE'); assert.equal(Number(m.pagamentos[0].valor), 49.9);
     assert.equal(gateway[0].valorTotal, 49.9);
     const t = await prisma.turma.findUnique({ where: { id: m.turmaId } });
@@ -117,7 +120,7 @@ describe('/online: compra e acesso pago', { skip: temBanco ? false : 'sem DATABA
     const m = await matriculaDe(ana);
     await aplicarStatus(m.pagamentos[0], { status: 'paid', payload: {} });
     const depois = await matriculaDe(ana);
-    assert.equal(depois.statusPagamento, 'PAGO'); assert.ok(depois.confirmadaEm);
+    assert.equal(depois.statusPagamento, 'PAGO'); assert.ok(depois.confirmadaEm); assert.equal(depois.taxaConfirmada, true);
     assert.equal(liberados.length, 1);
     assert.equal(liberados[0].para, ana.email);
     assert.match(liberados[0].link, new RegExp(`/online/${curso.id}$`));
@@ -149,7 +152,7 @@ describe('/online: compra e acesso pago', { skip: temBanco ? false : 'sem DATABA
     const r = await post(`${base}/comprar`, ana, { forma: 'PIX' });
     assert.match(r.headers.get('location'), /pix=1/);
     const d = await matriculaDe(ana);
-    assert.equal(d.id, m.id); assert.equal(d.statusPagamento, 'PENDENTE'); assert.equal(d.taxaConfirmada, true); assert.equal(d.confirmadaEm, null);
+    assert.equal(d.id, m.id); assert.equal(d.statusPagamento, 'PENDENTE'); assert.equal(d.taxaConfirmada, false); assert.equal(d.confirmadaEm, null);
     assert.equal(d.pagamentos.length, 2); assert.equal(d.pagamentos[0].status, 'PAGO'); assert.equal(d.pagamentos[1].status, 'PENDENTE');
   });
 

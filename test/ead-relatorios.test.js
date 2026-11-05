@@ -121,6 +121,18 @@ describe('ead-relatorios', { skip: temBanco ? false : 'sem DATABASE_URL local' }
     assert.equal((await fetch(`${painel}/ead/curso/${co.id}/concluintes/${ac.bia.id}/certificado`)).status, 404);
   });
 
+  test('[revisão I2] "Abrir certificado" de quem teve a inscrição estornada: não abre nem registra', async () => {
+    const m = await prisma.matricula.findFirst({ where: { alunoId: u.ana.id, turmaId: turma.id } });
+    await prisma.matricula.update({ where: { id: m.id }, data: { statusPagamento: 'ESTORNADO' } });
+    try {
+      const r = await fetch(`${painel}/ead/curso/${co.id}/concluintes/${ac.ana.id}/certificado`);
+      assert.equal(r.status, 409);
+      assert.match(await r.text(), /estornada|cancelada/i);
+    } finally {
+      await prisma.matricula.update({ where: { id: m.id }, data: { statusPagamento: 'PAGO' } });
+    }
+  });
+
   test('desempenho e planilha pelo painel', async () => {
     const d = await fetch(`${painel}/ead/curso/${co.id}/desempenho`);
     assert.equal(d.status, 200); assert.match(await d.text(), /Perguntas que mais erram/);

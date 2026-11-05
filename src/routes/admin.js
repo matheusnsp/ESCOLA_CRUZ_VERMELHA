@@ -1993,7 +1993,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     }),
 
     prisma.matricula.findMany({
-      where: { taxaConfirmada: false, statusPagamento: { notIn: ['ESTORNADO', 'CANCELADO'] } },
+      where: { taxaConfirmada: false, statusPagamento: { notIn: ['ESTORNADO', 'CANCELADO'] }, turma: { status: { not: 'ONLINE' } } },
       orderBy: { criadoEm: 'desc' },
       include: { aluno: true, turma: { include: { curso: true } } },
     }),

@@ -24,8 +24,11 @@ const SELECT_ALUNO_CHECKOUT = {
 // Acha ou cria a matrícula da pessoa na turma online (@@unique alunoId+turmaId: um clique duplo não
 // cria duas). Pendente: atualiza forma e valor. Cancelada/estornada: volta a PENDENTE na MESMA
 // matrícula; os Pagamentos antigos ficam como histórico.
+// taxaConfirmada fica FALSE até o pagamento (o aplicarStatus confirma a taxa do à vista junto): o Painel,
+// o Financeiro e a taxa POR_ALUNO leem taxaConfirmada como "entrou dinheiro". Sem pagar, a matrícula é
+// uma tentativa abandonada como qualquer outra (FILTRO_MATRICULA_FANTASMA).
 async function matriculaDaCompra(alunoId, turmaId, forma, valor) {
-  const dados = { plano: 'A_VISTA', forma, valorCurso: valor, valorTaxaMatricula: 0, taxaConfirmada: true };
+  const dados = { plano: 'A_VISTA', forma, valorCurso: valor, valorTaxaMatricula: 0, taxaConfirmada: false, taxaConfirmadaEm: null, taxaConfirmadaPor: null };
   const existente = await prisma.matricula.findUnique({ where: { alunoId_turmaId: { alunoId, turmaId } } });
   if (existente) {
     if (['PAGO', 'PARCELADO'].includes(existente.statusPagamento)) return existente;
@@ -35,7 +38,7 @@ async function matriculaDaCompra(alunoId, turmaId, forma, valor) {
     });
   }
   try {
-    return await prisma.matricula.create({ data: { ...dados, alunoId, turmaId, statusPagamento: 'PENDENTE', taxaConfirmadaEm: new Date(), taxaConfirmadaPor: 'curso online (sem taxa)' } });
+    return await prisma.matricula.create({ data: { ...dados, alunoId, turmaId, statusPagamento: 'PENDENTE' } });
   } catch (e) {
     if (e.code !== 'P2002') throw e;
     return prisma.matricula.findUnique({ where: { alunoId_turmaId: { alunoId, turmaId } } });

@@ -178,6 +178,10 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const acId = req.params.alunoCursoId;
     const ac = co && edb.ehId(acId) ? await prisma.alunoCursoEad.findFirst({ where: { id: acId, cursoOnlineId: co.id, concluidoEm: { not: null } } }) : null;
     if (!ac) return naoAchou(res);
+    // Inscrição cancelada/estornada depois de concluir: o certificado já emitido fica no Livro (e na
+    // Redação), mas a página não abre — e abrir aqui não pode registrar um certificado novo.
+    const cancelada = await prisma.matricula.findFirst({ where: { alunoId: ac.usuarioId, turma: { cursoId: co.cursoId, status: 'ONLINE' }, statusPagamento: { in: ['CANCELADO', 'ESTORNADO'] } } });
+    if (cancelada) return res.status(409).render('admin/erro', { mensagem: 'A inscrição deste aluno foi cancelada ou estornada: o certificado não abre mais. O número já emitido continua no Livro.' });
     const r = await emitirCertificadoEad(ac.id, { documentoAluno: req.app.locals.documentoAluno });
     if (!r) return naoAchou(res);
     res.render('admin/certificado-imprimir', {

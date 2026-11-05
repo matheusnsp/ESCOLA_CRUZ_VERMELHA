@@ -21,9 +21,9 @@ describe('turma ONLINE nas rotinas do presencial', { skip: temBanco ? false : 's
     turma = await turmaOnline(co);
     u1 = await prisma.usuario.create({ data: { nome: 'Pendente Online', email: `pend-on-${Date.now()}@teste.local`, papel: 'ALUNO' } });
     u2 = await prisma.usuario.create({ data: { nome: 'Paga Online', email: `paga-on-${Date.now()}@teste.local`, papel: 'ALUNO' } });
-    const base = { turmaId: turma.id, plano: 'A_VISTA', forma: 'PIX', valorCurso: 49.9, valorTaxaMatricula: 0, taxaConfirmada: true };
-    pendente = await prisma.matricula.create({ data: { ...base, alunoId: u1.id, statusPagamento: 'PENDENTE' } });
-    paga = await prisma.matricula.create({ data: { ...base, alunoId: u2.id, statusPagamento: 'PAGO', confirmadaEm: new Date() } });
+    const base = { turmaId: turma.id, plano: 'A_VISTA', forma: 'PIX', valorCurso: 49.9, valorTaxaMatricula: 0 };
+    pendente = await prisma.matricula.create({ data: { ...base, alunoId: u1.id, statusPagamento: 'PENDENTE', taxaConfirmada: false } });
+    paga = await prisma.matricula.create({ data: { ...base, alunoId: u2.id, statusPagamento: 'PAGO', taxaConfirmada: true, confirmadaEm: new Date() } });
   });
   after(async () => {
     await prisma.matricula.deleteMany({ where: { turmaId: turma.id } });
