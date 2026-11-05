@@ -63,7 +63,9 @@ async function contexto(req, co, curso) {
   }
   const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } });
   const avisos = { senha: await precisaTrocarSenha(usuarioId), cadastro: cadastroIncompleto(usuario) };
-  return { alunoCurso, progresso, estado, avisos, usuario };
+  // Concluiu uma vez, o certificado é dele: conteúdo novo no curso não tira o certificado já emitido.
+  const certificadoLiberado = !!alunoCurso.concluidoEm || estado.concluido;
+  return { alunoCurso, progresso, estado, avisos, usuario, certificadoLiberado };
 }
 const estadoDoModulo = (ctx, moduloId) => (ctx ? ctx.estado.modulos.find((m) => m.id === moduloId) : null);
 
@@ -316,7 +318,7 @@ router.post('/ead-teste/:codigo/cenario/:cenarioId/escolher', comCurso(async (re
 router.get('/ead-teste/:codigo/certificado', comCurso(async (req, res, co, base, curso) => {
   const ctx = await contexto(req, co, curso);
   if (!ctx) return pedirLogin(req, res, base);
-  if (!ctx.estado.concluido) return res.redirect(base);
+  if (!ctx.certificadoLiberado) return res.redirect(base);
   const r = await emitirCertificadoEad(ctx.alunoCurso.id, { documentoAluno: req.app.locals.documentoAluno });
   if (!r) return res.redirect(base);
   if (r.avisoRedacao) console.warn('[EAD] certificado sem QR:', r.avisoRedacao);
@@ -330,7 +332,7 @@ router.get('/ead-teste/:codigo/certificado', comCurso(async (req, res, co, base,
 router.get('/ead-teste/:codigo/cartao-de-bolso.pdf', comCurso(async (req, res, co, base, curso) => {
   const ctx = await contexto(req, co, curso);
   if (!ctx) return pedirLogin(req, res, base);
-  if (!ctx.estado.concluido) return res.redirect(base);
+  if (!ctx.certificadoLiberado) return res.redirect(base);
   const { buffer, nomeArquivo } = await gerarCartao(co.id);
   res.set('Content-Type', 'application/pdf');
   res.set('Content-Disposition', `attachment; filename="${nomeArquivo}"`);

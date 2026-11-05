@@ -198,4 +198,16 @@ describe('/ead-teste: aluno', { skip: temBanco ? false : 'sem DATABASE_URL local
     assert.match(c.headers.get('content-disposition'), /attachment; filename="cartao-de-bolso-/);
     assert.equal(Buffer.from(await c.arrayBuffer()).subarray(0, 5).toString(), '%PDF-');
   });
+
+  test('[revisão etapa 3] certificado emitido continua acessível depois que o conteúdo do curso muda', async () => {
+    // um módulo novo com uma tela: pelo conteúdo atual, o curso deixa de estar concluído
+    const extra = await prisma.moduloEad.create({ data: { cursoOnlineId: co.id, titulo: 'Módulo novo', ordem: 5, topicos: { create: [{ titulo: 'T', telas: { create: [{ titulo: 'Tela nova' }] } }] } } });
+    try {
+      const r = await req(`${base}/certificado`, ana);
+      assert.equal(r.status, 200);
+      assert.match(await r.text(), /CURSO ONLINE/);
+      assert.equal((await req(`${base}/cartao-de-bolso.pdf`, ana)).status, 200);
+      assert.match(await (await req(base, ana)).text(), /Ver meu certificado/);
+    } finally { await prisma.moduloEad.delete({ where: { id: extra.id } }); }
+  });
 });
