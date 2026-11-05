@@ -672,7 +672,46 @@ async function enviarDuvidaRespondida(email, nome, { curso, tela, link }) {
   await enviar(email, `Sua dúvida foi respondida: ${limpo(curso)}`, html, `Dúvida respondida (${curso})`, link);
 }
 
+// Etapa 6: a escola liberou uma vaga do curso online para a pessoa.
+async function enviarVagaLiberada(email, nome, { escola, curso, link, senhaInicial }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const senha = senhaInicial
+    ? `<br><br>Sua conta foi criada com o seu e-mail. A senha inicial são os <strong>4 últimos dígitos do seu CPF</strong>; troque-a no primeiro acesso.`
+    : '';
+  const html = moldura(
+    'Sua escola liberou o curso online',
+    limpo(nome),
+    `A <strong>${limpo(escola)}</strong> liberou para você o curso online <strong>${limpo(curso)}</strong>, da Escola de Educação e Saúde `
+      + 'da Cruz Vermelha. Estude pelo celular, no seu ritmo; ao concluir, o certificado sai na hora.' + senha
+      + '<br><br>Lembre: é uma capacitação teórica. O treinamento prático em manequim é oferecido nos cursos presenciais da Escola.',
+    'Começar o curso',
+    link,
+    'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.'
+  );
+  await enviar(email, `Sua escola liberou o curso online: ${limpo(curso)}`, html, `Vaga de lote liberada (${escola})`, link);
+}
+
+// Etapa 6: a pessoa virou gestora da escola (Minha escola: cadastra a equipe e baixa a declaração).
+async function enviarGestorEscola(email, nome, { escola, link, senhaInicial }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const senha = senhaInicial
+    ? `<br><br>Sua conta foi criada com o seu e-mail. A senha inicial são os <strong>4 últimos dígitos do seu CPF</strong>; troque-a no primeiro acesso.`
+    : '';
+  const html = moldura(
+    `Você é gestor da escola ${limpo(escola)}`,
+    limpo(nome),
+    `Em <strong>Minha escola</strong> você cadastra a equipe no curso online, manda o link de convite, acompanha quem concluiu `
+      + 'e baixa a declaração de capacitação (Lei 13.722/2018).' + senha,
+    'Abrir Minha escola',
+    link,
+    'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.'
+  );
+  await enviar(email, `Você é gestor da escola ${limpo(escola)}`, html, `Gestor de escola (${escola})`, link);
+}
+
 module.exports = {
+  enviarVagaLiberada,
+  enviarGestorEscola,
   enviarDuvidaRespondida,
   enviarCursoOnlineLiberado,
   enviarCertificadoEadPronto,

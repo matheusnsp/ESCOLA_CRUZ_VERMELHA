@@ -60,12 +60,8 @@ async function enviarConfirmacao(usuario) {
   await enviarEmailConfirmacao(usuario.email, usuario.nome, link);
 }
 
-function senhaPadraoDoDocumento({ tipoDocumento, cpfCnpjNormalizado, passaporte }) {
-  const base = tipoDocumento === 'PASSAPORTE'
-    ? (passaporte || '').replace(/[^A-Z0-9]/g, '')
-    : (cpfCnpjNormalizado || '');
-  return base.slice(-4);
-}
+// Senha inicial do cadastro: lib/conta-aluno.js (a conta criada pelo gestor da escola usa a mesma regra).
+const { senhaPadraoDoDocumento } = require('../lib/conta-aluno');
 
 // ============================================================
 //  CADASTRO

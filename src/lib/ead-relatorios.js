@@ -204,4 +204,4 @@ async function planilhaDoCurso(cursoOnlineId) {
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
 
-module.exports = { alunosDoCurso, detalheDoAluno, concluintesDoCurso, desempenhoDoCurso, planilhaDoCurso };
+module.exports = { alunosDoCurso, detalheDoAluno, concluintesDoCurso, desempenhoDoCurso, planilhaDoCurso, INCLUDE_PROGRESSO, progressoDe, ultimoAcessoDe };
