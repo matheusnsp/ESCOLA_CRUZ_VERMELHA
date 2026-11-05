@@ -13,6 +13,9 @@ const financeiroContas = require('../lib/financeiro-contas');
 const { contaDoGateway: unicopagContaDoGateway } = require('../lib/unicopag');
 const pesquisa = require('../lib/pesquisa');
 const { FORA_DO_PRESENCIAL } = require('../lib/turma-online');
+// Curso só online (etapa 5): fora das listas do presencial e sem turma presencial.
+const { semSoOnline, ehSoOnline } = require('../lib/ead-curso-online');
+const MSG_SO_ONLINE = 'Este curso existe só online: não tem turma presencial.';
 const comprovanteSaude = require('../lib/comprovante-saude');
 const prisma = require('../db');
 const { verificarSenha, hashSenha } = require('../lib/password');
@@ -914,7 +917,7 @@ router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), as
     };
   }
 
-  const [cursos, total] = await Promise.all([
+  const [cursos, totalComOnline] = await Promise.all([
 
     prisma.curso.findMany({
       where,
@@ -942,6 +945,11 @@ router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), as
     prisma.curso.count(),
 
   ]);
+
+  // O curso só online (etapa 5) não aparece no presencial (nem na contagem).
+  const visiveis = await semSoOnline(cursos);
+  cursos.splice(0, cursos.length, ...visiveis);
+  const total = totalComOnline - (await require('../lib/ead-curso-online').idsSoOnline()).size;
 
   // O que o aluno paga de verdade (à vista e parcelado com os juros do cartão), igual ao checkout.
   const cfgMatricula = await lerConfigMatricula();
@@ -1173,10 +1181,10 @@ router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), as
 });
 
 router.get('/turmas/nova', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  const cursos = await prisma.curso.findMany({
+  const cursos = await semSoOnline(await prisma.curso.findMany({
     where: req.session.papel === 'DEV' ? {} : { ativo: true },
     orderBy: { nome: 'asc' },
-  });
+  }));
   // ?curso=ID (vindo da lista de cursos) já deixa o curso escolhido.
   const cursoId = cursos.some((c) => c.id === req.query.curso) ? req.query.curso : undefined;
   res.render('admin/turma-form', { turma: cursoId ? { cursoId } : null, aulas: [], cursos, statusTurma: STATUS_TURMA, erro: null });
@@ -1228,14 +1236,15 @@ router.post('/turmas', requirePermissao('turmas:gerenciar'), async (req, res) =>
   const { dados, aulas, erro } = lerTurmaDoForm(req.body);
 
   const reRenderErro = async (msg) => {
-    const cursos = await prisma.curso.findMany({
+    const cursos = await semSoOnline(await prisma.curso.findMany({
       where: req.session.papel === 'DEV' ? {} : { ativo: true },
       orderBy: { nome: 'asc' },
-    });
+    }));
     return res.status(400).render('admin/turma-form', { turma: req.body, aulas: [], cursos, statusTurma: STATUS_TURMA, erro: msg });
   };
 
   if (erro) return reRenderErro(erro);
+  if (await ehSoOnline(dados.cursoId)) return reRenderErro(MSG_SO_ONLINE);
 
   if (req.session.papel !== 'DEV') {
     const curso = await prisma.curso.findUnique({ where: { id: dados.cursoId } });
@@ -1254,7 +1263,7 @@ router.post('/turmas', requirePermissao('turmas:gerenciar'), async (req, res) =>
 router.get('/turmas/:id/editar', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const [turma, cursos] = await Promise.all([
     prisma.turma.findUnique({ where: { id: req.params.id }, include: { aulas: { orderBy: { data: 'asc' } } } }),
-    prisma.curso.findMany({ orderBy: { nome: 'asc' } }),
+    prisma.curso.findMany({ orderBy: { nome: 'asc' } }).then((l) => semSoOnline(l)),
   ]);
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
   if (turma.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não pode ser editada.'));
@@ -1269,9 +1278,10 @@ router.post('/turmas/:id', requirePermissao('turmas:gerenciar'), async (req, res
   // A turma de espera (lib/turma-espera.js) é do sistema: data, vagas e status não se editam à mão.
   if (existe.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não pode ser editada.'));
   if (existe.status === 'ONLINE') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma do curso online não é editada aqui: use o modo Online do painel.'));
-  const { dados, aulas, erro } = lerTurmaDoForm(req.body);
+  const { dados, aulas, erro: erroForm } = lerTurmaDoForm(req.body);
+  const erro = erroForm || (dados && await ehSoOnline(dados.cursoId) ? MSG_SO_ONLINE : null);
   if (erro) {
-    const cursos = await prisma.curso.findMany({ orderBy: { nome: 'asc' } });
+    const cursos = await semSoOnline(await prisma.curso.findMany({ orderBy: { nome: 'asc' } }));
     return res.status(400).render('admin/turma-form', { turma: { ...req.body, id: req.params.id }, aulas: [], cursos, statusTurma: STATUS_TURMA, erro });
   }
   await prisma.aulaData.deleteMany({ where: { turmaId: req.params.id } });

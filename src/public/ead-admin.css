@@ -102,3 +102,10 @@
 .adm-aba.on .adm-badge-sutil { color: #fff; background: rgba(255,255,255,.22); }
 .ead-duvida-onde a { color: var(--vermelho); font-weight: 700; text-decoration: none; }
 .ead-duvida-onde a:hover { text-decoration: underline; }
+.ead-dados-grade { display: flex; gap: 16px; align-items: flex-start; }
+.ead-dados-grade img { width: 140px; height: 90px; object-fit: cover; border-radius: 10px; flex: none; }
+.ead-dados-grade p { margin: 0 0 6px; }
+.ead-novo-so-online { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.ead-novo-so-online .adm-mut { margin: 0; }
+.ead-dados-curso .ead-topico-cab { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 0 12px; border-bottom: 1px solid var(--linha2); margin-bottom: 12px; }
+.ead-dados-curso .ead-topico-cab h2 { margin: 0; display: flex; align-items: center; gap: 8px; }

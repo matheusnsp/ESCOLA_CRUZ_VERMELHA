@@ -8,6 +8,22 @@
 <%- include('_abas-curso', { co: co, aba: 'conteudo' }) %>
 <%- include('_mensagens') %>
 
+<% if (typeof dadosCurso !== 'undefined' && dadosCurso) { %>
+<%# Etapa 5: curso que só existe online — os dados do curso são editados aqui, não no presencial. %>
+<div class="adm-box adm-box-pad adm-espaco ead-dados-curso">
+  <div class="ead-topico-cab">
+    <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-laptop"></i> Dados do curso <span class="ead-selo final">Só online</span></h2>
+    <a class="adm-btn adm-btn-out" href="/ead/curso/<%= co.id %>/dados"><i class="fa-solid fa-pen"></i> Editar</a>
+  </div>
+  <div class="ead-dados-grade">
+    <% if (dadosCurso.imagemUrl) { %><img src="<%= dadosCurso.imagemUrl %>" alt=""><% } %>
+    <div>
+      <p><b><%= dadosCurso.nome %></b> · <%= dadosCurso.cargaHoraria %> horas</p>
+      <p class="adm-mut"><%= dadosCurso.descricao || 'Sem descrição.' %></p>
+    </div>
+  </div>
+</div>
+<% } %>
 <%# Etapa 4: venda no site. Preço único (PIX ou cartão, sem taxa) e o interruptor "Publicar no site". %>
 <div class="adm-box adm-box-pad adm-espaco ead-venda">
   <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-store"></i> Venda no site</h2>

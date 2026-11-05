@@ -13,6 +13,7 @@ const { criarTransacao, obterOpcaoParcelamento } = require('../lib/unicopag');
 const { iniciarCobrancaAVista, urlRetorno, cobrancaCartaoOnline, destinoAposPagamento } = require('../lib/cobranca-avista');
 const { lerOrigem } = require('../lib/origem-da-visita');
 const { anexarOnline } = require('../lib/ead-publicacao');
+const cursoSoOnline = require('../lib/ead-curso-online');
 const cacheRapido = require('../lib/cache-rapido');
 const extras = require('../lib/extras');
 const vitrine = require('../lib/vitrine');
@@ -194,7 +195,15 @@ async function carregarVitrine(filtro, { agenda = false } = {}) {
   });
   await extras.anexar('curso', cursos);
   await anexarOnline(cursos); // curso.online = { preco } quando o curso online está publicado
-  return vitrine.ordenar(cursos);
+  // O curso só online nunca entra como presencial (nem para o DEV, que vê os inativos).
+  return vitrine.ordenar(await cursoSoOnline.semSoOnline(cursos));
+}
+
+// Catálogo /cursos: o presencial e, no fim, os cursos só online publicados (card com link para /online).
+async function carregarCatalogo(filtro) {
+  const [presencial, soOnline] = await Promise.all([carregarVitrine(filtro, { agenda: true }), cursoSoOnline.cursosSoOnlinePublicados()]);
+  await extras.anexar('curso', soOnline);
+  return [...presencial, ...soOnline];
 }
 
 // A home mostra só alguns cursos em destaque; a lista completa fica em /cursos.
@@ -223,7 +232,7 @@ router.get('/duvidas', (req, res) => res.redirect(302, '/#duvidas'));
 router.get('/cursos', async (req, res) => {
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
   const [cursos, cfgMap] = await Promise.all([
-    catalogo(res, 'cursos', () => carregarVitrine(filtro, { agenda: true })),
+    catalogo(res, 'cursos', () => carregarCatalogo(filtro)),
     lerConfigMatricula(),
   ]);
   res.render('cursos', { cursos, cfgMap, formatBRL, totalExibicao, taxaExibicao, vitrine });
@@ -338,9 +347,12 @@ router.get('/turmas/:turmaId/agenda.ics', (req, res, next) => (async () => {
 
 // Lista de páginas públicas para o Google (o robots.txt, em server.js, aponta para cá).
 router.get('/sitemap.xml', (req, res, next) => (async () => {
-  const cursos = await catalogo(res, 'sitemap', () => prisma.curso.findMany({ where: { ativo: true }, select: { nome: true }, orderBy: { nome: 'asc' } }));
+  const { cursos, soOnline } = await catalogo(res, 'sitemap', async () => ({
+    cursos: await prisma.curso.findMany({ where: { ativo: true }, select: { nome: true }, orderBy: { nome: 'asc' } }),
+    soOnline: await cursoSoOnline.cursosSoOnlinePublicados(), // curso só online publicado: /online/<id>
+  }));
   const base = res.locals.urlSite;
-  const urls = ['/', '/cursos', '/privacidade'].concat(cursos.map(vitrine.urlCurso));
+  const urls = ['/', '/cursos', '/privacidade'].concat(cursos.map(vitrine.urlCurso), soOnline.map((c) => `/online/${c.id}`));
   const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   res.set('Content-Type', 'application/xml; charset=utf-8');
   res.set('Cache-Control', 'public, max-age=3600');
@@ -407,8 +419,13 @@ async function resolverEndereco(req, res, next) {
   return next();
 }
 
-router.get('/cursos/:cursoId', async (req, res) => {
+router.get('/cursos/:cursoId', async (req, res, next) => {
   const cursoId = res.locals.cursoId;
+  // Curso só online: a página dele é a do curso online (publicado); sem publicar, não existe no site.
+  if (await cursoSoOnline.ehSoOnline(cursoId)) {
+    const publicado = (await cursoSoOnline.cursosSoOnlinePublicados()).some((c) => c.id === cursoId);
+    return publicado ? res.redirect(302, `/online/${cursoId}`) : next();
+  }
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
   // As três consultas saem juntas: "outros cursos" não depende do curso carregado.
   const [curso, cfgMap, outros] = await Promise.all([
@@ -439,7 +456,7 @@ router.get('/cursos/:cursoId', async (req, res) => {
         },
       });
       await extras.anexar('curso', lista);
-      return vitrine.ordenar(lista).slice(0, 3);
+      return vitrine.ordenar(await cursoSoOnline.semSoOnline(lista)).slice(0, 3);
     }),
   ]);
 
@@ -1379,3 +1396,4 @@ router.get('/inscricao/status/:matriculaId', requireLogin, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.carregarVitrine = carregarVitrine;

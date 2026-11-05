@@ -16,6 +16,7 @@ const eadTeste = require('../lib/ead-teste');
 const publicacao = require('../lib/ead-publicacao');
 const relatorios = require('../lib/ead-relatorios');
 const duv = require('../lib/ead-duvidas');
+const cursoSoOnline = require('../lib/ead-curso-online');
 const { emitirCertificadoEad } = require('../lib/ead-certificado');
 const { gerarCartao } = require('../lib/ead-cartao');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
@@ -109,12 +110,13 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const modulos = await contagensDosModulos(co.id);
     const codigo = await eadTeste.codigoDoCurso(co.id);
     const urlSite = (process.env.APP_URL || 'https://escola.cruzvermelhariodejaneiro.org').replace(/\/+$/, '');
+    const dadosCurso = co.somenteOnline ? await prisma.curso.findUnique({ where: { id: co.cursoId }, select: { nome: true, descricao: true, cargaHoraria: true, imagemUrl: true } }) : null;
     const venda = {
       pendencias: publicacao.podePublicar({ ...co, modulos }),
       aviso: publicacao.avisoPublicado({ ...co, modulos }),
       urlCurso: `${urlSite}/online/${co.cursoId}`,
     };
-    res.render('admin/ead/curso', { co, modulos, venda, linkTeste: codigo ? `${urlSite}/ead-teste/${codigo}` : null, erroForm: null, ...flash(req) });
+    res.render('admin/ead/curso', { co, modulos, venda, dadosCurso, linkTeste: codigo ? `${urlSite}/ead-teste/${codigo}` : null, erroForm: null, ...flash(req) });
   });
 
   router.post('/ead/curso/:id', async (req, res) => {
@@ -138,7 +140,15 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
       return voltar(res, `/ead/curso/${co.id}`, 'erro', 'Há módulos validados. Reabra (volte para rascunho) todos antes de desativar o EAD.');
     }
     const fotos = await fotosDoCursoOnline(co.id);
-    await prisma.cursoOnline.delete({ where: { id: co.id } });
+    if (co.somenteOnline) {
+      // Curso só online (etapa 5): o Curso vai junto (não existe no presencial).
+      const foto = (await prisma.curso.findUnique({ where: { id: co.cursoId }, select: { imagemUrl: true } }))?.imagemUrl;
+      const r = await cursoSoOnline.apagarCursoSoOnline(co.id);
+      if (!r.ok) return voltar(res, `/ead/curso/${co.id}`, 'erro', r.erro);
+      if (foto) fotos.push(foto);
+    } else {
+      await prisma.cursoOnline.delete({ where: { id: co.id } });
+    }
     await eadTeste.desligar(co.id);
     for (const f of fotos) await removerFotoCurso(f);
     await auditar(req, 'EAD_DESATIVOU_CURSO', 'CursoOnline', co.id, { cursoId: co.cursoId, curso: co.curso.nome });
@@ -209,6 +219,50 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.set('Content-Disposition', `attachment; filename="ead-${nome}.xlsx"`);
     res.send(await relatorios.planilhaDoCurso(co.id));
+  });
+
+  // ─── Curso só online (etapa 5) ────────────────────────────────────────────────────────────────
+  router.get('/ead/curso-online/novo', async (req, res) => {
+    res.render('admin/ead/curso-online-form', { co: null, valores: {}, erro: null });
+  });
+
+  router.post('/ead/curso-online/novo', uploadFoto, async (req, res) => {
+    const valores = { nome: req.body.nome, descricao: req.body.descricao, cargaHoraria: req.body.cargaHoraria };
+    if (req.uploadErro) return res.status(400).render('admin/ead/curso-online-form', { co: null, valores, erro: req.uploadErro });
+    const imagemUrl = req.file ? await salvarFotoCurso(req.file) : null;
+    const r = await cursoSoOnline.criarCursoOnline({ ...valores, imagemUrl });
+    if (!r.ok) {
+      if (imagemUrl) await removerFotoCurso(imagemUrl);
+      return res.status(400).render('admin/ead/curso-online-form', { co: null, valores, erro: r.erro });
+    }
+    await auditar(req, 'EAD_CRIOU_CURSO_ONLINE', 'CursoOnline', r.co.id, { cursoId: r.co.cursoId, nome: String(valores.nome).trim() });
+    voltar(res, `/ead/curso/${r.co.id}`, 'ok', 'Curso criado. Agora crie o primeiro módulo.');
+  });
+
+  router.get('/ead/curso/:id/dados', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co || !co.somenteOnline) return naoAchou(res);
+    const c = await prisma.curso.findUnique({ where: { id: co.cursoId } });
+    res.render('admin/ead/curso-online-form', { co, valores: c, erro: null });
+  });
+
+  router.post('/ead/curso/:id/dados', uploadFoto, async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co || !co.somenteOnline) return naoAchou(res);
+    const atual = await prisma.curso.findUnique({ where: { id: co.cursoId } });
+    const valores = { nome: req.body.nome, descricao: req.body.descricao, cargaHoraria: req.body.cargaHoraria, imagemUrl: atual.imagemUrl };
+    if (req.uploadErro) return res.status(400).render('admin/ead/curso-online-form', { co, valores, erro: req.uploadErro });
+    let imagemUrl;
+    if (req.file) imagemUrl = await salvarFotoCurso(req.file);
+    else if (req.body.removerFoto) imagemUrl = null;
+    const r = await cursoSoOnline.editarCursoOnline(co.id, { ...valores, ...(imagemUrl !== undefined ? { imagemUrl } : {}) });
+    if (!r.ok) {
+      if (imagemUrl) await removerFotoCurso(imagemUrl);
+      return res.status(400).render('admin/ead/curso-online-form', { co, valores, erro: r.erro });
+    }
+    if (imagemUrl !== undefined && atual.imagemUrl) await removerFotoCurso(atual.imagemUrl);
+    await auditar(req, 'EAD_EDITOU_CURSO_ONLINE', 'CursoOnline', co.id, { cursoId: co.cursoId });
+    voltar(res, `/ead/curso/${co.id}`, 'ok', 'Dados do curso salvos.');
   });
 
   // ─── Central de dúvidas (etapa 5) ─────────────────────────────────────────────────────────────

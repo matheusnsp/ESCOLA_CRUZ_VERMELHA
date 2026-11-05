@@ -1,0 +1,41 @@
+<%#
+  Curso que só existe online (etapa 5): criar (co = null) ou editar os dados (co, valores).
+  Os mesmos campos do curso presencial que o aluno vê: nome, descrição, carga horária e foto.
+%><% var novo = !co; var v = valores || {}; %>
+<%- include('../head', { titulo: novo ? 'Novo curso só online' : 'Dados do curso' }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= novo ? 'Novo curso só online' : 'Dados do curso' %></h1>
+  <a href="<%= novo ? '/ead' : '/ead/curso/' + co.id %>" class="adm-link">← Voltar</a>
+</div>
+<%- include('_mensagens', { ok: null }) %>
+
+<form method="POST" action="<%= novo ? '/ead/curso-online/novo' : '/ead/curso/' + co.id + '/dados' %>?_csrf=<%= csrfToken %>"
+      enctype="multipart/form-data" class="adm-box adm-box-pad">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <% if (novo) { %>
+    <p class="adm-nota"><i class="fa-solid fa-circle-info"></i> Este curso não aparece no presencial (nem em Cursos, nem para abrir turma). No site, ele só aparece depois de você colocar o preço e publicar, com o selo "100% online".</p>
+  <% } %>
+  <div class="adm-form adm-campos">
+    <label class="full">Nome do curso
+      <input type="text" name="nome" required minlength="3" maxlength="120" value="<%= v.nome || '' %>" placeholder="Ex.: Primeiros Socorros na Escola">
+    </label>
+    <label>Carga horária (horas, vai no certificado)
+      <input type="number" name="cargaHoraria" required min="1" max="999" step="1" value="<%= v.cargaHoraria || '' %>" placeholder="Ex.: 3">
+    </label>
+    <label class="full">Descrição (aparece no catálogo e na página do curso)
+      <textarea name="descricao" rows="4" maxlength="1000"><%= v.descricao || '' %></textarea>
+    </label>
+    <label class="full">Foto (JPG, PNG ou WEBP, até 3 MB)
+      <input type="file" name="foto" accept="image/jpeg,image/png,image/webp">
+    </label>
+    <% if (v.imagemUrl) { %>
+      <div class="full"><img src="<%= v.imagemUrl %>" alt="" style="max-width:220px;border-radius:10px;display:block;margin-bottom:6px">
+        <label class="check"><input type="checkbox" name="removerFoto"> Remover a foto</label></div>
+    <% } %>
+  </div>
+  <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> <%= novo ? 'Criar curso' : 'Salvar' %></button>
+</form>
+
+<%- include('../foot') %>
