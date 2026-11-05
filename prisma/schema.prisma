@@ -12,15 +12,15 @@ datasource db {
 }
 
 model Usuario {
-  id                   String          @id @default(uuid())
+  id                   String            @id @default(uuid())
   nome                 String
-  email                String          @unique
+  email                String            @unique
   tipoDocumento        TipoDocumento?
-  cpfCnpj              String?         @unique
-  passaporte           String?         @unique
+  cpfCnpj              String?           @unique
+  passaporte           String?           @unique
   paisOrigem           String?
   senhaHash            String?
-  papel                Papel           @default(ALUNO)
+  papel                Papel             @default(ALUNO)
   escolaridade         String?
   escolaridadeSituacao String?
   genero               String?
@@ -31,22 +31,25 @@ model Usuario {
   bairro               String?
   cidade               String?
   uf                   String?
-  emailVerificado      Boolean         @default(false)
-  loginFalhas          Int             @default(0)
+  emailVerificado      Boolean           @default(false)
+  loginFalhas          Int               @default(0)
   bloqueadoAte         DateTime?
-  loginStrikes         Int             @default(0)
-  bloqueioTotal        Boolean         @default(false)
+  loginStrikes         Int               @default(0)
+  bloqueioTotal        Boolean           @default(false)
   avatarUrl            String?
   consentimentoLgpdEm  DateTime?
   consentimentoVersao  String?
-  criadoEm             DateTime        @default(now())
-  atualizadoEm         DateTime        @updatedAt
+  criadoEm             DateTime          @default(now())
+  atualizadoEm         DateTime          @updatedAt
   celular              String?
   rg                   String?
   ultimoLogin          DateTime?
   ultimaAtividade      DateTime?
   matriculas           Matricula[]
   cursosEad            AlunoCursoEad[]
+  // EAD, etapa 6: gestor de escola e vagas de lote (só relações; nenhuma coluna nova em Usuario)
+  gestorEscolas        GestorEscolaEad[]
+  vagasLote            VagaLoteEad[]
 
   @@index([papel])
   @@index([ultimaAtividade])
@@ -315,6 +318,7 @@ model CursoOnline {
   // Restrict: apagar o curso não leva o conteúdo junto por acidente (POST /cursos/:id/excluir avisa).
   curso          Curso           @relation(fields: [cursoId], references: [id], onDelete: Restrict)
   modulos        ModuloEad[]
+  lotes          LoteEad[]
   alunos         AlunoCursoEad[]
 }
 
@@ -558,4 +562,66 @@ model DuvidaEad {
   @@index([telaId, status])
   @@index([alunoCursoId])
   @@index([status, criadoEm])
+}
+
+// ─── EAD, etapa 6: venda em lote para escolas e empresas ──────────────────────────────────────
+model EscolaEad {
+  id           String            @id @default(uuid())
+  nome         String
+  cnpj         String?           @unique
+  criadoEm     DateTime          @default(now())
+  atualizadoEm DateTime          @updatedAt
+  gestores     GestorEscolaEad[]
+  lotes        LoteEad[]
+}
+
+model GestorEscolaEad {
+  id        String    @id @default(uuid())
+  escolaId  String
+  usuarioId String
+  criadoEm  DateTime  @default(now())
+  escola    EscolaEad @relation(fields: [escolaId], references: [id], onDelete: Cascade)
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([escolaId, usuarioId])
+  @@index([usuarioId])
+}
+
+// Vagas do curso online compradas pela escola. forma: PIX, BOLETO, TRANSFERENCIA, EMPENHO, OUTRO.
+// recebidoEm: quando o dinheiro caiu (entra no Financeiro nessa data). convite: código do link (null = desligado).
+model LoteEad {
+  id            String        @id @default(uuid())
+  escolaId      String
+  cursoOnlineId String
+  vagas         Int
+  validoAte     DateTime
+  valor         Decimal       @db.Decimal(10, 2)
+  forma         String
+  recebidoEm    DateTime?
+  observacao    String?
+  convite       String?       @unique
+  criadoPor     String
+  criadoEm      DateTime      @default(now())
+  atualizadoEm  DateTime      @updatedAt
+  escola        EscolaEad     @relation(fields: [escolaId], references: [id], onDelete: Restrict)
+  cursoOnline   CursoOnline   @relation(fields: [cursoOnlineId], references: [id], onDelete: Restrict)
+  vagasUsadas   VagaLoteEad[]
+
+  @@index([escolaId])
+  @@index([cursoOnlineId])
+}
+
+// Uma pessoa no lote. origem: GESTOR ou CONVITE. removidaEm: tirada antes de começar (a vaga volta).
+model VagaLoteEad {
+  id         String    @id @default(uuid())
+  loteId     String
+  usuarioId  String
+  origem     String
+  criadoEm   DateTime  @default(now())
+  removidaEm DateTime?
+  lote       LoteEad   @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  usuario    Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([loteId])
+  @@index([usuarioId])
 }

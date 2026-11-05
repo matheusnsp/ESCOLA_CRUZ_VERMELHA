@@ -11,7 +11,9 @@ const TABELAS_EAD = ['CursoOnline', 'ModuloEad', 'TopicoEad', 'TelaEad', 'Pergun
   // etapa 2: progresso do aluno
   'AlunoCursoEad', 'TelaVistaEad', 'TentativaEad', 'CenarioFeitoEad',
   // etapa 5: dúvidas por aula
-  'DuvidaEad'];
+  'DuvidaEad',
+  // etapa 6: venda em lote
+  'EscolaEad', 'GestorEscolaEad', 'LoteEad', 'VagaLoteEad'];
 
 const arquivo = process.argv[2];
 if (!arquivo) { console.error('Uso: node scripts/checar-migracao-ead.js <arquivo.sql>'); process.exit(2); }
