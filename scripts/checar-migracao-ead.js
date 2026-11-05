@@ -9,7 +9,9 @@ const fs = require('fs');
 const TABELAS_EAD = ['CursoOnline', 'ModuloEad', 'TopicoEad', 'TelaEad', 'PerguntaEad', 'AlternativaEad',
   'CenarioEad', 'DecisaoCenario', 'OpcaoDecisao',
   // etapa 2: progresso do aluno
-  'AlunoCursoEad', 'TelaVistaEad', 'TentativaEad', 'CenarioFeitoEad'];
+  'AlunoCursoEad', 'TelaVistaEad', 'TentativaEad', 'CenarioFeitoEad',
+  // etapa 5: dúvidas por aula
+  'DuvidaEad'];
 
 const arquivo = process.argv[2];
 if (!arquivo) { console.error('Uso: node scripts/checar-migracao-ead.js <arquivo.sql>'); process.exit(2); }

@@ -308,6 +308,8 @@ model CursoOnline {
   // Etapa 4: preço próprio do online (o Curso pode ser presencial também) e o interruptor do site.
   precoOnline    Decimal?        @db.Decimal(10, 2)
   publicado      Boolean         @default(false)
+  // Etapa 5: curso que só existe online (o Curso fica ativo false e fora do presencial).
+  somenteOnline  Boolean         @default(false)
   criadoEm       DateTime        @default(now())
   atualizadoEm   DateTime        @updatedAt
   // Restrict: apagar o curso não leva o conteúdo junto por acidente (POST /cursos/:id/excluir avisa).
@@ -371,6 +373,7 @@ model TelaEad {
   atualizadoEm     DateTime       @updatedAt
   topico           TopicoEad      @relation(fields: [topicoId], references: [id], onDelete: Cascade)
   vistas           TelaVistaEad[]
+  duvidas          DuvidaEad[]
 
   @@index([topicoId])
 }
@@ -468,6 +471,7 @@ model AlunoCursoEad {
   telasVistas   TelaVistaEad[]
   tentativas    TentativaEad[]
   cenarios      CenarioFeitoEad[]
+  duvidas       DuvidaEad[]
 
   @@unique([usuarioId, cursoOnlineId])
   @@index([cursoOnlineId])
@@ -524,4 +528,34 @@ model CenarioFeitoEad {
 
   @@unique([alunoCursoId, cenarioId])
   @@index([cenarioId])
+}
+
+// ─── EAD, etapa 5: dúvidas por aula ───────────────────────────────────────────────────────────
+// Pública (para os outros alunos) só RESPONDIDA. AGUARDANDO e DESCARTADA o autor vê; OCULTA ninguém.
+enum StatusDuvidaEad {
+  AGUARDANDO
+  RESPONDIDA
+  DESCARTADA
+  OCULTA
+}
+
+model DuvidaEad {
+  id             String          @id @default(uuid())
+  alunoCursoId   String
+  telaId         String
+  texto          String
+  status         StatusDuvidaEad @default(AGUARDANDO)
+  resposta       String?
+  respondidaPor  String?
+  respondidaEm   DateTime?
+  motivoDescarte String?
+  lidaEm         DateTime?
+  criadoEm       DateTime        @default(now())
+  atualizadoEm   DateTime        @updatedAt
+  alunoCurso     AlunoCursoEad   @relation(fields: [alunoCursoId], references: [id], onDelete: Cascade)
+  tela           TelaEad         @relation(fields: [telaId], references: [id], onDelete: Cascade)
+
+  @@index([telaId, status])
+  @@index([alunoCursoId])
+  @@index([status, criadoEm])
 }
