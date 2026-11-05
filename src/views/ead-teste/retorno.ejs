@@ -1,0 +1,24 @@
+<%- include('_topo', { titulo: correta ? 'Correto' : 'Não é bem assim', voltarMenu: true }) %>
+<main class="ea-wrap ea-main">
+  <div class="ea ea-quiz">
+    <%- include('_cab-tentativa', { t: { tipo: 'QUIZ' }, pos: n, tot: total }) %>
+    <section class="ea-pergunta">
+      <p class="ea-kicker">Pergunta <%= n %> de <%= total %></p>
+      <h1 class="ea-enunciado"><%= pergunta.enunciado %></h1>
+      <div class="ea-alts">
+        <% pergunta.alternativas.forEach(function (a) { var marcou = marcadas.has(a.id); %>
+          <div class="ea-alt <%= a.correta ? 'certa' : (marcou ? 'errada' : '') %>">
+            <span class="ea-alt-marca" aria-hidden="true"><%= a.correta ? '✓' : (marcou ? '✕' : '') %></span>
+            <span><%= a.texto %><% if (marcou) { %> <small>(sua resposta)</small><% } %></span>
+          </div>
+        <% }) %>
+      </div>
+      <div class="ea-retorno <%= correta ? 'ok' : 'nao' %>" role="status">
+        <strong><%= correta ? 'Correto.' : 'Não é bem assim.' %></strong>
+        <% if (pergunta.feedback) { %><p><%= pergunta.feedback %></p><% } %>
+      </div>
+      <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= voltar %>"><%= fechou ? 'Ver resultado →' : 'Próxima pergunta →' %></a>
+    </section>
+  </div>
+</main>
+<%- include('_fim') %>

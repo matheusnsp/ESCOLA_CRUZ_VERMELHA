@@ -220,3 +220,28 @@ button.ea-seguir { border: 0; text-align: left; width: 100%; }
 .ea-preteste { margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--ln); }
 .ea-preteste p { color: var(--ink); font-size: 14px; margin: 0 0 4px; }
 @media (min-width: 820px) { button.ea-seguir { width: auto; min-width: 420px; } }
+
+/* ── quiz, pré-teste e resultado ── */
+.ea-quiz { max-width: 760px; margin: 0 auto; }
+.ea-pergunta, .ea-resultado { padding: 26px 18px 30px; background: var(--bg); }
+.ea-enunciado { margin: 0 0 8px; font-size: clamp(20px, 4.5vw, 26px); line-height: 1.25; letter-spacing: -.03em; font-weight: 800; }
+.ea-alts { display: grid; gap: 10px; margin: 16px 0 20px; }
+.ea-alt { display: flex; gap: 12px; align-items: flex-start; background: #fff; border: 1.5px solid var(--ln); border-radius: 16px; padding: 15px 16px; font-size: 15.5px; line-height: 1.45; cursor: pointer; }
+.ea-alt:has(input:checked) { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(20,20,20,.08); }
+.ea-alt input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--r); flex: none; }
+.ea-alt.certa { border-color: #16a369; background: #f0fdf4; }
+.ea-alt.errada { border-color: var(--r); background: #fff1f2; }
+.ea-alt small { color: var(--mut); }
+.ea-alt-marca { width: 22px; flex: none; font-weight: 900; text-align: center; }
+.ea-alt.certa .ea-alt-marca { color: #16a369; } .ea-alt.errada .ea-alt-marca { color: var(--r); }
+.ea-retorno { border-radius: 18px; padding: 16px 18px; margin-bottom: 18px; border-left: 5px solid; }
+.ea-retorno.ok { background: #f0fdf4; border-color: #16a369; } .ea-retorno.nao { background: #fff1f2; border-color: var(--r); }
+.ea-retorno strong { font-size: 17px; } .ea-retorno.ok strong { color: #14653a; } .ea-retorno.nao strong { color: var(--r2); }
+.ea-retorno p { margin: 6px 0 0; line-height: 1.55; }
+.ea-resultado { text-align: left; }
+.ea-resultado p { line-height: 1.55; color: #333; }
+.ea-resultado-icone { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; font-size: 26px; font-weight: 900; margin-bottom: 16px; }
+.ea-resultado.ok .ea-resultado-icone { background: #dcfce7; color: #14653a; } .ea-resultado.nao .ea-resultado-icone { background: #fff1f2; color: var(--r); }
+.ea-resultado form { margin: 0; }
+@media (min-width: 820px) { .ea-pergunta, .ea-resultado { padding: 36px 40px 40px; } }
+.ea-resultado p.ea-kicker { color: var(--r); }

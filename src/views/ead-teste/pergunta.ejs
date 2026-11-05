@@ -1,0 +1,23 @@
+<%- include('_topo', { titulo: 'Pergunta ' + n, voltarMenu: true }) %>
+<main class="ea-wrap ea-main">
+  <div class="ea ea-quiz">
+    <%- include('_cab-tentativa', { pos: n, tot: t.total }) %>
+    <form method="POST" action="<%= base %>/tentativa/<%= t.id %>/responder" class="ea-pergunta">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="perguntaId" value="<%= pergunta.id %>">
+      <p class="ea-kicker"><%= t.tipo === 'PRE_TESTE' ? 'Pré-teste · sem retorno por pergunta' : 'Teste rápido' %></p>
+      <h1 class="ea-enunciado"><%= pergunta.enunciado %></h1>
+      <p class="ea-obs"><%= pergunta.tipo === 'MULTIPLA' ? 'Marque todas as corretas.' : 'Escolha uma resposta.' %></p>
+      <div class="ea-alts">
+        <% pergunta.alternativas.forEach(function (a) { %>
+          <label class="ea-alt">
+            <% if (pergunta.tipo === 'MULTIPLA') { %><input type="checkbox" name="alternativas" value="<%= a.id %>"><% } else { %><input type="radio" name="alternativa" value="<%= a.id %>" required><% } %>
+            <span><%= a.texto %></span>
+          </label>
+        <% }) %>
+      </div>
+      <button type="submit" class="ea-pilula ea-pilula-red ea-pilula-bloco">Responder</button>
+    </form>
+  </div>
+</main>
+<%- include('_fim') %>

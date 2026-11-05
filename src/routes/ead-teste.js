@@ -136,6 +136,91 @@ router.get('/ead-teste/:codigo/tela/:telaId', comCurso(async (req, res, co, base
   res.render('ead-teste/tela', { ...tc, base, fimUrl, fimTitulo, menuUrl: base, quizForm, ctx });
 }));
 
+// ─── Quiz e pré-teste ───────────────────────────────────────────────────────────────────────────
+// Sem login: guarda a volta e manda para o login (nada é registrado).
+function pedirLogin(req, res, base) {
+  req.session.returnTo = `${base}/continuar`;
+  return res.redirect('/login');
+}
+const acharTopico = (co, topicoId) => {
+  for (const [i, m] of co.modulos.entries()) {
+    const t = m.topicos.find((x) => x.id === topicoId);
+    if (t) return { modulo: m, numero: i + 1, topico: t };
+  }
+  return null;
+};
+const alternativasDoForm = (body) => [].concat(body.alternativa || [], body.alternativas || []).map(String);
+
+router.post('/ead-teste/:codigo/topico/:topicoId/quiz', comCurso(async (req, res, co, base, curso) => {
+  const achado = acharTopico(co, req.params.topicoId);
+  if (!achado) return naoAchou(res);
+  const ctx = await contexto(req, co, curso);
+  if (!ctx) return pedirLogin(req, res, base);
+  if (estadoDoModulo(ctx, achado.modulo.id).estado === 'bloqueado') return res.redirect(`${base}/modulo/${achado.modulo.id}`);
+  const t = await pdb.abrirQuiz(ctx.alunoCurso.id, achado.topico.id);
+  if (!t) return res.redirect(`${base}/modulo/${achado.modulo.id}`);
+  res.redirect(`${base}/tentativa/${t.id}`);
+}));
+
+router.post('/ead-teste/:codigo/modulo/:moduloId/pre-teste', comCurso(async (req, res, co, base, curso) => {
+  const modulo = co.modulos.find((m) => m.id === req.params.moduloId);
+  if (!modulo) return naoAchou(res);
+  const ctx = await contexto(req, co, curso);
+  if (!ctx) return pedirLogin(req, res, base);
+  const em = estadoDoModulo(ctx, modulo.id);
+  const t = em.estado !== 'bloqueado' && em.preTeste === 'disponivel' ? await pdb.abrirPreTeste(ctx.alunoCurso.id, modulo.id) : null;
+  if (!t) return res.redirect(`${base}/modulo/${modulo.id}`);
+  res.redirect(`${base}/tentativa/${t.id}`);
+}));
+
+// Cabeçalho comum das páginas da tentativa (módulo, tópico, número).
+function infoDaTentativa(co, t) {
+  const i = co.modulos.findIndex((m) => m.id === t.moduloId);
+  const modulo = co.modulos[i];
+  const topico = t.topicoId && modulo ? modulo.topicos.find((x) => x.id === t.topicoId) : null;
+  return { modulo, numero: i + 1, topico };
+}
+
+router.get('/ead-teste/:codigo/tentativa/:id', comCurso(async (req, res, co, base, curso) => {
+  const ctx = await contexto(req, co, curso);
+  if (!ctx) return pedirLogin(req, res, base);
+  const t = await pdb.tentativaDoAluno(req.params.id, ctx.alunoCurso.id);
+  if (!t) return naoAchou(res);
+  const info = infoDaTentativa(co, t);
+  if (!info.modulo) return naoAchou(res);
+  const pergunta = pdb.perguntaAtual(t);
+  if (pergunta) {
+    return res.render('ead-teste/pergunta', { co, base, ctx, t, ...info, pergunta, n: t.respostas.length + 1 });
+  }
+  // Resultado: recalcula o estado (o quiz ou o pré-teste pode ter concluído o módulo ou o curso).
+  const estado = estadoDoCurso(curso, await pdb.carregarProgresso(ctx.alunoCurso.id), new Date());
+  if (estado.concluido) await pdb.marcarCursoConcluido(ctx.alunoCurso.id);
+  const primeiraDoTopico = info.topico && info.topico.telas[0];
+  const primeiraDoModulo = info.modulo.topicos.flatMap((x) => x.telas)[0];
+  res.render('ead-teste/resultado', {
+    co, base, ctx, t, ...info, notaMinima: co.notaMinimaQuiz,
+    seguirUrl: urlDoPasso(co, base, estado.proximo),
+    reverUrl: primeiraDoTopico ? `${base}/tela/${primeiraDoTopico.id}` : `${base}/modulo/${info.modulo.id}`,
+    moduloUrl: primeiraDoModulo ? `${base}/tela/${primeiraDoModulo.id}` : `${base}/modulo/${info.modulo.id}`,
+  });
+}));
+
+router.post('/ead-teste/:codigo/tentativa/:id/responder', comCurso(async (req, res, co, base, curso) => {
+  const ctx = await contexto(req, co, curso);
+  if (!ctx) return pedirLogin(req, res, base);
+  const r = await pdb.responder(req.params.id, ctx.alunoCurso.id, String(req.body.perguntaId || ''), alternativasDoForm(req.body));
+  if (!r.tentativa) return naoAchou(res);
+  const voltar = `${base}/tentativa/${req.params.id}`;
+  if (r.ignorada || r.tentativa.tipo === 'PRE_TESTE') return res.redirect(voltar);
+  // Quiz: retorno na hora (o porquê), depois a próxima pergunta ou o resultado.
+  const info = infoDaTentativa(co, r.tentativa);
+  res.render('ead-teste/retorno', {
+    co, base, ctx, ...info, pergunta: r.pergunta, correta: r.correta, fechou: r.fechou, voltar,
+    n: r.tentativa.respostas.length, total: r.tentativa.total,
+    marcadas: new Set(alternativasDoForm(req.body)),
+  });
+}));
+
 // Qualquer outro caminho abaixo de /ead-teste: 404 aqui mesmo, sem cair na contagem de visitas
 // nem no 404 do site. Erros também ficam aqui (a página de erro do site tem rastreamento).
 router.use('/ead-teste', (req, res) => naoAchou(res));

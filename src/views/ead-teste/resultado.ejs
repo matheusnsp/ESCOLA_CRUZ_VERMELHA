@@ -1,0 +1,30 @@
+<% var quiz = t.tipo === 'QUIZ'; var passou = t.aprovado === true; %>
+<%- include('_topo', { titulo: 'Resultado', voltarMenu: true }) %>
+<main class="ea-wrap ea-main">
+  <div class="ea ea-quiz">
+    <%- include('_cab-tentativa', {}) %>
+    <section class="ea-resultado <%= passou ? 'ok' : 'nao' %>">
+      <span class="ea-resultado-icone" aria-hidden="true"><%= passou ? '✓' : '↻' %></span>
+      <p class="ea-kicker"><%= quiz ? 'Teste rápido' : 'Pré-teste' %></p>
+      <h1 class="ea-titulo">Você acertou <%= t.acertos %> de <%= t.total %><span>.</span></h1>
+      <% if (quiz && passou) { %>
+        <p>Tópico concluído. Siga para o próximo passo.</p>
+        <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= seguirUrl %>">Seguir →</a>
+      <% } else if (quiz) { %>
+        <p>Para passar, precisa de <%= notaMinima %>%. Você pode refazer agora: as perguntas mudam a cada tentativa.</p>
+        <form method="POST" action="<%= base %>/topico/<%= t.topicoId %>/quiz">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="ea-pilula ea-pilula-red ea-pilula-bloco">Refazer com outras perguntas</button>
+        </form>
+        <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= reverUrl %>">Rever as telas do tópico</a>
+      <% } else if (passou) { %>
+        <p>Módulo concluído: você já sabia o conteúdo. Pode rever as telas quando quiser.</p>
+        <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= seguirUrl %>">Seguir →</a>
+      <% } else { %>
+        <p>Desta vez não deu (precisa de <%= notaMinima %>%). Sem problema: faça o módulo pelas telas, começando pela primeira.</p>
+        <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= moduloUrl %>">Começar o módulo →</a>
+      <% } %>
+    </section>
+  </div>
+</main>
+<%- include('_fim') %>

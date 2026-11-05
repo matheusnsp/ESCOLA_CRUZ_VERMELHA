@@ -94,6 +94,13 @@ describe('estadoDoCurso', () => {
     assert.equal(mod(e, 'm3').estado, 'concluido');
     assert.equal(mod(e, 'm2').estado, 'disponivel');
   });
+  test('sequência exige TODOS os anteriores: módulo vazio no meio não abre o seguinte antes do M1', () => {
+    const m4 = { id: 'm4', final: false, nPerguntasAtivas: 3, topicos: [{ id: 't4', telas: [{ id: 'x' }], nPerguntasAtivas: 3 }], cenarios: [] };
+    const e = p.estadoDoCurso({ modulos: [curso.modulos[0], curso.modulos[2], m4] }, prog(), INICIO);
+    assert.equal(mod(e, 'm3').estado, 'concluido');
+    assert.equal(mod(e, 'm4').estado, 'bloqueado');
+    assert.equal(mod(e, 'm4').motivo, 'Abre depois do Módulo 1.');
+  });
   test('tópico com telas mas sem perguntas: conclui só com as telas vistas', () => {
     const k = { modulos: [{ id: 'x', final: false, nPerguntasAtivas: 0, topicos: [{ id: 'tx', telas: [{ id: 'z' }], nPerguntasAtivas: 0 }], cenarios: [] }] };
     assert.equal(p.estadoDoCurso(k, prog(), INICIO).modulos[0].estado, 'disponivel');

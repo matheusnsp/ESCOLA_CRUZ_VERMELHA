@@ -1,0 +1,13 @@
+<%# Barra do topo do quiz/pré-teste: módulo, tópico e progresso das perguntas. %>
+<div class="ea-aulabar">
+  <div class="ea-aulabar-mod">
+    <span class="ea-aulabar-num"><%= String(numero).padStart(2, '0') %></span>
+    <span><small><%= t.tipo === 'PRE_TESTE' ? 'Pré-teste · Módulo ' + numero : 'Teste rápido · Módulo ' + numero %></small><strong><%= topico ? topico.titulo : modulo.titulo %></strong></span>
+  </div>
+  <% if (typeof pos !== 'undefined') { %>
+    <div class="ea-progresso" aria-label="Pergunta <%= pos %> de <%= tot %>">
+      <span>Pergunta <b><%= pos %></b> de <%= tot %></span>
+      <span class="ea-progresso-trilho"><span style="width: <%= Math.round(pos / tot * 100) %>%"></span></span>
+    </div>
+  <% } %>
+</div>
