@@ -1,73 +1,100 @@
 <%#
-  Uma tela do curso online, como o aluno vê (layout do "Exemplo A" do documento do EAD).
-  Usada pela pré-visualização do painel e pelo link de teste do site; a etapa 2 reaproveita.
+  Uma tela do curso online como o aluno vê. Identidade do site da escola (vitrine.css): Inter, vermelho
+  #d9081f, cartões brancos de 24px, botões em pílula, sobretítulo vermelho, título com ponto vermelho.
+  Estilos em public/ead.css (classes ea-*). Usada pela pré-visualização do painel e pelo link de teste.
   Locais: cursoNome, moduloNumero, modulo, topicos, tela, topicoIndex, urlTela(id), anterior (url|null),
-          proxima ({ titulo, url } | null), fimUrl (para onde ir depois da última; opcional),
-          fimTitulo (opcional), menuUrl (opcional).
+          proxima ({ titulo, url } | null), posicao, total, fimUrl/fimTitulo (opcionais), menuUrl (opcional).
 %>
 <%
   var dur = tela.videoDuracaoSeg ? Math.floor(tela.videoDuracaoSeg / 60) + ':' + String(tela.videoDuracaoSeg % 60).padStart(2, '0') : '';
   var seguinte = proxima || (typeof fimUrl !== 'undefined' && fimUrl ? { titulo: (typeof fimTitulo !== 'undefined' && fimTitulo) || 'Fim do módulo', url: fimUrl } : null);
+  var pct = total ? Math.round(posicao / total * 100) : 0;
+  var n = 0; // posição de cada tela no índice (para marcar as já vistas)
 %>
-<div class="ead-app">
-  <div class="ead-barra">
-    <span class="ead-marca"><span aria-hidden="true">✚</span> <%= cursoNome %></span>
-    <% if (typeof menuUrl !== 'undefined' && menuUrl) { %><a href="<%= menuUrl %>">Menu</a><% } %>
+<div class="ea">
+  <div class="ea-aulabar">
+    <div class="ea-aulabar-mod">
+      <span class="ea-aulabar-num"><%= String(moduloNumero).padStart(2, '0') %></span>
+      <span><small>Módulo <%= moduloNumero %></small><strong><%= modulo.titulo %></strong></span>
+    </div>
+    <div class="ea-progresso" aria-label="Tela <%= posicao %> de <%= total %>">
+      <span>Tela <b><%= posicao %></b> de <%= total %></span>
+      <span class="ea-progresso-trilho"><span style="width: <%= pct %>%"></span></span>
+    </div>
+    <% if (typeof menuUrl !== 'undefined' && menuUrl) { %><a class="ea-pilula ea-pilula-clara ea-aulabar-menu" href="<%= menuUrl %>"><span aria-hidden="true">☰</span> <span class="ea-so-pc">Menu do curso</span><span class="ea-so-cel">Menu</span></a><% } %>
   </div>
 
-  <div class="ead-modcab">
-    <span class="ead-modnum"><%= moduloNumero %></span>
-    <div><small>MÓDULO <%= moduloNumero %></small><strong><%= modulo.titulo %></strong></div>
-  </div>
-
-  <div class="ead-corpo">
-    <details class="ead-menu" open>
-      <summary>Tópicos deste módulo</summary>
+  <div class="ea-aula">
+    <%# Índice do módulo: no computador fica sempre aberto ao lado; no celular, fechado em cima (abre ao tocar). %>
+    <details class="ea-indice ea-indice-cel">
+      <summary><span>Conteúdo do módulo</span><small>Tela <%= posicao %> de <%= total %></small></summary>
       <ol>
-        <% topicos.forEach(function (t, ti) { %>
-          <li class="<%= ti === topicoIndex ? 'atual' : '' %>"><span><%= t.titulo %></span>
-            <% if (t.telas.length) { %><ul><% t.telas.forEach(function (x) { %>
-              <li class="<%= x.id === tela.id ? 'atual' : '' %>"><a href="<%= urlTela(x.id) %>"><%= x.titulo %></a></li>
+        <% n = 0; topicos.forEach(function (t, ti) { %>
+          <li class="<%= ti === topicoIndex ? 'atual' : '' %>">
+            <span class="ea-indice-top"><span class="ea-indice-n"><%= ti + 1 %></span><%= t.titulo %></span>
+            <% if (t.telas.length) { %><ul><% t.telas.forEach(function (x) { n++; var est = x.id === tela.id ? 'atual' : (n < posicao ? 'vista' : ''); %>
+              <li class="<%= est %>"><a href="<%= urlTela(x.id) %>"<%- est === 'atual' ? ' aria-current="page"' : '' %>><i aria-hidden="true"></i><%= x.titulo %></a></li>
             <% }) %></ul><% } %>
           </li>
         <% }) %>
       </ol>
     </details>
+    <aside class="ea-indice ea-indice-pc" aria-label="Conteúdo do módulo">
+      <p class="ea-indice-tit">Conteúdo do módulo</p>
+      <ol>
+        <% n = 0; topicos.forEach(function (t, ti) { %>
+          <li class="<%= ti === topicoIndex ? 'atual' : '' %>">
+            <span class="ea-indice-top"><span class="ea-indice-n"><%= ti + 1 %></span><%= t.titulo %></span>
+            <% if (t.telas.length) { %><ul><% t.telas.forEach(function (x) { n++; var est = x.id === tela.id ? 'atual' : (n < posicao ? 'vista' : ''); %>
+              <li class="<%= est %>"><a href="<%= urlTela(x.id) %>"<%- est === 'atual' ? ' aria-current="page"' : '' %>><i aria-hidden="true"></i><%= x.titulo %></a></li>
+            <% }) %></ul><% } %>
+          </li>
+        <% }) %>
+      </ol>
+    </aside>
 
-    <article class="ead-tela">
-      <p class="ead-topico-rot">TÓPICO <%= topicoIndex + 1 %></p>
-      <h1><%= topicos[topicoIndex].titulo %></h1>
+    <article class="ea-tela">
+      <p class="ea-kicker">Tópico <%= topicoIndex + 1 %> · <%= topicos[topicoIndex].titulo %></p>
+      <h1 class="ea-titulo"><%= tela.titulo %><span>.</span></h1>
 
-      <section class="ead-ancora <%= tela.fotoUrl ? '' : 'sem-foto' %>">
-        <div><h2><%= tela.titulo %></h2><% if (tela.ancora) { %><p><%= tela.ancora %></p><% } %></div>
+      <section class="ea-ancora <%= tela.fotoUrl ? '' : 'sem-foto' %>">
         <% if (tela.fotoUrl) { %><img src="<%= tela.fotoUrl %>" alt="" loading="lazy"><% } %>
+        <% if (tela.ancora) { %><p><%= tela.ancora %></p><% } %>
       </section>
 
       <% if (tela.videoUrl) { %>
-        <section class="ead-video">
-          <div class="ead-video-rot"><strong>▶ Assista</strong><% if (tela.videoTitulo) { %><span><%= tela.videoTitulo %><%= dur ? ' — ' + dur : '' %></span><% } %></div>
-          <div class="ead-video-quadro"><iframe src="<%= tela.videoUrl %>" title="<%= tela.videoTitulo || 'Vídeo' %>" allow="fullscreen; picture-in-picture; encrypted-media" allowfullscreen loading="lazy"></iframe></div>
+        <section class="ea-video">
+          <div class="ea-video-cab">
+            <span class="ea-play" aria-hidden="true">▶</span>
+            <span><small>Assista</small><strong><%= tela.videoTitulo || 'Vídeo da aula' %></strong></span>
+            <% if (dur) { %><span class="ea-chip"><%= dur %></span><% } %>
+          </div>
+          <div class="ea-video-quadro"><iframe src="<%= tela.videoUrl %>" title="<%= tela.videoTitulo || 'Vídeo' %>" allow="fullscreen; picture-in-picture; encrypted-media" allowfullscreen loading="lazy"></iframe></div>
         </section>
       <% } %>
 
       <% if (tela.revisaoItens && tela.revisaoItens.length) { %>
-        <section class="ead-revisao">
-          <h3>⟲ Revisão rápida<%= tela.revisaoTitulo ? ': ' + tela.revisaoTitulo : '' %></h3>
-          <ol><% tela.revisaoItens.forEach(function (it) { %><li><%= it %></li><% }) %></ol>
+        <section class="ea-revisao">
+          <p class="ea-kicker">Revisão rápida</p>
+          <% if (tela.revisaoTitulo) { %><h2><%= tela.revisaoTitulo.charAt(0).toUpperCase() + tela.revisaoTitulo.slice(1) %><span>.</span></h2><% } %>
+          <ol><% tela.revisaoItens.forEach(function (it, i) { %><li><span class="ea-revisao-n"><%= String(i + 1).padStart(2, '0') %></span><p><%= it %></p></li><% }) %></ol>
         </section>
       <% } %>
 
       <% if (tela.alerta) { %>
-        <section class="ead-alerta" role="note"><strong>ALERTA</strong><p><%= tela.alerta %></p></section>
+        <section class="ea-alerta" role="note">
+          <span class="ea-alerta-icone" aria-hidden="true">!</span>
+          <div><strong>Alerta</strong><p><%= tela.alerta %></p></div>
+        </section>
       <% } %>
       <% if (tela.dicaProfissional) { %>
-        <section class="ead-dica"><strong>Dica de profissional</strong><p><%= tela.dicaProfissional %></p></section>
+        <section class="ea-dica"><strong>Dica de profissional</strong><p><%= tela.dicaProfissional %></p></section>
       <% } %>
 
-      <nav class="ead-nav">
-        <% if (anterior) { %><a class="ead-voltar" href="<%= anterior %>">‹ Voltar</a><% } else { %><span></span><% } %>
+      <nav class="ea-nav">
+        <% if (anterior) { %><a class="ea-pilula ea-pilula-clara" href="<%= anterior %>">← Voltar</a><% } else { %><span></span><% } %>
         <% if (seguinte) { %>
-          <a class="ead-seguir" href="<%= seguinte.url %>"><span>A seguir: <strong><%= seguinte.titulo %></strong></span><em>Continuar ›</em></a>
+          <a class="ea-seguir" href="<%= seguinte.url %>"><span><small>A seguir</small><strong><%= seguinte.titulo %></strong></span><em>Continuar →</em></a>
         <% } %>
       </nav>
     </article>

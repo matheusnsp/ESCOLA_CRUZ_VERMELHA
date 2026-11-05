@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title><%= titulo %> · Escola de Educação e Saúde CVB-RJ</title>
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="<%= asset('/ead.css') %>">
+<%# Sem partials/rastreamento de propósito: Analytics/Pixel gravariam o endereço, que tem o código secreto. %>
+</head>
+<body class="ea-pagina">
+<div class="ea-topbar"><div class="ea-wrap"><span>Cruz Vermelha Brasileira · Rio de Janeiro</span><span>Curso 100% online</span></div></div>
+<header class="ea-header">
+  <div class="ea-wrap">
+    <a class="ea-logo" href="<%= base %>">
+      <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro">
+      <span><b>ESCOLA DE EDUCAÇÃO</b><small>E SAÚDE CVB-RJ</small></span>
+    </a>
+    <% if (typeof voltarMenu !== 'undefined' && voltarMenu) { %><a class="ea-pilula ea-pilula-clara" href="<%= base %>">☰ <span class="ea-so-pc">Menu do curso</span><span class="ea-so-cel">Menu</span></a><% } %>
+  </div>
+</header>
+<div class="ea-teste">Versão de teste · só quem tem este link consegue abrir · não divulgue</div>

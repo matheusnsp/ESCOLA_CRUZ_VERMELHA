@@ -44,10 +44,23 @@ function contextoDaTela(modulo, moduloNumero, telaId, urlTela) {
   const prox = seq[i + 1];
   return {
     cursoNome: modulo.cursoOnline.curso.nome, moduloNumero, modulo, topicos: modulo.topicos,
-    tela: seq[i].tela, topicoIndex: seq[i].ti, urlTela,
+    tela: seq[i].tela, topicoIndex: seq[i].ti, urlTela, posicao: i + 1, total: seq.length,
     anterior: i > 0 ? urlTela(seq[i - 1].tela.id) : null,
     proxima: prox ? { titulo: prox.tela.titulo, url: urlTela(prox.tela.id) } : null,
   };
 }
 
-module.exports = { codigoDoCurso, gerarCodigo, desligar, cursoDoCodigo, contextoDaTela };
+// Para onde vai o "Continuar" da última tela, atravessando módulos. modulos: na ordem do aluno
+// (o final por último), cada um com topicos[].telas[]. Devolve { tipo: 'tela'|'modulo'|'capa', id? }.
+function proximaTela(modulos, telaId) {
+  for (let mi = 0; mi < modulos.length; mi++) {
+    const telas = modulos[mi].topicos.flatMap((t) => t.telas);
+    const i = telas.findIndex((t) => t.id === telaId);
+    if (i < 0) continue;
+    if (i + 1 < telas.length) return { tipo: 'tela', id: telas[i + 1].id };
+    return modulos[mi + 1] ? { tipo: 'modulo', id: modulos[mi + 1].id } : { tipo: 'capa' };
+  }
+  return null;
+}
+
+module.exports = { codigoDoCurso, gerarCodigo, desligar, cursoDoCodigo, contextoDaTela, proximaTela };

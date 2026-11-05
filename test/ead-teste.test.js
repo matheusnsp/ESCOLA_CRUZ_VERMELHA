@@ -46,6 +46,7 @@ describe('contextoDaTela (pré-visualização)', () => {
     assert.equal(c.tela.titulo, 'Sinais'); assert.equal(c.topicoIndex, 0); assert.equal(c.moduloNumero, 4);
     assert.equal(c.cursoNome, 'Primeiros Socorros');
     assert.deepEqual(c.proxima, { titulo: 'Criança no recreio', url: '/x/b' }); assert.equal(c.anterior, null);
+    assert.equal(c.posicao, 1); assert.equal(c.total, 3);
   });
   test('última do tópico pula tópico vazio', () => {
     const c = eadTeste.contextoDaTela(modulo, 4, 'b', url);
@@ -54,6 +55,21 @@ describe('contextoDaTela (pré-visualização)', () => {
   test('última do módulo: sem próxima', () => {
     const c = eadTeste.contextoDaTela(modulo, 4, 'c', url);
     assert.equal(c.proxima, null); assert.equal(c.topicoIndex, 2); assert.equal(c.anterior, '/x/b');
+    assert.equal(c.posicao, 3); assert.equal(c.total, 3);
   });
   test('tela de fora: null', () => assert.equal(eadTeste.contextoDaTela(modulo, 4, 'zz', url), null));
+});
+
+describe('proximaTela (link de teste, atravessa módulos)', () => {
+  const arv = [
+    { id: 'm1', topicos: [{ telas: [{ id: 'a' }, { id: 'b' }] }, { telas: [] }, { telas: [{ id: 'c' }] }] },
+    { id: 'm2', topicos: [{ telas: [{ id: 'd' }] }] },
+    { id: 'mf', final: true, topicos: [] },
+  ];
+  test('próxima no mesmo tópico', () => assert.deepEqual(eadTeste.proximaTela(arv, 'a'), { tipo: 'tela', id: 'b' }));
+  test('pula tópico sem telas', () => assert.deepEqual(eadTeste.proximaTela(arv, 'b'), { tipo: 'tela', id: 'c' }));
+  test('última do módulo → introdução do próximo', () => assert.deepEqual(eadTeste.proximaTela(arv, 'c'), { tipo: 'modulo', id: 'm2' }));
+  test('última do último com telas → módulo final', () => assert.deepEqual(eadTeste.proximaTela(arv, 'd'), { tipo: 'modulo', id: 'mf' }));
+  test('sem próximo módulo → capa', () => assert.deepEqual(eadTeste.proximaTela(arv.slice(0, 2), 'd'), { tipo: 'capa' }));
+  test('tela desconhecida → null', () => assert.equal(eadTeste.proximaTela(arv, 'zz'), null));
 });

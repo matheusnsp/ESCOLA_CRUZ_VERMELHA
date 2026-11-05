@@ -1,0 +1,47 @@
+<%
+  var totalMin = co.modulos.reduce(function (s, m) { return s + m.minutosEstimados; }, 0);
+  var horas = totalMin >= 60 ? Math.floor(totalMin / 60) + 'h' + (totalMin % 60 ? String(totalMin % 60).padStart(2, '0') : '') : totalMin + ' min';
+  var primeiro = co.modulos[0];
+%>
+<%- include('_topo', { titulo: co.curso.nome }) %>
+<section class="ea-heroi">
+  <% if (co.curso.imagemUrl) { %><img src="<%= co.curso.imagemUrl %>" alt=""><% } %>
+  <div class="ea-wrap ea-heroi-grid">
+    <div>
+      <p class="ea-kicker">Curso 100% online</p>
+      <h1><%= co.curso.nome %><span>.</span></h1>
+      <p class="ea-heroi-lead"><%= co.curso.descricao || 'No seu ritmo, pelo celular, com certificado da Cruz Vermelha ao concluir.' %></p>
+      <div class="ea-chips">
+        <span class="ea-chip">⏱ <%= horas %> no total</span>
+        <span class="ea-chip">▦ <%= co.modulos.length %> módulos</span>
+        <span class="ea-chip">📱 No celular, no seu ritmo</span>
+        <span class="ea-chip">✚ Certificado</span>
+      </div>
+    </div>
+    <div class="ea-cartao">
+      <p class="ea-kicker">Comece agora</p>
+      <h2><%= primeiro ? 'Módulo 1: ' + primeiro.titulo : 'Em preparação' %></h2>
+      <p>Telas curtas com vídeo de até 3 minutos, revisão rápida e um alerta. Você para quando quiser e continua de onde parou.</p>
+      <% if (primeiro) { %><a class="ea-pilula ea-pilula-red" href="<%= base %>/modulo/<%= primeiro.id %>">Começar o curso →</a><% } %>
+    </div>
+  </div>
+</section>
+
+<main class="ea-wrap ea-secao">
+  <p class="ea-kicker">Conteúdo</p>
+  <h2 class="ea-secao-h">Módulos do curso<span>.</span></h2>
+  <% if (!co.modulos.length) { %><p class="ea-obs">Este curso ainda não tem módulos.</p><% } %>
+  <ol class="ea-modulos">
+    <% co.modulos.forEach(function (m, i) { var telas = m.topicos.reduce(function (s, t) { return s + t.telas.length; }, 0); %>
+      <li>
+        <a class="ea-mod <%= m.final ? 'final' : '' %>" href="<%= base %>/modulo/<%= m.id %>">
+          <span class="ea-mod-topo"><span class="ea-mod-num"><%= String(i + 1).padStart(2, '0') %></span><span class="ea-selo <%= m.status === 'VALIDADO' ? 'ok' : '' %>"><%= m.status === 'VALIDADO' ? 'Validado' : 'Rascunho' %></span></span>
+          <h3><%= m.titulo %></h3>
+          <span class="ea-mod-meta"><%= m.minutosEstimados %> min · <%= m.final ? m.cenarios.length + ' cenário(s) para decidir' : m.topicos.length + ' tópico(s) · ' + telas + ' tela(s)' %></span>
+          <span class="ea-mod-pe"><span><%= m.final ? 'Juntando tudo' : 'Módulo ' + (i + 1) %></span><span>Abrir →</span></span>
+        </a>
+      </li>
+    <% }) %>
+  </ol>
+</main>
+<%- include('_fim') %>
