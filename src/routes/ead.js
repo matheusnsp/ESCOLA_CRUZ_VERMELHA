@@ -487,5 +487,138 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     voltar(res, urlModulo(q.topico.moduloId), 'ok', 'Pergunta apagada.');
   });
 
+  // ─── Cenários (só no módulo final) ────────────────────────────────────────────────────────────
+  function lerCenarioDoForm(body) {
+    const r = ead.schemaCenario.safeParse({ titulo: body.titulo, cena: body.cena });
+    if (!r.success) return { erro: ead.primeiroErro(r) };
+    const dados = { ...r.data, videoUrl: null };
+    if (String(body.videoUrl || '').trim()) {
+      const v = ead.normalizarVideo(body.videoUrl);
+      if (v.erro) return { erro: v.erro };
+      dados.videoUrl = v.url;
+    }
+    const seg = ead.lerMmSs(body.tempoSugerido);
+    if (seg === null || seg < 30 || seg > 3600) return { erro: 'Tempo sugerido: use minutos:segundos, de 0:30 a 60:00 (ex.: 4:00).' };
+    dados.tempoSugeridoSeg = seg;
+    return { dados };
+  }
+  const cenarioParaForm = (c) => ({ ...c, tempoSugerido: ead.mmSs(c.tempoSugeridoSeg) });
+
+  async function moduloComCurso(id) {
+    if (!edb.ehId(id)) return null;
+    return prisma.moduloEad.findUnique({ where: { id }, include: { cursoOnline: { include: { curso: { select: { nome: true } } } } } });
+  }
+  async function acharCenario(id) {
+    if (!edb.ehId(id)) return null;
+    return prisma.cenarioEad.findUnique({ where: { id }, include: { modulo: { include: { cursoOnline: { include: { curso: { select: { nome: true } } } } } }, decisoes: { orderBy: edb.POR_ORDEM, include: { opcoes: { orderBy: { ordem: 'asc' } } } } } });
+  }
+
+  router.get('/ead/modulo/:id/cenarios/novo', async (req, res) => {
+    const modulo = await moduloComCurso(req.params.id);
+    if (!modulo) return naoAchou(res);
+    if (!modulo.final) return voltar(res, urlModulo(modulo.id), 'erro', 'Cenários ficam só no módulo final.');
+    res.render('admin/ead/cenario-form', { modulo, cenario: null, valores: { tempoSugerido: '4:00' }, erro: null, ok: null });
+  });
+
+  router.post('/ead/modulo/:id/cenarios/novo', uploadFoto, async (req, res) => {
+    const modulo = await moduloComCurso(req.params.id);
+    if (!modulo) return naoAchou(res);
+    if (!modulo.final) return voltar(res, urlModulo(modulo.id), 'erro', 'Cenários ficam só no módulo final.');
+    const { dados, erro } = lerCenarioDoForm(req.body);
+    if (req.uploadErro || erro) return res.status(400).render('admin/ead/cenario-form', { modulo, cenario: null, valores: req.body, erro: req.uploadErro || erro, ok: null });
+    dados.fotoUrl = req.file ? await salvarFotoCurso(req.file) : null;
+    const c = await escrever(req, modulo.id, `novo cenário "${dados.titulo}"`, async (tx) =>
+      tx.cenarioEad.create({ data: { ...dados, moduloId: modulo.id, ordem: await edb.proximaOrdem(tx, 'cenarioEad', 'moduloId', modulo.id) } }));
+    await auditar(req, 'EAD_CRIOU_CENARIO', 'CenarioEad', c.id, { moduloId: modulo.id, titulo: c.titulo });
+    voltar(res, `/ead/cenario/${c.id}/editar`, 'ok', 'Cenário criado. Agora as decisões.');
+  });
+
+  router.get('/ead/cenario/:id/editar', async (req, res) => {
+    const c = await acharCenario(req.params.id);
+    if (!c) return naoAchou(res);
+    res.render('admin/ead/cenario-form', { modulo: c.modulo, cenario: c, valores: cenarioParaForm(c), erro: req.query.erro || null, ok: req.query.ok || null, decisaoValores: {} });
+  });
+
+  router.post('/ead/cenario/:id/editar', uploadFoto, async (req, res) => {
+    const c = await acharCenario(req.params.id);
+    if (!c) return naoAchou(res);
+    const { dados, erro } = lerCenarioDoForm(req.body);
+    if (req.uploadErro || erro) return res.status(400).render('admin/ead/cenario-form', { modulo: c.modulo, cenario: c, valores: { ...req.body, fotoUrl: c.fotoUrl }, erro: req.uploadErro || erro, ok: null, decisaoValores: {} });
+    const fotoNova = req.file ? await salvarFotoCurso(req.file) : null;
+    const tirar = req.body.removerFoto === 'on';
+    if (fotoNova || tirar) dados.fotoUrl = fotoNova;
+    await escrever(req, c.moduloId, `cenário "${dados.titulo}"`, (tx) => tx.cenarioEad.update({ where: { id: c.id }, data: dados }));
+    if ((fotoNova || tirar) && c.fotoUrl) await removerFotoCurso(c.fotoUrl);
+    voltar(res, `/ead/cenario/${c.id}/editar`, 'ok', 'Cenário salvo.');
+  });
+
+  router.post('/ead/cenario/:id/excluir', async (req, res) => {
+    const c = await acharCenario(req.params.id);
+    if (!c) return naoAchou(res);
+    await escrever(req, c.moduloId, `cenário "${c.titulo}" apagado`, (tx) => tx.cenarioEad.delete({ where: { id: c.id } }));
+    if (c.fotoUrl) await removerFotoCurso(c.fotoUrl);
+    await auditar(req, 'EAD_EXCLUIU_CENARIO', 'CenarioEad', c.id, { moduloId: c.moduloId, titulo: c.titulo });
+    voltar(res, urlModulo(c.moduloId), 'ok', `Cenário "${c.titulo}" apagado.`);
+  });
+
+  // ─── Decisões do cenário: pergunta + sempre 3 opções (texto, correta, fala do instrutor) ──────
+  function lerDecisaoDoForm(body) {
+    const op = body.op || {};
+    const r = ead.schemaDecisao.safeParse({
+      pergunta: body.pergunta,
+      opcoes: [0, 1, 2].map((i) => ({ texto: (op[i] && op[i].texto) || '', feedback: (op[i] && op[i].feedback) || '', correta: String(body.correta) === String(i) })),
+    });
+    if (!r.success) {
+      const caminho = r.error.issues[0].path;
+      const onde = caminho[0] === 'opcoes' ? `Opção ${caminho[1] + 1}: ` : '';
+      return { erro: onde + ead.primeiroErro(r) };
+    }
+    if (r.data.opcoes.filter((o) => o.correta).length !== 1) return { erro: 'Marque qual das 3 opções é a certa.' };
+    return { pergunta: r.data.pergunta, opcoes: r.data.opcoes.map((o, ordem) => ({ ...o, ordem })) };
+  }
+  const decisaoParaForm = (d) => ({ pergunta: d.pergunta, correta: String(d.opcoes.findIndex((o) => o.correta)), op: d.opcoes.map((o) => ({ texto: o.texto, feedback: o.feedback })) });
+
+  router.post('/ead/cenario/:id/decisoes', async (req, res) => {
+    const c = await acharCenario(req.params.id);
+    if (!c) return naoAchou(res);
+    const d = lerDecisaoDoForm(req.body);
+    if (d.erro) return res.status(400).render('admin/ead/cenario-form', { modulo: c.modulo, cenario: c, valores: cenarioParaForm(c), erro: d.erro, ok: null, decisaoValores: req.body });
+    const nova = await escrever(req, c.moduloId, `nova decisão no cenário "${c.titulo}"`, async (tx) =>
+      tx.decisaoCenario.create({ data: { cenarioId: c.id, pergunta: d.pergunta, ordem: await edb.proximaOrdem(tx, 'decisaoCenario', 'cenarioId', c.id), opcoes: { create: d.opcoes } } }));
+    await auditar(req, 'EAD_CRIOU_DECISAO', 'DecisaoCenario', nova.id, { moduloId: c.moduloId, titulo: d.pergunta.slice(0, 80) });
+    voltar(res, `/ead/cenario/${c.id}/editar`, 'ok', 'Decisão adicionada.');
+  });
+
+  async function acharDecisao(id) {
+    if (!edb.ehId(id)) return null;
+    return prisma.decisaoCenario.findUnique({ where: { id }, include: { opcoes: { orderBy: { ordem: 'asc' } }, cenario: { include: { modulo: { include: { cursoOnline: { include: { curso: { select: { nome: true } } } } } } } } } });
+  }
+
+  router.get('/ead/decisao/:id/editar', async (req, res) => {
+    const d = await acharDecisao(req.params.id);
+    if (!d) return naoAchou(res);
+    res.render('admin/ead/decisao-form', { decisao: d, valores: decisaoParaForm(d), erro: null });
+  });
+
+  router.post('/ead/decisao/:id/editar', async (req, res) => {
+    const d = await acharDecisao(req.params.id);
+    if (!d) return naoAchou(res);
+    const r = lerDecisaoDoForm(req.body);
+    if (r.erro) return res.status(400).render('admin/ead/decisao-form', { decisao: d, valores: req.body, erro: r.erro });
+    await escrever(req, d.cenario.moduloId, `decisão do cenário "${d.cenario.titulo}"`, async (tx) => {
+      await tx.opcaoDecisao.deleteMany({ where: { decisaoId: d.id } });
+      await tx.decisaoCenario.update({ where: { id: d.id }, data: { pergunta: r.pergunta, opcoes: { create: r.opcoes } } });
+    });
+    voltar(res, `/ead/cenario/${d.cenarioId}/editar`, 'ok', 'Decisão salva.');
+  });
+
+  router.post('/ead/decisao/:id/excluir', async (req, res) => {
+    const d = await acharDecisao(req.params.id);
+    if (!d) return naoAchou(res);
+    await escrever(req, d.cenario.moduloId, `decisão apagada no cenário "${d.cenario.titulo}"`, (tx) => tx.decisaoCenario.delete({ where: { id: d.id } }));
+    await auditar(req, 'EAD_EXCLUIU_DECISAO', 'DecisaoCenario', d.id, { moduloId: d.cenario.moduloId, titulo: d.pergunta.slice(0, 80) });
+    voltar(res, `/ead/cenario/${d.cenarioId}/editar`, 'ok', 'Decisão apagada.');
+  });
+
   return router;
 };

@@ -1,0 +1,70 @@
+<% var novo = !cenario; var v = valores || {}; var validado = modulo.status === 'VALIDADO';
+   var conf = validado ? 'data-confirmar="Este módulo está validado. Salvar uma mudança o volta para rascunho até ser validado de novo." data-botao="Salvar mesmo assim"' : ''; %>
+<%- include('../head', { titulo: novo ? 'Novo cenário' : 'Cenário' }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= novo ? 'Novo cenário' : cenario.titulo %></h1>
+  <a href="/ead/modulo/<%= modulo.id %>" class="adm-link">← <%= modulo.titulo %></a>
+</div>
+<p class="adm-mut"><%= modulo.cursoOnline.curso.nome %> · módulo final</p>
+<%- include('_mensagens') %>
+<% if (validado) { %><div class="ead-faixa-validado"><i class="fa-solid fa-triangle-exclamation"></i> Este módulo está validado. Salvar uma mudança o volta para rascunho até ser validado de novo.</div><% } %>
+
+<form method="POST" action="<%= novo ? '/ead/modulo/' + modulo.id + '/cenarios/novo' : '/ead/cenario/' + cenario.id + '/editar' %>?_csrf=<%= csrfToken %>"
+      enctype="multipart/form-data" class="adm-box adm-box-pad adm-espaco" <%- conf %>>
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="adm-form adm-campos">
+    <label class="full">Título do cenário
+      <input type="text" name="titulo" required maxlength="120" value="<%= v.titulo || '' %>" placeholder="Ex.: Pânico na hora do lanche">
+    </label>
+    <label class="full">Cena (3 linhas: onde, quando, quem, o que acontece)
+      <textarea name="cena" rows="4" maxlength="1000"><%= v.cena || '' %></textarea>
+    </label>
+    <label>Tempo sugerido (min:seg)
+      <input type="text" name="tempoSugerido" required maxlength="6" value="<%= v.tempoSugerido || '' %>" placeholder="4:00">
+    </label>
+    <label>Link do vídeo da cena (opcional; YouTube ou Vimeo)
+      <input type="url" name="videoUrl" maxlength="300" value="<%= v.videoUrl || '' %>">
+    </label>
+    <label class="full">Foto da cena (opcional)
+      <input type="file" name="foto" accept="image/jpeg,image/png,image/webp">
+    </label>
+    <% if (v.fotoUrl) { %><div class="full"><img src="<%= v.fotoUrl %>" alt="" style="max-width:220px;border-radius:10px;display:block;margin-bottom:6px">
+      <label class="check"><input type="checkbox" name="removerFoto"> Remover a foto</label></div><% } %>
+  </div>
+  <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> <%= novo ? 'Criar cenário' : 'Salvar cenário' %></button>
+</form>
+
+<% if (!novo) { %>
+  <section class="adm-box ead-topico">
+    <div class="ead-topico-cab"><h3>Decisões (<%= cenario.decisoes.length %>)</h3><span class="adm-mut">até 15 por cenário; a 1ª costuma ser OLHAR / LIGAR / CUIDAR</span></div>
+    <% if (!cenario.decisoes.length) { %><p class="ead-vazio">Nenhuma decisão ainda.</p><% } else { %>
+      <ul class="ead-lista">
+        <% cenario.decisoes.forEach(function (d, i) { var certa = d.opcoes.find(function (o) { return o.correta; }); %>
+          <li>
+            <span class="ead-num"><%= i + 1 %></span>
+            <div class="ead-tit"><a href="/ead/decisao/<%= d.id %>/editar"><%= d.pergunta %></a>
+              <small><%= d.opcoes.map(function (o) { return o.texto; }).join(' · ') %><%= certa ? ' — certa: ' + certa.texto : '' %></small></div>
+            <div class="ead-acoes">
+              <% ['subir', 'descer'].forEach(function (dir) { %>
+                <form method="POST" action="/ead/decisao/<%= d.id %>/<%= dir %>" <%- conf %>><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="adm-mini" title="<%= dir %>"><i class="fa-solid fa-arrow-<%= dir === 'subir' ? 'up' : 'down' %>"></i></button></form>
+              <% }) %>
+              <form method="POST" action="/ead/decisao/<%= d.id %>/excluir" data-confirmar="Apagar esta decisão?<%= validado ? ' O módulo volta para rascunho.' : '' %>"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="adm-mini danger" title="Apagar"><i class="fa-solid fa-trash"></i></button></form>
+            </div>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+    <form method="POST" action="/ead/cenario/<%= cenario.id %>/decisoes" class="adm-box-pad" style="border-top:1px dashed var(--linha)" <%- conf %>>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <h2 class="adm-h2 adm-form-h">Nova decisão</h2>
+      <%- include('_decisao-campos', { dv: (typeof decisaoValores !== 'undefined' && decisaoValores) || {} }) %>
+      <button type="submit" class="adm-btn"><i class="fa-solid fa-plus"></i> Adicionar decisão</button>
+    </form>
+  </section>
+<% } %>
+
+<%- include('../foot') %>

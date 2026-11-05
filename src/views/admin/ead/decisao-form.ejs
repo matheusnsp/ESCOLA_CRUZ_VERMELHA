@@ -1,0 +1,16 @@
+<% var modulo = decisao.cenario.modulo; var validado = modulo.status === 'VALIDADO'; %>
+<%- include('../head', { titulo: 'Decisão' }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Editar decisão</h1>
+  <a href="/ead/cenario/<%= decisao.cenarioId %>/editar" class="adm-link">← <%= decisao.cenario.titulo %></a>
+</div>
+<%- include('_mensagens', { ok: null }) %>
+<% if (validado) { %><div class="ead-faixa-validado"><i class="fa-solid fa-triangle-exclamation"></i> Este módulo está validado. Salvar uma mudança o volta para rascunho até ser validado de novo.</div><% } %>
+<form method="POST" action="/ead/decisao/<%= decisao.id %>/editar" class="adm-box adm-box-pad"
+      <% if (validado) { %>data-confirmar="Este módulo está validado. Salvar uma mudança o volta para rascunho até ser validado de novo." data-botao="Salvar mesmo assim"<% } %>>
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <%- include('_decisao-campos', { dv: valores }) %>
+  <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+</form>
+<%- include('../foot') %>
