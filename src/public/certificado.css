@@ -65,3 +65,8 @@ body { background: #e9e6e1; font-family: Arimo, Arial, Helvetica, sans-serif; co
 .cert-qr { position: absolute; right: 27mm; bottom: 16mm; width: 18mm; height: 18mm; }
 .cert-qr svg { width: 100%; height: 100%; display: block; }
 .cert-aviso { color: #b45309 !important; font-weight: 700; }
+
+/* Curso online (EAD, etapa 3): selo acima do título e ressalva acima das assinaturas. */
+.cert-selo-online { display: inline-block; margin: 0 auto 2mm; padding: 1.2mm 5mm; background: #c8102e; color: #fff; font: 700 9pt 'Arimo', Arial, sans-serif; letter-spacing: .18em; text-transform: uppercase; border-radius: 1mm; position: relative; z-index: 1; }
+.cert-frente { text-align: center; }
+.cert-ressalva { font: italic 8.5pt 'Arimo', Arial, sans-serif; color: #444; margin: 1mm auto 0; max-width: 200mm; position: relative; z-index: 1; }

@@ -32,14 +32,20 @@
         <img src="/img/certificado/cruz.jpg" alt="">
         <img src="/img/certificado/cruz-vermelha-rj.jpg" alt="Cruz Vermelha Brasileira — Rio de Janeiro">
       </div>
-      <h1 class="cert-titulo">Certificado</h1>
+<% if (c.online) { %>      <p class="cert-selo-online">CURSO ONLINE</p>
+<% } %>      <h1 class="cert-titulo">Certificado</h1>
       <p class="cert-nome"><%= c.nome %></p>
       <p class="cert-texto">
         <%= c.portador %> do <b><%= c.documento ? c.documento.tipo + ' ' + c.documento.numero : 'documento ____________' %></b>, concluiu o
-        <b>Curso Livre de <%= c.curso.toUpperCase() %></b>, ministrado pela Cruz Vermelha Brasileira – Filial Rio de Janeiro com
+<% if (c.online) { %>        <b>Curso Livre de <%= c.curso.toUpperCase() %></b>, na <b>modalidade a distância (100% online)</b>, ministrado pela
+        Cruz Vermelha Brasileira – Filial Rio de Janeiro, com carga horária de <%= c.cargaHoraria %>, <b><%= c.periodo.frase %></b>.
+<% } else { %>        <b>Curso Livre de <%= c.curso.toUpperCase() %></b>, ministrado pela Cruz Vermelha Brasileira – Filial Rio de Janeiro com
         carga horária de <%= c.cargaHoraria %> <%= c.periodo.frase %>.
+<% } -%>
       </p>
       <p class="cert-local"><%= c.emitidoEm %></p>
+<% if (c.online) { %>      <p class="cert-ressalva">Capacitação teórica. Não inclui treinamento prático em manequim, oferecido nos cursos presenciais da Escola.</p>
+<% } -%>
       <div class="cert-assinaturas n<%= c.assinaturas.length %>">
         <% c.assinaturas.forEach(function (a) { %>
           <div>

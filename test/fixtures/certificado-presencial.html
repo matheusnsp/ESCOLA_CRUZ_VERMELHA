@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Certificados · Bombeiro Civil</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Arimo:ital,wght@0,400;0,700;1,400&family=Great+Vibes&family=Libre+Baskerville:wght@400;700&family=Pinyon+Script&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/certificado.css">
+</head>
+<body>
+  
+  <header class="cert-barra">
+    <div>
+      <b>1 certificado</b> · 2 páginas (frente e verso)
+      <small>Na impressora: papel A4 deitado, margens "Nenhuma", frente e verso virando pela <b>borda curta</b>.</small>
+      
+    </div>
+    <button type="button" id="certImprimir">Imprimir</button>
+  </header>
+
+  
+    <section class="cert-pagina cert-frente">
+      <img class="cert-moldura" src="/img/certificado/moldura.svg" alt="">
+      <div class="cert-marca">
+        <img src="/img/certificado/cruz.jpg" alt="">
+        <img src="/img/certificado/cruz-vermelha-rj.jpg" alt="Cruz Vermelha Brasileira — Rio de Janeiro">
+      </div>
+      <h1 class="cert-titulo">Certificado</h1>
+      <p class="cert-nome">Maria da Silva</p>
+      <p class="cert-texto">
+        Portadora do <b>CPF 123.456.789-09</b>, concluiu o
+        <b>Curso Livre de BOMBEIRO CIVIL</b>, ministrado pela Cruz Vermelha Brasileira – Filial Rio de Janeiro com
+        carga horária de 80 horas no período de 01/10/2026 a 05/10/2026.
+      </p>
+      <p class="cert-local">Rio de Janeiro, 06 de Outubro de 2026.</p>
+      <div class="cert-assinaturas n2">
+        
+          <div>
+            <span class="cert-linha"></span>
+            <b>AMANDA FERRARI PENZA</b>
+            <span>Coordenadora de Cursos Livres</span>
+            <small>Cruz Vermelha Brasileira - Rio de Janeiro</small>
+          </div>
+        
+          <div>
+            <span class="cert-linha"></span>
+            <b>João Instrutor</b>
+            <span>Instrutor</span>
+            <small>Cruz Vermelha Brasileira - Rio de Janeiro</small>
+          </div>
+        
+      </div>
+      
+        
+        <div class="cert-verificacao">
+          <p><b>Código de verificação: ABCD-EFGH</b><br>Confira a autenticidade em https://redacao.exemplo/certificado/ABCD-EFGH</p>
+        </div>
+        <div class="cert-qr"><svg id="qr-fixo"></svg></div>
+      
+    </section>
+
+    <section class="cert-pagina cert-verso">
+      <header class="cert-verso-topo">
+        <div>
+          <b>CRUZ VERMELHA BRASILEIRA</b>
+          <span>FILIAL DO ESTADO DO RIO DE JANEIRO</span>
+          <span>CENTRO DE FORMAÇÃO CVB – RJ</span>
+        </div>
+        <div class="cert-marca">
+          <img src="/img/certificado/cruz.jpg" alt="">
+          <img src="/img/certificado/cruz-vermelha-rj.jpg" alt="Cruz Vermelha Brasileira — Rio de Janeiro">
+        </div>
+      </header>
+      <div class="cert-verso-corpo">
+        <div class="cert-verso-dados">
+          <p class="cert-verso-curso">Curso Livre<br><b>Bombeiro Civil</b></p>
+          <p>Ministrado pela Cruz Vermelha Brasileira<br>Filial Rio de Janeiro</p>
+          <p>Data: 01/10/2026 a 05/10/2026<br>Carga Horária: 80 horas</p>
+          <p><b>Aluno</b><br>Maria da Silva<br>CPF 123.456.789-09</p>
+          <p><b>Instrutor</b><br>João Instrutor</p>
+          <p>Certificado Registrado no<br><b>Livro</b> Nº 1<br><b>Registro:</b> Nº 42</p>
+          <p><b>2 anos</b></p>
+          <p>Código de verificação<br><b>ABCD-EFGH</b></p>
+        </div>
+        <div class="cert-verso-conteudo">
+          
+            <h2>Conteúdo Programático:</h2>
+            <ul><li>Prevenção de incêndios</li><li>Combate a incêndios</li></ul>
+          
+        </div>
+      </div>
+    </section>
+  
+
+  <script>
+    document.getElementById('certImprimir').addEventListener('click', function () { window.print(); });
+  </script>
+</body>
+</html>
