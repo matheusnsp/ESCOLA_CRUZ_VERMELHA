@@ -12,6 +12,7 @@ const visitasSite = require('../lib/visitas');
 const financeiroContas = require('../lib/financeiro-contas');
 const { contaDoGateway: unicopagContaDoGateway } = require('../lib/unicopag');
 const pesquisa = require('../lib/pesquisa');
+const { FORA_DO_PRESENCIAL } = require('../lib/turma-online');
 const comprovanteSaude = require('../lib/comprovante-saude');
 const prisma = require('../db');
 const { verificarSenha, hashSenha } = require('../lib/password');
@@ -703,6 +704,7 @@ router.get('/', async (req, res) => {
       where: {
         statusPagamento: 'PENDENTE',
         ...FILTRO_MATRICULA_FANTASMA,
+        turma: { status: { not: 'ONLINE' } }, // PIX online abandonado não é pagamento pendente
       },
     }),
 
@@ -1145,7 +1147,7 @@ router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), as
   await concluirTurmasPassadas(); // a lista já abre com as turmas de ontem como CONCLUÍDA
   const turmas = await prisma.turma.findMany({
     // A turma de espera (EM_ESPERA) não é turma de verdade: fica fora das abas e da lista.
-    where: { status: { not: 'EM_ESPERA' } },
+    where: { status: { notIn: FORA_DO_PRESENCIAL } },
     orderBy: { inicioPrevisto: 'asc' },
     include: {
       curso: true,
@@ -1256,6 +1258,7 @@ router.get('/turmas/:id/editar', requirePermissao('turmas:gerenciar'), async (re
   ]);
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
   if (turma.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não pode ser editada.'));
+  if (turma.status === 'ONLINE') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma do curso online não é editada aqui: use o modo Online do painel.'));
   await extras.anexar('turma', [turma]);
   res.render('admin/turma-form', { turma, aulas: turma.aulas, cursos, statusTurma: STATUS_TURMA, erro: null });
 });
@@ -1265,6 +1268,7 @@ router.post('/turmas/:id', requirePermissao('turmas:gerenciar'), async (req, res
   if (!existe) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
   // A turma de espera (lib/turma-espera.js) é do sistema: data, vagas e status não se editam à mão.
   if (existe.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não pode ser editada.'));
+  if (existe.status === 'ONLINE') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma do curso online não é editada aqui: use o modo Online do painel.'));
   const { dados, aulas, erro } = lerTurmaDoForm(req.body);
   if (erro) {
     const cursos = await prisma.curso.findMany({ orderBy: { nome: 'asc' } });
@@ -1315,6 +1319,7 @@ router.post('/turmas/:id/notas', requirePermissao('turmas:gerenciar'), async (re
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
   // Nota na espera travaria Mover / Voltar para a espera: a nota é da turma de verdade.
   if (turma.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não tem notas.'));
+  if (turma.status === 'ONLINE') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma do curso online não tem notas: o certificado sai pelo curso online.'));
 
   const nome = String(req.body.nome || '').trim();
   const peso = Number(String(req.body.peso || '1').replace(',', '.'));
@@ -1342,6 +1347,7 @@ router.post('/turmas/:id/excluir', requirePermissao('turmas:gerenciar'), async (
   const turma = await prisma.turma.findUnique({ where: { id: req.params.id }, include: { curso: true } });
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
   if (turma.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não pode ser excluída.'));
+  if (turma.status === 'ONLINE') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma do curso online não pode ser excluída.'));
 
   const matriculas = await prisma.matricula.count({ where: { turmaId: turma.id } });
   if (matriculas > 0) {
@@ -1532,6 +1538,7 @@ router.use(['/turmas/:id/boas-vindas', '/turmas/:id/certificados'], async (req, 
   try {
     const t = await prisma.turma.findUnique({ where: { id: req.params.id }, select: { status: true } });
     if (t && t.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não tem boas-vindas nem certificados.'));
+    if (t && t.status === 'ONLINE') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma do curso online não tem boas-vindas nem certificados por aqui.'));
     next();
   } catch (err) { next(err); }
 });
@@ -1856,7 +1863,7 @@ router.get('/inscricoes', requirePermissao(
 
     // Filtro de turma: a turma de espera não entra (aparece como "Em espera" na própria linha).
     prisma.turma.findMany({
-      where: { status: { not: 'EM_ESPERA' } },
+      where: { status: { notIn: FORA_DO_PRESENCIAL } },
       orderBy: { criadoEm: 'desc' },
       include: { curso: true },
     }),
@@ -2575,7 +2582,7 @@ router.get('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), 
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
   const turmas = await prisma.turma.findMany({
     // A turma de espera não é destino de transferência (voltar para a espera é na Matrícula rápida).
-    where: { id: { not: m.turmaId }, status: { not: 'EM_ESPERA' } },
+    where: { id: { not: m.turmaId }, status: { notIn: FORA_DO_PRESENCIAL } },
     orderBy: { criadoEm: 'desc' },
     include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
   });
@@ -2603,7 +2610,7 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
 
   const reRenderErro = async (erro) => {
     const turmas = await prisma.turma.findMany({
-      where: { id: { not: m.turmaId }, status: { not: 'EM_ESPERA' } },
+      where: { id: { not: m.turmaId }, status: { notIn: FORA_DO_PRESENCIAL } },
       orderBy: { criadoEm: 'desc' },
       include: {
         curso: true,
@@ -2639,7 +2646,7 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
     include: { curso: true },
   });
 
-  if (!destino || destino.status === 'EM_ESPERA') {
+  if (!destino || FORA_DO_PRESENCIAL.includes(destino.status)) {
     return reRenderErro('Turma de destino nao encontrada.');
   }
 
@@ -2719,7 +2726,7 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), asy
         }
       }),
       prisma.usuario.count({ where }),
-      prisma.turma.findMany({ where: { status: { not: 'EM_ESPERA' } }, orderBy: { criadoEm: 'desc' }, include: { curso: true } }),
+      prisma.turma.findMany({ where: { status: { notIn: FORA_DO_PRESENCIAL } }, orderBy: { criadoEm: 'desc' }, include: { curso: true } }),
 
       // 💡 NOVO — Turmas realmente abertas e que ainda não começaram. É o que
       // o texto de prospecção vai oferecer, puxado na hora pra nunca citar
@@ -3042,7 +3049,7 @@ router.get('/pendentes', requirePermissao('pendentes:gerenciar'), async (req, re
         statusPagamento: 'PENDENTE',
         // Turma congelada (pausada) não é "fora de prazo": fica fora de Pendentes até ser retomada.
         // Turma em espera (sem data) também não: não há prazo a vencer.
-        turma: { status: { notIn: ['CONGELADA', 'EM_ESPERA'] } },
+        turma: { status: { notIn: ['CONGELADA', ...FORA_DO_PRESENCIAL] } }, // online: cobrança única, fora de Pendentes
         OR: [
           { turma: { status: { notIn: STATUS_TURMA_ATIVA } } },
           { turma: { inicioPrevisto: { lte: agora } } },

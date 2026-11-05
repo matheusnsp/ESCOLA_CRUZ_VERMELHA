@@ -10,6 +10,8 @@ const prisma = require('../db');
 
 const ONLINE = 'ONLINE';
 const ehOnline = (turma) => !!turma && turma.status === ONLINE;
+// Turmas que não são "turma de verdade" do presencial: a de espera e a online. Para `status: { notIn }`.
+const FORA_DO_PRESENCIAL = ['EM_ESPERA', ONLINE];
 
 // Acha ou cria (mesma técnica de turmaDeEspera: sem transação interativa; lock de aviso por curso e
 // INSERT ... WHERE NOT EXISTS, para duas chamadas ao mesmo tempo não criarem duas turmas).
@@ -28,4 +30,4 @@ async function turmaOnline(cursoOnline) {
   return achar();
 }
 
-module.exports = { ONLINE, ehOnline, turmaOnline };
+module.exports = { FORA_DO_PRESENCIAL, ONLINE, ehOnline, turmaOnline };

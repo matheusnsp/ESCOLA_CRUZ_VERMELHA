@@ -409,7 +409,7 @@ async function moverMatricula({ inscricaoId, alvo, destino, porUsuarioId, appUrl
     // Quem saiu da espera não pode ficar com duas matrículas valendo no mesmo curso.
     const outra = await prisma.matricula.findFirst({
       where: {
-        alunoId: m.alunoId, id: { not: m.id }, turma: { cursoId: m.turma.cursoId, status: { not: 'EM_ESPERA' } },
+        alunoId: m.alunoId, id: { not: m.id }, turma: { cursoId: m.turma.cursoId, status: { notIn: ['EM_ESPERA', 'ONLINE'] } },
         OR: [{ taxaConfirmada: true }, { statusPagamento: { in: ['PAGO', 'PARCELADO'] } }],
         statusPagamento: { notIn: ['CANCELADO', 'ESTORNADO'] },
       },

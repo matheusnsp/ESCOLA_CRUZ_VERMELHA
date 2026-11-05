@@ -161,6 +161,9 @@
                 // Turma de espera (status EM_ESPERA): paga e garantida, mas sem data nem aulas ainda.
                 var emEspera = m.turma.status === 'EM_ESPERA' && !devolvido;
 
+                // Curso online (turma ONLINE, EAD): sem data, sem taxa; pago, o botão Acessar leva ao curso.
+                var online = m.turma.status === 'ONLINE';
+
                 var labelPlano = m.plano === 'A_VISTA'   ? 'À vista'
                                : m.plano === 'PRESENCIAL' ? 'Presencial'
                                : 'Parcelado';
@@ -194,6 +197,8 @@
                       <b>Aguardando encaixe</b> · data ainda não definida
                     <% } else if (m.turma.status === 'EM_ESPERA') { %>
                       data não definida
+                    <% } else if (online) { %>
+                      <b>Curso online</b>
                     <% } else { %>
                       <% if (m.turma.aulas && m.turma.aulas.length) { %><%= m.turma.aulas[0].horario %> · <% } %>
                       <% if (congelada) { %>novas datas a confirmar<% } else { %>início em <b><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %></b><% } %>
@@ -202,7 +207,8 @@
                   </p>
 
                   <div class="ct-pills">
-                    <% if (taxaOk) { %>
+                    <% if (online) { %>
+                    <% } else if (taxaOk) { %>
                       <span class="ct-pill ct-pill-ok">
                         <i class="fa-solid fa-circle-check"></i> Taxa de inscrição confirmada
                       </span>
@@ -261,6 +267,12 @@
                       <%= m.retomada.rotulo %> <i class="fa-solid fa-arrow-right"></i>
                     </a>
                   </div>
+                  <% } %>
+
+                  <% if (online && pago && !devolvido) { %>
+                  <a class="ct-agenda" href="/online/<%= m.turma.cursoId %>">
+                    <i class="fa-solid fa-laptop" aria-hidden="true"></i> Curso online · Acessar
+                  </a>
                   <% } %>
 
                   <% if (!devolvido && ['ABERTA', 'CONFIRMADA'].indexOf(m.turma.status) !== -1) { %>
