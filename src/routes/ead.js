@@ -186,6 +186,21 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     });
   });
 
+  router.get('/ead/curso/:id/desempenho', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co) return naoAchou(res);
+    res.render('admin/ead/desempenho', { co, d: await relatorios.desempenhoDoCurso(co.id) });
+  });
+
+  router.get('/ead/curso/:id/planilha.xlsx', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co) return naoAchou(res);
+    const nome = require('../lib/vitrine').slugCurso(co.curso.nome) || 'curso';
+    res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.set('Content-Disposition', `attachment; filename="ead-${nome}.xlsx"`);
+    res.send(await relatorios.planilhaDoCurso(co.id));
+  });
+
   // ─── Venda no site (etapa 4) ──────────────────────────────────────────────────────────────────
   router.post('/ead/curso/:id/preco', async (req, res) => {
     const co = await acharCursoOnline(req.params.id);

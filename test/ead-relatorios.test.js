@@ -120,4 +120,83 @@ describe('ead-relatorios', { skip: temBanco ? false : 'sem DATABASE_URL local' }
     assert.doesNotMatch(html, /Baixar cartão de bolso/); // sem a barra do aluno
     assert.equal((await fetch(`${painel}/ead/curso/${co.id}/concluintes/${ac.bia.id}/certificado`)).status, 404);
   });
+
+  test('desempenho e planilha pelo painel', async () => {
+    const d = await fetch(`${painel}/ead/curso/${co.id}/desempenho`);
+    assert.equal(d.status, 200); assert.match(await d.text(), /Perguntas que mais erram/);
+    const x = await fetch(`${painel}/ead/curso/${co.id}/planilha.xlsx`);
+    assert.equal(x.status, 200);
+    assert.match(x.headers.get('content-disposition'), /^attachment; filename="ead-teste-relatorios-online\.xlsx"$/);
+    assert.equal(Buffer.from(await x.arrayBuffer()).subarray(0, 2).toString(), 'PK');
+  });
+});
+
+describe('desempenho e planilha', { skip: temBanco ? false : 'sem DATABASE_URL local' }, () => {
+  const prisma = require('../src/db');
+  const rel = require('../src/lib/ead-relatorios');
+  let curso; let co; let mod; let fin; let top; let pDificil; let pPoucas; let cen; const alunos = []; const acs = [];
+
+  before(async () => {
+    curso = await prisma.curso.create({ data: { nome: 'TESTE desempenho online', cargaHoraria: 2, precoAvista: 0, precoCheio: 0, valorParcela: 0 } });
+    co = await prisma.cursoOnline.create({ data: { cursoId: curso.id } });
+    mod = await prisma.moduloEad.create({ data: { cursoOnlineId: co.id, titulo: 'Mód A', ordem: 0 } });
+    top = await prisma.topicoEad.create({ data: { moduloId: mod.id, titulo: 'Tópico A' } });
+    pDificil = await prisma.perguntaEad.create({ data: { topicoId: top.id, enunciado: 'Pergunta difícil', feedback: 'f' } });
+    pPoucas = await prisma.perguntaEad.create({ data: { topicoId: top.id, enunciado: 'Pergunta com poucas respostas', feedback: 'f' } });
+    fin = await prisma.moduloEad.create({ data: { cursoOnlineId: co.id, titulo: 'Final', ordem: 1, final: true } });
+    cen = await prisma.cenarioEad.create({ data: { moduloId: fin.id, titulo: 'Cenário X', tempoSugeridoSeg: 100 } });
+    for (let i = 0; i < 6; i++) {
+      const u = await prisma.usuario.create({ data: { nome: `Aluno Desempenho ${i}`, email: `desemp-${i}-${Date.now()}@teste.local`, papel: 'ALUNO' } });
+      alunos.push(u);
+      acs.push(await prisma.alunoCursoEad.create({ data: { usuarioId: u.id, cursoOnlineId: co.id } }));
+    }
+    // 6 respostas à difícil (4 erradas) em quizzes; 3 respostas à outra (pré-teste)
+    for (const [i, a] of acs.entries()) {
+      await prisma.tentativaEad.create({ data: { alunoCursoId: a.id, tipo: 'QUIZ', moduloId: mod.id, topicoId: top.id, perguntaIds: [pDificil.id], total: 1, respostas: [{ perguntaId: pDificil.id, alternativaIds: [], correta: i >= 4 }], concluidaEm: new Date() } });
+    }
+    for (const [i, a] of acs.slice(0, 3).entries()) {
+      await prisma.tentativaEad.create({ data: { alunoCursoId: a.id, tipo: 'PRE_TESTE', moduloId: mod.id, perguntaIds: [pPoucas.id], total: 1, acertos: i === 0 ? 1 : 0, aprovado: i === 0, respostas: [{ perguntaId: pPoucas.id, alternativaIds: [], correta: i === 0 }], concluidaEm: new Date() } });
+    }
+    // cenário: 4 concluídos com 60, 90, 120 e 200 s (2 acima de 100), erros 0, 1, 2, 5; 1 em andamento (não conta)
+    for (const [i, [t, e]] of [[60, 0], [90, 1], [120, 2], [200, 5]].entries()) {
+      await prisma.cenarioFeitoEad.create({ data: { alunoCursoId: acs[i].id, cenarioId: cen.id, tempoSeg: t, erros: e, concluidoEm: new Date() } });
+    }
+    await prisma.cenarioFeitoEad.create({ data: { alunoCursoId: acs[4].id, cenarioId: cen.id, erros: 9 } });
+  });
+  after(async () => {
+    await prisma.usuario.deleteMany({ where: { id: { in: alunos.map((u) => u.id) } } });
+    await prisma.cursoOnline.delete({ where: { id: co.id } });
+    await prisma.curso.delete({ where: { id: curso.id } });
+    await prisma.$disconnect();
+  });
+
+  test('perguntas: % de erro, só com 5+ respostas, a que mais erra no topo', async () => {
+    const d = await rel.desempenhoDoCurso(co.id);
+    assert.equal(d.perguntas.length, 1);
+    assert.deepEqual(
+      { id: d.perguntas[0].id, enunciado: d.perguntas[0].enunciado, topico: d.perguntas[0].topico, respostas: d.perguntas[0].respostas, erros: d.perguntas[0].erros, pctErro: d.perguntas[0].pctErro },
+      { id: pDificil.id, enunciado: 'Pergunta difícil', topico: 'Tópico A', respostas: 6, erros: 4, pctErro: 67 },
+    );
+  });
+
+  test('cenários: tempo médio, % que estourou e erros médios (só os concluídos)', async () => {
+    const [c] = (await rel.desempenhoDoCurso(co.id)).cenarios;
+    assert.equal(c.titulo, 'Cenário X'); assert.equal(c.feitos, 4);
+    assert.equal(c.tempoMedioSeg, 118); assert.equal(c.pctEstourou, 50); assert.equal(c.errosMedios, 2);
+  });
+
+  test('pré-teste por módulo: tentativas e % de aprovação', async () => {
+    const { preTestes } = await rel.desempenhoDoCurso(co.id);
+    assert.deepEqual(preTestes.map((p) => ({ titulo: p.titulo, tentativas: p.tentativas, pctAprovacao: p.pctAprovacao })), [{ titulo: 'Mód A', tentativas: 3, pctAprovacao: 33 }]);
+  });
+
+  test('planilha: 3 abas e o cabeçalho de Alunos', async () => {
+    const ExcelJS = require('exceljs');
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await rel.planilhaDoCurso(co.id));
+    assert.deepEqual(wb.worksheets.map((w) => w.name), ['Alunos', 'Concluintes', 'Perguntas']);
+    assert.deepEqual(wb.getWorksheet('Alunos').getRow(1).values.slice(1), ['Nome', 'E-mail', 'Origem', 'Inscrição', 'Pagamento', '% concluído', 'Último acesso', 'Fase', 'Concluiu em']);
+    assert.equal(wb.getWorksheet('Alunos').rowCount, 7); // cabeçalho + 6
+    assert.equal(wb.getWorksheet('Perguntas').getRow(2).getCell(1).value, 'Pergunta difícil');
+  });
 });
