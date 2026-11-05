@@ -5,7 +5,12 @@
 // a data de conclusão e a ressalva de que não inclui prática em manequim.
 // Spec: docs/superpowers/specs/2026-11-06-ead-certificado.md
 
+const QRCode = require('qrcode');
+const prisma = require('../db');
 const cert = require('./certificado');
+const redacao = require('./redacao');
+const extras = require('./extras');
+const email = require('./email'); // chamado como email.x (o teste troca a função por um espião)
 
 const MAX_NO_CERTIFICADO = cert.MAX_NO_CERTIFICADO;
 
@@ -55,4 +60,43 @@ function dadosCertificadoEad({ usuario, curso, modulos, numero, concluidoEm, aju
   };
 }
 
-module.exports = { dadosCertificadoEad, assinaturasDoCurso, dataRio };
+// Emite (ou reabre) o certificado de quem concluiu o curso online. Idempotente: o número é criado uma
+// vez só, a Redação só é chamada enquanto não houver código, e o e-mail sai só na primeira emissão.
+// Devolve null se o curso não está concluído. documentoAluno: app.locals.documentoAluno (server.js).
+async function emitirCertificadoEad(alunoCursoId, { enviarEmail = false, linkCertificado = null, documentoAluno } = {}) {
+  const ac = await prisma.alunoCursoEad.findUnique({
+    where: { id: alunoCursoId },
+    include: { usuario: true, cursoOnline: { include: { curso: true, modulos: { select: { titulo: true, final: true, ordem: true, criadoEm: true }, orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] } } } },
+  });
+  if (!ac || !ac.concluidoEm) return null;
+  const numero = await cert.numerarEad(ac.id);
+  const curso = ac.cursoOnline.curso;
+  await extras.anexar('curso', [curso]);
+  const dados = dadosCertificadoEad({
+    usuario: ac.usuario, curso, modulos: ac.cursoOnline.modulos, numero, concluidoEm: ac.concluidoEm,
+    ajustes: await cert.lerAjustes(), documentoAluno: documentoAluno || (() => null),
+  });
+
+  // Redação: código e QR de conferência. Falhar aqui não impede o certificado (sai sem QR).
+  let verificacao = null; let avisoRedacao = null;
+  const reg = await redacao.registrarCertificados([{
+    matriculaId: ac.id, turmaId: ac.cursoOnlineId, nome: dados.nome, curso: `${curso.nome} (online)`,
+    cargaHoraria: curso.cargaHoraria, emitidoEm: numero.emitidoEm,
+  }]).catch((e) => ({ codigos: {}, falhas: 1, erro: e.message }));
+  const r = reg.codigos[ac.id];
+  if (r) {
+    const qr = await QRCode.toString(r.url, { type: 'svg', margin: 0, errorCorrectionLevel: 'M', color: { dark: '#111111', light: '#ffffff00' } });
+    verificacao = { codigo: r.codigo, url: r.url, qr };
+  } else if (reg.falhas) {
+    avisoRedacao = reg.erro || 'falhou';
+  }
+
+  if (numero.novo && enviarEmail && linkCertificado) {
+    try { await email.enviarCertificadoEadPronto(ac.usuario.email, ac.usuario.nome, { curso: dados.curso, link: linkCertificado }); } catch (e) {
+      console.error('[EAD] e-mail do certificado:', e.message);
+    }
+  }
+  return { dados, verificacao, avisoRedacao };
+}
+
+module.exports = { dadosCertificadoEad, assinaturasDoCurso, dataRio, emitirCertificadoEad };

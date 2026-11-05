@@ -14,7 +14,7 @@
     "db:limpar:alunos": "node prisma/limpar-alunos.js",
     "admin:desbloquear": "node prisma/desbloquear-admin.js",
     "prisma:generate": "prisma generate",
-    "test": "node --test \"test/**/*.test.js\""
+    "test": "node --test --test-concurrency=1 \"test/**/*.test.js\""
   },
   "dependencies": {
     "@prisma/client": "^5",

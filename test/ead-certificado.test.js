@@ -66,3 +66,90 @@ describe('dadosCertificadoEad', () => {
     assert.doesNotMatch(html, /no período de/);
   });
 });
+
+// ─── Emissão (banco local) ─────────────────────────────────────────────────────────────────────────
+const http = require('http');
+const temBanco = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');
+const prisma = temBanco ? require('../src/db') : null;
+const eadCert = require('../src/lib/ead-certificado');
+const email = require('../src/lib/email');
+
+describe('emitirCertificadoEad', { skip: temBanco ? false : 'sem DATABASE_URL local' }, () => {
+  const LIVRO = 9998;
+  const TOKEN = 'x'.repeat(40);
+  let livroAntes; let curso; let co; let u; let ac; let redacao; let recebidos = []; let enviados = [];
+  const envAntes = { url: process.env.REDACAO_URL, token: process.env.REDACAO_ESCOLA_TOKEN };
+  const documentoAluno = (x) => (x.cpfCnpj ? { tipo: 'CPF', numero: x.cpfCnpj } : null);
+  const original = email.enviarCertificadoEadPronto;
+
+  const { before, after } = require('node:test');
+  before(async () => {
+    livroAntes = await prisma.configuracao.findUnique({ where: { chave: 'cert_livro_atual' } });
+    await prisma.configuracao.upsert({ where: { chave: 'cert_livro_atual' }, update: { valor: String(LIVRO) }, create: { chave: 'cert_livro_atual', valor: String(LIVRO) } });
+    curso = await prisma.curso.create({ data: { nome: 'TESTE emissão', cargaHoraria: 3, precoAvista: 0, precoCheio: 0, valorParcela: 0 } });
+    co = await prisma.cursoOnline.create({ data: { cursoId: curso.id, modulos: { create: [{ titulo: 'Engasgo', ordem: 0 }, { titulo: 'Juntando tudo', ordem: 1, final: true }] } } });
+    u = await prisma.usuario.create({ data: { nome: 'Carla Emissão', email: `emissao-${Date.now()}@teste.local`, papel: 'ALUNO', cpfCnpj: String(Date.now()).slice(-11) } });
+    ac = await prisma.alunoCursoEad.create({ data: { usuarioId: u.id, cursoOnlineId: co.id } });
+    redacao = http.createServer((req, res) => {
+      let corpo = '';
+      req.on('data', (c) => { corpo += c; });
+      req.on('end', () => {
+        if (req.headers.authorization !== `Bearer ${TOKEN}`) { res.writeHead(401); return res.end('{}'); }
+        recebidos.push(JSON.parse(corpo));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ codigo: 'ABCD-EFGH' }));
+      });
+    });
+    await new Promise((r) => redacao.listen(0, '127.0.0.1', r));
+    email.enviarCertificadoEadPronto = async (...args) => { enviados.push(args); };
+  });
+  after(async () => {
+    email.enviarCertificadoEadPronto = original;
+    process.env.REDACAO_URL = envAntes.url || ''; process.env.REDACAO_ESCOLA_TOKEN = envAntes.token || '';
+    if (redacao.listening) redacao.close();
+    await prisma.logAuditoria.deleteMany({ where: { OR: [{ id: { startsWith: `cert-num-${LIVRO}-` } }, { alvoId: ac.id }] } });
+    if (livroAntes) await prisma.configuracao.update({ where: { chave: 'cert_livro_atual' }, data: { valor: livroAntes.valor } });
+    else await prisma.configuracao.deleteMany({ where: { chave: 'cert_livro_atual' } });
+    await prisma.usuario.delete({ where: { id: u.id } });
+    await prisma.cursoOnline.delete({ where: { id: co.id } });
+    await prisma.curso.delete({ where: { id: curso.id } });
+    await prisma.$disconnect();
+  });
+
+  const opcoes = { enviarEmail: true, linkCertificado: 'http://localhost:3000/ead-teste/x/certificado', documentoAluno };
+
+  test('sem conclusão: não emite nada', async () => {
+    assert.equal(await eadCert.emitirCertificadoEad(ac.id, opcoes), null);
+    assert.equal(await prisma.logAuditoria.count({ where: { alvoId: ac.id } }), 0);
+  });
+
+  test('sem Redação: número, sem QR, e-mail uma vez só', async () => {
+    process.env.REDACAO_URL = ''; process.env.REDACAO_ESCOLA_TOKEN = '';
+    await prisma.alunoCursoEad.update({ where: { id: ac.id }, data: { concluidoEm: new Date() } });
+    const r1 = await eadCert.emitirCertificadoEad(ac.id, opcoes);
+    assert.equal(r1.dados.livro, LIVRO); assert.ok(r1.dados.registro >= 1);
+    assert.equal(r1.dados.online, true); assert.equal(r1.dados.nome, 'Carla Emissão');
+    assert.deepEqual(r1.dados.conteudo, ['Engasgo', 'Juntando tudo']);
+    assert.equal(r1.verificacao, null); assert.equal(r1.avisoRedacao, 'nao_configurado');
+    assert.equal(enviados.length, 1);
+    assert.equal(enviados[0][0], u.email);
+    assert.equal(enviados[0][2].link, opcoes.linkCertificado);
+    const r2 = await eadCert.emitirCertificadoEad(ac.id, opcoes);
+    assert.equal(r2.dados.registro, r1.dados.registro);
+    assert.equal(enviados.length, 1, 'segunda emissão não manda outro e-mail');
+  });
+
+  test('com a Redação: código, QR e registro guardado', async () => {
+    process.env.REDACAO_URL = `http://127.0.0.1:${redacao.address().port}`; process.env.REDACAO_ESCOLA_TOKEN = TOKEN;
+    const r = await eadCert.emitirCertificadoEad(ac.id, { documentoAluno });
+    assert.equal(r.verificacao.codigo, 'ABCD-EFGH'); assert.match(r.verificacao.qr, /^<svg/); assert.equal(r.avisoRedacao, null);
+    assert.equal(recebidos.length, 1);
+    assert.equal(recebidos[0].curso, 'TESTE emissão (online)');
+    assert.equal(recebidos[0].turma_id, co.id); assert.equal(recebidos[0].matricula_id, ac.id);
+    assert.ok(await prisma.logAuditoria.findUnique({ where: { id: `cert-redacao-${ac.id}` } }));
+    redacao.close();
+    const r3 = await eadCert.emitirCertificadoEad(ac.id, { documentoAluno });
+    assert.equal(r3.verificacao.codigo, 'ABCD-EFGH');
+    assert.equal(recebidos.length, 1);
+  });
+});

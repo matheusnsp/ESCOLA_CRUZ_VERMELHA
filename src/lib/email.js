@@ -623,7 +623,25 @@ async function enviarComprovanteRecusado(email, nome, { motivo, link }) {
   await enviar(email, 'Escola CVB-RJ: envie outro comprovante da área da saúde', html, 'Comprovante recusado', link);
 }
 
+// Curso online concluído (EAD, etapa 3): o certificado está pronto (lib/ead-certificado.js).
+async function enviarCertificadoEadPronto(email, nome, { curso, link }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const html = moldura(
+    'Seu certificado está pronto',
+    limpo(nome),
+    `Parabéns por concluir o curso online <strong>${limpo(curso)}</strong>. O seu certificado já está disponível, `
+      + 'com o código de verificação da Cruz Vermelha Brasileira – RJ. No mesmo lugar você baixa o <strong>cartão de bolso</strong> '
+      + 'com os passos do curso, para guardar no celular ou imprimir.'
+      + '<br><br>Lembre: é uma capacitação teórica. O treinamento prático em manequim é oferecido nos cursos presenciais da Escola.',
+    'Ver meu certificado',
+    link,
+    'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.'
+  );
+  await enviar(email, `Seu certificado está pronto: ${limpo(curso)}`, html, `Certificado do curso online pronto (${curso})`, link);
+}
+
 module.exports = {
+  enviarCertificadoEadPronto,
   enviarComprovanteRecusado,
   enviarEncaixeMatriculaRapida,
   enviarMudancaTurmaMatriculaRapida,
