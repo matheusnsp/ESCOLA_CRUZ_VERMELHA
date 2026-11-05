@@ -24,7 +24,9 @@ async function cursoOnlineDoEndereco(endereco) {
 
 const SITUACAO = { PAGO: 'pago', PARCELADO: 'pago', PENDENTE: 'pendente', CANCELADO: 'cancelado', ESTORNADO: 'cancelado' };
 
-// { matricula, liberado, situacao: 'sem'|'pendente'|'pago'|'cancelado' }
+// { matricula, vaga, liberado, situacao: 'sem'|'pendente'|'pago'|'cancelado', inicio }
+// Etapa 6: quem tem vaga ativa num lote de escola entra como quem comprou (situação 'pago'). inicio = de
+// quando contam os 7 dias em sequência: o pagamento confirmado, ou a entrada no lote.
 async function acessoPago(usuarioId, cursoOnline) {
   const matricula = usuarioId
     ? await prisma.matricula.findFirst({
@@ -33,7 +35,10 @@ async function acessoPago(usuarioId, cursoOnline) {
     })
     : null;
   const situacao = matricula ? SITUACAO[matricula.statusPagamento] || 'cancelado' : 'sem';
-  return { matricula, liberado: situacao === 'pago', situacao };
+  if (situacao === 'pago') return { matricula, vaga: null, liberado: true, situacao, inicio: matricula.confirmadaEm };
+  const vaga = usuarioId ? await require('./ead-lote').vagaAtiva(usuarioId, cursoOnline.id) : null;
+  if (vaga) return { matricula, vaga, liberado: true, situacao: 'pago', inicio: vaga.criadoEm };
+  return { matricula, vaga: null, liberado: false, situacao, inicio: null };
 }
 
 module.exports = { cursoOnlineDoEndereco, acessoPago };

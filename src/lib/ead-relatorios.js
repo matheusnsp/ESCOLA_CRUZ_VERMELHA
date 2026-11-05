@@ -47,22 +47,26 @@ async function alunosDoCurso(cursoOnlineId, { filtro = 'todos', agora = new Date
     prisma.alunoCursoEad.findMany({ where: { cursoOnlineId }, include: INCLUDE_PROGRESSO }),
   ]);
   const acDe = new Map(acs.map((a) => [a.usuarioId, a]));
+  // Etapa 6: quem entrou por lote de escola (vaga ativa).
+  const vagas = await prisma.vagaLoteEad.findMany({ where: { removidaEm: null, lote: { cursoOnlineId } }, include: { lote: { select: { escola: { select: { nome: true } } } } } }).catch(() => []);
+  const vagaDe = new Map(vagas.map((v) => [v.usuarioId, v]));
   const linhas = [];
   const montar = (usuario, m, a) => {
-    const inicio = m ? m.confirmadaEm : a ? a.iniciadoEm : null;
+    const vaga = !m || !PAGOS.includes(m.statusPagamento) ? vagaDe.get(usuario.id) : null;
+    const inicio = vaga ? vaga.criadoEm : m ? m.confirmadaEm : a ? a.iniciadoEm : null;
     const estado = a ? estadoDoCurso(r.curso, progressoDe(a, inicio), agora) : null;
     return {
       alunoCursoId: a ? a.id : null,
       usuario: { nome: usuario.nome, email: usuario.email },
-      origem: m ? 'Pago' : 'Teste',
-      inscricaoEm: m ? m.criadoEm : a.criadoEm,
+      origem: vaga ? `Escola: ${vaga.lote.escola.nome}` : m ? 'Pago' : 'Teste',
+      inscricaoEm: vaga ? vaga.criadoEm : m ? m.criadoEm : a.criadoEm,
       pagamento: m ? m.statusPagamento : null,
       percentual: estado ? estado.percentual : 0,
       ultimoAcesso: a ? ultimoAcessoDe(a) : null,
       fase: faseDe(inicio, agora),
       concluidoEm: a ? a.concluidoEm : null,
-      cancelado: !!m && CANCELADOS.includes(m.statusPagamento),
-      liberado: !m || PAGOS.includes(m.statusPagamento),
+      cancelado: !vaga && !!m && CANCELADOS.includes(m.statusPagamento),
+      liberado: !!vaga || !m || PAGOS.includes(m.statusPagamento),
     };
   };
   for (const m of matriculas) linhas.push(montar(m.aluno, m, acDe.get(m.alunoId)));

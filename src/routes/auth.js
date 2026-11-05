@@ -61,7 +61,7 @@ async function enviarConfirmacao(usuario) {
 }
 
 // Senha inicial do cadastro: lib/conta-aluno.js (a conta criada pelo gestor da escola usa a mesma regra).
-const { senhaPadraoDoDocumento } = require('../lib/conta-aluno');
+const { senhaPadraoDoDocumento, voltaDepoisDoCadastro } = require('../lib/conta-aluno');
 
 // ============================================================
 //  CADASTRO
@@ -147,8 +147,7 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
 
     // Quem veio do link de teste do curso online (/ead-teste/...) volta para o curso; o resto segue
     // para a Minha conta como sempre. Lido antes do regenerate (a sessão nova não tem o returnTo).
-    const voltaAoCurso = typeof req.session.returnTo === 'string' && /^\/ead-teste\/[A-Za-z0-9_-]+\/continuar$/.test(req.session.returnTo)
-      ? req.session.returnTo : null;
+    const voltaAoCurso = voltaDepoisDoCadastro(req.session.returnTo);
     req.session.regenerate((err) => {
       if (err) { console.error('Erro ao iniciar sessão no cadastro:', err); return res.redirect('/login'); }
       req.session.usuarioId = usuario.id;

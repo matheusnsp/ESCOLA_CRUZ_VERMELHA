@@ -79,11 +79,12 @@ async function contexto(req, co, curso) {
   const certificadoLiberado = !!alunoCurso.concluidoEm || estado.concluido;
   return { alunoCurso, progresso, estado, avisos, usuario, certificadoLiberado };
 }
-// No modo pago os 7 dias em sequência contam do pagamento confirmado, não do primeiro acesso.
+// No modo pago os 7 dias em sequência contam do pagamento confirmado (ou da entrada no lote da escola, etapa 6),
+// não do primeiro acesso.
 async function progressoDe(req, alunoCursoId) {
   const progresso = await pdb.carregarProgresso(alunoCursoId);
-  const m = req.ead && req.ead.acesso && req.ead.acesso.matricula;
-  if (req.ead && req.ead.modo === 'pago' && m && m.confirmadaEm) progresso.iniciadoEm = m.confirmadaEm;
+  const inicio = req.ead && req.ead.modo === 'pago' && req.ead.acesso && req.ead.acesso.inicio;
+  if (inicio) progresso.iniciadoEm = inicio;
   return progresso;
 }
 const estadoDoModulo = (ctx, moduloId) => (ctx ? ctx.estado.modulos.find((m) => m.id === moduloId) : null);

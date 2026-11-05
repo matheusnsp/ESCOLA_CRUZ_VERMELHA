@@ -56,4 +56,9 @@ async function contaParaPessoa({ nome, email, celular, cpf }) {
   }
 }
 
-module.exports = { contaParaPessoa, senhaPadraoDoDocumento };
+// Para onde o cadastro novo volta: o curso de onde a pessoa veio (link de teste ou curso pago) ou o
+// convite da escola (etapa 6). Qualquer outro destino é ignorado (vai para a Minha conta).
+const VOLTAS = [/^\/ead-teste\/[A-Za-z0-9_-]+\/continuar$/, /^\/online\/[A-Za-z0-9_-]+\/continuar$/, /^\/escola\/convite\/[A-Za-z0-9_-]+$/];
+const voltaDepoisDoCadastro = (returnTo) => (typeof returnTo === 'string' && VOLTAS.some((r) => r.test(returnTo)) ? returnTo : null);
+
+module.exports = { contaParaPessoa, senhaPadraoDoDocumento, voltaDepoisDoCadastro };
