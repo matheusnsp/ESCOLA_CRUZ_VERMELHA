@@ -10,6 +10,7 @@ const {
   taxaExibicao,
 } = require('../lib/matricula');
 const { criarTransacao, obterOpcaoParcelamento } = require('../lib/unicopag');
+const { iniciarCobrancaAVista, urlRetorno } = require('../lib/cobranca-avista');
 const { lerOrigem } = require('../lib/origem-da-visita');
 const cacheRapido = require('../lib/cache-rapido');
 const extras = require('../lib/extras');
@@ -139,10 +140,7 @@ const SELECT_ALUNO_CHECKOUT = {
 // tela zerar quando uma transação nova começa e continuar de onde parou num
 // simples reload. Não precisa de campo no Prisma.
 // ─────────────────────────────────────────────────────────────────────────
-function urlRetorno(matriculaId, { pix = false, etapa = 'curso' } = {}) {
-  return `/inscricao/retorno?matriculaId=${matriculaId}`
-       + `&pix=${pix ? '1' : '0'}&etapa=${etapa}&t=${Date.now()}`;
-}
+// urlRetorno mora em lib/cobranca-avista.js (a compra do curso online também usa).
 
 // ─────────────────────────────────────────────────────────────────────────
 // Monta o objeto parceladoComJuros PARA A ETAPA 1 (tela de escolha de plano).
@@ -704,96 +702,12 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       return reRenderErro('Não foi possível concluir a inscrição.');
     }
 
-    // 💡 v3 — CRÉDITO: nenhuma transação é criada aqui. O aluno preenche o
-    // cartão na tela de retorno e ela chama POST /inscricao/cartao/:id.
-    if (forma === 'CREDITO') {
-      return res.redirect(urlRetorno(matricula.id, { pix: false, etapa: 'curso' }));
-    }
-
-    // ----- PIX: transação criada agora, QR Code na tela de retorno -----
-    //
-    // 💡 NOVO — Mesma proteção da taxa: reaproveita o QR recente em vez de
-    // gerar outro. Ver a explicação completa em /pagar-taxa, mais abaixo.
-    // Cada clique gerava uma cobrança nova, e cada cobrança é pagável.
-    const JANELA_PIX_MS = 30 * 60 * 1000;
-    const pixRecente = await prisma.pagamento.findFirst({
-      where: {
-        matriculaId: matricula.id,
-        tipo: 'CURSO',
-        status: 'PENDENTE',
-        metodo: 'PIX',
-        pixQrCode: { not: null },
-        criadoEm: { gt: new Date(Date.now() - JANELA_PIX_MS) },
-      },
-      orderBy: { criadoEm: 'desc' },
+    // Cobrança à vista (crédito: cartão na tela de retorno; PIX: QR reaproveitado ou criado agora).
+    const cobranca = await iniciarCobrancaAVista({
+      matricula, nomeCurso: turma.curso.nome, total, forma, aluno, origem: lerOrigem(req), criarTransacao,
     });
-
-    if (pixRecente) {
-      console.log(`[PIX] Reaproveitando QR existente (${pixRecente.id}) da matrícula ${matricula.id}.`);
-      return res.redirect(urlRetorno(matricula.id, { pix: true, etapa: 'curso' }));
-    }
-
-    const pagamentoPendente = await prisma.pagamento.create({
-      data: {
-        matriculaId: matricula.id,
-        tipo: 'CURSO',
-        gateway: 'unicopag',
-        metodo: 'PIX',
-        valor: total,
-        status: 'PENDENTE',
-      },
-    });
-
-    try {
-      const resultadoGateway = await criarTransacao({
-        matriculaId: matricula.id,
-        nomeCurso: turma.curso.nome,
-        valorTotal: total,
-        forma: 'PIX',
-        aluno: { ...aluno, cidade: aluno.cidade || 'Rio de Janeiro' },
-        dadosCartao: null,
-        tipoPagamento: 'CURSO',
-        origem: lerOrigem(req),
-      });
-
-      const gatewayRef = String(resultadoGateway.gatewayRef || resultadoGateway.id || resultadoGateway.hash || matricula.id);
-
-      await prisma.pagamento.update({
-        where: { id: pagamentoPendente.id },
-        data: {
-          gatewayRef,
-          gatewayHash: resultadoGateway.hash || null,
-          gatewayStatus: resultadoGateway.paymentStatus || null,
-          gatewayResponse: resultadoGateway,
-          pixQrCode: resultadoGateway.pixQrCode || null,
-          pixUrl: resultadoGateway.pixUrl || null,
-          pixBase64: resultadoGateway.pixBase64 || null,
-        },
-      });
-
-      return res.redirect(urlRetorno(matricula.id, { pix: true, etapa: 'curso' }));
-    } catch (err) {
-      console.error('[UnicopAg] Erro no Gateway (curso à vista):', err.message);
-
-      // O gateway pode demorar e o nosso lado estourar timeout mesmo com a
-      // transação já criada do lado deles. O webhook confirma por fora — damos
-      // uma janela curta de espera antes de desistir e cancelar.
-      let pagamentoAtual = null;
-      for (let tentativa = 0; tentativa < 15; tentativa++) {
-        pagamentoAtual = await prisma.pagamento.findUnique({ where: { id: pagamentoPendente.id } });
-        if (pagamentoAtual?.gatewayRef) break;
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      }
-      if (pagamentoAtual?.gatewayRef) {
-        return res.redirect(urlRetorno(matricula.id, { pix: true, etapa: 'curso' }));
-      }
-
-      await prisma.pagamento.updateMany({
-        where: { id: pagamentoPendente.id, status: 'PENDENTE' },
-        data: { status: 'CANCELADO' },
-      });
-      return reRenderErro('Houve um problema ao processar o pagamento. Tente novamente.');
-    }
+    if (cobranca.erro) return reRenderErro(cobranca.erro);
+    return res.redirect(cobranca.redirect);
   }
 
   // ----- PRESENCIAL: só cria a Matrícula agora. A taxa é paga em
