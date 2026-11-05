@@ -2,5 +2,6 @@
 <%- include('_avisos') %>
 <main class="ea-wrap ea-main">
 <%- include('../partials/ead-tela') %>
+<% if (typeof blocoDuvidas !== 'undefined' && blocoDuvidas) { %><div class="ea-tela-col"><%- include('_duvidas') %></div><% } %>
 </main>
 <%- include('_fim') %>

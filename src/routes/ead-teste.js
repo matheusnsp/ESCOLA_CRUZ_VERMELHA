@@ -25,6 +25,7 @@ const { emitirCertificadoEad } = require('../lib/ead-certificado');
 const { gerarCartao } = require('../lib/ead-cartao');
 const { cursoOnlineDoEndereco, acessoPago } = require('../lib/ead-acesso');
 const { urlRetorno } = require('../lib/cobranca-avista');
+const duv = require('../lib/ead-duvidas');
 
 // Etapa 3: ao concluir o curso, emite o certificado (número, Redação, e-mail) SEM esperar.
 // O link do e-mail é o do modo em que a pessoa concluiu.
@@ -148,6 +149,7 @@ function compraDaCapa(req, co, base) {
 router.get(P(), comCurso(async (req, res, co, base, curso) => {
   const pagoSemAcesso = req.ead.modo === 'pago' && !req.ead.acesso.liberado;
   const ctx = pagoSemAcesso ? null : await contexto(req, co, curso);
+  if (ctx) ctx.duvidasRespondidas = await duv.respondidasNaoLidas(ctx.alunoCurso.id); // aviso "Sua dúvida foi respondida"
   res.render('ead-teste/capa', {
     co, base, ctx, modo: req.ead.modo, compra: pagoSemAcesso ? compraDaCapa(req, co, base) : null,
     continuarUrl: ctx ? urlDoPasso(co, base, ctx.estado.proximo) : null,
@@ -212,7 +214,44 @@ router.get(P('/tela/:telaId'), comCurso(async (req, res, co, base, curso) => {
     if (p && p.tipo === 'modulo') { fimUrl = `${base}/modulo/${p.id}`; fimTitulo = `Módulo ${i + 2}: ${co.modulos[i + 1].titulo}`; }
     else { fimUrl = base; fimTitulo = 'Fim do curso — voltar ao menu'; }
   }
-  res.render('ead-teste/tela', { ...tc, base, fimUrl, fimTitulo, menuUrl: base, quizForm, ctx });
+  // Dúvidas desta aula (etapa 5): as respondidas de todos e as pendentes do próprio aluno.
+  const duvidas = await duv.duvidasDaTela(req.params.telaId, ctx ? ctx.alunoCurso.id : null);
+  if (ctx) await duv.marcarLidas(ctx.alunoCurso.id, req.params.telaId);
+  const blocoDuvidas = {
+    lista: duvidas, logado: !!ctx, msg: MSG_DUVIDA[req.query.duvida] || null, ok: req.query.duvida === 'enviada',
+    postUrl: `${base}/tela/${req.params.telaId}/duvida`, entrarUrl: `${base}/tela/${req.params.telaId}/entrar`, max: duv.MAX,
+  };
+  res.render('ead-teste/tela', { ...tc, base, fimUrl, fimTitulo, menuUrl: base, quizForm, ctx, blocoDuvidas });
+}));
+
+// ─── Dúvidas (etapa 5) ──────────────────────────────────────────────────────────────────────────
+const MSG_DUVIDA = {
+  enviada: 'Dúvida enviada. A Escola responde por aqui e por e-mail.',
+  curta: 'Escreva a dúvida com pelo menos 10 caracteres.',
+  longa: 'A dúvida pode ter até 1000 caracteres.',
+  limite: 'Você já tem 5 dúvidas aguardando resposta neste curso. Assim que forem respondidas, dá para mandar outras.',
+};
+const telaDoCurso = (co, telaId) => co.modulos.findIndex((m) => m.topicos.some((t) => t.telas.some((x) => x.id === telaId)));
+
+// "Entre para mandar uma dúvida": login e volta para a mesma tela, no bloco de dúvidas.
+router.get(P('/tela/:telaId/entrar'), comCurso(async (req, res, co, base) => {
+  if (telaDoCurso(co, req.params.telaId) < 0) return naoAchou(res);
+  req.session.returnTo = `${base}/tela/${req.params.telaId}#duvidas`;
+  res.redirect('/login');
+}, { livre: true }));
+
+router.post(P('/tela/:telaId/duvida'), comCurso(async (req, res, co, base, curso) => {
+  const i = telaDoCurso(co, req.params.telaId);
+  if (i < 0) return naoAchou(res);
+  const ctx = await contexto(req, co, curso);
+  if (!ctx) {
+    req.session.returnTo = `${base}/tela/${req.params.telaId}#duvidas`;
+    return res.redirect('/login');
+  }
+  const em = estadoDoModulo(ctx, co.modulos[i].id);
+  if (em && em.estado === 'bloqueado') return res.redirect(`${base}/modulo/${co.modulos[i].id}`);
+  const r = await duv.enviarDuvida({ alunoCursoId: ctx.alunoCurso.id, telaId: req.params.telaId, texto: req.body.texto });
+  res.redirect(`${base}/tela/${req.params.telaId}?duvida=${r.ok ? 'enviada' : r.erro}#duvidas`);
 }));
 
 // ─── Quiz e pré-teste ───────────────────────────────────────────────────────────────────────────

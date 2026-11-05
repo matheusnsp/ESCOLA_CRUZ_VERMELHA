@@ -8,6 +8,11 @@
 %>
 <%- include('_topo', { titulo: co.curso.nome }) %>
 <%- include('_avisos') %>
+<% if (ctx && ctx.duvidasRespondidas && ctx.duvidasRespondidas.length) { var _dr = ctx.duvidasRespondidas; %>
+  <div class="ea-avisos ea-wrap">
+    <a class="ea-aviso ea-aviso-ok" href="<%= base %>/tela/<%= _dr[0].telaId %>#duvidas"><b><%= _dr.length === 1 ? 'Sua dúvida foi respondida' : _dr.length + ' dúvidas suas foram respondidas' %></b> pela Escola. <span>Ver a resposta →</span></a>
+  </div>
+<% } %>
 <section class="ea-heroi">
   <% if (co.curso.imagemUrl) { %><img src="<%= co.curso.imagemUrl %>" alt=""><% } %>
   <div class="ea-wrap ea-heroi-grid">

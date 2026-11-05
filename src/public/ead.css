@@ -278,3 +278,28 @@ button.ea-opcao:hover { background: #fff1f2; }
 .ea-compra-formas label { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .ea-compra-formas input { accent-color: var(--r); width: 18px; height: 18px; }
 div.ea-mod { cursor: default; }
+
+/* Etapa 5: dúvidas desta aula (embaixo do cartão da tela) e aviso de resposta na capa. */
+.ea-tela-col { max-width: 860px; margin: 22px auto 0; }
+.ea-duvidas { background: #fff; border-radius: 24px; padding: 24px 20px; box-shadow: 0 1px 0 rgba(0,0,0,.04); }
+.ea-duvidas h2 { margin: 0 0 14px; font-size: 26px; letter-spacing: -.04em; font-weight: 800; }
+.ea-duvidas h2 span { color: var(--r); }
+.ea-duvidas-msg { margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; font-size: 14px; font-weight: 600; }
+.ea-duvidas-msg.ok { background: #ecfdf3; color: #067647; }
+.ea-duvidas-msg.erro { background: #fff1f2; color: var(--r2); }
+.ea-duvidas-lista { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 12px; }
+.ea-duvida { border: 1px solid #ece8e1; border-radius: 18px; padding: 14px 16px; }
+.ea-duvida.minha { border-color: #f3c6cb; background: #fffafa; }
+.ea-duvida-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; color: var(--mut); }
+.ea-duvida-cab strong { color: var(--ink); font-size: 14px; }
+.ea-duvida-selo { font-style: normal; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; }
+.ea-duvida-selo.cinza { background: #f1f0ee; color: #6b6b6b; }
+.ea-duvida-texto { margin: 8px 0 0; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; }
+.ea-duvida-resposta { margin-top: 12px; padding: 12px 14px; border-left: 4px solid var(--r); background: #fbf8f4; border-radius: 0 14px 14px 0; }
+.ea-duvida-resposta strong { font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; color: var(--r2); }
+.ea-duvida-form { display: grid; gap: 8px; }
+.ea-duvida-form label { font-weight: 800; }
+.ea-duvida-form textarea { width: 100%; box-sizing: border-box; border: 1px solid #d9d4cc; border-radius: 14px; padding: 12px 14px; font: inherit; font-size: 15px; resize: vertical; }
+.ea-duvida-form textarea:focus { outline: 2px solid var(--r); outline-offset: 1px; }
+.ea-duvida-form .ea-pilula { justify-self: start; }
+.ea-aviso.ea-aviso-ok { border-color: #a6f4c5; border-left-color: #12b76a; }

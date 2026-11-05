@@ -1,0 +1,46 @@
+<%#
+  Dúvidas desta aula (etapa 5). Espera blocoDuvidas = { lista, logado, msg, ok, postUrl, entrarUrl, max }.
+  Texto do aluno e da Escola sempre escapado (tag de saída com escape); quebras de linha pelo CSS (pre-line).
+%><% var b = blocoDuvidas; var dataBR = function (d) { return new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }); }; %>
+<section class="ea-duvidas" id="duvidas" aria-labelledby="duvidas-titulo">
+  <p class="ea-kicker">Ficou com dúvida?</p>
+  <h2 id="duvidas-titulo">Dúvidas desta aula<span>.</span></h2>
+
+  <% if (b.msg) { %><p class="ea-duvidas-msg <%= b.ok ? 'ok' : 'erro' %>" role="status"><%= b.msg %></p><% } %>
+
+  <% if (!b.lista.length) { %>
+    <p class="ea-obs">Ninguém perguntou nada nesta aula ainda.</p>
+  <% } else { %>
+    <ul class="ea-duvidas-lista">
+      <% b.lista.forEach(function (d) { %>
+        <li class="ea-duvida <%= d.minha ? 'minha' : '' %>">
+          <div class="ea-duvida-cab">
+            <strong><%= d.minha ? 'Você' : d.nome %></strong>
+            <span><%= dataBR(d.criadoEm) %></span>
+            <% if (d.status === 'AGUARDANDO') { %><em class="ea-duvida-selo">aguardando resposta</em><% } %>
+            <% if (d.status === 'DESCARTADA') { %><em class="ea-duvida-selo cinza">não publicada</em><% } %>
+          </div>
+          <p class="ea-duvida-texto"><%= d.texto %></p>
+          <% if (d.resposta) { %>
+            <div class="ea-duvida-resposta">
+              <strong>Escola de Educação e Saúde CVB-RJ</strong>
+              <p class="ea-duvida-texto"><%= d.resposta %></p>
+            </div>
+          <% } %>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+
+  <% if (b.logado) { %>
+    <form method="POST" action="<%= b.postUrl %>" class="ea-duvida-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label for="duvida-texto">Mandar uma dúvida</label>
+      <textarea id="duvida-texto" name="texto" rows="4" minlength="10" maxlength="<%= b.max %>" required placeholder="Escreva sua dúvida sobre esta aula"></textarea>
+      <p class="ea-obs">A Escola responde por aqui e por e-mail. Depois de respondida, sua dúvida pode aparecer para outros alunos, só com seu primeiro nome e a inicial do sobrenome.</p>
+      <button type="submit" class="ea-pilula ea-pilula-red">Mandar dúvida</button>
+    </form>
+  <% } else { %>
+    <a class="ea-pilula ea-pilula-clara" href="<%= b.entrarUrl %>">Entre para mandar uma dúvida</a>
+  <% } %>
+</section>
