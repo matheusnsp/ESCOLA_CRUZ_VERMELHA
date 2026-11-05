@@ -7,6 +7,7 @@
 
 const prisma = require('../db');
 const { POR_ORDEM, ehId } = require('./ead-db');
+const { transacao } = require('./transacao');
 const { sortear, tamanhoPreTeste, corrigir, aprovado, QUIZ_N } = require('./ead-progresso');
 
 // Curso com tudo o que as telas do aluno mostram (co) e o mesmo no formato de estadoDoCurso (curso).
@@ -72,13 +73,16 @@ async function idsAtivos(where, db = prisma) {
 const travarAluno = (tx, alunoCursoId) => tx.$queryRaw`SELECT id FROM "AlunoCursoEad" WHERE id = ${alunoCursoId} FOR UPDATE`;
 
 // Reaproveita o quiz aberto do tópico; senão sorteia 3, evitando as da tentativa anterior.
+// O tópico e as perguntas ativas são lidos fora da transação (não dependem da trava do aluno).
 async function abrirQuiz(alunoCursoId, topicoId) {
-  return prisma.$transaction(async (tx) => {
+  const [topico, ids] = await Promise.all([
+    prisma.topicoEad.findUnique({ where: { id: topicoId }, select: { moduloId: true } }),
+    idsAtivos({ topicoId }),
+  ]);
+  return transacao(async (tx) => {
   await travarAluno(tx, alunoCursoId);
   const aberta = await tx.tentativaEad.findFirst({ where: { alunoCursoId, topicoId, tipo: 'QUIZ', concluidaEm: null }, orderBy: { criadoEm: 'desc' } });
   if (aberta) return aberta;
-  const topico = await tx.topicoEad.findUnique({ where: { id: topicoId }, select: { moduloId: true } });
-  const ids = await idsAtivos({ topicoId }, tx);
   if (!topico || !ids.length) return null;
   const anterior = await tx.tentativaEad.findFirst({ where: { alunoCursoId, topicoId, tipo: 'QUIZ' }, orderBy: { criadoEm: 'desc' } });
   const perguntaIds = sortear(ids, QUIZ_N, anterior ? anterior.perguntaIds : []);
@@ -88,10 +92,10 @@ async function abrirQuiz(alunoCursoId, topicoId) {
 
 // Uma tentativa por módulo. null se já tentou ou se o módulo tem menos de 8 perguntas ativas.
 async function abrirPreTeste(alunoCursoId, moduloId) {
-  return prisma.$transaction(async (tx) => {
+  const ids = await idsAtivos({ topico: { moduloId } }); // fora da trava
+  return transacao(async (tx) => {
     await travarAluno(tx, alunoCursoId);
     if (await tx.tentativaEad.count({ where: { alunoCursoId, moduloId, tipo: 'PRE_TESTE' } })) return null;
-    const ids = await idsAtivos({ topico: { moduloId } }, tx);
     const n = tamanhoPreTeste(ids.length);
     if (!n) return null;
     const perguntaIds = sortear(ids, n);
@@ -135,11 +139,21 @@ async function tentativaDoAluno(tentativaId, alunoCursoId) {
 const perguntaAtual = (tentativa) => (tentativa.concluidaEm ? null : tentativa.pendente);
 
 // Só a pergunta atual é aceita; a resposta repetida ou fora de ordem não muda nada ({ ignorada }).
+// As perguntas (e alternativas) da tentativa e a nota mínima são lidas fora da transação: perguntaIds não
+// muda depois de sorteado. Dentro dela, só a trava, a releitura das respostas e a gravação.
 async function responder(tentativaId, alunoCursoId, perguntaId, alternativaIds) {
-  return prisma.$transaction(async (tx) => {
+  if (!ehId(tentativaId)) return { ignorada: true, tentativa: null };
+  const base = await prisma.tentativaEad.findFirst({
+    where: { id: tentativaId, alunoCursoId },
+    select: { perguntaIds: true, alunoCurso: { select: { cursoOnline: { select: { notaMinimaQuiz: true } } } } },
+  });
+  if (!base) return { ignorada: true, tentativa: null };
+  const perguntas = await prisma.perguntaEad.findMany({ where: { id: { in: base.perguntaIds } }, include: { alternativas: { orderBy: { ordem: 'asc' } } } });
+  return transacao(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "TentativaEad" WHERE id = ${tentativaId} FOR UPDATE`;
-    const t = await carregarTentativa(tx, { id: tentativaId, alunoCursoId });
-    if (!t) return { ignorada: true, tentativa: null };
+    const linha = await tx.tentativaEad.findUnique({ where: { id: tentativaId } });
+    if (!linha) return { ignorada: true, tentativa: null };
+    const t = montar(linha, perguntas, base.alunoCurso.cursoOnline.notaMinimaQuiz);
     if (t.concluidaEm || !t.pendente || t.pendente.id !== perguntaId) return { ignorada: true, tentativa: t };
     const pergunta = t.pendente;
     const validas = new Set(pergunta.alternativas.map((a) => a.id));
@@ -182,13 +196,14 @@ async function acertarCenarioSemDecisao(feito, totalDecisoes) {
   });
 }
 
+// As decisões do cenário são lidas fora da transação; dentro dela, só a trava, a jogada e a gravação.
 async function escolherNoCenario(alunoCursoId, cenarioId, decisaoId, opcaoId, jogada) {
-  return prisma.$transaction(async (tx) => {
+  const decisoes = await prisma.decisaoCenario.findMany({ where: { cenarioId }, orderBy: POR_ORDEM, include: { opcoes: { orderBy: { ordem: 'asc' } } } });
+  return transacao(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "CenarioFeitoEad" WHERE "alunoCursoId" = ${alunoCursoId} AND "cenarioId" = ${cenarioId} FOR UPDATE`;
     const feito = await tx.cenarioFeitoEad.findUnique({ where: { alunoCursoId_cenarioId: { alunoCursoId, cenarioId } } });
     if (!cenarioEmAndamento(feito)) return { ignorada: true };
     if (jogada !== undefined && jogada !== jogadaDe(feito)) return { ignorada: true };
-    const decisoes = await tx.decisaoCenario.findMany({ where: { cenarioId }, orderBy: POR_ORDEM, include: { opcoes: { orderBy: { ordem: 'asc' } } } });
     const atual = decisoes[feito.decisaoAtual];
     const opcao = atual && atual.id === decisaoId ? atual.opcoes.find((o) => o.id === opcaoId) : null;
     if (!opcao) return { ignorada: true };

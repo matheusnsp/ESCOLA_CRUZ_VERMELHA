@@ -11,6 +11,7 @@ const prisma = require('../db');
 const asyncHandler = require('../lib/asyncHandler');
 const ead = require('../lib/ead');
 const edb = require('../lib/ead-db');
+const { transacao } = require('../lib/transacao');
 const eadTeste = require('../lib/ead-teste');
 const { gerarCartao } = require('../lib/ead-cartao');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
@@ -39,7 +40,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
 
   // Escrita que mexe no conteúdo de um módulo: transação + volta a rascunho se estava validado.
   async function escrever(req, moduloId, oQueMudou, fn) {
-    return prisma.$transaction(async (tx) => {
+    return transacao(async (tx) => {
       const r = await fn(tx);
       await edb.invalidarSeValidado(tx, moduloId, ator(req), oQueMudou);
       return r;
@@ -184,7 +185,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     dados.fotoIntroUrl = req.file ? await salvarFotoCurso(req.file) : null;
     let m;
     try {
-      m = await prisma.$transaction(async (tx) => {
+      m = await transacao(async (tx) => {
         const novo = await tx.moduloEad.create({ data: { ...dados, cursoOnlineId: co.id, ordem: await edb.proximaOrdem(tx, 'moduloEad', 'cursoOnlineId', co.id) } });
         if (final) { const f = await edb.marcarFinal(tx, novo.id, true, ator(req)); if (f.erro) throw new ErroForm(f.erro); }
         return novo;
@@ -259,7 +260,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
   router.post('/ead/modulo/:id/:direcao(subir|descer)', async (req, res) => {
     const m = edb.ehId(req.params.id) ? await prisma.moduloEad.findUnique({ where: { id: req.params.id } }) : null;
     if (!m) return naoAchou(res);
-    await prisma.$transaction(async (tx) => {
+    await transacao(async (tx) => {
       const r = await edb.mover(tx, 'moduloEad', m.id, req.params.direcao, 'cursoOnlineId', { final: false });
       if (!r) return;
       await edb.invalidarSeValidado(tx, m.id, ator(req), 'ordem dos módulos');
@@ -308,7 +309,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const alvo = await edb.moduloDe(tipo, id);
     if (!alvo) return naoAchou(res);
     const [modelo, pai] = MOVIVEIS[tipo];
-    await prisma.$transaction(async (tx) => {
+    await transacao(async (tx) => {
       if (await edb.mover(tx, modelo, id, direcao, pai)) await edb.invalidarSeValidado(tx, alvo.moduloId, ator(req), `ordem (${tipo})`);
     });
     if (tipo === 'decisao') {
