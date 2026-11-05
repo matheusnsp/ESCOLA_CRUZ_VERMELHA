@@ -28,6 +28,8 @@ EAD aparece ainda para o aluno. O presencial não muda.
 | Validação clínica | **Selo por módulo**: `RASCUNHO` → `VALIDADO`, por uma conta **DEV**. Qualquer mudança dentro de um módulo validado o devolve a `RASCUNHO`. |
 | Quem acessa | **Só contas DEV** (decidido em 05/11). Nenhum outro papel vê o item EAD ou abre as rotas, nem por permissão: não há permissões novas, as rotas usam o `requireDev` que já existe. Quando a área técnica e a secretaria precisarem entrar, isso vira uma etapa própria (permissões `ead:*`). |
 | Banco de perguntas | Mínimo **3 perguntas ativas por tópico** e **8 por módulo** para validar (decidido em 05/11). A meta do documento (10 por tópico) é só orientação, mostrada no painel; com exatamente 3, o quiz do tópico repete as mesmas 3 a cada tentativa até o banco crescer. |
+| Switch presencial/online | Seletor **Presencial \| Online** no topo do painel (só DEV), decidido em 05/11. Troca o menu inteiro (5.2). |
+| Link de teste | O curso online **não aparece no site**. Cada curso tem um **link secreto** (`/ead-teste/<código>`) que abre as telas como o aluno verá, sem login, fora do menu, do Google e do sitemap; o DEV gera, troca e desliga (5.4). Decidido em 05/11. |
 | Vídeo | **Só link** de YouTube (inclusive não listado) ou Vimeo, incorporado num `<iframe>`. Sem upload de vídeo. |
 | Foto | Upload pelo pipeline atual (`lib/upload.js`: WEBP + Supabase Storage). |
 | Código | `src/routes/ead.js` montado no `admin.js` como o `contas.js` (`require('./ead')({ requirePermissao, auditar, ADMIN_URL })`); regras em `src/lib/ead.js`; telas em `src/views/admin/ead/`. |
@@ -144,9 +146,18 @@ Cada frase aponta o item ("Tópico 'Reconhecer o engasgo': só 2 perguntas ativa
 - `lib/permissoes.js` **não muda**: nenhuma permissão nova, nada aparece na tela de Permissões.
 - Outro papel que digitar o endereço recebe o mesmo bloqueio que já recebe em `/dev/usuarios`.
 
-### 5.2 Menu
-Item **EAD** (`fa-solid fa-laptop-medical`) depois de "Turmas", com `secaoAtiva === 'ead'`, dentro do bloco
-`<% if (admPapel === 'DEV') { %>` que já existe em `header.ejs`.
+### 5.2 Modo do painel: Presencial | Online
+- No topo do painel (`header.ejs`), **só para DEV**, um seletor de dois botões "Presencial" / "Online"
+  (form `POST /modo` com `modo=presencial|online`, CSRF normal). Guarda em `req.session.modoPainel` e
+  redireciona: Presencial → `/`, Online → `/ead`.
+- **Presencial** (padrão; e sempre para quem não é DEV): o menu de hoje, sem nenhum item EAD.
+- **Online**: o menu mostra só **Cursos online** (`/ead`, `fa-solid fa-laptop-medical`) e, para o DEV,
+  Configurações; a marca no canto leva a `/ead`. As telas novas do EAD (alunos, progresso) entram neste
+  menu nas próximas etapas.
+- Abrir qualquer rota `/ead…` por link direto mostra o menu Online (as rotas do EAD passam
+  `modoPainel: 'online'` para o `header`), sem mudar a sessão. O seletor reflete o que está na tela.
+- `POST /modo` com outro papel: 403 como `/dev/usuarios`; valor fora de `presencial|online`: volta para
+  `/` sem mudar.
 
 ### 5.3 Rotas e telas (`src/routes/ead.js`, `src/views/admin/ead/`)
 
@@ -175,10 +186,36 @@ invalidação já registra quando importa). Exclusões usam `data-confirmar` diz
 Limites de texto (Zod): títulos 120; âncora 600; introdução 3000; item de revisão 200; alerta e dica 400;
 enunciado 600; alternativa/opção 300; feedback 800; cena 1000.
 
+### 5.4 Link de teste (site do aluno)
+- **Guardado** na `Configuracao`: chave `ead:teste:<cursoOnlineId>`, valor = código de 32 bytes aleatórios
+  em base64url (`crypto.randomBytes(32)`). Sem coluna nova.
+- **Painel** (`/ead/curso/:id`, DEV): caixa "Link de teste" com o endereço completo
+  (`<APP_URL>/ead-teste/<código>`, para copiar), botões **Gerar** (sem link) / **Trocar** (o antigo deixa de
+  abrir; `data-confirmar`) / **Desligar** (`data-confirmar`). Auditoria `EAD_LINK_TESTE_GEROU`,
+  `EAD_LINK_TESTE_TROCOU`, `EAD_LINK_TESTE_DESLIGOU` (sem gravar o código no log). Desativar o EAD do curso
+  apaga a chave.
+- **Site do aluno** (`src/routes/ead-teste.js`, montado no `siteAluno` **antes** de `visitas.registrar`,
+  para não contar como visita):
+  - `GET /ead-teste/:codigo` — capa do curso: nome, faixa fixa "VERSÃO DE TESTE — não divulgar", módulos em
+    ordem (o final por último) com título, minutos e selo Rascunho/Validado, cada um levando à introdução.
+  - `GET /ead-teste/:codigo/modulo/:moduloId` — introdução do módulo (foto, texto) e a lista de tópicos e
+    telas; botão "Começar" leva à primeira tela.
+  - `GET /ead-teste/:codigo/tela/:telaId` — a tela pela mesma partial da pré-visualização
+    (`partials/ead-tela.ejs`), com "Voltar" e "Próximo" (a próxima tela do tópico, depois do próximo
+    tópico, depois a introdução do próximo módulo; na última, volta à capa).
+  - Mostra **todos** os módulos, inclusive rascunho (é para testar). Quiz, pré-teste, cenário, progresso e
+    login ficam para a etapa 2, no mesmo link. Cenários aparecem só como título na capa do módulo final.
+  - Código que não existe, módulo/tela de outro curso: 404 com a página de erro do site
+    ("Página não encontrada."), igual para todos os casos.
+  - Cabeçalhos: `X-Robots-Tag: noindex, nofollow`, `Cache-Control: no-store`, e
+    `Referrer-Policy: strict-origin-when-cross-origin` só nessas páginas e na pré-visualização do painel
+    (o padrão `same-origin` do helmet faz o YouTube recusar o player; com esta política o YouTube recebe só
+    o domínio, nunca o código do link). `robots.txt` ganha `Disallow: /ead-teste/`; nada no sitemap.
+
 ## 6. Não muda
 Site do aluno, catálogo, inscrição, pagamento, webhook, certificados, e-mails, rotinas automáticas,
 turmas, financeiro, planilha ao vivo. A única mudança fora do EAD é a trava de 3.3 na exclusão de curso,
-o item de menu (só DEV) e o CSP do vídeo.
+o seletor de modo (só DEV), o CSP do vídeo, a rota `/ead-teste` e a linha nova do `robots.txt`.
 
 ## 7. Verificação
 - `node --check` em todos os `.js`; todos os EJS novos compilados.
@@ -193,4 +230,10 @@ o item de menu (só DEV) e o CSP do vídeo.
   hora do lanche" (Exemplo C) → tentar excluir o curso (recusado) → desativar o EAD.
 - SECRETARIA, COORDENADOR, FINANCEIRO e CONSULTA não veem o item EAD no menu e são bloqueados em `GET /ead`
   e num `POST /ead/…` direto.
+- Modo do painel: DEV troca Presencial ↔ Online e o menu muda; link direto para `/ead` mostra o menu
+  Online; SECRETARIA não vê o seletor e `POST /modo` dá 403.
+- Link de teste: gerar → abrir no celular (375 px) sem login, navegar capa → módulo → telas com "Próximo"
+  até o fim, vídeo toca; trocar → o antigo dá 404; desligar → 404; código inventado → 404; cabeçalhos
+  `X-Robots-Tag` e `Referrer-Policy` presentes; `robots.txt` com a linha nova; a visita não entra na
+  contagem do Painel.
 - PR para `main` **sem merge**; o usuário aprova depois de ver o ciclo.

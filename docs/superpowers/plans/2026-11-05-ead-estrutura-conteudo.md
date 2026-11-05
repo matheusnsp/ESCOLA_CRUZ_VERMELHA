@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Tabelas do conteúdo EAD e telas no painel (só DEV) para cadastrar módulos, tópicos, telas, perguntas e cenários, ver a tela como o aluno e validar o módulo.
+**Goal:** Tabelas do conteúdo EAD e telas no painel (só DEV, no modo Online do painel) para cadastrar módulos, tópicos, telas, perguntas e cenários, ver a tela como o aluno, validar o módulo e abrir o curso num link secreto de teste.
 
 **Architecture:** 9 tabelas novas ligadas a `Curso` por `CursoOnline` (1:1), migração que só cria. Regras puras e testáveis em `src/lib/ead.js` (vídeo, perguntas, pendências, mm:ss, Zod); acesso ao banco do EAD em `src/lib/ead-db.js` (carregar árvore, invalidar selo, reordenar); rotas em `src/routes/ead.js` montadas no `admin.js` como `contas.js`; telas em `src/views/admin/ead/`.
 
@@ -29,6 +29,7 @@
 - Pergunta UNICA salva com duas alternativas marcadas como corretas, ou com alternativas em branco no meio, não pode passar; as em branco somem e a ordem se refaz. Task 2.
 - Edição feita por POST direto (sem passar pelo modal) num módulo validado ainda tem que invalidar o selo. Tasks 3 e 5.
 - Subir o primeiro item / descer o último não pode quebrar nem mudar nada. Task 3.
+- Link de teste trocado ou desligado tem que parar de abrir na hora (inclusive as telas internas), e um id de tela de outro curso com um código válido dá 404. Task 8.
 - Id inexistente ou de outro tipo em qualquer rota (`/ead/tela/<id de pergunta>`) responde 404 com `admin/erro`, nunca 500. Task 4.
 
 ---
@@ -101,20 +102,21 @@
 
 ---
 
-### Task 4: Painel: menu, cursos, módulos e selo
+### Task 4: Painel: modo Presencial | Online, cursos, módulos e selo
 
 **Files:**
 - Create: `src/routes/ead.js`, `src/views/admin/ead/cursos.ejs`, `curso.ejs`, `modulo-form.ejs`, `modulo.ejs`
-- Modify: `src/routes/admin.js` (montar `router.use(require('./ead')({ requireDev, auditar, ADMIN_URL }))` ao lado do `contas`; trava em `POST /cursos/:id/excluir` da spec §3.3 com a frase exata), `src/views/admin/header.ejs` (item EAD dentro do bloco `admPapel === 'DEV'`, ícone `fa-solid fa-laptop-medical`, `secaoAtiva === 'ead'`), `src/server.js` (`frameSrc`)
+- Modify: `src/routes/admin.js` (`POST /modo` com `requireDev`, spec §5.2; montar `router.use(require('./ead')({ requireDev, auditar, ADMIN_URL }))` ao lado do `contas`; trava em `POST /cursos/:id/excluir` da spec §3.3 com a frase exata), `src/views/admin/header.ejs` (seletor Presencial | Online só para DEV; com `modoPainel === 'online'` — da sessão, ou passado pela view do EAD — o menu vira só "Cursos online" (`fa-solid fa-laptop-medical`) + Configurações e a marca leva a `/ead`; spec §5.2), `src/public/admin.css` (estilo do seletor), `src/server.js` (`frameSrc`)
 
 **Interfaces:**
 - Consumes: Task 2 (`pendencias`, `avisos`, esquemas), Task 3 (`carregarModulo`, `invalidarSeValidado`, `mover`, `proximaOrdem`, `marcarFinal`), `uploadFoto`/`salvarFotoCurso`/`removerFotoCurso` de `lib/upload.js`.
 - Produces: `module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) → Router`; helpers internos `voltar(res, url, tipo, msg)` e `naoAchou(res)` (404 `admin/erro` "Conteúdo EAD não encontrado."); a página `modulo.ejs` com os blocos onde as Tasks 5–7 penduram tópicos/telas/perguntas/cenários.
 
+- [ ] **Step 0:** `POST /modo` e o seletor no header; `res.locals.modoPainel = req.session.modoPainel || 'presencial'` num middleware do `admin.js`, e o router do EAD sobrescreve com `'online'`. Não-DEV: sempre presencial.
 - [ ] **Step 1:** Rotas da spec §5.3 até módulo: `GET /ead`, `POST /ead/ativar`, `GET|POST /ead/curso/:id`, `POST /ead/curso/:id/desativar`, `GET|POST /ead/curso/:id/modulos/novo`, `GET /ead/modulo/:id`, `GET|POST /ead/modulo/:id/editar`, `POST /ead/modulo/:id/{validar,reabrir,subir,descer,excluir}`. Regras: desativar só com todos os módulos em RASCUNHO; excluir módulo só em RASCUNHO; validar só com `pendencias()` vazia (senão volta com `?erro=` "O módulo tem pendências."); subir/descer módulo invalida os dois trocados; editar módulo validado invalida. Auditoria: `EAD_ATIVOU_CURSO`, `EAD_DESATIVOU_CURSO`, `EAD_CRIOU_MODULO`, `EAD_EXCLUIU_MODULO`, `EAD_VALIDOU_MODULO`, `EAD_REABRIU_MODULO`. Foto da introdução: troca remove a antiga com `removerFotoCurso`.
 - [ ] **Step 2:** Views: `modulo.ejs` mostra selo, "validado por <nome> em dd/mm/aaaa hh:mm", caixa de pendências (vermelha) e de avisos (amarela), botão Validar desabilitado com pendências; faixa amarela e `data-confirmar` da spec §4.5 em todo form de escrita quando o módulo está VALIDADO; exclusões com `data-confirmar` dizendo o que vai junto.
 - [ ] **Step 3:** `node --check src/routes/ead.js src/routes/admin.js src/server.js`; compilar os EJS novos (`node -e "require('ejs').compile(require('fs').readFileSync(f,'utf8'),{filename:f})"` para cada um).
-- [ ] **Step 4:** Subir o app local (`ADMIN_PORT=3001 npm run dev`), entrar como DEV no painel e conferir: menu EAD aparece; ativar EAD num curso de exemplo; criar 2 módulos; subir/descer; editar; validar recusado com pendências; tentar excluir o curso em Cursos → mensagem da §3.3; desativar EAD. Entrar como SECRETARIA: sem item EAD; `GET /ead` → 403 "Esta área é restrita ao Dev."; `GET /ead/modulo/xyz` como DEV → 404.
+- [ ] **Step 4:** Subir o app local (`ADMIN_PORT=3001 npm run dev`), entrar como DEV no painel e conferir: seletor troca Presencial ↔ Online e o menu muda; `/ead` por link direto mostra o menu Online; ativar EAD num curso de exemplo; criar 2 módulos; subir/descer; editar; validar recusado com pendências; tentar excluir o curso em Cursos → mensagem da §3.3; desativar EAD. Entrar como SECRETARIA: sem seletor nem item EAD; `POST /modo` → 403; `GET /ead` → 403 "Esta área é restrita ao Dev."; `GET /ead/modulo/xyz` como DEV → 404.
 - [ ] **Step 5:** Commit "EAD: painel de cursos e módulos (só DEV)".
 
 ---
@@ -165,7 +167,25 @@
 
 ---
 
-### Task 8: Verificação final e PR
+### Task 8: Link secreto de teste (site do aluno)
+
+**Files:**
+- Create: `src/lib/ead-teste.js`, `src/routes/ead-teste.js`, `src/views/ead-teste/capa.ejs`, `modulo.ejs`, `tela.ejs`
+- Modify: `src/server.js` (montar antes de `visitas.registrar`; `robots.txt` com `Disallow: /ead-teste/`), `src/routes/ead.js` + `src/views/admin/ead/curso.ejs` (caixa "Link de teste"), `test/ead.test.js`
+
+**Interfaces:**
+- Consumes: `partials/ead-tela.ejs` (Task 5), `carregarModulo` (Task 3).
+- Produces (`lib/ead-teste.js`): `codigoDoCurso(cursoOnlineId): Promise<string|null>`, `gerarCodigo(cursoOnlineId): Promise<string>` (cria ou substitui), `desligar(cursoOnlineId): Promise<void>`, `cursoDoCodigo(codigo): Promise<string|null>` (recusa sem consultar o banco se o código não casar `^[A-Za-z0-9_-]{43}$`); puro e testável: `proximaTela(arvoreDoCurso, telaId): { tipo: 'tela'|'modulo'|'capa', id? }` sobre os módulos ordenados (final por último).
+
+- [ ] **Step 1: Testes que falham** para `proximaTela`: próxima no mesmo tópico; última do tópico → primeira do próximo tópico; última do módulo → `{ tipo: 'modulo', id: <próximo módulo> }`; última do último módulo → `{ tipo: 'capa' }`; tópico sem telas é pulado. E para o formato do código: `cursoDoCodigo('abc')` → `null`.
+- [ ] **Step 2:** `npm test` → falha. **Step 3:** implementar `lib/ead-teste.js`. **Step 4:** `npm test` → passa.
+- [ ] **Step 5:** Rotas e views da spec §5.4 (layout do site: `partials/site-head`/`site-header`/`site-footer`, faixa "VERSÃO DE TESTE — não divulgar"); middleware do router põe os três cabeçalhos; toda busca confere que módulo/tela pertencem ao `cursoOnlineId` do código; caixa no painel com Gerar/Trocar/Desligar e auditoria sem o código; desativar o EAD apaga a chave.
+- [ ] **Step 6:** No app local: o roteiro de verificação da spec §7 (link de teste), com `curl -I` para conferir os cabeçalhos e o Painel para conferir que a visita não contou.
+- [ ] **Step 7:** Commit "EAD: link secreto de teste do curso online".
+
+---
+
+### Task 9: Verificação final e PR
 
 **Files:** nenhum novo (correções que aparecerem).
 
