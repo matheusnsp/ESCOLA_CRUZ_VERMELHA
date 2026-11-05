@@ -119,6 +119,33 @@ describe('dúvidas no banco', { skip: temBanco ? false : 'sem DATABASE_URL local
     assert.deepEqual(acoes, ['EAD_DUVIDA_DESCARTOU', 'EAD_DUVIDA_EDITOU', 'EAD_DUVIDA_REABRIU', 'EAD_DUVIDA_RESPONDEU']);
   });
 
+  test('[revisão I1] duplo clique de verdade (envios ao mesmo tempo) grava uma dúvida só', async () => {
+    const ac = await prisma.alunoCursoEad.create({ data: { usuarioId: bia.id, cursoOnlineId: co2.id } });
+    const rs = await Promise.all([1, 2, 3].map(() => d.enviarDuvida({ alunoCursoId: ac.id, telaId: telaOutro.id, texto: 'Mesma pergunta mandada com clique duplo.' })));
+    assert.ok(rs.every((r) => r.ok));
+    assert.equal(await prisma.duvidaEad.count({ where: { alunoCursoId: ac.id } }), 1);
+  });
+
+  test('[revisão I2] voltar para aguardando guarda a resposta; a auditoria guarda o texto respondido', async () => {
+    const p = await d.enviarDuvida({ alunoCursoId: acBia.id, telaId: tela.id, texto: 'Pergunta que vai e volta do ar.' });
+    await d.responder(p.duvida.id, 'Texto da resposta que não pode sumir.', 'dev', { linkBase: '/x' });
+    await d.tirarDoAr(p.duvida.id, 'dev');
+    assert.deepEqual(await d.reabrir(p.duvida.id, 'dev'), { ok: true });
+    const depois = await prisma.duvidaEad.findUnique({ where: { id: p.duvida.id } });
+    assert.equal(depois.status, 'AGUARDANDO'); assert.equal(depois.resposta, 'Texto da resposta que não pode sumir.');
+    const log = await prisma.logAuditoria.findFirst({ where: { alvoId: p.duvida.id, acao: 'EAD_DUVIDA_RESPONDEU' } });
+    assert.equal(log.detalhe.resposta, 'Texto da resposta que não pode sumir.');
+    // para os alunos, a pendente com resposta guardada não mostra a resposta
+    assert.ok(!(await d.duvidasDaTela(tela.id, null)).some((x) => x.id === p.duvida.id));
+  });
+
+  test('[revisão M8] listarCentral traz o nome de quem respondeu', async () => {
+    const p = await d.enviarDuvida({ alunoCursoId: acBia.id, telaId: tela2.id, texto: 'Quem respondeu esta pergunta?' });
+    await d.responder(p.duvida.id, 'Respondida por uma pessoa.', ana.id, { linkBase: '/x' });
+    const linha = (await d.listarCentral({ status: 'RESPONDIDA', cursoOnlineId: co.id })).find((x) => x.duvida.id === p.duvida.id);
+    assert.equal(linha.respondidaPorNome, 'Ana da Silva');
+  });
+
   test('marcarLidas e respondidasNaoLidas', async () => {
     const nl = await d.respondidasNaoLidas(acAna.id);
     assert.equal(nl.length, 1); assert.equal(nl[0].telaId, tela.id);

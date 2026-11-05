@@ -75,6 +75,15 @@ describe('dúvidas na tela', { skip: temBanco ? false : 'sem DATABASE_URL local'
     assert.match(curta.headers.get('location'), /duvida=curta#duvidas$/);
   });
 
+  test('[revisão I3] capa paga de curso publicado é indexável; o resto do EAD não', async () => {
+    const capa = await req(pago, null);
+    assert.equal(capa.status, 200);
+    assert.equal(capa.headers.get('x-robots-tag'), null);
+    assert.doesNotMatch(await capa.text(), /name="robots" content="noindex/);
+    assert.equal((await req(base, null)).headers.get('x-robots-tag'), 'noindex, nofollow');
+    assert.match((await req(`${pago}/criar-conta`, null)).headers.get('x-robots-tag') || '', /noindex/);
+  });
+
   test('modo pago sem acesso: o POST volta à capa sem gravar', async () => {
     const antes = await contar();
     const r = await post(`${pago}/tela/${tela.id}/duvida`, bia, { texto: 'Pergunta de quem não comprou o curso.' });

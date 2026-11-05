@@ -8,6 +8,7 @@
 const prisma = require('../db');
 const { ehId } = require('./ead-db');
 const eadTeste = require('./ead-teste');
+const { transacao } = require('./transacao');
 
 const MIN = 10; const MAX = 1000; const MAX_RESPOSTA = 2000; const LIMITE_AGUARDANDO = 5;
 
@@ -30,13 +31,18 @@ async function enviarDuvida({ alunoCursoId, telaId, texto }) {
   const t = String(texto || '').trim();
   if (t.length < MIN) return { ok: false, erro: 'curta' };
   if (t.length > MAX) return { ok: false, erro: 'longa' };
-  // Duplo clique (ou F5 no envio): o mesmo texto seguido na mesma tela não grava de novo.
-  const ultima = await prisma.duvidaEad.findFirst({ where: { alunoCursoId, telaId }, orderBy: { criadoEm: 'desc' }, select: { texto: true } });
-  if (ultima && ultima.texto === t) return { ok: true, repetida: true };
-  const aguardando = await prisma.duvidaEad.count({ where: { alunoCursoId, status: 'AGUARDANDO' } });
-  if (aguardando >= LIMITE_AGUARDANDO) return { ok: false, erro: 'limite' };
-  const duvida = await prisma.duvidaEad.create({ data: { alunoCursoId, telaId, texto: t } });
-  return { ok: true, duvida };
+  // Duplo clique (ou F5 no envio): o mesmo texto seguido na mesma tela não grava de novo. A trava de aviso
+  // por aluno no curso faz dois envios ao mesmo tempo passarem um de cada vez (a repetição e o limite de
+  // 5 aguardando valem também na corrida).
+  return transacao(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'duvida:' + alunoCursoId}))`;
+    const ultima = await tx.duvidaEad.findFirst({ where: { alunoCursoId, telaId }, orderBy: { criadoEm: 'desc' }, select: { texto: true } });
+    if (ultima && ultima.texto === t) return { ok: true, repetida: true };
+    const aguardando = await tx.duvidaEad.count({ where: { alunoCursoId, status: 'AGUARDANDO' } });
+    if (aguardando >= LIMITE_AGUARDANDO) return { ok: false, erro: 'limite' };
+    const duvida = await tx.duvidaEad.create({ data: { alunoCursoId, telaId, texto: t } });
+    return { ok: true, duvida };
+  });
 }
 
 // O que a tela mostra: as do aluno (não respondidas) primeiro, depois as respondidas, mais novas primeiro.
@@ -85,7 +91,7 @@ async function responder(duvidaId, resposta, atorId, { linkBase } = {}) {
     data: { status: 'RESPONDIDA', resposta: r, respondidaPor: atorId || 'SISTEMA', respondidaEm: new Date(), lidaEm: null },
   });
   if (upd.count === 0) return { ok: false, erro: 'ja_respondida' };
-  await auditar(atorId, 'EAD_DUVIDA_RESPONDEU', duvidaId, null);
+  await auditar(atorId, 'EAD_DUVIDA_RESPONDEU', duvidaId, { resposta: r });
   const u = d.alunoCurso.usuario;
   if (u.email) {
     const link = linkBase ? `${site()}${linkBase}/tela/${d.telaId}#duvidas` : `${site()}/minha-conta?sec=inscricoes`;
@@ -109,7 +115,8 @@ async function mudar(id, de, data, atorId, acao, detalhe) {
 
 const descartar = (id, motivo, atorId) => mudar(id, ['AGUARDANDO'], { status: 'DESCARTADA', motivoDescarte: String(motivo || '').trim().slice(0, 500) || null }, atorId, 'EAD_DUVIDA_DESCARTOU', motivo ? { motivo: String(motivo).slice(0, 500) } : null);
 const tirarDoAr = (id, atorId) => mudar(id, ['RESPONDIDA'], { status: 'OCULTA' }, atorId, 'EAD_DUVIDA_OCULTOU');
-const reabrir = (id, atorId) => mudar(id, ['DESCARTADA', 'OCULTA'], { status: 'AGUARDANDO', resposta: null, respondidaPor: null, respondidaEm: null, lidaEm: null }, atorId, 'EAD_DUVIDA_REABRIU');
+// Volta para Aguardando sem apagar a resposta que já existia: ela fica de rascunho no painel (e na auditoria).
+const reabrir = (id, atorId) => mudar(id, ['DESCARTADA', 'OCULTA'], { status: 'AGUARDANDO', respondidaPor: null, respondidaEm: null, lidaEm: null }, atorId, 'EAD_DUVIDA_REABRIU');
 
 async function editarResposta(id, resposta, atorId) {
   const r = String(resposta || '').trim();
@@ -139,6 +146,8 @@ async function listarCentral({ status = 'AGUARDANDO', cursoOnlineId = null } = {
     select: { alunoId: true, turma: { select: { cursoId: true } } },
   }) : [];
   const pagos = new Set(mats.map((m) => `${m.alunoId}|${m.turma.cursoId}`));
+  const quem = [...new Set(lista.map((x) => x.respondidaPor).filter((v) => v && ehId(v)))];
+  const nomes = new Map((quem.length ? await prisma.usuario.findMany({ where: { id: { in: quem } }, select: { id: true, nome: true } }) : []).map((u) => [u.id, u.nome]));
   const codigos = new Map();
   for (const coId of new Set(lista.map((x) => x.alunoCurso.cursoOnlineId))) codigos.set(coId, await eadTeste.codigoDoCurso(coId));
   return lista.map((x) => {
@@ -147,6 +156,7 @@ async function listarCentral({ status = 'AGUARDANDO', cursoOnlineId = null } = {
     const { alunoCurso, tela, ...duvida } = x;
     return {
       duvida, aluno: alunoCurso.usuario, origem: pago ? 'Pago' : 'Teste',
+      respondidaPorNome: duvida.respondidaPor ? nomes.get(duvida.respondidaPor) || (duvida.respondidaPor === 'SISTEMA' ? 'Sistema' : 'Dev') : null,
       cursoOnlineId: alunoCurso.cursoOnlineId, curso: alunoCurso.cursoOnline.curso.nome,
       modulo: tela.topico.modulo.titulo, moduloId: tela.topico.modulo.id, topico: tela.topico.titulo, tela,
       linkBase: pago ? `/online/${alunoCurso.cursoOnline.cursoId}` : codigo ? `/ead-teste/${codigo}` : null,

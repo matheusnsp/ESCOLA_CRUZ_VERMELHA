@@ -422,7 +422,8 @@ async function resolverEndereco(req, res, next) {
 router.get('/cursos/:cursoId', async (req, res, next) => {
   const cursoId = res.locals.cursoId;
   // Curso só online: a página dele é a do curso online (publicado); sem publicar, não existe no site.
-  if (await cursoSoOnline.ehSoOnline(cursoId)) {
+  const idsSoOnline = new Set(await catalogo(res, 'so-online', async () => [...await cursoSoOnline.idsSoOnline()]));
+  if (idsSoOnline.has(cursoId)) {
     const publicado = (await cursoSoOnline.cursosSoOnlinePublicados()).some((c) => c.id === cursoId);
     return publicado ? res.redirect(302, `/online/${cursoId}`) : next();
   }

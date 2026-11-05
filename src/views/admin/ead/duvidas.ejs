@@ -44,13 +44,13 @@
       <small class="adm-mut"><%= quando(d.criadoEm) %></small>
     </header>
     <p class="ead-duvida-onde">
-      <%= l.curso %> · <%= l.modulo %> · <a href="/ead/tela/<%= l.tela.id %>/ver" target="_blank" rel="noopener"><%= l.tela.titulo %> ↗</a>
+      <%= l.curso %> · <%= l.modulo %> · <%= l.tela.titulo %> · <a href="/ead/tela/<%= l.tela.id %>/editar">editar a tela</a> · <a href="/ead/tela/<%= l.tela.id %>/ver" target="_blank" rel="noopener">ver como o aluno ↗</a>
     </p>
     <p class="ead-duvida-texto"><%= d.texto %></p>
 
     <% if (d.resposta && d.status !== 'AGUARDANDO') { %>
       <div class="ead-duvida-resposta">
-        <small>Resposta<%= d.respondidaEm ? ' · ' + quando(d.respondidaEm) : '' %></small>
+        <small>Resposta<%= l.respondidaPorNome ? ' de ' + l.respondidaPorNome : '' %><%= d.respondidaEm ? ' · ' + quando(d.respondidaEm) : '' %></small>
         <p class="ead-duvida-texto"><%= d.resposta %></p>
       </div>
     <% } %>
@@ -60,7 +60,7 @@
       <% if (d.status === 'AGUARDANDO') { %>
         <form method="POST" action="/ead/duvidas/<%= d.id %>/responder" class="ead-duvida-responder">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="volta" value="<%= volta %>">
-          <label>Resposta<textarea name="resposta" rows="3" maxlength="2000" required placeholder="A resposta vai para a aula e por e-mail para o aluno"></textarea></label>
+          <label>Resposta<textarea name="resposta" rows="3" maxlength="2000" required placeholder="A resposta vai para a aula e por e-mail para o aluno"><%= d.resposta || '' %></textarea></label>
           <button type="submit" class="adm-btn"><i class="fa-solid fa-reply"></i> Responder</button>
         </form>
         <form method="POST" action="/ead/duvidas/<%= d.id %>/descartar" class="ead-duvida-descartar" data-confirmar="Descartar esta dúvida? Ela não aparece para os outros alunos; o autor vê &quot;não publicada&quot;." data-botao="Descartar">

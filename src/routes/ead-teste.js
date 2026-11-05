@@ -150,6 +150,11 @@ router.get(P(), comCurso(async (req, res, co, base, curso) => {
   const pagoSemAcesso = req.ead.modo === 'pago' && !req.ead.acesso.liberado;
   const ctx = pagoSemAcesso ? null : await contexto(req, co, curso);
   if (ctx) ctx.duvidasRespondidas = await duv.respondidasNaoLidas(ctx.alunoCurso.id); // aviso "Sua dúvida foi respondida"
+  // A capa do curso publicado (modo pago) é a página pública do curso: o Google pode indexar (está no
+  // sitemap). O link de teste e as páginas internas seguem com noindex.
+  const indexavel = req.ead.modo === 'pago' && co.publicado;
+  if (indexavel) res.removeHeader('X-Robots-Tag');
+  res.locals.indexavel = indexavel;
   res.render('ead-teste/capa', {
     co, base, ctx, modo: req.ead.modo, compra: pagoSemAcesso ? compraDaCapa(req, co, base) : null,
     continuarUrl: ctx ? urlDoPasso(co, base, ctx.estado.proximo) : null,

@@ -90,9 +90,22 @@ describe('curso só online', { skip: temBanco ? false : 'sem DATABASE_URL local'
     const html = await ejs.renderFile(path.join(__dirname, '..', 'src', 'views', 'partials', 'v-card-cat.ejs'), { curso: { ...c, turmas: [] }, vitrine, taxaExibicao: () => 0, cfgMap: {}, urlCurso: vitrine.urlCurso });
     assert.match(html, new RegExp(`href="/online/${co.cursoId}"`));
     assert.doesNotMatch(html, /Matrícula à vista/); assert.match(html, /R\$\s?39,90/);
+    assert.match(html, /data-aberta="1"/); // [revisão M9] o filtro "inscrições abertas" não esconde o curso online
     const r = await fetch(`${site}${vitrine.urlCurso({ nome })}`, { redirect: 'manual' });
     assert.equal(r.status, 302); assert.equal(r.headers.get('location'), `/online/${co.cursoId}`);
     assert.match(await (await fetch(`${site}/sitemap.xml`)).text(), new RegExp(`https://escola.exemplo/online/${co.cursoId}`));
+  });
+
+  test('[revisão I4] página do curso presencial: a lista de cursos só online vem do cache, não do banco a cada visita', async () => {
+    cacheRapido.limparTudo();
+    const original = prisma.cursoOnline.findMany; let consultas = 0;
+    prisma.cursoOnline.findMany = (...a) => { consultas++; return original.apply(prisma.cursoOnline, a); };
+    try {
+      const url = `${site}${vitrine.urlCurso(presencial)}`;
+      await fetch(url, { redirect: 'manual' }); const primeira = consultas;
+      await fetch(url, { redirect: 'manual' }); await fetch(url, { redirect: 'manual' });
+      assert.equal(consultas, primeira, 'visitas seguintes não consultam cursoOnline');
+    } finally { prisma.cursoOnline.findMany = original; }
   });
 
   test('desativar: apaga o CursoOnline e o Curso', async () => {
