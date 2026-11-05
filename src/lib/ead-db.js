@@ -45,11 +45,13 @@ async function invalidarSeValidado(tx, moduloId, atorId, oQueMudou) {
 
 // Troca a ordem com o vizinho de cima/baixo (mesmo pai). Antes, se houver ordens repetidas, renumera
 // 0..n-1 na ordem que a tela mostra. Primeiro subindo / último descendo: null, sem escrever.
-async function mover(tx, modelo, id, direcao, campoPai) {
+// filtro: restringe os irmãos (módulos: { final: false }, porque o final fica sempre por último).
+async function mover(tx, modelo, id, direcao, campoPai, filtro = {}) {
   const item = await tx[modelo].findUnique({ where: { id } });
   if (!item) return null;
-  const irmaos = await tx[modelo].findMany({ where: { [campoPai]: item[campoPai] }, orderBy: POR_ORDEM, select: { id: true, ordem: true } });
+  const irmaos = await tx[modelo].findMany({ where: { [campoPai]: item[campoPai], ...filtro }, orderBy: POR_ORDEM, select: { id: true, ordem: true } });
   const i = irmaos.findIndex((x) => x.id === id);
+  if (i < 0) return null;
   const j = direcao === 'subir' ? i - 1 : i + 1;
   if (j < 0 || j >= irmaos.length) return null;
   const repetidas = new Set(irmaos.map((x) => x.ordem)).size !== irmaos.length;

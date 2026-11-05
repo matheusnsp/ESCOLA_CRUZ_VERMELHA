@@ -1,0 +1,43 @@
+<% var novo = !modulo; var v = valores || {}; %>
+<%- include('../head', { titulo: novo ? 'Novo módulo' : 'Editar módulo' }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= novo ? 'Novo módulo' : 'Editar módulo' %></h1>
+  <a href="<%= novo ? '/ead/curso/' + co.id : '/ead/modulo/' + modulo.id %>" class="adm-link">← Voltar</a>
+</div>
+<p class="adm-mut"><%= co.curso.nome %></p>
+<%- include('_mensagens', { ok: null }) %>
+<% if (!novo && modulo.status === 'VALIDADO') { %>
+  <div class="ead-faixa-validado"><i class="fa-solid fa-triangle-exclamation"></i> Este módulo está validado. Salvar uma mudança o volta para rascunho até ser validado de novo.</div>
+<% } %>
+
+<form method="POST" action="<%= novo ? '/ead/curso/' + co.id + '/modulos/novo' : '/ead/modulo/' + modulo.id + '/editar' %>?_csrf=<%= csrfToken %>"
+      enctype="multipart/form-data" class="adm-box adm-box-pad"
+      <% if (!novo && modulo.status === 'VALIDADO') { %>data-confirmar="Este módulo está validado. Salvar uma mudança o volta para rascunho até ser validado de novo." data-botao="Salvar mesmo assim"<% } %>>
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="adm-form adm-campos">
+    <label class="full">Título
+      <input type="text" name="titulo" required maxlength="120" value="<%= v.titulo || '' %>" placeholder="Ex.: Engasgo">
+    </label>
+    <label>Tempo estimado (minutos)
+      <input type="number" name="minutosEstimados" min="0" max="600" value="<%= v.minutosEstimados || '' %>" placeholder="Ex.: 20">
+    </label>
+    <label class="check" style="align-self:end"><input type="checkbox" name="final" <%= (v.final === true || v.final === 'on') ? 'checked' : '' %>>
+      É o módulo final (só cenários, abre depois dos outros)
+    </label>
+    <label class="full">Introdução (abertura do módulo, uns 3 parágrafos)
+      <textarea name="introducao" rows="6" maxlength="3000"><%= v.introducao || '' %></textarea>
+    </label>
+    <label class="full">Foto da introdução (JPG, PNG ou WEBP, até 3 MB)
+      <input type="file" name="foto" accept="image/jpeg,image/png,image/webp">
+    </label>
+    <% if (v.fotoIntroUrl) { %>
+      <div class="full"><img src="<%= v.fotoIntroUrl %>" alt="" style="max-width:220px;border-radius:10px;display:block;margin-bottom:6px">
+        <label class="check"><input type="checkbox" name="removerFoto"> Remover a foto</label></div>
+    <% } %>
+  </div>
+  <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> <%= novo ? 'Criar módulo' : 'Salvar' %></button>
+</form>
+
+<%- include('../foot') %>

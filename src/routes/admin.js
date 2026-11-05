@@ -606,6 +606,20 @@ router.use((req, res, next) => {
 // ---------- Contas a pagar (routes/contas.js) ----------
 router.use(require('./contas')({ requirePermissao, auditar, ADMIN_URL }));
 
+// Modo do painel (só DEV): Presencial = o menu de sempre; Online = o EAD. Guardado na sessão.
+router.use((req, res, next) => {
+  res.locals.modoPainel = req.session.papel === 'DEV' && req.session.modoPainel === 'online' ? 'online' : 'presencial';
+  next();
+});
+router.post('/modo', requireDev, (req, res) => {
+  const modo = req.body.modo;
+  if (modo !== 'presencial' && modo !== 'online') return res.redirect('/');
+  req.session.modoPainel = modo;
+  res.redirect(modo === 'online' ? '/ead' : '/');
+});
+// EAD (curso 100% online): só DEV. Spec docs/superpowers/specs/2026-11-05-ead-estrutura-conteudo.md
+router.use(require('./ead')({ requireDev, auditar, ADMIN_URL }));
+
 // ---------- Dashboard ----------
 
 // 💡 NOVO — Mesmo filtro de "matrícula fantasma" usado em conta.js (tela do
@@ -1104,6 +1118,10 @@ router.post('/cursos/:id/excluir', requirePermissao('cursos:gerenciar'), async (
 
   if (turmas.length > 0 || matriculas > 0) {
     return res.redirect(backCursos(req, 'Nao e possivel excluir: o curso tem turmas e/ou inscrições. Use "desativar" para tira-lo do site preservando o historico.', 'erro'));
+  }
+  // Curso com EAD: o banco recusaria (CursoOnline com onDelete Restrict); aqui sai a mensagem certa.
+  if (await prisma.cursoOnline.count({ where: { cursoId: curso.id } })) {
+    return res.redirect(backCursos(req, 'Não é possível excluir: o curso tem conteúdo EAD. Desative o EAD em EAD → curso antes.', 'erro'));
   }
 
   await prisma.curso.delete({ where: { id: curso.id } });

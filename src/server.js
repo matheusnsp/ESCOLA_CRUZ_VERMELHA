@@ -111,7 +111,8 @@ app.use(
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
         imgSrc: ["'self'", 'data:', 'https:'],
         // Mapa da sede na home (Google Maps incorporado, sem chave).
-        frameSrc: ["'self'", 'https://www.google.com'],
+        // + players do EAD (vídeo por link: YouTube sem cookie e Vimeo; lib/ead.js normalizarVideo).
+        frameSrc: ["'self'", 'https://www.google.com', 'https://www.youtube-nocookie.com', 'https://player.vimeo.com'],
         // 💡 CORRIGIDO: Libera a execução do script que mostra/esconde os inputs do cartão na tela inscrever.ejs
         // googletagmanager (GA4) e connect.facebook.net (Meta Pixel): sem eles o CSP barrava
         // os dois scripts e nada era medido.

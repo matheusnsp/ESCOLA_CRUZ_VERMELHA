@@ -1,0 +1,90 @@
+<%- include('../head', { titulo: co.curso.nome + ' · EAD' }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= co.curso.nome %></h1>
+  <a href="/ead" class="adm-link">← Cursos online</a>
+</div>
+<%- include('_mensagens') %>
+
+<div class="adm-box adm-espaco">
+  <div class="ead-topico-cab"><h3>Módulos</h3>
+    <a class="adm-btn" href="/ead/curso/<%= co.id %>/modulos/novo"><i class="fa-solid fa-plus"></i> Novo módulo</a>
+  </div>
+  <% if (!modulos.length) { %>
+    <p class="ead-vazio">Nenhum módulo ainda.</p>
+  <% } else { %>
+    <ul class="ead-lista">
+      <% modulos.forEach(function (m, i) { %>
+        <li>
+          <span class="ead-num"><%= m.final ? '★' : i + 1 %></span>
+          <div class="ead-tit">
+            <a href="/ead/modulo/<%= m.id %>"><%= m.titulo %></a>
+            <small>
+              <%= m.minutosEstimados %> min ·
+              <% if (m.final) { %><%= m.nCenarios %> cenário(s)<% } else { %><%= m.topicos.length %> tópico(s) · <%= m.nTelas %> tela(s) · <%= m.nPerguntas %> pergunta(s) ativa(s)<% } %>
+            </small>
+          </div>
+          <% if (m.final) { %><span class="ead-selo final">Final · cenários</span><% } %>
+          <span class="ead-selo <%= m.status === 'VALIDADO' ? 'validado' : 'rascunho' %>"><%= m.status === 'VALIDADO' ? 'Validado' : 'Rascunho' %></span>
+          <div class="ead-acoes">
+            <% if (!m.final) ['subir', 'descer'].forEach(function (d) { %>
+              <form method="POST" action="/ead/modulo/<%= m.id %>/<%= d %>" <% if (m.status === 'VALIDADO') { %>data-confirmar="Mudar a ordem volta este módulo (e o vizinho, se validado) para rascunho. Continuar?"<% } %>>
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="adm-mini" title="<%= d === 'subir' ? 'Subir' : 'Descer' %>"><i class="fa-solid fa-arrow-<%= d === 'subir' ? 'up' : 'down' %>"></i></button>
+              </form>
+            <% }) %>
+          </div>
+        </li>
+      <% }) %>
+    </ul>
+    <p class="adm-nota" style="margin: 0 16px 14px"><i class="fa-solid fa-circle-info"></i> O módulo final (de cenários) aparece sempre por último para o aluno.</p>
+  <% } %>
+</div>
+
+<div class="adm-box adm-box-pad adm-espaco">
+  <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-link"></i> Link de teste</h2>
+  <p class="adm-mut">Abre o curso no site como o aluno verá, sem login, pelo celular. Não aparece no menu, no Google nem no sitemap; só quem tiver o link entra. Mostra também os módulos em rascunho.</p>
+  <% if (linkTeste) { %>
+    <div class="ead-link-teste adm-espaco">
+      <input type="text" readonly value="<%= linkTeste %>" aria-label="Link de teste">
+      <a class="adm-btn adm-btn-out" href="<%= linkTeste %>" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir</a>
+    </div>
+    <div class="ead-acoes">
+      <form method="POST" action="/ead/curso/<%= co.id %>/link-teste" data-confirmar="Trocar o link? O link atual deixa de abrir na hora.">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="acao" value="trocar">
+        <button class="adm-btn adm-btn-out"><i class="fa-solid fa-rotate"></i> Trocar</button>
+      </form>
+      <form method="POST" action="/ead/curso/<%= co.id %>/link-teste" data-confirmar="Desligar o link de teste? Ninguém mais consegue abrir.">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="acao" value="desligar">
+        <button class="adm-btn adm-btn-out"><i class="fa-solid fa-link-slash"></i> Desligar</button>
+      </form>
+    </div>
+  <% } else { %>
+    <form method="POST" action="/ead/curso/<%= co.id %>/link-teste">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="acao" value="gerar">
+      <button class="adm-btn"><i class="fa-solid fa-link"></i> Gerar link de teste</button>
+    </form>
+  <% } %>
+</div>
+
+<form method="POST" action="/ead/curso/<%= co.id %>" class="adm-box adm-box-pad adm-espaco">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <h2 class="adm-h2 adm-form-h">Configuração</h2>
+  <div class="adm-form adm-campos">
+    <label>Nota mínima no quiz e no pré-teste (%)
+      <input type="number" name="notaMinimaQuiz" min="50" max="100" step="1" required value="<%= co.notaMinimaQuiz %>">
+    </label>
+  </div>
+  <button type="submit" class="adm-btn adm-btn-out">Salvar</button>
+</form>
+
+<form method="POST" action="/ead/curso/<%= co.id %>/desativar" class="adm-box adm-box-pad"
+      data-confirmar="Desativar o EAD de “<%= co.curso.nome %>”? Todos os módulos, telas, perguntas e cenários deste curso serão APAGADOS. O curso presencial não muda." data-botao="Apagar conteúdo">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <h2 class="adm-h2 adm-form-h">Desativar EAD</h2>
+  <p class="adm-mut">Apaga todo o conteúdo online deste curso. Só é possível com todos os módulos em rascunho.</p>
+  <button type="submit" class="adm-btn adm-btn-perigo"><i class="fa-solid fa-trash"></i> Desativar EAD e apagar conteúdo</button>
+</form>
+
+<%- include('../foot') %>

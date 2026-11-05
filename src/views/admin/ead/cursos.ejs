@@ -1,0 +1,48 @@
+<%- include('../head', { titulo: 'Cursos online' }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Cursos online</h1>
+  <span class="adm-mut">EAD · visível só para contas Dev</span>
+</div>
+<%- include('_mensagens') %>
+
+<div class="adm-box adm-espaco">
+  <% if (!lista.length) { %>
+    <p class="ead-vazio">Nenhum curso online ainda. Ative o EAD num curso abaixo.</p>
+  <% } else { %>
+    <ul class="ead-lista">
+      <% lista.forEach(function (co) { %>
+        <li>
+          <span class="ead-num"><i class="fa-solid fa-laptop-medical"></i></span>
+          <div class="ead-tit">
+            <a href="/ead/curso/<%= co.id %>"><%= co.curso.nome %></a>
+            <small><%= co.nModulos %> módulo(s) · <%= co.nValidados %> validado(s) · <%= co.nPerguntas %> pergunta(s) ativa(s)<%= co.curso.ativo ? '' : ' · curso desativado no site' %></small>
+          </div>
+          <a class="adm-btn adm-btn-out" href="/ead/curso/<%= co.id %>">Abrir</a>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</div>
+
+<form method="POST" action="/ead/ativar" class="adm-box adm-box-pad">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <h2 class="adm-h2 adm-form-h">Ativar EAD num curso</h2>
+  <% if (!semEad.length) { %>
+    <p class="adm-mut">Todos os cursos já têm EAD. Crie um curso em Presencial → Cursos para ativar aqui.</p>
+  <% } else { %>
+    <div class="adm-form adm-campos">
+      <label class="full">Curso
+        <select name="cursoId" required>
+          <option value="">— escolha —</option>
+          <% semEad.forEach(function (c) { %><option value="<%= c.id %>"><%= c.nome %><%= c.ativo ? '' : ' (desativado)' %></option><% }) %>
+        </select>
+      </label>
+    </div>
+    <p class="adm-nota"><i class="fa-solid fa-circle-info"></i> Nome, preço, foto e certificado continuam vindo do curso. O EAD só acrescenta o conteúdo online, e nada aparece no site enquanto não houver inscrição online (próximas etapas).</p>
+    <button type="submit" class="adm-btn"><i class="fa-solid fa-plus"></i> Ativar EAD</button>
+  <% } %>
+</form>
+
+<%- include('../foot') %>

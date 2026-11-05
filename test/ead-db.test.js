@@ -55,6 +55,19 @@ describe('ead-db', { skip: pular }, () => {
     assert.equal(await prisma.$transaction((tx) => edb.mover(tx, 'telaEad', telas[1].id, 'descer', 'topicoId')), null);
   });
 
+  test('mover módulos ignora o módulo final (ele fica sempre por último na tela)', async () => {
+    const co2 = await prisma.cursoOnline.create({ data: { cursoId: (await prisma.curso.create({ data: { nome: 'TESTE ead-db 2', cargaHoraria: 1, precoAvista: 0, precoCheio: 0, valorParcela: 0 } })).id } });
+    const a = await prisma.moduloEad.create({ data: { cursoOnlineId: co2.id, titulo: 'A', ordem: 0 } });
+    await prisma.moduloEad.create({ data: { cursoOnlineId: co2.id, titulo: 'Final', ordem: 1, final: true } });
+    const c = await prisma.moduloEad.create({ data: { cursoOnlineId: co2.id, titulo: 'C', ordem: 2 } });
+    const r = await prisma.$transaction((tx) => edb.mover(tx, 'moduloEad', c.id, 'subir', 'cursoOnlineId', { final: false }));
+    assert.deepEqual(r, { trocadoCom: a.id });
+    const comuns = (await prisma.moduloEad.findMany({ where: { cursoOnlineId: co2.id, final: false }, orderBy: { ordem: 'asc' } })).map((x) => x.titulo);
+    assert.deepEqual(comuns, ['C', 'A']);
+    await prisma.cursoOnline.delete({ where: { id: co2.id } });
+    await prisma.curso.delete({ where: { id: co2.cursoId } });
+  });
+
   test('proximaOrdem', async () => {
     const m = await novoModulo();
     assert.equal(await edb.proximaOrdem(prisma, 'topicoEad', 'moduloId', m.id), 0);
