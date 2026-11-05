@@ -68,3 +68,15 @@
    EAD o botão de contorno tem texto escuro e borda, e fica vermelho no hover. */
 .adm-btn.adm-btn-out { color: var(--tinta); background: var(--campo); border: 1px solid var(--linha); }
 .adm-btn.adm-btn-out:hover { color: var(--vermelho); border-color: var(--vermelho); background: var(--campo); }
+
+/* Etapa 4: alunos, detalhe e concluintes */
+.ead-filtros { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.ead-filtros a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--linha); color: var(--tinta-60); font-size: 13px; font-weight: 700; text-decoration: none; background: var(--campo); }
+.ead-filtros a.on { background: var(--tinta); border-color: var(--tinta); color: var(--campo); }
+.ead-tabela-rolagem { overflow-x: auto; }
+.ead-barra { display: inline-block; width: 64px; height: 6px; border-radius: 999px; background: var(--linha); overflow: hidden; vertical-align: middle; margin-right: 6px; }
+.ead-barra span { display: block; height: 100%; background: var(--vermelho); }
+.ead-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; }
+.ead-resumo small { display: block; color: var(--tinta-60); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.ead-resumo b { font-size: 18px; }
+.ead-quebra { overflow-wrap: anywhere; font-size: 14px !important; }

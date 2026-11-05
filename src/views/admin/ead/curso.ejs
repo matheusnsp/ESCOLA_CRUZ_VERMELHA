@@ -5,6 +5,7 @@
   <h1 class="adm-h1"><%= co.curso.nome %></h1>
   <a href="/ead" class="adm-link">← Cursos online</a>
 </div>
+<%- include('_abas-curso', { co: co, aba: 'conteudo' }) %>
 <%- include('_mensagens') %>
 
 <%# Etapa 4: venda no site. Preço único (PIX ou cartão, sem taxa) e o interruptor "Publicar no site". %>

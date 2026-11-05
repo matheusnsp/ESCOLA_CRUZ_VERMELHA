@@ -1,0 +1,10 @@
+<%#
+  Abas de um curso online no painel (etapa 4). Uso: include('_abas-curso', { co, aba }) com
+  aba = 'conteudo' | 'alunos' | 'concluintes' | 'desempenho'.
+%><nav class="adm-abas" aria-label="Curso online">
+  <a href="/ead/curso/<%= co.id %>" class="adm-aba <%= aba === 'conteudo' ? 'on' : '' %>"><i class="fa-solid fa-layer-group"></i> Conteúdo e venda</a>
+  <a href="/ead/curso/<%= co.id %>/alunos" class="adm-aba <%= aba === 'alunos' ? 'on' : '' %>"><i class="fa-solid fa-user-graduate"></i> Alunos</a>
+  <a href="/ead/curso/<%= co.id %>/concluintes" class="adm-aba <%= aba === 'concluintes' ? 'on' : '' %>"><i class="fa-solid fa-award"></i> Concluintes</a>
+  <a href="/ead/curso/<%= co.id %>/desempenho" class="adm-aba <%= aba === 'desempenho' ? 'on' : '' %>"><i class="fa-solid fa-chart-column"></i> Desempenho</a>
+  <a href="/ead/curso/<%= co.id %>/planilha.xlsx" class="adm-aba"><i class="fa-solid fa-file-excel"></i> Excel</a>
+</nav>

@@ -14,6 +14,8 @@ const edb = require('../lib/ead-db');
 const { transacao } = require('../lib/transacao');
 const eadTeste = require('../lib/ead-teste');
 const publicacao = require('../lib/ead-publicacao');
+const relatorios = require('../lib/ead-relatorios');
+const { emitirCertificadoEad } = require('../lib/ead-certificado');
 const { gerarCartao } = require('../lib/ead-cartao');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 
@@ -148,6 +150,41 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (!m) return [];
     return [m.fotoIntroUrl, ...m.topicos.flatMap((t) => t.telas.map((x) => x.fotoUrl)), ...m.cenarios.map((c) => c.fotoUrl)].filter(Boolean);
   }
+
+  // ─── Alunos, detalhe e concluintes (etapa 4) ─────────────────────────────────────────────────
+  const FILTROS_ALUNOS = ['todos', 'andamento', 'concluidos', 'cancelados'];
+  router.get('/ead/curso/:id/alunos', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co) return naoAchou(res);
+    const filtro = FILTROS_ALUNOS.includes(req.query.filtro) ? req.query.filtro : 'todos';
+    res.render('admin/ead/alunos', { co, filtro, lista: await relatorios.alunosDoCurso(co.id, { filtro }) });
+  });
+
+  router.get('/ead/curso/:id/alunos/:alunoCursoId', async (req, res) => {
+    const d = await relatorios.detalheDoAluno(req.params.id, req.params.alunoCursoId);
+    if (!d) return naoAchou(res);
+    res.render('admin/ead/aluno', { d });
+  });
+
+  router.get('/ead/curso/:id/concluintes', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co) return naoAchou(res);
+    res.render('admin/ead/concluintes', { co, lista: await relatorios.concluintesDoCurso(co.id) });
+  });
+
+  // "Abrir certificado": a mesma página da etapa 3 para aquele aluno, sem a barra do aluno.
+  router.get('/ead/curso/:id/concluintes/:alunoCursoId/certificado', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    const acId = req.params.alunoCursoId;
+    const ac = co && edb.ehId(acId) ? await prisma.alunoCursoEad.findFirst({ where: { id: acId, cursoOnlineId: co.id, concluidoEm: { not: null } } }) : null;
+    if (!ac) return naoAchou(res);
+    const r = await emitirCertificadoEad(ac.id, { documentoAluno: req.app.locals.documentoAluno });
+    if (!r) return naoAchou(res);
+    res.render('admin/certificado-imprimir', {
+      lista: [{ id: ac.id, ...r.dados, verificacao: r.verificacao }],
+      turma: { curso: { nome: co.curso.nome } }, avisoRedacao: r.avisoRedacao,
+    });
+  });
 
   // ─── Venda no site (etapa 4) ──────────────────────────────────────────────────────────────────
   router.post('/ead/curso/:id/preco', async (req, res) => {
