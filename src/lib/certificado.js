@@ -106,6 +106,35 @@ async function proximoRegistro(livro) {
   return usados.reduce((max, u) => Math.max(max, parseInt(u.id.split('-').pop(), 10) || 0), 0) + 1;
 }
 
+// Reserva o próximo número do livro para um alvo (matrícula presencial ou aluno do curso online),
+// numa transação: o id "cert-num-<livro>-<registro>" é a trava (repetido falha com P2002), então dois
+// certificados nunca ficam com o mesmo registro. Devolve { livro, registro } ou null se o alvo já tinha.
+async function reservarNumero(alvoId, alvoTipo, livro, atorId = 'SISTEMA') {
+  for (let tentativa = 0; tentativa < 20; tentativa++) {
+    const registro = await proximoRegistro(livro);
+    try {
+      await prisma.$transaction([
+        prisma.logAuditoria.create({ data: { id: idNumero(livro, registro), atorId, acao: 'CERTIFICADO_NUMERO', alvoTipo, alvoId } }),
+        prisma.logAuditoria.create({ data: { id: idCert(alvoId), atorId, acao: 'CERTIFICADO_EMITIDO', alvoTipo, alvoId, detalhe: { livro, registro } } }),
+      ]);
+      return { livro, registro };
+    } catch (e) {
+      if (e.code !== 'P2002') throw e;
+      // Número pego por outra emissão agora, ou o alvo acabou de ser numerado: confere e tenta de novo.
+      if (await prisma.logAuditoria.findUnique({ where: { id: idCert(alvoId) } })) return null;
+    }
+  }
+  throw new Error('Não foi possível reservar um número de certificado (muitas emissões ao mesmo tempo).');
+}
+
+// { livro, registro, emitidoEm } de um alvo, ou null.
+async function lerNumero(alvoId) {
+  const l = await prisma.logAuditoria.findUnique({ where: { id: idCert(alvoId) } });
+  if (!l) return null;
+  const d = lerDetalhe(l.detalhe);
+  return { livro: d.livro, registro: d.registro, emitidoEm: l.criadoEm };
+}
+
 // Dá Livro/Registro a quem ainda não tem (em ordem alfabética). Devolve quantos foram numerados.
 async function numerar(matriculaIds, atorId = 'SISTEMA') {
   const { livro } = await lerAjustes();
@@ -113,25 +142,19 @@ async function numerar(matriculaIds, atorId = 'SISTEMA') {
   await anexarCertificados(matriculas);
   const faltam = matriculas.filter((m) => !m.certRegistro).sort((a, b) => a.aluno.nome.localeCompare(b.aluno.nome, 'pt-BR'));
   let feitos = 0;
-  for (const m of faltam) {
-    for (let tentativa = 0; tentativa < 20; tentativa++) {
-      const registro = await proximoRegistro(livro);
-      try {
-        await prisma.$transaction([
-          prisma.logAuditoria.create({ data: { id: idNumero(livro, registro), atorId, acao: 'CERTIFICADO_NUMERO', alvoTipo: 'Matricula', alvoId: m.id } }),
-          prisma.logAuditoria.create({ data: { id: idCert(m.id), atorId, acao: 'CERTIFICADO_EMITIDO', alvoTipo: 'Matricula', alvoId: m.id, detalhe: { livro, registro } } }),
-        ]);
-        feitos++;
-        break;
-      } catch (e) {
-        if (e.code !== 'P2002') throw e;
-        // Número pego por outra impressão agora, ou a matrícula acabou de ser numerada: confere e tenta de novo.
-        const ja = await prisma.logAuditoria.findUnique({ where: { id: idCert(m.id) } });
-        if (ja) break;
-      }
-    }
-  }
+  for (const m of faltam) if (await reservarNumero(m.id, 'Matricula', livro, atorId)) feitos++;
   return feitos;
+}
+
+// Curso online (etapa 3 do EAD): o aluno que concluiu ganha número na MESMA sequência do livro.
+// Idempotente: se já tem, devolve o mesmo com novo: false.
+async function numerarEad(alunoCursoId, atorId = 'SISTEMA') {
+  const ja = await lerNumero(alunoCursoId);
+  if (ja) return { ...ja, novo: false };
+  const { livro } = await lerAjustes();
+  const r = await reservarNumero(alunoCursoId, 'AlunoCursoEad', livro, atorId);
+  const lido = await lerNumero(alunoCursoId);
+  return { ...lido, novo: !!r };
 }
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -192,5 +215,6 @@ function pendencias(turma, alunos = []) {
 
 module.exports = {
   lerAjustes, salvarAjustes, numerar, anexarCertificados, dadosDoCertificado, pendencias, PADROES,
+  reservarNumero, lerNumero, numerarEad, emitidoEm, portador, dataBr,
   escolhaDaTurma, escolhaDoCurso, assinaturasDaTurma, MAX_ASSINANTES, MAX_NO_CERTIFICADO,
 };
