@@ -77,7 +77,7 @@ presencial antes e depois e comparar).
 `gerarCartao(cursoOnlineId)` → `Buffer` (PDF), com `pdfkit`, páginas **A6 retrato** (105 × 148 mm), margens de 10 mm:
 
 - **Capa:** faixa vermelha com "CRUZ VERMELHA BRASILEIRA · RIO DE JANEIRO", logo
-  (`public/img/logo-cvb-rj.png` ou o `.webp` convertido), "Cartão de bolso", nome do curso e o lema
+  (`public/img/logo-email.png`), "Cartão de bolso", nome do curso e o lema
   **OLHAR · LIGAR · CUIDAR** em três blocos vermelhos.
 - **Por módulo** (comuns na ordem, sem o final): uma linha de seção "Módulo N · Título" no topo da primeira
   página do módulo; depois **uma página por tela** que tenha revisão rápida ou alerta:
