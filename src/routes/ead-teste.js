@@ -22,7 +22,9 @@ router.use('/ead-teste', (req, res, next) => {
   next();
 });
 
-const naoAchou = (res) => res.status(404).render('erro', { mensagem: 'Página não encontrada.' });
+// 404 com o layout do link de teste (sem Analytics/Pixel), igual para código inválido, trocado,
+// desligado, e módulo/tela que não é do curso. A página de erro do site carregaria o rastreamento.
+const naoAchou = (res) => res.status(404).render('ead-teste/404');
 
 // Curso inteiro na ordem do aluno (módulos comuns por ordem, o final por último), com tópicos e telas.
 async function carregarCurso(cursoOnlineId) {
@@ -80,5 +82,14 @@ router.get('/ead-teste/:codigo/tela/:telaId', comCurso(async (req, res, co, base
   }
   res.render('ead-teste/tela', { ...ctx, base, fimUrl, fimTitulo, menuUrl: base });
 }));
+
+// Qualquer outro caminho abaixo de /ead-teste: 404 aqui mesmo, sem cair na contagem de visitas
+// nem no 404 do site. Erros também ficam aqui (a página de erro do site tem rastreamento).
+router.use('/ead-teste', (req, res) => naoAchou(res));
+// eslint-disable-next-line no-unused-vars
+router.use('/ead-teste', (err, req, res, next) => {
+  console.error('[ead-teste]', err);
+  res.status(500).render('ead-teste/404');
+});
 
 module.exports = router;

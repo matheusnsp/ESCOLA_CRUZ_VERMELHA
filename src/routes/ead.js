@@ -171,11 +171,18 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (erro) return res.status(400).render('admin/ead/modulo-form', { co, modulo: null, valores: req.body, erro });
     const { final, ...dados } = r.data;
     dados.fotoIntroUrl = req.file ? await salvarFotoCurso(req.file) : null;
-    const m = await prisma.$transaction(async (tx) => {
-      const novo = await tx.moduloEad.create({ data: { ...dados, cursoOnlineId: co.id, ordem: await edb.proximaOrdem(tx, 'moduloEad', 'cursoOnlineId', co.id) } });
-      if (final) await edb.marcarFinal(tx, novo.id, true);
-      return novo;
-    });
+    let m;
+    try {
+      m = await prisma.$transaction(async (tx) => {
+        const novo = await tx.moduloEad.create({ data: { ...dados, cursoOnlineId: co.id, ordem: await edb.proximaOrdem(tx, 'moduloEad', 'cursoOnlineId', co.id) } });
+        if (final) { const f = await edb.marcarFinal(tx, novo.id, true, ator(req)); if (f.erro) throw new ErroForm(f.erro); }
+        return novo;
+      });
+    } catch (e) {
+      if (!(e instanceof ErroForm)) throw e;
+      if (dados.fotoIntroUrl) await removerFotoCurso(dados.fotoIntroUrl);
+      return res.status(400).render('admin/ead/modulo-form', { co, modulo: null, valores: req.body, erro: e.message });
+    }
     await auditar(req, 'EAD_CRIOU_MODULO', 'ModuloEad', m.id, { moduloId: m.id, titulo: m.titulo });
     voltar(res, urlModulo(m.id), 'ok', 'Módulo criado.');
   });
@@ -209,7 +216,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     try {
       await escrever(req, modulo.id, 'o próprio módulo', async (tx) => {
         await tx.moduloEad.update({ where: { id: modulo.id }, data: dados });
-        const f = await edb.marcarFinal(tx, modulo.id, final);
+        const f = await edb.marcarFinal(tx, modulo.id, final, ator(req));
         if (f.erro) throw new ErroForm(f.erro);
       });
     } catch (e) {

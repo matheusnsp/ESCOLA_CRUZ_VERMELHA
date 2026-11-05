@@ -72,13 +72,23 @@ async function proximaOrdem(tx, modelo, campoPai, paiId) {
 }
 
 // Um só módulo final por curso. Módulo final tem cenários e não tem tópicos (e vice-versa).
-async function marcarFinal(tx, moduloId, final) {
+// Trocar o final: recusa se o final atual tem cenários (viraria módulo comum com cenários); sem
+// cenários, o anterior deixa de ser final e, se estava validado, volta a rascunho.
+async function marcarFinal(tx, moduloId, final, atorId) {
   const m = await tx.moduloEad.findUnique({ where: { id: moduloId }, include: { _count: { select: { topicos: true, cenarios: true } } } });
   if (!m) return { erro: 'Módulo não encontrado.' };
   if (m.final === final) return {};
   if (final && m._count.topicos) return { erro: 'Para virar o módulo final (de cenários), o módulo não pode ter tópicos.' };
   if (!final && m._count.cenarios) return { erro: 'Apague os cenários antes de deixar de ser o módulo final.' };
-  if (final) await tx.moduloEad.updateMany({ where: { cursoOnlineId: m.cursoOnlineId, final: true }, data: { final: false } });
+  if (final) {
+    const anteriores = await tx.moduloEad.findMany({ where: { cursoOnlineId: m.cursoOnlineId, final: true, id: { not: moduloId } }, include: { _count: { select: { cenarios: true } } } });
+    const comCenarios = anteriores.find((a) => a._count.cenarios);
+    if (comCenarios) return { erro: `Já existe um módulo final ('${comCenarios.titulo}') com cenários. Apague os cenários dele antes de trocar o módulo final.` };
+    for (const a of anteriores) {
+      await tx.moduloEad.update({ where: { id: a.id }, data: { final: false } });
+      await invalidarSeValidado(tx, a.id, atorId, 'deixou de ser o módulo final');
+    }
+  }
   await tx.moduloEad.update({ where: { id: moduloId }, data: { final } });
   return {};
 }
