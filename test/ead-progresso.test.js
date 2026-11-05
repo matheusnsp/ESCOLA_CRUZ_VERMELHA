@@ -19,7 +19,7 @@ const curso = {
 const prog = (extra = {}) => ({ iniciadoEm: INICIO, telasVistas: new Set(), tentativas: [], cenarios: [], ...extra });
 const quizOk = (moduloId, topicoId) => ({ tipo: 'QUIZ', moduloId, topicoId, aprovado: true, concluidaEm: INICIO });
 const mod = (e, id) => e.modulos.find((m) => m.id === id);
-// M3 não tem tópicos: só fica concluído pelo pré-teste. Para os cenários de "todos concluídos", usa um curso sem M3.
+// M3 é um rascunho vazio (sem telas nem perguntas): conta como concluído, para não travar a sequência.
 const semM3 = { modulos: curso.modulos.filter((m) => m.id !== 'm3') };
 
 describe('estadoDoCurso', () => {
@@ -32,7 +32,8 @@ describe('estadoDoCurso', () => {
     assert.equal(mod(e, 'f').motivo, 'Abre quando os outros módulos terminarem.');
     assert.deepEqual(e.proximo, { tipo: 'tela', id: 'a' });
     assert.equal(e.sequencial, true);
-    assert.equal(e.percentual, 0);
+    assert.equal(e.percentual, 25); // só o M3 vazio
+    assert.equal(mod(e, 'm3').estado, 'concluido');
     assert.equal(mod(e, 'm1').numero, 1);
   });
   test('telas vistas sem quiz: tópico não concluído e próximo é o quiz', () => {
@@ -45,7 +46,7 @@ describe('estadoDoCurso', () => {
     const e = p.estadoDoCurso(curso, prog({ telasVistas: new Set(['a', 'b']), tentativas: [quizOk('m1', 't1')] }), INICIO);
     assert.equal(mod(e, 'm1').estado, 'concluido');
     assert.equal(mod(e, 'm2').estado, 'disponivel');
-    assert.equal(e.percentual, 25);
+    assert.equal(e.percentual, 50); // M1 + M3 (vazio)
     assert.deepEqual(e.proximo, { tipo: 'tela', id: 'c' });
   });
   test('quiz aprovado sem ver as telas não conclui o tópico', () => {
@@ -71,7 +72,6 @@ describe('estadoDoCurso', () => {
     assert.equal(antes.sequencial, true);
     const depois = p.estadoDoCurso(curso, prog(), new Date(INICIO.getTime() + 7 * DIA));
     assert.equal(mod(depois, 'm2').estado, 'disponivel');
-    assert.equal(mod(depois, 'm3').estado, 'disponivel');
     assert.equal(depois.sequencial, false);
     assert.equal(mod(depois, 'f').estado, 'bloqueado');
   });
@@ -89,9 +89,15 @@ describe('estadoDoCurso', () => {
     const feito = { telasVistas: new Set(['a', 'b', 'c', 'd']), tentativas: [quizOk('m1', 't1'), quizOk('m2', 't2')], cenarios: [{ cenarioId: 'c1', concluidoEm: null }] };
     assert.equal(mod(p.estadoDoCurso(semM3, prog(feito), INICIO), 'f').estado, 'disponivel');
   });
-  test('módulo sem telas disponível: próximo aponta o módulo', () => {
-    const e = p.estadoDoCurso({ modulos: [curso.modulos[2], curso.modulos[3]] }, prog(), INICIO);
-    assert.deepEqual(e.proximo, { tipo: 'modulo', id: 'm3' });
+  test('módulo vazio (sem telas nem perguntas) conta como concluído e não trava a sequência', () => {
+    const e = p.estadoDoCurso({ modulos: [curso.modulos[0], curso.modulos[2], curso.modulos[1]] }, prog({ telasVistas: new Set(['a', 'b']), tentativas: [quizOk('m1', 't1')] }), INICIO);
+    assert.equal(mod(e, 'm3').estado, 'concluido');
+    assert.equal(mod(e, 'm2').estado, 'disponivel');
+  });
+  test('tópico com telas mas sem perguntas: conclui só com as telas vistas', () => {
+    const k = { modulos: [{ id: 'x', final: false, nPerguntasAtivas: 0, topicos: [{ id: 'tx', telas: [{ id: 'z' }], nPerguntasAtivas: 0 }], cenarios: [] }] };
+    assert.equal(p.estadoDoCurso(k, prog(), INICIO).modulos[0].estado, 'disponivel');
+    assert.equal(p.estadoDoCurso(k, prog({ telasVistas: new Set(['z']) }), INICIO).modulos[0].estado, 'concluido');
   });
   test('pré-teste indisponível: menos de 8 ativas, módulo final, módulo concluído', () => {
     const e = p.estadoDoCurso(curso, prog({ telasVistas: new Set(['a', 'b']), tentativas: [quizOk('m1', 't1')] }), INICIO);

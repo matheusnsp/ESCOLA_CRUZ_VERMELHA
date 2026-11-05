@@ -1,10 +1,19 @@
+<%
+  // em = estado deste módulo para o aluno logado (null sem login). Ver lib/ead-progresso.js.
+  var bloqueado = em && em.estado === 'bloqueado';
+  var feitoTop = function (ti) { return em && em.topicos[ti] ? em.topicos[ti] : null; };
+  var cenariosFeitos = {};
+  if (ctx) ctx.progresso.cenarios.forEach(function (c) { if (c.concluidoEm) cenariosFeitos[c.cenarioId] = true; });
+%>
 <%- include('_topo', { titulo: modulo.titulo, voltarMenu: true }) %>
+<%- include('_avisos') %>
 <section class="ea-heroi">
   <div class="ea-wrap ea-heroi-grid" style="min-height:0">
     <div>
       <a class="ea-pilula ea-pilula-escura ea-voltar" href="<%= base %>">← Todos os módulos</a>
       <p class="ea-kicker">Módulo <%= numero %> · <%= modulo.minutosEstimados %> min<%= modulo.final ? ' · cenários' : '' %></p>
       <h1><%= modulo.titulo %><span>.</span></h1>
+      <% if (em && em.estado === 'concluido') { %><span class="ea-chip ea-chip-ok">✓ Módulo concluído</span><% } %>
     </div>
   </div>
 </section>
@@ -17,18 +26,52 @@
     </div>
   </article>
   <aside class="ea-cartao">
-    <% if (modulo.final) { %>
+    <% if (bloqueado) { %>
+      <p class="ea-kicker">Ainda fechado</p>
+      <h2>🔒 <%= em.motivo %></h2>
+      <p>Nos primeiros 7 dias do curso os módulos abrem um depois do outro. Depois disso, você escolhe a ordem (o módulo final sempre fica por último).</p>
+      <a class="ea-pilula ea-pilula-red" href="<%= base %>/continuar">Ir para onde parei →</a>
+    <% } else if (modulo.final) { %>
       <p class="ea-kicker">Cenários</p>
       <h2>Decida sob pressão<span style="color:var(--r)">.</span></h2>
-      <ol class="ea-lista-top"><% modulo.cenarios.forEach(function (c) { %><li><%= c.titulo %></li><% }) %></ol>
-      <p class="ea-obs">Os cenários com cronômetro e as decisões entram na próxima etapa da plataforma.</p>
-      <a class="ea-pilula ea-pilula-clara" href="<%= base %>">Voltar ao menu</a>
+      <ol class="ea-lista-top">
+        <% modulo.cenarios.forEach(function (c) { %>
+          <li><span><% if (ctx) { %><a href="<%= base %>/cenario/<%= c.id %>"><%= c.titulo %></a><% } else { %><%= c.titulo %><% } %>
+            <small>· <%= Math.floor(c.tempoSugeridoSeg / 60) %>:<%= String(c.tempoSugeridoSeg % 60).padStart(2, '0') %><%= cenariosFeitos[c.id] ? ' · ✓ feito' : '' %></small></span></li>
+        <% }) %>
+      </ol>
+      <% if (ctx) { var pend = modulo.cenarios.find(function (c) { return !cenariosFeitos[c.id]; }) || modulo.cenarios[0]; %>
+        <% if (pend) { %><a class="ea-pilula ea-pilula-red" href="<%= base %>/cenario/<%= pend.id %>"><%= cenariosFeitos[pend.id] ? 'Refazer um cenário →' : 'Começar os cenários →' %></a><% } %>
+      <% } else { %>
+        <a class="ea-pilula ea-pilula-red" href="<%= base %>/criar-conta">Criar conta para fazer →</a>
+      <% } %>
     <% } else { %>
       <p class="ea-kicker">Neste módulo</p>
       <h2><%= modulo.topicos.length %> tópico<%= modulo.topicos.length === 1 ? '' : 's' %><span style="color:var(--r)">.</span></h2>
-      <ol class="ea-lista-top"><% modulo.topicos.forEach(function (t) { %><li><span><%= t.titulo %> <small>· <%= t.telas.length %> tela<%= t.telas.length === 1 ? '' : 's' %></small></span></li><% }) %></ol>
-      <% if (primeira) { %><a class="ea-pilula ea-pilula-red" href="<%= base %>/tela/<%= primeira.id %>">Começar o módulo →</a>
-      <% } else if (proximo) { %><a class="ea-pilula ea-pilula-red" href="<%= base %>/modulo/<%= proximo.id %>">Próximo módulo →</a><% } %>
+      <ol class="ea-lista-top">
+        <% modulo.topicos.forEach(function (t, ti) { var f = feitoTop(ti); %>
+          <li class="<%= f && f.concluido ? 'ok' : '' %>"><span><%= t.titulo %>
+            <small>· <%= f ? f.telasVistas + ' de ' + f.telas + ' telas' + (t.perguntas.length ? (f.quizAprovado ? ' · teste ✓' : ' · teste pendente') : '') : t.telas.length + ' tela' + (t.telas.length === 1 ? '' : 's') %></small></span></li>
+        <% }) %>
+      </ol>
+      <% if (em && em.estado === 'concluido') { %>
+        <% if (primeira) { %><a class="ea-pilula ea-pilula-clara" href="<%= base %>/tela/<%= primeira.id %>">Rever as telas</a><% } %>
+        <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= base %>/continuar">Seguir no curso →</a>
+      <% } else if (primeira) { %>
+        <a class="ea-pilula ea-pilula-red" href="<%= inicioModulo %>"><%= em && em.topicos.some(function (t) { return t.telasVistas; }) ? 'Continuar o módulo →' : 'Começar o módulo →' %></a>
+      <% } else if (proximo) { %>
+        <a class="ea-pilula ea-pilula-red" href="<%= base %>/modulo/<%= proximo.id %>">Próximo módulo →</a>
+      <% } %>
+      <% if (em && em.preTeste === 'disponivel') { %>
+        <form method="POST" action="<%= base %>/modulo/<%= modulo.id %>/pre-teste" class="ea-preteste">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <p><b>Já sei isso?</b> Faça o pré-teste: se passar, o módulo fica concluído. Você só tem <b>uma tentativa</b>.</p>
+          <button class="ea-pilula ea-pilula-clara ea-pilula-bloco" type="submit">Fazer o pré-teste</button>
+        </form>
+      <% } else if (em && em.preTeste === 'usado' && em.estado !== 'concluido') { %>
+        <p class="ea-obs">Você já usou o pré-teste deste módulo. Siga pelas telas.</p>
+      <% } %>
+      <% if (!ctx) { %><p class="ea-obs"><a href="<%= base %>/criar-conta">Crie sua conta</a> para salvar o progresso e fazer os testes.</p><% } %>
     <% } %>
   </aside>
 </main>

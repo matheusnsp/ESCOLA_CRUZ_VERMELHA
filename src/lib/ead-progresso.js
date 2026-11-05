@@ -15,6 +15,10 @@ const DIA_MS = 24 * 60 * 60 * 1000;
 //        na ordem do aluno (comuns por ordem, o final por último).
 // progresso: { iniciadoEm, telasVistas: Set, tentativas: [{ tipo, moduloId, topicoId, aprovado, concluidaEm }],
 //              cenarios: [{ cenarioId, concluidoEm }] }
+// Módulo comum sem nenhuma tela e sem pergunta (rascunho vazio): conta como concluído, para não travar
+// a sequência no link de teste. Módulo validado sempre tem conteúdo.
+const vazio = (m) => !m.final && m.nPerguntasAtivas === 0 && m.topicos.every((t) => t.telas.length === 0);
+
 function estadoDoCurso(curso, progresso, agora) {
   const vistas = progresso.telasVistas || new Set();
   const tentativas = progresso.tentativas || [];
@@ -32,7 +36,7 @@ function estadoDoCurso(curso, progresso, agora) {
     const preTestes = tentativas.filter((q) => q.tipo === 'PRE_TESTE' && q.moduloId === m.id);
     const concluido = m.final
       ? m.cenarios.length > 0 && m.cenarios.every((c) => cenariosFeitos.has(c.id))
-      : preTestes.some((q) => q.aprovado === true) || (topicos.length > 0 && topicos.every((t) => t.concluido));
+      : preTestes.some((q) => q.aprovado === true) || vazio(m) || (topicos.length > 0 && topicos.every((t) => t.concluido));
     let preTeste = 'disponivel';
     if (m.final || concluido) preTeste = 'indisponivel';
     else if (preTestes.length) preTeste = 'usado'; // já tentou (mesmo que hoje o banco tenha menos de 8)

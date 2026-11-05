@@ -149,12 +149,16 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
       console.error('[Cadastro] Falha ao enviar e-mail de confirmação:', e.message);
     }
 
+    // Quem veio do link de teste do curso online (/ead-teste/...) volta para o curso; o resto segue
+    // para a Minha conta como sempre. Lido antes do regenerate (a sessão nova não tem o returnTo).
+    const voltaAoCurso = typeof req.session.returnTo === 'string' && /^\/ead-teste\/[A-Za-z0-9_-]+\/continuar$/.test(req.session.returnTo)
+      ? req.session.returnTo : null;
     req.session.regenerate((err) => {
       if (err) { console.error('Erro ao iniciar sessão no cadastro:', err); return res.redirect('/login'); }
       req.session.usuarioId = usuario.id;
       req.session.papel = usuario.papel;
       req.session.nome = usuario.nome;
-      res.redirect('/minha-conta?sec=seguranca');
+      res.redirect(voltaAoCurso || '/minha-conta?sec=seguranca');
     });
   } catch (err) {
     if (err.code === 'P2002') {

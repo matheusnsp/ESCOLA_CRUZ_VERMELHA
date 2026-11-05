@@ -4,6 +4,7 @@
   var primeiro = co.modulos[0];
 %>
 <%- include('_topo', { titulo: co.curso.nome }) %>
+<%- include('_avisos') %>
 <section class="ea-heroi">
   <% if (co.curso.imagemUrl) { %><img src="<%= co.curso.imagemUrl %>" alt=""><% } %>
   <div class="ea-wrap ea-heroi-grid">
@@ -19,10 +20,19 @@
       </div>
     </div>
     <div class="ea-cartao">
-      <p class="ea-kicker">Comece agora</p>
-      <h2><%= primeiro ? 'Módulo 1: ' + primeiro.titulo : 'Em preparação' %></h2>
-      <p>Telas curtas com vídeo de até 3 minutos, revisão rápida e um alerta. Você para quando quiser e continua de onde parou.</p>
-      <% if (primeiro) { %><a class="ea-pilula ea-pilula-red" href="<%= base %>/modulo/<%= primeiro.id %>">Começar o curso →</a><% } %>
+      <% if (ctx) { %>
+        <p class="ea-kicker"><%= ctx.estado.concluido ? 'Curso concluído' : 'Seu progresso' %></p>
+        <h2><%= ctx.estado.percentual %>% concluído<span style="color:var(--r)">.</span></h2>
+        <span class="ea-progresso-trilho ea-progresso-grande"><span style="width: <%= ctx.estado.percentual %>%"></span></span>
+        <p><%= ctx.estado.concluido ? 'Você terminou todos os módulos. O certificado entra na próxima etapa da plataforma.' : (ctx.estado.sequencial ? 'Nos primeiros 7 dias os módulos abrem em sequência. Depois, na ordem que você quiser.' : 'Os módulos estão liberados na ordem que você quiser; o final abre quando os outros terminarem.') %></p>
+        <% if (!ctx.estado.concluido) { %><a class="ea-pilula ea-pilula-red" href="<%= continuarUrl %>">Continuar de onde parou →</a><% } %>
+      <% } else { %>
+        <p class="ea-kicker">Comece agora</p>
+        <h2><%= primeiro ? 'Módulo 1: ' + primeiro.titulo : 'Em preparação' %></h2>
+        <p>Telas curtas com vídeo de até 3 minutos, revisão rápida e um alerta. Você para quando quiser e continua de onde parou.</p>
+        <a class="ea-pilula ea-pilula-red" href="<%= base %>/criar-conta">Criar conta e começar →</a>
+        <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/continuar">Já tenho conta</a>
+      <% } %>
     </div>
   </div>
 </section>
@@ -32,13 +42,19 @@
   <h2 class="ea-secao-h">Módulos do curso<span>.</span></h2>
   <% if (!co.modulos.length) { %><p class="ea-obs">Este curso ainda não tem módulos.</p><% } %>
   <ol class="ea-modulos">
-    <% co.modulos.forEach(function (m, i) { var telas = m.topicos.reduce(function (s, t) { return s + t.telas.length; }, 0); %>
+    <% co.modulos.forEach(function (m, i) { var telas = m.topicos.reduce(function (s, t) { return s + t.telas.length; }, 0); var em = ctx ? ctx.estado.modulos[i] : null; %>
       <li>
-        <a class="ea-mod <%= m.final ? 'final' : '' %>" href="<%= base %>/modulo/<%= m.id %>">
+        <a class="ea-mod <%= m.final ? 'final' : '' %> <%= em ? 'est-' + em.estado : '' %>" href="<%= base %>/modulo/<%= m.id %>">
           <span class="ea-mod-topo"><span class="ea-mod-num"><%= String(i + 1).padStart(2, '0') %></span><span class="ea-selo <%= m.status === 'VALIDADO' ? 'ok' : '' %>"><%= m.status === 'VALIDADO' ? 'Validado' : 'Rascunho' %></span></span>
           <h3><%= m.titulo %></h3>
           <span class="ea-mod-meta"><%= m.minutosEstimados %> min · <%= m.final ? m.cenarios.length + ' cenário(s) para decidir' : m.topicos.length + ' tópico(s) · ' + telas + ' tela(s)' %></span>
-          <span class="ea-mod-pe"><span><%= m.final ? 'Juntando tudo' : 'Módulo ' + (i + 1) %></span><span>Abrir →</span></span>
+          <% if (em && em.estado === 'bloqueado') { %>
+            <span class="ea-mod-pe ea-mod-bloq"><span>🔒 <%= em.motivo %></span></span>
+          <% } else if (em && em.estado === 'concluido') { %>
+            <span class="ea-mod-pe ea-mod-ok"><span>✓ Concluído</span><span>Rever →</span></span>
+          <% } else { %>
+            <span class="ea-mod-pe"><span><%= m.final ? 'Juntando tudo' : 'Módulo ' + (i + 1) %></span><span>Abrir →</span></span>
+          <% } %>
         </a>
       </li>
     <% }) %>

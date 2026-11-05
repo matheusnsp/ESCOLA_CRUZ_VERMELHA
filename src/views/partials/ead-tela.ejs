@@ -3,7 +3,8 @@
   #d9081f, cartões brancos de 24px, botões em pílula, sobretítulo vermelho, título com ponto vermelho.
   Estilos em public/ead.css (classes ea-*). Usada pela pré-visualização do painel e pelo link de teste.
   Locais: cursoNome, moduloNumero, modulo, topicos, tela, topicoIndex, urlTela(id), anterior (url|null),
-          proxima ({ titulo, url } | null), posicao, total, fimUrl/fimTitulo (opcionais), menuUrl (opcional).
+          proxima ({ titulo, url } | null), posicao, total, fimUrl/fimTitulo (opcionais), menuUrl (opcional),
+          quizForm ({ url, titulo }, opcional: troca o "Continuar" pelo teste rápido do tópico).
 %>
 <%
   var dur = tela.videoDuracaoSeg ? Math.floor(tela.videoDuracaoSeg / 60) + ':' + String(tela.videoDuracaoSeg % 60).padStart(2, '0') : '';
@@ -93,7 +94,13 @@
 
       <nav class="ea-nav">
         <% if (anterior) { %><a class="ea-pilula ea-pilula-clara" href="<%= anterior %>">← Voltar</a><% } else { %><span></span><% } %>
-        <% if (seguinte) { %>
+        <% if (typeof quizForm !== 'undefined' && quizForm) { %>
+          <%# Aluno logado, última tela do tópico: o próximo passo é o teste rápido (POST, abre a tentativa). %>
+          <form method="POST" action="<%= quizForm.url %>" class="ea-seguir-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit" class="ea-seguir"><span><small>A seguir</small><strong><%= quizForm.titulo %></strong></span><em>Fazer o teste →</em></button>
+          </form>
+        <% } else if (seguinte) { %>
           <a class="ea-seguir" href="<%= seguinte.url %>"><span><small>A seguir</small><strong><%= seguinte.titulo %></strong></span><em>Continuar →</em></a>
         <% } %>
       </nav>

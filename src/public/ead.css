@@ -198,3 +198,25 @@ body.ea-pagina { margin: 0; background: var(--bg); }
   .ea-logo b { font-size: 12px; }
   .ea-logo small { font-size: 9.5px; }
 }
+
+/* ── etapa 2: aluno logado ── */
+.ea-avisos { display: grid; gap: 8px; padding-top: 14px; }
+.ea-aviso { display: block; background: #fff; border: 1px solid #fcd94d; border-left: 5px solid #f59e0b; border-radius: 14px; padding: 12px 16px; color: var(--ink); text-decoration: none; font-size: 14px; line-height: 1.45; }
+.ea-aviso span { color: var(--r); font-weight: 800; white-space: nowrap; }
+.ea-progresso-grande { display: block; height: 10px; margin: 4px 0 14px; }
+.ea-pilula-bloco { width: 100%; margin-top: 10px; padding: 14px; }
+button.ea-pilula, button.ea-seguir { font-family: inherit; cursor: pointer; }
+.ea-seguir-form { margin: 0; flex: 1; display: flex; justify-content: flex-end; }
+button.ea-seguir { border: 0; text-align: left; width: 100%; }
+.ea-mod-bloq { color: var(--mut); }
+.ea-mod-bloq span:first-child { font-weight: 700; }
+.ea-mod.est-bloqueado { opacity: .72; }
+.ea-mod.est-bloqueado .ea-mod-num { color: #b9b4ac; }
+.ea-mod-ok span:first-child { color: #14653a; }
+.ea-mod.final .ea-mod-ok span:first-child { color: #6ee7b7; }
+.ea-chip-ok { background: #dcfce7 !important; color: #14653a !important; border-color: #a7f3c4 !important; margin-top: 4px; }
+.ea-lista-top li.ok::before { content: "✓"; background: #dcfce7; border-color: #a7f3c4; color: #14653a; }
+.ea-lista-top a { color: var(--ink); }
+.ea-preteste { margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--ln); }
+.ea-preteste p { color: var(--ink); font-size: 14px; margin: 0 0 4px; }
+@media (min-width: 820px) { button.ea-seguir { width: auto; min-width: 420px; } }

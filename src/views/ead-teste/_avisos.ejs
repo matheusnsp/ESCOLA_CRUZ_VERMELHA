@@ -1,0 +1,11 @@
+<%# Avisos da conta (não bloqueiam o curso). ctx = contexto do aluno logado (routes/ead-teste.js). %>
+<% if (typeof ctx !== 'undefined' && ctx && (ctx.avisos.senha || ctx.avisos.cadastro)) { %>
+  <div class="ea-avisos ea-wrap">
+    <% if (ctx.avisos.senha) { %>
+      <a class="ea-aviso" href="/minha-conta?sec=seguranca"><b>Você está com a senha provisória</b> (4 últimos dígitos do documento). <span>Troque agora →</span></a>
+    <% } %>
+    <% if (ctx.avisos.cadastro) { %>
+      <a class="ea-aviso" href="/completar-dados"><b>Complete seu cadastro</b> para receber o certificado sem pendências. <span>Completar →</span></a>
+    <% } %>
+  </div>
+<% } %>

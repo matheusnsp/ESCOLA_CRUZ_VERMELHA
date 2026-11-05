@@ -9,7 +9,11 @@ const express = require('express');
 const prisma = require('../db');
 const asyncHandler = require('../lib/asyncHandler');
 const eadTeste = require('../lib/ead-teste');
-const edb = require('../lib/ead-db');
+const pdb = require('../lib/ead-progresso-db');
+const { estadoDoCurso } = require('../lib/ead-progresso');
+const { cadastroIncompleto } = require('../lib/ead-conta');
+const { precisaTrocarSenha } = require('../lib/seguranca');
+const { requireLogin } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -26,61 +30,110 @@ router.use('/ead-teste', (req, res, next) => {
 // desligado, e módulo/tela que não é do curso. A página de erro do site carregaria o rastreamento.
 const naoAchou = (res) => res.status(404).render('ead-teste/404');
 
-// Curso inteiro na ordem do aluno (módulos comuns por ordem, o final por último), com tópicos e telas.
-async function carregarCurso(cursoOnlineId) {
-  const co = await prisma.cursoOnline.findUnique({
-    where: { id: cursoOnlineId },
-    include: {
-      curso: { select: { nome: true, descricao: true, imagemUrl: true } },
-      modulos: {
-        orderBy: edb.POR_ORDEM,
-        include: {
-          topicos: { orderBy: edb.POR_ORDEM, include: { telas: { orderBy: edb.POR_ORDEM } } },
-          cenarios: { orderBy: edb.POR_ORDEM, select: { id: true, titulo: true, tempoSugeridoSeg: true } },
-        },
-      },
-    },
-  });
-  if (!co) return null;
-  co.modulos = [...co.modulos.filter((m) => !m.final), ...co.modulos.filter((m) => m.final)];
-  return co;
+// ─── Aluno logado ───────────────────────────────────────────────────────────────────────────────
+// Só papel ALUNO conta como aluno; DEV/secretaria logados no site veem como visitante.
+const alunoDaSessao = (req) => (req.session && req.session.usuarioId && req.session.papel === 'ALUNO' ? req.session.usuarioId : null);
+
+// Progresso e avisos do aluno logado (null sem login). Abrir o curso logado já conta como início
+// (é daí que contam os 7 dias em sequência nesta etapa).
+async function contexto(req, co, curso) {
+  const usuarioId = alunoDaSessao(req);
+  if (!usuarioId) return null;
+  const alunoCurso = await pdb.garantirAlunoCurso(usuarioId, co.id);
+  const progresso = await pdb.carregarProgresso(alunoCurso.id);
+  const estado = estadoDoCurso(curso, progresso, new Date());
+  const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } });
+  const avisos = { senha: await precisaTrocarSenha(usuarioId), cadastro: cadastroIncompleto(usuario) };
+  return { alunoCurso, progresso, estado, avisos, usuario };
+}
+const estadoDoModulo = (ctx, moduloId) => (ctx ? ctx.estado.modulos.find((m) => m.id === moduloId) : null);
+
+// Endereço de cada "próximo passo" de estadoDoCurso. O quiz é aberto pela última tela do tópico.
+function urlDoPasso(co, base, passo) {
+  if (!passo) return base;
+  if (passo.tipo === 'tela') return `${base}/tela/${passo.id}`;
+  if (passo.tipo === 'cenario') return `${base}/cenario/${passo.id}`;
+  if (passo.tipo === 'quiz') {
+    const t = co.modulos.flatMap((m) => m.topicos).find((x) => x.id === passo.id);
+    const ultima = t && t.telas[t.telas.length - 1];
+    if (ultima) return `${base}/tela/${ultima.id}`;
+    return `${base}/modulo/${t ? t.moduloId : ''}`;
+  }
+  return `${base}/modulo/${passo.id}`;
 }
 
 // Resolve o código; sem código válido, 404 igual a qualquer página que não existe.
-const comCurso = (fn) => asyncHandler(async (req, res) => {
+const comCurso = (fn) => asyncHandler(async (req, res, next) => {
   const coId = await eadTeste.cursoDoCodigo(req.params.codigo);
-  const co = coId ? await carregarCurso(coId) : null;
-  if (!co) return naoAchou(res);
+  const r = coId ? await pdb.carregarCursoParaAluno(coId) : null;
+  if (!r) return naoAchou(res);
   const base = `/ead-teste/${req.params.codigo}`;
-  return fn(req, res, co, base);
+  return fn(req, res, r.co, base, r.curso, next);
 });
 
-router.get('/ead-teste/:codigo', comCurso(async (req, res, co, base) => {
-  res.render('ead-teste/capa', { co, base });
+router.get('/ead-teste/:codigo', comCurso(async (req, res, co, base, curso) => {
+  const ctx = await contexto(req, co, curso);
+  res.render('ead-teste/capa', { co, base, ctx, continuarUrl: ctx ? urlDoPasso(co, base, ctx.estado.proximo) : null });
 }));
 
-router.get('/ead-teste/:codigo/modulo/:moduloId', comCurso(async (req, res, co, base) => {
+// "Criar conta e começar": o /cadastro de sempre, voltando para o curso no fim.
+router.get('/ead-teste/:codigo/criar-conta', comCurso(async (req, res, co, base) => {
+  if (alunoDaSessao(req)) return res.redirect(`${base}/continuar`);
+  req.session.returnTo = `${base}/continuar`;
+  res.redirect('/cadastro');
+}));
+
+// "Já tenho conta" / "Continuar de onde parou": pede login (requireLogin guarda a volta) e vai ao próximo passo.
+router.get('/ead-teste/:codigo/continuar', requireLogin, comCurso(async (req, res, co, base, curso) => {
+  const ctx = await contexto(req, co, curso);
+  if (!ctx) return res.redirect(base); // logado, mas não é aluno
+  res.redirect(urlDoPasso(co, base, ctx.estado.proximo));
+}));
+
+router.get('/ead-teste/:codigo/modulo/:moduloId', comCurso(async (req, res, co, base, curso) => {
   const i = co.modulos.findIndex((m) => m.id === req.params.moduloId);
   if (i < 0) return naoAchou(res);
   const modulo = co.modulos[i];
+  const ctx = await contexto(req, co, curso);
   const primeira = modulo.topicos.flatMap((t) => t.telas)[0] || null;
   const proximo = co.modulos[i + 1] || null;
-  res.render('ead-teste/modulo', { co, base, modulo, numero: i + 1, primeira, proximo });
+  const em = estadoDoModulo(ctx, modulo.id);
+  // Primeiro passo pendente deste módulo: tela não vista, senão a última tela do tópico sem teste.
+  let inicioModulo = primeira ? `${base}/tela/${primeira.id}` : null;
+  if (em) {
+    for (const [ti, t] of modulo.topicos.entries()) {
+      const nv = t.telas.find((x) => !ctx.progresso.telasVistas.has(x.id));
+      if (nv) { inicioModulo = `${base}/tela/${nv.id}`; break; }
+      if (!em.topicos[ti].concluido && t.telas.length) { inicioModulo = `${base}/tela/${t.telas[t.telas.length - 1].id}`; break; }
+    }
+  }
+  res.render('ead-teste/modulo', { co, base, modulo, numero: i + 1, primeira, proximo, ctx, em, inicioModulo });
 }));
 
-router.get('/ead-teste/:codigo/tela/:telaId', comCurso(async (req, res, co, base) => {
+router.get('/ead-teste/:codigo/tela/:telaId', comCurso(async (req, res, co, base, curso) => {
   const i = co.modulos.findIndex((m) => m.topicos.some((t) => t.telas.some((x) => x.id === req.params.telaId)));
   if (i < 0) return naoAchou(res);
+  const ctx = await contexto(req, co, curso);
+  const em = estadoDoModulo(ctx, co.modulos[i].id);
+  if (em && em.estado === 'bloqueado') return res.redirect(`${base}/modulo/${co.modulos[i].id}`);
+  if (ctx) await pdb.marcarTelaVista(ctx.alunoCurso.id, req.params.telaId);
   const modulo = { ...co.modulos[i], cursoOnline: { curso: co.curso } };
-  const ctx = eadTeste.contextoDaTela(modulo, i + 1, req.params.telaId, (id) => `${base}/tela/${id}`);
+  const tc = eadTeste.contextoDaTela(modulo, i + 1, req.params.telaId, (id) => `${base}/tela/${id}`);
+  // Logado, na última tela de um tópico com perguntas e sem quiz aprovado: "Continuar" vira o teste rápido.
+  let quizForm = null;
+  const topico = co.modulos[i].topicos[tc.topicoIndex];
+  const ehUltima = topico.telas[topico.telas.length - 1].id === req.params.telaId;
+  if (ctx && ehUltima && topico.perguntas.length && !em.topicos[tc.topicoIndex].quizAprovado) {
+    quizForm = { url: `${base}/topico/${topico.id}/quiz`, titulo: `Teste rápido: ${Math.min(3, topico.perguntas.length)} perguntas` };
+  }
   // Na última tela do módulo, "Continuar" leva à introdução do próximo módulo (ou de volta à capa).
   let fimUrl = null; let fimTitulo = null;
-  if (!ctx.proxima) {
+  if (!tc.proxima) {
     const p = eadTeste.proximaTela(co.modulos, req.params.telaId);
     if (p && p.tipo === 'modulo') { fimUrl = `${base}/modulo/${p.id}`; fimTitulo = `Módulo ${i + 2}: ${co.modulos[i + 1].titulo}`; }
     else { fimUrl = base; fimTitulo = 'Fim do curso — voltar ao menu'; }
   }
-  res.render('ead-teste/tela', { ...ctx, base, fimUrl, fimTitulo, menuUrl: base });
+  res.render('ead-teste/tela', { ...tc, base, fimUrl, fimTitulo, menuUrl: base, quizForm, ctx });
 }));
 
 // Qualquer outro caminho abaixo de /ead-teste: 404 aqui mesmo, sem cair na contagem de visitas
