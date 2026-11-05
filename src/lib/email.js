@@ -657,7 +657,23 @@ async function enviarCursoOnlineLiberado(email, nome, { curso, link }) {
   await enviar(email, `Seu curso online está liberado: ${limpo(curso)}`, html, `Curso online liberado (${curso})`, link);
 }
 
+// Etapa 5: a Escola respondeu a dúvida que o aluno mandou numa aula do curso online.
+async function enviarDuvidaRespondida(email, nome, { curso, tela, link }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const html = moldura(
+    'Sua dúvida foi respondida',
+    limpo(nome),
+    `A Escola respondeu a dúvida que você mandou na aula <strong>${limpo(tela)}</strong>, do curso online `
+      + `<strong>${limpo(curso)}</strong>. A resposta está na própria aula, logo abaixo do conteúdo.`,
+    'Ver a resposta',
+    link,
+    'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.'
+  );
+  await enviar(email, `Sua dúvida foi respondida: ${limpo(curso)}`, html, `Dúvida respondida (${curso})`, link);
+}
+
 module.exports = {
+  enviarDuvidaRespondida,
   enviarCursoOnlineLiberado,
   enviarCertificadoEadPronto,
   enviarComprovanteRecusado,
