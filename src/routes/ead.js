@@ -13,6 +13,7 @@ const ead = require('../lib/ead');
 const edb = require('../lib/ead-db');
 const { transacao } = require('../lib/transacao');
 const eadTeste = require('../lib/ead-teste');
+const publicacao = require('../lib/ead-publicacao');
 const { gerarCartao } = require('../lib/ead-cartao');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 
@@ -100,7 +101,12 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const modulos = await contagensDosModulos(co.id);
     const codigo = await eadTeste.codigoDoCurso(co.id);
     const urlSite = (process.env.APP_URL || 'https://escola.cruzvermelhariodejaneiro.org').replace(/\/+$/, '');
-    res.render('admin/ead/curso', { co, modulos, linkTeste: codigo ? `${urlSite}/ead-teste/${codigo}` : null, erroForm: null, ...flash(req) });
+    const venda = {
+      pendencias: publicacao.podePublicar({ ...co, modulos }),
+      aviso: publicacao.avisoPublicado({ ...co, modulos }),
+      urlCurso: `${urlSite}/online/${co.cursoId}`,
+    };
+    res.render('admin/ead/curso', { co, modulos, venda, linkTeste: codigo ? `${urlSite}/ead-teste/${codigo}` : null, erroForm: null, ...flash(req) });
   });
 
   router.post('/ead/curso/:id', async (req, res) => {
@@ -115,6 +121,11 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
   router.post('/ead/curso/:id/desativar', async (req, res) => {
     const co = await acharCursoOnline(req.params.id);
     if (!co) return naoAchou(res);
+    // Curso vendido não perde o conteúdo: fora do site e sem nenhuma matrícula na turma online.
+    if (co.publicado) return voltar(res, `/ead/curso/${co.id}`, 'erro', 'Tire o curso do site antes de desativar o EAD.');
+    if (await prisma.matricula.count({ where: { turma: { cursoId: co.cursoId, status: 'ONLINE' } } })) {
+      return voltar(res, `/ead/curso/${co.id}`, 'erro', 'Este curso online já tem alunos inscritos: o conteúdo não pode ser apagado.');
+    }
     if (await prisma.moduloEad.count({ where: { cursoOnlineId: co.id, status: 'VALIDADO' } })) {
       return voltar(res, `/ead/curso/${co.id}`, 'erro', 'Há módulos validados. Reabra (volte para rascunho) todos antes de desativar o EAD.');
     }
@@ -137,6 +148,34 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (!m) return [];
     return [m.fotoIntroUrl, ...m.topicos.flatMap((t) => t.telas.map((x) => x.fotoUrl)), ...m.cenarios.map((c) => c.fotoUrl)].filter(Boolean);
   }
+
+  // ─── Venda no site (etapa 4) ──────────────────────────────────────────────────────────────────
+  router.post('/ead/curso/:id/preco', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co) return naoAchou(res);
+    const preco = publicacao.lerPreco(req.body.precoOnline);
+    if (preco === null) return voltar(res, `/ead/curso/${co.id}`, 'erro', 'Preço: um valor em reais maior que zero (ex.: 49,90).');
+    await prisma.cursoOnline.update({ where: { id: co.id }, data: { precoOnline: preco } });
+    await auditar(req, 'EAD_PRECO', 'CursoOnline', co.id, { de: co.precoOnline === null ? null : Number(co.precoOnline), para: preco });
+    voltar(res, `/ead/curso/${co.id}`, 'ok', 'Preço salvo.');
+  });
+
+  // "Publicar no site": ligar só sem pendências; desligar tira do catálogo, mas quem já pagou continua.
+  router.post('/ead/curso/:id/publicar', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co) return naoAchou(res);
+    if (req.body.acao === 'desligar') {
+      await prisma.cursoOnline.update({ where: { id: co.id }, data: { publicado: false } });
+      await auditar(req, 'EAD_DESPUBLICOU', 'CursoOnline', co.id, null);
+      return voltar(res, `/ead/curso/${co.id}`, 'ok', 'Curso fora do site. Quem já comprou continua com acesso.');
+    }
+    const modulos = await prisma.moduloEad.findMany({ where: { cursoOnlineId: co.id }, select: { titulo: true, status: true } });
+    const pend = publicacao.podePublicar({ ...co, modulos });
+    if (pend.length) return voltar(res, `/ead/curso/${co.id}`, 'erro', 'Ainda não dá para publicar: ' + pend.join(' '));
+    await prisma.cursoOnline.update({ where: { id: co.id }, data: { publicado: true } });
+    await auditar(req, 'EAD_PUBLICOU', 'CursoOnline', co.id, { precoOnline: Number(co.precoOnline) });
+    voltar(res, `/ead/curso/${co.id}`, 'ok', 'Curso publicado no site.');
+  });
 
   // Link de teste do curso (site do aluno, /ead-teste/<código>): gerar, trocar, desligar.
   router.post('/ead/curso/:id/link-teste', async (req, res) => {

@@ -12,6 +12,7 @@ const {
 const { criarTransacao, obterOpcaoParcelamento } = require('../lib/unicopag');
 const { iniciarCobrancaAVista, urlRetorno, cobrancaCartaoOnline, destinoAposPagamento } = require('../lib/cobranca-avista');
 const { lerOrigem } = require('../lib/origem-da-visita');
+const { anexarOnline } = require('../lib/ead-publicacao');
 const cacheRapido = require('../lib/cache-rapido');
 const extras = require('../lib/extras');
 const vitrine = require('../lib/vitrine');
@@ -192,6 +193,7 @@ async function carregarVitrine(filtro, { agenda = false } = {}) {
     },
   });
   await extras.anexar('curso', cursos);
+  await anexarOnline(cursos); // curso.online = { preco } quando o curso online está publicado
   return vitrine.ordenar(cursos);
 }
 
@@ -423,6 +425,7 @@ router.get('/cursos/:cursoId', async (req, res) => {
         },
       });
       if (c) await extras.anexar('curso', [c]);
+      if (c) await anexarOnline([c]);
       return c;
     }),
     lerConfigMatricula(),

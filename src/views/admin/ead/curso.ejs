@@ -7,6 +7,45 @@
 </div>
 <%- include('_mensagens') %>
 
+<%# Etapa 4: venda no site. Preço único (PIX ou cartão, sem taxa) e o interruptor "Publicar no site". %>
+<div class="adm-box adm-box-pad adm-espaco ead-venda">
+  <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-store"></i> Venda no site</h2>
+  <% if (venda.aviso) { %>
+    <div class="adm-alerta adm-alerta-pendente adm-espaco"><i class="fa-solid fa-triangle-exclamation"></i> <span><%= venda.aviso %></span></div>
+  <% } %>
+  <div class="ead-venda-grade">
+    <form method="POST" action="/ead/curso/<%= co.id %>/preco" class="adm-form c1 ead-venda-preco">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Preço do curso online (R$)
+        <input type="text" name="precoOnline" inputmode="decimal" placeholder="49,90" required
+               value="<%= co.precoOnline === null ? '' : Number(co.precoOnline).toFixed(2).replace('.', ',') %>">
+      </label>
+      <p class="adm-mut">Cobrança única, por PIX ou cartão, sem taxa de inscrição.</p>
+      <button type="submit" class="adm-btn adm-btn-out">Salvar preço</button>
+    </form>
+    <div>
+      <p class="ead-venda-estado">
+        <span class="ead-selo <%= co.publicado ? 'validado' : 'rascunho' %>"><%= co.publicado ? 'No site' : 'Fora do site' %></span>
+        <% if (co.publicado) { %><a class="adm-link" href="<%= venda.urlCurso %>" target="_blank" rel="noopener">Abrir a página do curso ↗</a><% } %>
+      </p>
+      <% if (co.publicado) { %>
+        <form method="POST" action="/ead/curso/<%= co.id %>/publicar" data-confirmar="Tirar o curso do site? Ele some do catálogo; quem já comprou continua com acesso." data-botao="Tirar do site">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="acao" value="desligar">
+          <button class="adm-btn adm-btn-out"><i class="fa-solid fa-eye-slash"></i> Tirar do site</button>
+        </form>
+      <% } else if (venda.pendencias.length) { %>
+        <p class="adm-mut">Para publicar, falta:</p>
+        <ul class="ead-pendencias"><% venda.pendencias.forEach(function (p) { %><li><%= p %></li><% }) %></ul>
+      <% } else { %>
+        <form method="POST" action="/ead/curso/<%= co.id %>/publicar" data-confirmar="Publicar no site? O curso aparece no catálogo com o selo ONLINE e já pode ser comprado." data-botao="Publicar">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="acao" value="ligar">
+          <button class="adm-btn"><i class="fa-solid fa-globe"></i> Publicar no site</button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+</div>
+
 <div class="adm-box adm-espaco">
   <div class="ead-topico-cab"><h3>Módulos</h3>
     <a class="adm-btn" href="/ead/curso/<%= co.id %>/modulos/novo"><i class="fa-solid fa-plus"></i> Novo módulo</a>

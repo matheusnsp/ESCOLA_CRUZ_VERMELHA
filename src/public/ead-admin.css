@@ -53,3 +53,18 @@
   padding: 11px 13px; font: inherit; font-size: 14px; background: var(--campo); color: var(--tinta);
 }
 .ead-inline input[type=text]:focus { outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px var(--foco); }
+
+/* Etapa 4: venda no site */
+.ead-venda-grade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.ead-venda-grade .adm-form label { display: grid; gap: 6px; }
+.ead-venda-estado { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 12px; }
+.ead-pendencias { margin: 0; padding-left: 18px; color: var(--alerta-tx); font-size: 14px; line-height: 1.6; }
+@media (max-width: 720px) { .ead-venda-grade { grid-template-columns: 1fr; } }
+.ead-venda-preco { padding: 0; gap: 10px; justify-items: start; }
+.ead-venda-preco label { width: 100%; max-width: 260px; }
+.ead-venda-preco .adm-mut { margin: 0; }
+
+/* .adm-btn (texto branco) + .adm-btn-out (fundo do campo) davam texto branco no branco: nas páginas do
+   EAD o botão de contorno tem texto escuro e borda, e fica vermelho no hover. */
+.adm-btn.adm-btn-out { color: var(--tinta); background: var(--campo); border: 1px solid var(--linha); }
+.adm-btn.adm-btn-out:hover { color: var(--vermelho); border-color: var(--vermelho); background: var(--campo); }

@@ -16,6 +16,7 @@
       <span class="v-cc-semfoto"><i class="fa-solid <%= _icone %>" aria-hidden="true"></i></span>
     <% } %>
     <span class="v-status<%= _t ? ' v-status-aberta' : '' %>"><%= _t ? 'Inscrições abertas' : 'Turmas em breve' %></span>
+    <% if (curso.online) { %><span class="v-selo-online"><i class="fa-solid fa-laptop" aria-hidden="true"></i> 100% online</span><% } %>
   </div>
   <div class="v-cc-corpo">
     <p class="v-cc-area"><i class="fa-solid <%= _icone %>" aria-hidden="true"></i> <%= curso.categoria || 'Curso presencial' %></p>
