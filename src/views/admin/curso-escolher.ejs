@@ -1,0 +1,12 @@
+<%- include('head', { titulo: 'Qual curso?' }) %>
+<div class="adm-login"><div class="adm-login-card">
+  <h1>Qual curso?</h1>
+  <p>Há mais de um curso com este nome. Escolha qual editar:</p>
+  <ul>
+    <% cursos.forEach(function (c) { %>
+      <li><a href="/cursos/<%= c.id %>/editar"><%= c.nome %></a> <%= c.ativo ? '(ativo)' : '(inativo)' %> · criado em <%= c.criadoEm.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) %></li>
+    <% }) %>
+  </ul>
+  <a href="/cursos" class="adm-btn">Voltar aos cursos</a>
+</div></div>
+</body></html>

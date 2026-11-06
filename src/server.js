@@ -96,6 +96,7 @@ app.locals.documentoAluno = function (u) {
 // (<link href="<%= asset('/admin.css') %>">), para um deploy nunca deixar CSS velho no cache.
 app.locals.asset = require('./lib/assets').asset;
 app.locals.urlCurso = require('./lib/vitrine').urlCurso;
+app.locals.urlEditarCurso = require('./lib/vitrine').urlEditarCurso; // painel: editar o curso pelo nome
 
 // Cabecalhos de seguranca. A CSP libera apenas os CDNs que o site usa.
 const isProd = process.env.NODE_ENV === 'production';

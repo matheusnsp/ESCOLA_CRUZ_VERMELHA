@@ -25,7 +25,7 @@
   </div>
   <div class="adm-cert-assin-corpo">
     <p class="adm-hint">Marque quem assina (até <%= maxNoCertificado %>). A ordem é a da lista.
-      <% if (segueCurso) { %>Hoje segue o <a href="/cursos/<%= turma.curso.id %>/editar#assinaturas">padrão do curso</a>.<% } else { %>Esta turma tem escolha própria; marque igual ao <a href="/cursos/<%= turma.curso.id %>/editar#assinaturas">padrão do curso</a> para voltar a segui-lo.<% } %></p>
+      <% if (segueCurso) { %>Hoje segue o <a href="<%= urlEditarCurso(turma.curso) %>#assinaturas">padrão do curso</a>.<% } else { %>Esta turma tem escolha própria; marque igual ao <a href="<%= urlEditarCurso(turma.curso) %>#assinaturas">padrão do curso</a> para voltar a segui-lo.<% } %></p>
     <div class="adm-cert-assin-opcoes">
       <% ajustes.assinantes.forEach(function (a, i) { if (!a.nome) return; %>
         <label class="adm-cert-opcao">

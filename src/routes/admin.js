@@ -1066,9 +1066,28 @@ router.post('/cursos', requirePermissao('cursos:criar'), uploadFoto, async (req,
   res.redirect('/cursos?ok=Curso criado.');
 });
 
+// Editar o curso pelo nome (/cursos/<nome>/editar), como o site. O link antigo com o id redireciona para o do
+// nome; se dois cursos dão o mesmo endereço, o do nome mostra a escolha e o do id abre direto (sem redirecionar).
+const UUID_CURSO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 router.get('/cursos/:id/editar', requirePermissao('cursos:gerenciar'), async (req, res) => {
+  const { cursosPeloEndereco } = require('../lib/curso-endereco');
+  const vitrine = require('../lib/vitrine');
+  let id = req.params.id;
+  if (UUID_CURSO.test(id)) {
+    const c = await prisma.curso.findUnique({ where: { id }, select: { nome: true } });
+    if (!c) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
+    if ((await cursosPeloEndereco(vitrine.slugCurso(c.nome))).length === 1) {
+      const q = req.originalUrl.indexOf('?');
+      return res.redirect(302, vitrine.urlEditarCurso(c) + (q >= 0 ? req.originalUrl.slice(q) : ''));
+    }
+  } else {
+    const mesmos = await cursosPeloEndereco(id);
+    if (!mesmos.length) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
+    if (mesmos.length > 1) return res.render('admin/curso-escolher', { cursos: mesmos });
+    id = mesmos[0].id;
+  }
   const curso = await prisma.curso.findUnique({
-    where: { id: req.params.id },
+    where: { id },
     include: { faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] } },
   });
   if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
@@ -1083,12 +1102,12 @@ router.post('/cursos/:id/faqs', requirePermissao('cursos:gerenciar'), async (req
   const pergunta = String(req.body.pergunta || '').trim();
   const resposta = String(req.body.resposta || '').trim();
   if (!pergunta || !resposta) {
-    return res.redirect(`/cursos/${curso.id}/editar?erroFaq=` + encodeURIComponent('Preencha a pergunta e a resposta.'));
+    return res.redirect(require('../lib/vitrine').urlEditarCurso(curso) + '?erroFaq=' + encodeURIComponent('Preencha a pergunta e a resposta.'));
   }
   const total = await prisma.faqCurso.count({ where: { cursoId: curso.id } });
   await prisma.faqCurso.create({ data: { cursoId: curso.id, pergunta, resposta, ordem: total } });
   await auditar(req, 'ADICIONOU_FAQ', 'Curso', curso.id, { pergunta });
-  res.redirect(`/cursos/${curso.id}/editar#duvidas`);
+  res.redirect(require('../lib/vitrine').urlEditarCurso(curso) + '#duvidas');
 });
 
 router.post('/cursos/:id/faqs/:faqId/remover', requirePermissao('cursos:gerenciar'), async (req, res) => {
@@ -1096,7 +1115,8 @@ router.post('/cursos/:id/faqs/:faqId/remover', requirePermissao('cursos:gerencia
   if (!faq || faq.cursoId !== req.params.id) return res.status(404).render('admin/erro', { mensagem: 'Duvida nao encontrada.' });
   await prisma.faqCurso.delete({ where: { id: faq.id } });
   await auditar(req, 'REMOVEU_FAQ', 'Curso', req.params.id, { pergunta: faq.pergunta });
-  res.redirect(`/cursos/${req.params.id}/editar#duvidas`);
+  const curso = await prisma.curso.findUnique({ where: { id: req.params.id }, select: { nome: true } });
+  res.redirect(require('../lib/vitrine').urlEditarCurso(curso) + '#duvidas');
 });
 
 router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, async (req, res) => {
