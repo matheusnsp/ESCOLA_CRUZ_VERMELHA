@@ -136,7 +136,27 @@
           </section>
           <% } %>
 
-          <% if (!matriculas.length) { %>
+          <% var _cursosDaEscola = typeof cursosDaEscola !== 'undefined' ? cursosDaEscola : []; %>
+          <% if (_cursosDaEscola.length) { %>
+            <%# Etapa 6: curso online liberado pela escola (vaga de lote). %>
+            <div class="ct-lista ct-lista-escola">
+              <% _cursosDaEscola.forEach(function (c) { %>
+                <article class="ct-insc">
+                  <a class="card-link-overlay" href="/online/<%= c.cursoId %>" aria-label="Abrir <%= c.curso %>"></a>
+                  <div class="ct-insc-capa">
+                    <% if (c.imagemUrl) { %><img src="<%= c.imagemUrl %>" alt="<%= c.curso %>" loading="lazy"><% } else { %><div class="ct-insc-semfoto"><i class="fa-solid fa-laptop"></i></div><% } %>
+                  </div>
+                  <div class="ct-insc-corpo">
+                    <div class="ct-insc-topo"><h3><%= c.curso %></h3><span class="ct-selo ct-selo-pago">LIBERADO</span></div>
+                    <p class="ct-insc-sub"><b>Curso online</b> · liberado pela <%= c.escola %></p>
+                    <a class="ct-agenda" href="/online/<%= c.cursoId %>"><i class="fa-solid fa-laptop" aria-hidden="true"></i> Curso online · Acessar</a>
+                  </div>
+                </article>
+              <% }) %>
+            </div>
+          <% } %>
+
+          <% if (!matriculas.length && !_cursosDaEscola.length) { %>
 
             <div class="ct-vazio">
               <i class="fa-regular fa-folder-open"></i>
@@ -145,7 +165,7 @@
               <a href="/cursos">Ver cursos disponíveis <i class="fa-solid fa-arrow-right"></i></a>
             </div>
 
-          <% } else { %>
+          <% } else if (matriculas.length) { %>
 
             <div class="ct-lista">
               <% matriculas.forEach(function (m) { %>

@@ -5,6 +5,7 @@
 // Regras em lib/ead-lote.js. Spec: docs/superpowers/specs/2026-11-08-ead-lote.md
 
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const prisma = require('../db');
 const asyncHandler = require('../lib/asyncHandler');
 const { requireLogin } = require('../middleware/auth');
@@ -12,6 +13,8 @@ const L = require('../lib/ead-lote');
 const { mascararCpf } = require('../lib/ead-lote-texto');
 
 const router = express.Router();
+// Cadastro de funcionário pelo gestor: limite por IP (o formulário não pode virar consulta de contas).
+const limiteCadastro = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false });
 const site = () => (process.env.APP_URL || 'http://localhost:3000').replace(/\/+$/, '');
 const alunoDaSessao = (req) => (req.session && req.session.usuarioId && req.session.papel === 'ALUNO' ? req.session.usuarioId : null);
 
@@ -65,7 +68,7 @@ router.get('/minha-escola/lote/:id', requireLogin, comLote(async (req, res, lote
   });
 }));
 
-router.post('/minha-escola/lote/:id/funcionario', requireLogin, comLote(async (req, res, lote, u) => {
+router.post('/minha-escola/lote/:id/funcionario', limiteCadastro, requireLogin, comLote(async (req, res, lote, u) => {
   const pessoa = { nome: req.body.nome, email: req.body.email, celular: req.body.celular, cpf: req.body.cpf };
   const r = await L.cadastrarFuncionario(lote.id, pessoa, { origem: 'GESTOR', atorId: u });
   if (r.ok) return voltar(res, lote.id, 'ok', `${String(pessoa.nome).trim()} cadastrado(a). Mandamos um e-mail com o acesso.`);

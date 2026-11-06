@@ -164,6 +164,8 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
     usuario,
     sec,
     matriculas: matriculasComRetomada,
+    // Etapa 6: cursos online liberados pela escola (vaga de lote, sem matrícula).
+    cursosDaEscola: await require('../lib/ead-lote').vagasDoAluno(usuario.id),
     saude: await saudeDaConta(usuario.id, matriculas, req.query),
     avisosTurma: await avisosDeBoasVindas(matriculas),
     matriculasAtivas,

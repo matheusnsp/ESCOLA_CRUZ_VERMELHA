@@ -19,6 +19,10 @@ function senhaPadraoDoDocumento({ tipoDocumento, cpfCnpjNormalizado, passaporte 
 
 const emailValido = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
+// Mesma frase para todo dado que não bate com uma conta: quem cadastra (gestor de escola, de fora) não
+// pode descobrir, chutando um e-mail ou um CPF, de quem é a conta nem se ela existe.
+const ERRO_DADOS = 'Não foi possível usar esses dados. Confira o e-mail e o CPF da pessoa.';
+
 async function contaParaPessoa({ nome, email, celular, cpf }) {
   const n = String(nome || '').trim().replace(/\s+/g, ' ');
   const e = String(email || '').trim().toLowerCase();
@@ -30,15 +34,21 @@ async function contaParaPessoa({ nome, email, celular, cpf }) {
     cpfN = v.normalizado;
   }
   if (e && !emailValido(e)) return { ok: false, erro: 'E-mail inválido.' };
-  const porEmail = e ? await prisma.usuario.findFirst({ where: { email: { equals: e, mode: 'insensitive' } } }) : null;
-  const porCpf = cpfN ? await prisma.usuario.findFirst({ where: { cpfCnpj: cpfN } }) : null;
-  if (porEmail && porCpf && porEmail.id !== porCpf.id) return { ok: false, erro: 'O e-mail e o CPF são de contas diferentes. Confira os dados.' };
-  const achada = porEmail || porCpf;
-  if (achada && !ehAnonimo(achada.email)) return { ok: true, usuario: achada, nova: false };
-  if (achada) return { ok: false, erro: 'Esta conta foi excluída. A pessoa precisa se cadastrar de novo pelo site.' };
+  // E-mail e CPF sempre juntos, e uma conta existente só é usada se os dois forem dela.
+  if (!e || !cpfN) return { ok: false, erro: 'Informe o e-mail e o CPF da pessoa.' };
+  const porEmail = await prisma.usuario.findFirst({ where: { email: { equals: e, mode: 'insensitive' } } });
+  const porCpf = await prisma.usuario.findFirst({ where: { cpfCnpj: cpfN } });
+  if (porEmail || porCpf) {
+    const mesma = porEmail && porCpf ? porEmail.id === porCpf.id
+      : porEmail ? !porEmail.cpfCnpj || porEmail.cpfCnpj === cpfN
+        : false; // achou só pelo CPF: o e-mail digitado não é o da conta
+    if (!mesma) return { ok: false, erro: ERRO_DADOS };
+    const achada = porEmail || porCpf;
+    if (ehAnonimo(achada.email)) return { ok: false, erro: ERRO_DADOS };
+    return { ok: true, usuario: achada, nova: false };
+  }
 
   if (n.length < 3) return { ok: false, erro: 'Nome: pelo menos 3 letras.' };
-  if (!e || !cpfN) return { ok: false, erro: 'Para criar a conta, informe e-mail e CPF.' };
   const senhaInicial = senhaPadraoDoDocumento({ tipoDocumento: 'CPF', cpfCnpjNormalizado: cpfN });
   try {
     const usuario = await prisma.usuario.create({
@@ -61,4 +71,4 @@ async function contaParaPessoa({ nome, email, celular, cpf }) {
 const VOLTAS = [/^\/ead-teste\/[A-Za-z0-9_-]+\/continuar$/, /^\/online\/[A-Za-z0-9_-]+\/continuar$/, /^\/escola\/convite\/[A-Za-z0-9_-]+$/];
 const voltaDepoisDoCadastro = (returnTo) => (typeof returnTo === 'string' && VOLTAS.some((r) => r.test(returnTo)) ? returnTo : null);
 
-module.exports = { contaParaPessoa, senhaPadraoDoDocumento, voltaDepoisDoCadastro };
+module.exports = { contaParaPessoa, senhaPadraoDoDocumento, voltaDepoisDoCadastro, ERRO_DADOS };

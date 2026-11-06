@@ -57,17 +57,24 @@ describe('lote de escola', { skip: temBanco ? false : 'sem DATABASE_URL local' }
     const outra = await conta.contaParaPessoa(pessoa('outra'));
     assert.equal(outra.ok, true, outra.erro); assert.equal(outra.nova, true);
     const r = await conta.contaParaPessoa({ nome: 'Mistura', email: gestor.email, celular: '', cpf: outra.usuario.cpfCnpj });
-    assert.equal(r.ok, false); assert.match(r.erro, /contas diferentes/i);
+    assert.equal(r.ok, false); assert.equal(r.erro, conta.ERRO_DADOS); // genérica: não confirma que as duas contas existem
   });
 
-  test('[Review Focus] contaParaPessoa: acha por CPF formatado ou e-mail em caixa diferente; CPF inválido recusa', async () => {
+  test('[Review Focus] contaParaPessoa: CPF formatado + e-mail em caixa diferente acham a mesma conta; CPF inválido recusa', async () => {
     const u = await prisma.usuario.findFirst({ where: { email: gestor.email } });
     const c = gestor.cpf;
-    const porCpf = await conta.contaParaPessoa({ nome: 'Qualquer', email: '', celular: '', cpf: `${c.slice(0, 3)}.${c.slice(3, 6)}.${c.slice(6, 9)}-${c.slice(9)}` });
-    assert.equal(porCpf.ok, true); assert.equal(porCpf.usuario.id, u.id); assert.equal(porCpf.nova, false);
-    const porEmail = await conta.contaParaPessoa({ nome: 'Qualquer', email: ` ${gestor.email.toUpperCase()} `, celular: '', cpf: c });
-    assert.equal(porEmail.usuario.id, u.id);
+    const r = await conta.contaParaPessoa({ nome: 'Qualquer', email: ` ${gestor.email.toUpperCase()} `, celular: '', cpf: `${c.slice(0, 3)}.${c.slice(3, 6)}.${c.slice(6, 9)}-${c.slice(9)}` });
+    assert.equal(r.ok, true); assert.equal(r.usuario.id, u.id); assert.equal(r.nova, false);
     assert.equal((await conta.contaParaPessoa({ nome: 'Fulano de Tal', email: `inv-lote-${sufixo}@teste.local`, celular: '', cpf: '111.111.111-11' })).ok, false);
+  });
+
+  test('[revisão I1] sem e-mail ou sem CPF recusa; um dado de conta existente com o outro diferente recusa (sem revelar a conta)', async () => {
+    assert.equal((await conta.contaParaPessoa({ nome: 'Só CPF', email: '', celular: '', cpf: gestor.cpf })).ok, false);
+    assert.equal((await conta.contaParaPessoa({ nome: 'Só e-mail', email: gestor.email, celular: '', cpf: '' })).ok, false);
+    const porEmail = await conta.contaParaPessoa({ nome: 'Chute', email: gestor.email, celular: '', cpf: cpf() });
+    assert.deepEqual(porEmail, { ok: false, erro: conta.ERRO_DADOS });
+    const porCpf = await conta.contaParaPessoa({ nome: 'Chute', email: `chute-lote-${sufixo}@teste.local`, celular: '', cpf: gestor.cpf });
+    assert.deepEqual(porCpf, { ok: false, erro: conta.ERRO_DADOS });
   });
 
   test('cadastrarFuncionario: cria conta, manda e-mail; esgota; vencido; já tem acesso', async () => {
@@ -76,14 +83,18 @@ describe('lote de escola', { skip: temBanco ? false : 'sem DATABASE_URL local' }
     assert.equal(r1.ok, true, r1.erro); assert.equal(r1.nova, true);
     assert.equal(vagasEmail.at(-1).senhaInicial, p1.cpf.slice(-4)); assert.match(vagasEmail.at(-1).link, new RegExp(`/online/${curso.id}$`));
     // quem já comprou o curso não gasta vaga
-    const comprou = await conta.contaParaPessoa(pessoa('comprou'));
+    const pComprou = pessoa('comprou');
+    const comprou = await conta.contaParaPessoa(pComprou);
     await prisma.matricula.create({ data: { alunoId: comprou.usuario.id, turmaId: turma.id, plano: 'A_VISTA', forma: 'PIX', valorCurso: 49.9, taxaConfirmada: true, statusPagamento: 'PAGO', confirmadaEm: new Date() } });
-    assert.deepEqual(await L.cadastrarFuncionario(lote.id, { ...pessoa('comprou'), cpf: '' , email: comprou.usuario.email }, { origem: 'GESTOR', atorId: 'dev' }).then((r) => r.erro), 'ja_tem_acesso');
+    assert.deepEqual(await L.cadastrarFuncionario(lote.id, pComprou, { origem: 'GESTOR', atorId: 'dev' }).then((r) => r.erro), 'ja_tem_acesso');
+    // [revisão I3] lote cheio não cria conta de quem ficou de fora
+    // mesma pessoa de novo (ainda com vaga livre) ⇒ já tem acesso
+    assert.equal((await L.cadastrarFuncionario(lote.id, p1, { origem: 'GESTOR', atorId: 'dev' })).erro, 'ja_tem_acesso');
     const r2 = await L.cadastrarFuncionario(lote.id, pessoa(2), { origem: 'GESTOR', atorId: 'dev' });
     assert.equal(r2.ok, true);
-    assert.equal((await L.cadastrarFuncionario(lote.id, pessoa(3), { origem: 'GESTOR', atorId: 'dev' })).erro, 'esgotado');
-    // mesma pessoa de novo ⇒ já tem acesso
-    assert.equal((await L.cadastrarFuncionario(lote.id, p1, { origem: 'GESTOR', atorId: 'dev' })).erro, 'ja_tem_acesso');
+    const p3 = pessoa(3);
+    assert.equal((await L.cadastrarFuncionario(lote.id, p3, { origem: 'GESTOR', atorId: 'dev' })).erro, 'esgotado');
+    assert.equal(await prisma.usuario.count({ where: { email: p3.email } }), 0);
     assert.deepEqual(L.situacaoDoLote({ ...lote, vagasUsadas: await prisma.vagaLoteEad.findMany({ where: { loteId: lote.id } }) }), { usadas: 2, livres: 0, vencido: false, convite: true });
   });
 
@@ -146,6 +157,21 @@ describe('lote de escola', { skip: temBanco ? false : 'sem DATABASE_URL local' }
     assert.equal(escs.length, 1); assert.ok(escs[0].lotes.length >= 3);
     const outro = (await conta.contaParaPessoa(pessoa(11))).usuario;
     assert.deepEqual(await L.escolasDoGestor(outro.id), []);
+  });
+
+  test('[revisão I3] corrida perdida: a conta criada para quem não entrou é apagada', async () => {
+    const r = await L.criarLote({ escola: { id: lote.escolaId }, cursoOnlineId: co.id, vagas: 1, validoAte: new Date(Date.now() + 864e5), valor: 0, forma: 'OUTRO', gestor, atorId: 'dev' });
+    const pp = [pessoa(20), pessoa(21), pessoa(22)];
+    const rs = await Promise.all(pp.map((x) => L.cadastrarFuncionario(r.lote.id, x, { origem: 'GESTOR', atorId: 'dev' })));
+    assert.equal(rs.filter((x) => x.ok).length, 1);
+    assert.equal(await prisma.usuario.count({ where: { email: { in: pp.map((x) => x.email) } } }), 1);
+  });
+
+  test('[revisão I2] vagasDoAluno: o curso do lote para a Minha conta', async () => {
+    const v = await prisma.vagaLoteEad.findFirst({ where: { loteId: lote.id, removidaEm: null } });
+    const lista = await L.vagasDoAluno(v.usuarioId);
+    assert.ok(lista.some((x) => x.cursoId === curso.id && x.escola === `Escola Teste ${sufixo}` && x.curso === curso.nome));
+    assert.deepEqual(await L.vagasDoAluno('00000000-0000-4000-8000-000000000000'), []);
   });
 
   test('lotesRecebidos por data e lotesAReceber', async () => {

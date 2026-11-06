@@ -132,10 +132,16 @@ async function cadastrarFuncionario(loteId, pessoa, { origem = 'GESTOR', atorId 
   const lote = await prisma.loteEad.findUnique({ where: { id: loteId } });
   if (!lote) return { ok: false, erro: 'nao_achou' };
   if (new Date(lote.validoAte) <= new Date()) return { ok: false, erro: 'vencido' };
+  // Lote cheio: nem cria a conta (ela ficaria sem aviso nenhum).
+  if (await prisma.vagaLoteEad.count({ where: { loteId, removidaEm: null } }) >= lote.vagas) return { ok: false, erro: 'esgotado' };
   const c = await contaParaPessoa(pessoa || {});
   if (!c.ok) return { ok: false, erro: 'conta', mensagem: c.erro };
   const r = await ocupar(loteId, c.usuario.id, origem === 'CONVITE' ? 'CONVITE' : 'GESTOR');
-  if (!r.ok) return r;
+  if (!r.ok) {
+    // Perdeu a corrida pela última vaga: a conta criada agora não serve para nada e ninguém foi avisado.
+    if (c.nova) await prisma.usuario.delete({ where: { id: c.usuario.id } }).catch(() => {});
+    return r;
+  }
   await auditar(atorId, 'EAD_LOTE_VAGA_ADD', loteId, { usuarioId: c.usuario.id, origem: r.vaga.origem });
   await avisarVaga(c.usuario, lote, c.nova ? c.senhaInicial : undefined);
   return { ok: true, vaga: r.vaga, nova: c.nova, usuario: c.usuario };
@@ -295,6 +301,19 @@ async function lotesAReceber() {
   }
 }
 
+// Cursos que a pessoa tem por vaga de escola (Minha conta: "Curso online · Acessar").
+async function vagasDoAluno(usuarioId) {
+  if (!ehId(usuarioId)) return [];
+  const vs = await prisma.vagaLoteEad.findMany({
+    where: { usuarioId, removidaEm: null },
+    include: { lote: { select: { escola: { select: { nome: true } }, cursoOnline: { select: { cursoId: true, curso: { select: { nome: true, imagemUrl: true } } } } } } },
+    orderBy: { criadoEm: 'desc' },
+  }).catch(() => []);
+  const vistos = new Set();
+  return vs.filter((v) => !vistos.has(v.lote.cursoOnline.cursoId) && vistos.add(v.lote.cursoOnline.cursoId))
+    .map((v) => ({ cursoId: v.lote.cursoOnline.cursoId, curso: v.lote.cursoOnline.curso.nome, imagemUrl: v.lote.cursoOnline.curso.imagemUrl, escola: v.lote.escola.nome, desde: v.criadoEm }));
+}
+
 // Única fonte do dinheiro dos lotes para o Financeiro, o Painel e o relatório. inicioMes: começo do mês no Rio.
 async function somasDosLotes({ inicioMes } = {}) {
   const [recebidos, aReceber] = await Promise.all([lotesRecebidos(), lotesAReceber()]);
@@ -311,6 +330,7 @@ async function somasDosLotes({ inicioMes } = {}) {
 }
 
 module.exports = {
+  vagasDoAluno,
   somasDosLotes,
   FORMAS, MAX_VAGAS, situacaoDoLote, criarLote, cadastrarFuncionario, entrarPorConvite, loteDoConvite, removerVaga,
   trocarConvite, desligarConvite, adicionarGestor, removerGestor, alterarLote, apagarLote, escolasDoGestor,

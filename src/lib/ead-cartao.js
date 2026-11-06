@@ -77,8 +77,13 @@ async function carregarFoto(url) {
 // A Helvetica embutida no PDF só tem o conjunto WinAnsi (Latin-1 + aspas, travessão…). Setas e
 // símbolos viram equivalentes; o resto que ela não tem (✓, emoji) sai, para não virar lixo na página.
 const CP1252 = '€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ';
+// Letras de outros alfabetos latinos (Ł, Đ, ć…) viram a letra base em vez de sumir: um nome na
+// declaração da escola não pode sair mutilado.
+const LETRAS = { Ł: 'L', ł: 'l', Đ: 'D', đ: 'd', Ħ: 'H', ħ: 'h', ı: 'i', Ŀ: 'L', ŀ: 'l', Ŧ: 'T', ŧ: 't' };
+const cabeNoWinAnsi = (c) => { const n = c.codePointAt(0); return (n >= 0x20 && n <= 0x7e) || (n >= 0xa0 && n <= 0xff) || c === '\n' || CP1252.includes(c); };
 function paraPdf(t) {
   return String(t || '')
+    .replace(/[\s\S]/gu, (c) => (cabeNoWinAnsi(c) ? c : LETRAS[c] || (c.normalize('NFD').replace(/[\u0300-\u036f]/g, '') || c)))
     .replace(/[→⇒➜➔⟶]/g, '›').replace(/≥/g, '>=').replace(/≤/g, '<=')
     .replace(/[\s\S]/gu, (c) => { const n = c.codePointAt(0); return (n >= 0x20 && n <= 0x7e) || (n >= 0xa0 && n <= 0xff) || c === '\n' || CP1252.includes(c) ? c : ''; })
     .replace(/ {2,}/g, ' ').trim();

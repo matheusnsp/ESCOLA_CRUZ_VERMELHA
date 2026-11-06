@@ -22,6 +22,13 @@ describe('paginasDoCartao', () => {
   });
 });
 
+const { test: t2 } = require('node:test');
+t2('[revisão M1] paraPdf translitera letras fora do WinAnsi em vez de apagar (nomes na declaração)', () => {
+  const { paraPdf } = require('../src/lib/ead-cartao');
+  assert.equal(paraPdf('Łukasz Đorđe Šimić'), 'Lukasz Dorde Šimic');
+  assert.equal(paraPdf("João D'Ávila Conceição"), "João D'Ávila Conceição");
+});
+
 describe('paraPdf (caracteres que a Helvetica do PDF não tem)', () => {
   test('setas, ≥ ≤, ✓ e emoji viram equivalentes; acentos e travessão ficam', () => {
     assert.equal(cartao.paraPdf('Tosse forte → leve ⇒ ok ≥ 80% ≤ 3 ✓ feito 📱'), 'Tosse forte › leve › ok >= 80% <= 3 feito');
