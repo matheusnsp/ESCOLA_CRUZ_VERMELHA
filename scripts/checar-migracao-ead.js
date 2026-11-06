@@ -8,6 +8,8 @@ const fs = require('fs');
 
 const TABELAS_EAD = ['CursoOnline', 'ModuloEad', 'TopicoEad', 'TelaEad', 'PerguntaEad', 'AlternativaEad',
   'CenarioEad', 'DecisaoCenario', 'OpcaoDecisao',
+  // etapa 7: cupom
+  'CupomEad', 'CupomMatriculaEad',
   // etapa 2: progresso do aluno
   'AlunoCursoEad', 'TelaVistaEad', 'TentativaEad', 'CenarioFeitoEad',
   // etapa 5: dúvidas por aula
