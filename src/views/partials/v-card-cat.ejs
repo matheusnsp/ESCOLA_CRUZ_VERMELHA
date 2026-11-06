@@ -28,7 +28,7 @@
     <p class="v-cc-desc"><%= curso.descricao || 'Curso presencial da Escola de Educação e Saúde da Cruz Vermelha.' %></p>
     <ul class="v-cc-info">
       <li><i class="fa-regular fa-clock" aria-hidden="true"></i> <%= curso.cargaHoraria %> horas</li>
-      <% if (curso.escolaridadeMinima) { %><li><i class="fa-solid fa-user-graduate" aria-hidden="true"></i> <%= curso.escolaridadeMinima %></li><% } %>
+      <% if (vitrine.requisitoCurso(curso)) { %><li><i class="fa-solid fa-user-graduate" aria-hidden="true"></i> <%= vitrine.requisitoCurso(curso) %></li><% } %>
     </ul>
     <% if (_soOnline) { %>
       <div class="v-cc-turma v-cc-turma-aberta">

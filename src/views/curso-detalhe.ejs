@@ -45,7 +45,7 @@ function dataLonga(d) {
         <% if (curso.descricao) { %><p class="v-curso-lead"><%= curso.descricao %></p><% } %>
         <div class="v-curso-chips">
           <span><i class="fa-regular fa-clock" aria-hidden="true"></i> <%= curso.cargaHoraria %> horas</span>
-          <% if (curso.escolaridadeMinima) { %><span><i class="fa-solid fa-user-graduate" aria-hidden="true"></i> <%= curso.escolaridadeMinima %></span><% } %>
+          <% if (requisitoCurso(curso)) { %><span><i class="fa-solid fa-user-graduate" aria-hidden="true"></i> <%= requisitoCurso(curso) %></span><% } %>
           <span><i class="fa-solid fa-location-dot" aria-hidden="true"></i> Presencial no Centro do Rio</span>
           <span><i class="fa-solid fa-award" aria-hidden="true"></i> Certificado</span>
         </div>
