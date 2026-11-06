@@ -15,6 +15,15 @@ test('urlOnline: o nome do curso no endereço', () => {
   assert.equal(vitrine.urlOnline({ nome: 'Primeiros Socorros na Escola (demonstração)' }), '/online/primeiros-socorros-na-escola-demonstracao');
 });
 
+test('renomear no presencial e ativar o EAD conferem o endereço do curso online', () => {
+  const admin = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'admin.js'), 'utf8');
+  assert.match(admin, /enderecoOnlineEmUso\(/);
+  assert.match(admin, /guardarEnderecoAntigo\(/);
+  const ead = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'ead.js'), 'utf8');
+  assert.match(ead, /enderecoOnlineEmUso\(/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'src', 'lib', 'ead-curso-online.js'), 'utf8'), /guardarEnderecoAntigo\(/);
+});
+
 test('nenhum link do curso online é montado com o id do curso', () => {
   const arquivos = [
     'src/views/partials/v-card-cat.ejs', 'src/views/partials/caixa-online.ejs', 'src/views/minha-conta.ejs',
@@ -63,6 +72,7 @@ describe('links do curso online pelo nome', { skip: temBanco ? false : 'sem DATA
     await prisma.turma.delete({ where: { id: turma.id } });
     await prisma.topicoEad.deleteMany({ where: { modulo: { cursoOnlineId: co.id } } });
     await prisma.moduloEad.deleteMany({ where: { cursoOnlineId: co.id } });
+    await prisma.configuracao.deleteMany({ where: { chave: { startsWith: 'ead-endereco:primeiros-passos-' } } });
     await prisma.cursoOnline.delete({ where: { id: co.id } });
     await prisma.curso.delete({ where: { id: curso.id } });
     await prisma.$disconnect();
@@ -86,5 +96,21 @@ describe('links do curso online pelo nome', { skip: temBanco ? false : 'sem DATA
     assert.equal(item.link, `/online/${slug}/continuar`);
     assert.equal(item.endereco, `/online/${slug}`);
     assert.equal(destinoAposPagamento({ turma: { status: 'ONLINE', cursoId: curso.id, curso: { nome: curso.nome } } }), `/online/${slug}`);
+  });
+
+  test('[revisão I2] curso renomeado: o endereço antigo continua levando ao curso', async () => {
+    const acesso = require('../src/lib/ead-acesso');
+    await acesso.guardarEnderecoAntigo(curso.id, curso.nome, `Primeiros Passos Novo ${s}`);
+    assert.equal(await acesso.cursoOnlineDoEndereco(slug), co.id);
+    const r = await fetch(`${site}/online/${slug}`, { redirect: 'manual' });
+    assert.equal(r.status, 200);
+    await prisma.configuracao.deleteMany({ where: { chave: `ead-endereco:${slug}` } });
+  });
+
+  test('[revisão I3] nome que bate com o endereço de outro curso online é recusado', async () => {
+    const acesso = require('../src/lib/ead-acesso');
+    assert.equal(await acesso.enderecoOnlineEmUso(`Primeiros passos — Link ${s}!`), true);
+    assert.equal(await acesso.enderecoOnlineEmUso(`Primeiros passos — Link ${s}!`, curso.id), false, 'o próprio curso não conta');
+    assert.equal(await acesso.enderecoOnlineEmUso(`Outro Nome ${s}`), false);
   });
 });

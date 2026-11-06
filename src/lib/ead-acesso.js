@@ -19,7 +19,28 @@ async function cursoOnlineDoEndereco(endereco) {
   }
   const lista = await prisma.cursoOnline.findMany({ select: { id: true, curso: { select: { nome: true } } }, orderBy: { criadoEm: 'asc' } });
   const achado = lista.find((c) => slugCurso(c.curso.nome) === e);
-  return achado ? achado.id : null;
+  if (achado) return achado.id;
+  // Endereço de antes de renomear o curso (etapa 8, revisão I2): e-mails e links de campanha continuam abrindo.
+  const antigo = await prisma.configuracao.findUnique({ where: { chave: PREFIXO_ENDERECO + e } }).catch(() => null);
+  return antigo && lista.some((c) => c.id === antigo.valor) ? antigo.valor : null;
+}
+
+const PREFIXO_ENDERECO = 'ead-endereco:';
+
+// Outro curso online já usa este endereço? (dois cursos com o mesmo endereço fariam os links de um abrirem o outro)
+async function enderecoOnlineEmUso(nome, exceptoCursoId = null) {
+  const e = slugCurso(nome);
+  const lista = await prisma.cursoOnline.findMany({ select: { cursoId: true, curso: { select: { nome: true } } } });
+  return lista.some((c) => c.cursoId !== exceptoCursoId && slugCurso(c.curso.nome) === e);
+}
+
+// Ao renomear um curso com EAD, o endereço antigo fica guardado e continua levando a ele.
+async function guardarEnderecoAntigo(cursoId, nomeAntigo, nomeNovo) {
+  const antigo = slugCurso(nomeAntigo);
+  if (!nomeAntigo || antigo === slugCurso(nomeNovo)) return;
+  const co = await prisma.cursoOnline.findUnique({ where: { cursoId }, select: { id: true } });
+  if (!co) return;
+  await prisma.configuracao.upsert({ where: { chave: PREFIXO_ENDERECO + antigo }, update: { valor: co.id }, create: { chave: PREFIXO_ENDERECO + antigo, valor: co.id } });
 }
 
 const SITUACAO = { PAGO: 'pago', PARCELADO: 'pago', PENDENTE: 'pendente', CANCELADO: 'cancelado', ESTORNADO: 'cancelado' };
@@ -41,4 +62,4 @@ async function acessoPago(usuarioId, cursoOnline) {
   return { matricula, vaga: null, liberado: false, situacao, inicio: null };
 }
 
-module.exports = { cursoOnlineDoEndereco, acessoPago };
+module.exports = { cursoOnlineDoEndereco, acessoPago, enderecoOnlineEmUso, guardarEnderecoAntigo };

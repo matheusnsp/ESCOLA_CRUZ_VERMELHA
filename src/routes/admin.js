@@ -1106,6 +1106,11 @@ router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, asy
   const { dados, erro } = lerCursoDoForm(req.body);
   if (erro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro });
   if (!req.body.valorParcela) delete dados.valorParcela; // não está mais no formulário: na edição, mantém o gravado
+  // EAD (etapa 8): o curso com versão online não pode ficar com o endereço de outro curso online.
+  const eadAcesso = require('../lib/ead-acesso');
+  if (dados.nome && await eadAcesso.enderecoOnlineEmUso(dados.nome, req.params.id) && await prisma.cursoOnline.count({ where: { cursoId: req.params.id } })) {
+    return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro: 'Já existe um curso online com o mesmo endereço no site (nome igual ou parecido). Escolha outro nome.' });
+  }
   if (req.file) {
     dados.imagemUrl = await salvarFotoCurso(req.file);
     await removerFotoCurso(existe.imagemUrl); 
@@ -1116,6 +1121,7 @@ router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, asy
     dados.imagemUrl = existe.imagemUrl; 
   }
   await prisma.curso.update({ where: { id: req.params.id }, data: dados });
+  if (dados.nome) await eadAcesso.guardarEnderecoAntigo(req.params.id, existe.nome, dados.nome); // links antigos do curso online
   await extras.salvarExtra('curso', req.params.id, extrasCursoDoForm(req.body));
   await salvarAssinaturasDoCurso(req.params.id, req.body, req);
   await auditar(req, 'EDITOU_CURSO', 'Curso', req.params.id, { nome: dados.nome });

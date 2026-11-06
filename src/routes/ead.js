@@ -96,6 +96,8 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const cursoId = String(req.body.cursoId || '');
     if (!edb.ehId(cursoId) || !(await prisma.curso.findUnique({ where: { id: cursoId } }))) return voltar(res, '/ead', 'erro', 'Escolha um curso.');
     if (await prisma.cursoOnline.findUnique({ where: { cursoId } })) return voltar(res, '/ead', 'erro', 'Esse curso já tem EAD.');
+    const nomeCurso = (await prisma.curso.findUnique({ where: { id: cursoId }, select: { nome: true } })).nome;
+    if (await require('../lib/ead-acesso').enderecoOnlineEmUso(nomeCurso, cursoId)) return voltar(res, '/ead', 'erro', 'Já existe um curso online com o mesmo endereço no site (nome igual ou parecido). Renomeie um deles antes de ativar o EAD.');
     const co = await prisma.cursoOnline.create({ data: { cursoId } });
     await auditar(req, 'EAD_ATIVOU_CURSO', 'CursoOnline', co.id, { cursoId });
     voltar(res, `/ead/curso/${co.id}`, 'ok', 'EAD ativado. Crie o primeiro módulo.');

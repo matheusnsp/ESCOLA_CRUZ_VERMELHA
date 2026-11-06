@@ -9,7 +9,7 @@ O curso online pode nascer de dois jeitos:
 - **A partir de um curso do presencial:** em **Online → Cursos online**, clique em **Ativar EAD** no curso. O curso presencial continua igual.
 - **Curso só online:** em **Online → Cursos online → Criar curso só online**. Preencha nome, descrição, carga horária e foto. Esse curso não aparece no presencial (nem no painel, nem no site).
 
-O endereço do curso no site é o nome dele: `/online/nome-do-curso`. Se você renomear o curso, o endereço muda junto. Os links antigos continuam abrindo.
+O endereço do curso no site é o nome dele: `/online/nome-do-curso`. Se você renomear o curso, o endereço muda junto, e o endereço antigo (dos e-mails já enviados e dos links de campanha) continua levando ao curso. Dois cursos online não podem ter o mesmo endereço: o painel recusa o nome igual ou parecido.
 
 ## 2. Escrever o conteúdo
 

@@ -2,24 +2,23 @@
 //
 // Etapa 8 (EAD, mas vale para o presencial): a lista de Estornos do Financeiro lia só as matrículas com status
 // ESTORNADO. Quem foi estornado e comprou de novo (a mesma matrícula volta a PENDENTE/PAGO) sumia da lista, e o
-// estorno antigo saía do total. Aqui ficam os "estornos extras": cada Pagamento de curso ESTORNADO que a linha da
-// matrícula não representa — todos os de uma matrícula que não está ESTORNADO e, na que está, todos menos o mais
-// recente (esse é a linha da própria matrícula, com o valorCurso). O mesmo dinheiro nunca entra duas vezes.
+// estorno antigo saía do total. Aqui ficam os "estornos extras": para cada matrícula que NÃO está ESTORNADO mas tem
+// pagamento de curso ESTORNADO, um estorno — o pagamento estornado mais recente.
+// Um só por matrícula (revisão C1): o estorno "apenas contábil" marca TODAS as tentativas da matrícula (PIX vencido,
+// cartão recusado…) como ESTORNADO, então contar cada pagamento inflava o total. A matrícula ESTORNADO continua
+// contando pelo valorCurso, como sempre. (Duas rodadas de estorno numa mesma matrícula contam só a mais recente.)
 
 const round2 = (x) => Math.round(Number(x) * 100) / 100;
 
 async function estornosExtras(db) {
   const ps = await db.pagamento.findMany({
-    where: { status: 'ESTORNADO', tipo: 'CURSO' },
-    orderBy: { atualizadoEm: 'desc' },
+    where: { status: 'ESTORNADO', tipo: 'CURSO', matricula: { statusPagamento: { not: 'ESTORNADO' } } },
+    orderBy: [{ criadoEm: 'desc' }, { id: 'desc' }],
     include: { matricula: { include: { aluno: true, turma: { include: { curso: true } } } } },
   });
-  const ultimoDaEstornada = new Map(); // matriculaId → id do estorno mais recente (o da linha da matrícula)
-  for (const p of ps) {
-    if (p.matricula && p.matricula.statusPagamento === 'ESTORNADO' && !ultimoDaEstornada.has(p.matriculaId)) ultimoDaEstornada.set(p.matriculaId, p.id);
-  }
+  const vistos = new Set();
   return ps
-    .filter((p) => p.matricula && ultimoDaEstornada.get(p.matriculaId) !== p.id)
+    .filter((p) => p.matricula && !vistos.has(p.matriculaId) && vistos.add(p.matriculaId))
     .map((p) => ({ m: p.matricula, pagamento: p, tipo: 'estornado', valor: round2(p.valor), data: p.atualizadoEm }));
 }
 

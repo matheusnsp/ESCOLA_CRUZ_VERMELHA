@@ -51,6 +51,15 @@ describe('estornos e OFX no banco', { skip: temBanco ? false : 'sem DATABASE_URL
     // Presencial: estornada e paga de novo.
     ids.pres = await prisma.matricula.create({ data: { alunoId: aluno.id, turmaId: tPres.id, plano: 'A_VISTA', forma: 'PIX', valorCurso: 200, valorTaxaMatricula: 0, statusPagamento: 'PAGO', taxaConfirmada: true } });
     ids.pPres = await pag(ids.pres.id, 200, 'ESTORNADO', 30);
+    // Presencial estornado "apenas contábil": as 3 tentativas (PIX vencido, cartão recusado, PIX pago) viram ESTORNADO.
+    const tPres2 = await prisma.turma.create({ data: { cursoId: cursoPres.id, status: 'ABERTA', vagas: 10 } });
+    ids.manual = await prisma.matricula.create({ data: { alunoId: aluno.id, turmaId: tPres2.id, plano: 'A_VISTA', forma: 'PIX', valorCurso: 300, valorTaxaMatricula: 0, statusPagamento: 'ESTORNADO' } });
+    for (const v of [300, 300, 300]) await pag(ids.manual.id, v, 'ESTORNADO', 50);
+    // E o mesmo, mas a pessoa comprou de novo: 3 estornados (tentativas) + 1 pago.
+    const tPres3 = await prisma.turma.create({ data: { cursoId: cursoPres.id, status: 'ABERTA', vagas: 10 } });
+    ids.manualRecompra = await prisma.matricula.create({ data: { alunoId: aluno.id, turmaId: tPres3.id, plano: 'A_VISTA', forma: 'PIX', valorCurso: 300, valorTaxaMatricula: 0, statusPagamento: 'PAGO', taxaConfirmada: true } });
+    for (const v of [300, 300, 300]) await pag(ids.manualRecompra.id, v, 'ESTORNADO', 50);
+    await pag(ids.manualRecompra.id, 300, 'PAGO', 5);
     // Lotes: um recebido ontem, um recebido há 40 dias.
     const g = { nome: 'Gestor Est', email: `g-est-${s}@teste.local`, celular: '', cpf: cpf() };
     const mk = async (nome, recebidoEm) => (await L.criarLote({ escola: { nome: `${nome} ${s}` }, cursoOnlineId: co.id, vagas: 5, validoAte: new Date(Date.now() + 864e5), valor: 750, forma: 'EMPENHO', recebidoEm, gestor: g, atorId: 'dev' })).lote;
@@ -58,7 +67,7 @@ describe('estornos e OFX no banco', { skip: temBanco ? false : 'sem DATABASE_URL
     ids.loteVelho = await mk('Escola OFX Velha', new Date(Date.now() - 40 * 864e5));
   });
   after(async () => {
-    const ms = [ids.recompra.id, ids.duas.id, ids.pres.id];
+    const ms = [ids.recompra.id, ids.duas.id, ids.pres.id, ids.manual.id, ids.manualRecompra.id];
     await prisma.pagamento.deleteMany({ where: { matriculaId: { in: ms } } });
     await prisma.matricula.deleteMany({ where: { id: { in: ms } } });
     await prisma.logAuditoria.deleteMany({ where: { alvoId: { in: [ids.loteNovo.id, ids.loteVelho.id] } } });
@@ -71,19 +80,24 @@ describe('estornos e OFX no banco', { skip: temBanco ? false : 'sem DATABASE_URL
     await prisma.$disconnect();
   });
 
-  test('estornos extras: recompra (online e presencial) e o pagamento antigo da reestornada, nunca o atual', async () => {
-    const extras = (await F.estornosExtras(prisma)).filter((x) => [ids.recompra.id, ids.duas.id, ids.pres.id].includes(x.m.id));
+  test('estornos extras: só o estorno de quem comprou de novo (online e presencial), um por matrícula', async () => {
+    const extras = (await F.estornosExtras(prisma)).filter((x) => [ids.recompra.id, ids.duas.id, ids.pres.id, ids.manual.id].includes(x.m.id));
     const porPag = new Map(extras.map((x) => [x.pagamento.id, x]));
     assert.ok(porPag.has(ids.pAntigo.id), 'recompra do online');
     assert.ok(porPag.has(ids.pPres.id), 'recompra do presencial');
-    assert.ok(porPag.has(ids.pDuasVelho.id), 'o estorno antigo da reestornada');
-    assert.ok(!porPag.has(ids.pDuasNovo.id), 'o estorno atual já é a linha da matrícula');
-    assert.equal(extras.length, 3);
-    assert.deepEqual(porPag.get(ids.pAntigo.id).valor, 49.9);
+    assert.ok(!porPag.has(ids.pDuasVelho.id) && !porPag.has(ids.pDuasNovo.id), 'matrícula estornada conta pelo valor dela, não pelos pagamentos');
+    assert.equal(extras.length, 2);
+    assert.equal(porPag.get(ids.pAntigo.id).valor, 49.9);
     assert.equal(porPag.get(ids.pAntigo.id).tipo, 'estornado');
-    // total: matrícula ESTORNADO (40) + extras (49,90 + 200 + 45) — o mesmo dinheiro nunca duas vezes
     const total = F.totalEstornado([ids.duas], extras);
-    assert.equal(total, Math.round((40 + 49.9 + 200 + 45) * 100) / 100);
+    assert.equal(total, Math.round((40 + 49.9 + 200) * 100) / 100);
+  });
+
+  test('[revisão C1] estorno manual marca todas as tentativas: o total é o da matrícula, não 3×', async () => {
+    const extras = (await F.estornosExtras(prisma)).filter((x) => x.m.id === ids.manual.id || x.m.id === ids.manualRecompra.id);
+    assert.equal(extras.filter((x) => x.m.id === ids.manual.id).length, 0);
+    assert.equal(extras.filter((x) => x.m.id === ids.manualRecompra.id).length, 1, 'recompra depois de estorno manual: um estorno, não um por tentativa');
+    assert.equal(F.totalEstornado([ids.manual], extras.filter((x) => x.m.id === ids.manual.id)), 300);
   });
 
   test('OFX: lote recebido no período entra como crédito; fora do período não', async () => {

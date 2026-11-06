@@ -47,7 +47,9 @@ async function editarCursoOnline(cursoOnlineId, campos) {
   if (await nomeEmUso(v.dados.nome, co.cursoId)) return { ok: false, erro: 'Já existe um curso com esse nome (ou com o mesmo endereço no site).' };
   const dados = { ...v.dados };
   if (campos.imagemUrl !== undefined) dados.imagemUrl = campos.imagemUrl;
+  const antes = await prisma.curso.findUnique({ where: { id: co.cursoId }, select: { nome: true } });
   await prisma.curso.update({ where: { id: co.cursoId }, data: dados });
+  await require('./ead-acesso').guardarEnderecoAntigo(co.cursoId, antes && antes.nome, dados.nome); // links antigos continuam abrindo
   return { ok: true };
 }
 
