@@ -66,6 +66,12 @@
           <a href="/minha-conta?sec=inscricoes" class="<%= sec === 'inscricoes' ? 'ativo' : '' %>">
             <i class="fa-solid fa-graduation-cap"></i> Inscrições
           </a>
+          <% if (typeof ehGestorEscola !== 'undefined' && ehGestorEscola) { %>
+            <%# Etapa 6: gestor de escola (routes/ead-escola.js marca ehGestorEscola nesta página). %>
+            <a href="/minha-escola">
+              <i class="fa-solid fa-school"></i> Minha escola
+            </a>
+          <% } %>
           <a href="/minha-conta?sec=dados" class="<%= sec === 'dados' ? 'ativo' : '' %>">
             <i class="fa-solid fa-id-card"></i> Meus dados
           </a>

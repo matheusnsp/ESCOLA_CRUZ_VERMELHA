@@ -1,0 +1,91 @@
+<%
+  var dataBR = function (d) { return d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'; };
+  var ORIGEM = { GESTOR: 'Escola', CONVITE: 'Convite' };
+  var curso = lote.cursoOnline.curso;
+  var ativos = funcionarios.filter(function (f) { return !f.vaga.removidaEm; });
+  var concluiram = ativos.filter(function (f) { return f.concluidoEm; }).length;
+%>
+<%- include('../ead-teste/_topo', { titulo: lote.escola.nome, base: '/minha-escola' }) %>
+<main class="ea-wrap ea-secao">
+  <p class="ea-kicker"><a href="/minha-escola">Minha escola</a> · <%= lote.escola.nome %></p>
+  <h1 class="ea-secao-h"><%= curso.nome %><span>.</span></h1>
+
+  <% if (ok) { %><p class="ea-duvidas-msg ok" role="status"><%= ok %></p><% } %>
+  <% if (erro) { %><p class="ea-duvidas-msg erro" role="alert"><%= erro %></p><% } %>
+
+  <div class="esc-resumo">
+    <div><small>Vagas</small><b><%= situacao.usadas %> / <%= lote.vagas %></b></div>
+    <div><small>Concluíram</small><b><%= concluiram %></b></div>
+    <div><small><%= situacao.vencido ? 'Prazo encerrado' : 'Cadastro até' %></small><b><%= dataBR(lote.validoAte) %></b></div>
+    <div class="esc-baixar">
+      <a class="ea-pilula ea-pilula-red" href="/minha-escola/lote/<%= lote.id %>/declaracao.pdf">Declaração (PDF)</a>
+      <a class="ea-pilula ea-pilula-clara" href="/minha-escola/lote/<%= lote.id %>/planilha.xlsx">Planilha (Excel)</a>
+    </div>
+  </div>
+
+  <div class="esc-grade">
+    <section class="esc-bloco">
+      <h2>Cadastrar funcionário</h2>
+      <% if (situacao.vencido) { %>
+        <p class="ea-obs">O prazo para usar as vagas terminou. Fale com a Escola para renovar.</p>
+      <% } else if (!situacao.livres) { %>
+        <p class="ea-obs">Todas as vagas foram usadas. Fale com a Escola para aumentar.</p>
+      <% } else { %>
+        <form method="POST" action="/minha-escola/lote/<%= lote.id %>/funcionario" class="esc-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <label>Nome completo<input type="text" name="nome" required minlength="3" maxlength="120"></label>
+          <label>E-mail<input type="email" name="email" required maxlength="160"></label>
+          <label>Celular<input type="tel" name="celular" maxlength="20" placeholder="(21) 99999-9999"></label>
+          <label>CPF<input type="text" name="cpf" required inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></label>
+          <p class="ea-obs">A pessoa recebe um e-mail com o acesso. Se ainda não tem conta, a senha inicial são os 4 últimos dígitos do CPF.</p>
+          <button type="submit" class="ea-pilula ea-pilula-red">Cadastrar (usa 1 vaga)</button>
+        </form>
+      <% } %>
+    </section>
+
+    <section class="esc-bloco">
+      <h2>Link de convite</h2>
+      <% if (conviteUrl) { %>
+        <p class="ea-obs">Mande no grupo da escola: quem entrar pelo link cria a conta (ou faz login) e usa uma vaga.</p>
+        <input class="esc-convite" type="text" readonly value="<%= conviteUrl %>" aria-label="Link de convite">
+        <div class="esc-acoes">
+          <form method="POST" action="/minha-escola/lote/<%= lote.id %>/convite/trocar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="ea-pilula ea-pilula-clara">Trocar o link</button></form>
+          <form method="POST" action="/minha-escola/lote/<%= lote.id %>/convite/desligar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="ea-pilula ea-pilula-clara">Desligar</button></form>
+        </div>
+      <% } else { %>
+        <p class="ea-obs">O link de convite está desligado.</p>
+        <form method="POST" action="/minha-escola/lote/<%= lote.id %>/convite/trocar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="ea-pilula ea-pilula-clara">Criar um link novo</button></form>
+      <% } %>
+    </section>
+  </div>
+
+  <section class="esc-bloco">
+    <h2>Equipe</h2>
+    <% if (!funcionarios.length) { %>
+      <p class="ea-obs">Ninguém cadastrado ainda.</p>
+    <% } else { %>
+      <div class="esc-tabela"><table>
+        <thead><tr><th>Nome</th><th>CPF</th><th>Entrou</th><th>Concluído</th><th>Concluiu em</th><th>Certificado</th><th></th></tr></thead>
+        <tbody>
+          <% funcionarios.forEach(function (f) { var rem = !!f.vaga.removidaEm; %>
+            <tr class="<%= rem ? 'removido' : '' %>">
+              <td><b><%= f.usuario.nome %></b><br><small><%= f.usuario.email %></small></td>
+              <td><%= mascararCpf(f.usuario.cpfCnpj) || '—' %></td>
+              <td><%= dataBR(f.vaga.criadoEm) %><br><small><%= ORIGEM[f.vaga.origem] || f.vaga.origem %></small></td>
+              <td><%= rem ? 'retirado' : f.percentual + '%' %></td>
+              <td><%= dataBR(f.concluidoEm) %></td>
+              <td><%= f.livro ? 'Livro ' + f.livro + ' · Reg. ' + f.registro : '—' %></td>
+              <td>
+                <% if (!rem && !f.comecou) { %>
+                  <form method="POST" action="/minha-escola/lote/<%= lote.id %>/remover/<%= f.vaga.id %>"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="esc-tirar" title="A vaga volta para o lote">Tirar</button></form>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table></div>
+      <p class="ea-obs">Só dá para tirar quem ainda não começou o curso; a vaga volta para o lote.</p>
+    <% } %>
+  </section>
+</main>
+<%- include('../ead-teste/_fim') %>

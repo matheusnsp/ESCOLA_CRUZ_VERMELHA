@@ -321,6 +321,8 @@ siteAluno.use(require('./routes/integracao'));
 // EAD: o link secreto de teste e o curso online pago (/online/<curso>), antes da contagem de visitas
 // (o endereço do teste é o segredo; as telas do curso não são visitas do site). A compra vem primeiro.
 siteAluno.use(require('./routes/ead-online'));
+// Etapa 6: Minha escola (gestor) e o convite do lote; também marca o atalho na Minha conta.
+siteAluno.use(require('./routes/ead-escola'));
 siteAluno.use(require('./routes/ead-teste'));
 siteAluno.use(visitas.registrar);
 // Buscadores: só as páginas públicas; o painel da secretaria fica fora de tudo.
