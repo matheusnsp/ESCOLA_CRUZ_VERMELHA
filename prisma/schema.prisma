@@ -337,6 +337,8 @@ model ModuloEad {
   fotoIntroUrl     String?
   final            Boolean         @default(false)
   status           StatusModuloEad @default(RASCUNHO)
+  // Etapa 9: módulo escrito pela IA (selo "Gerado por IA" no painel; histórico, fica depois de validar).
+  geradoPorIa      Boolean         @default(false)
   validadoPor      String?
   validadoEm       DateTime?
   criadoEm         DateTime        @default(now())
@@ -663,4 +665,29 @@ model CupomMatriculaEad {
   cupom       CupomEad  @relation(fields: [cupomId], references: [id], onDelete: Restrict)
 
   @@index([cupomId])
+}
+
+// ─── Etapa 9: criar curso com IA ──────────────────────────────────────────────────────────────
+// status: ROTEIRO_GERANDO → ROTEIRO_PRONTO → MODULOS_GERANDO → CONCLUIDA; ERRO_ROTEIRO; CANCELADA.
+// modulos: [{ ordem, titulo, status: pendente|gerando|pronto|erro, moduloId?, erro? }].
+model GeracaoIaEad {
+  id            String   @id @default(uuid())
+  criadoPor     String
+  status        String
+  pedido        Json
+  materialTexto String?
+  materialPdfs  Json?
+  roteiro       Json?
+  cursoOnlineId String?
+  modulos       Json?
+  tokensEntrada Int      @default(0)
+  tokensSaida   Int      @default(0)
+  tokensCache   Int      @default(0)
+  custoUsd      Decimal  @default(0) @db.Decimal(10, 4)
+  erro          String?
+  criadoEm      DateTime @default(now())
+  atualizadoEm  DateTime @updatedAt
+
+  @@index([status])
+  @@index([criadoEm])
 }

@@ -10,6 +10,8 @@ const TABELAS_EAD = ['CursoOnline', 'ModuloEad', 'TopicoEad', 'TelaEad', 'Pergun
   'CenarioEad', 'DecisaoCenario', 'OpcaoDecisao',
   // etapa 7: cupom
   'CupomEad', 'CupomMatriculaEad',
+  // etapa 9: criar curso com IA
+  'GeracaoIaEad',
   // etapa 2: progresso do aluno
   'AlunoCursoEad', 'TelaVistaEad', 'TentativaEad', 'CenarioFeitoEad',
   // etapa 5: dúvidas por aula
