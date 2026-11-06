@@ -129,8 +129,11 @@ async function coletarDadosRelatorio(prisma) {
   const totalTaxaSemMatricula = taxaPagaLista
     .filter((m) => !['PAGO', 'PARCELADO'].includes(m.statusPagamento))
     .reduce((s, m) => s + (Number(m.valorTaxaMatricula) || 0), 0);
-  const totalRecebido = matriculaGeradaLista.reduce((s, m) => s + Number(m.valorCurso), 0) + totalTaxaSemMatricula;
-  const totalPendente = pendentesLista.reduce((s, p) => s + p.valor, 0);
+  // Etapa 6: lotes de escolas (curso online) recebidos e a receber.
+  const lotes = await require('./ead-lote').somasDosLotes();
+  const totalLotes = lotes.recebidoTotal;
+  const totalRecebido = matriculaGeradaLista.reduce((s, m) => s + Number(m.valorCurso), 0) + totalTaxaSemMatricula + totalLotes;
+  const totalPendente = pendentesLista.reduce((s, p) => s + p.valor, 0) + lotes.aReceberTotal;
   const totalEstornado = estornos.reduce((s, m) => s + Number(m.valorCurso), 0);
   const totalAReembolsar = reembolsosPendentesLista.reduce((s, m) => s + Math.abs(Number(m.diferencaTransferencia)), 0);
 
@@ -151,8 +154,9 @@ async function coletarDadosRelatorio(prisma) {
         pendentesCount: pendentesLista.length,
         estornosCount: estornos.length,
         reembolsosCount: reembolsosPendentesLista.length,
-        totalRecebido, totalPendente, totalEstornado, totalAReembolsar,
+        totalRecebido, totalPendente, totalEstornado, totalAReembolsar, totalLotes,
       },
+      lotes: lotes.linhas,
       matriculaGeradaLista,
       pendentesLista,
       estornos,
@@ -225,6 +229,7 @@ async function gerarExcel(dados) {
     ['Matrícula paga (alunos)', t.matriculaGeradaCount],
     ['Pendentes', t.pendentesCount],
     ['Total recebido', t.totalRecebido],
+    ['   dos quais: lotes de escolas (curso online)', t.totalLotes || 0],
     ['Total pendente a receber', t.totalPendente],
     ['Estornos (qtd.)', t.estornosCount],
     ['Total estornado', t.totalEstornado],
@@ -284,6 +289,12 @@ async function gerarExcel(dados) {
     ]));
 
   // ---- Aba 3: Reembolsos (trilha detalhada — quem fez, aluno afetado) ----
+  // Etapa 6: lotes de escolas (curso online).
+  const wsL = wb.addWorksheet('Lotes de escolas');
+  wsL.columns = [{ header: 'Lote', width: 60 }, { header: 'Situação', width: 14 }, { header: 'Data', width: 12, style: { numFmt: 'dd/mm/yyyy' } }, { header: 'Valor', width: 14, style: { numFmt: '"R$" #,##0.00' } }];
+  wsL.getRow(1).font = { bold: true };
+  (dados.financeiro.lotes || []).forEach((x) => wsL.addRow([x.rotulo, x.tipo === 'lote' ? 'Recebido' : 'A receber', x.data ? new Date(x.data) : null, x.valor]));
+
   const wsR = wb.addWorksheet('Reembolsos');
   wsR.columns = [
     { header: 'Data/hora', key: 'quando', width: 20 },
@@ -403,6 +414,7 @@ function gerarPdf(dados, stream) {
       ['Matrícula paga (alunos)', String(t.matriculaGeradaCount)],
       ['Pendentes', String(t.pendentesCount)],
       ['Total recebido', formatBRL(t.totalRecebido)],
+      ['   dos quais: lotes de escolas', formatBRL(t.totalLotes || 0)],
       ['Total pendente a receber', formatBRL(t.totalPendente)],
       ['Estornos (qtd.)', String(t.estornosCount)],
       ['Total estornado', formatBRL(t.totalEstornado)],
@@ -410,6 +422,15 @@ function gerarPdf(dados, stream) {
       ['Total a reembolsar', formatBRL(t.totalAReembolsar)],
     ]
   );
+
+  // ---- Etapa 6: lotes de escolas (curso online) ----
+  if ((dados.financeiro.lotes || []).length) {
+    titulo('Lotes de escolas');
+    tabela(
+      [{ label: 'Lote', width: 55 }, { label: 'Situação', width: 15 }, { label: 'Data', width: 15 }, { label: 'Valor', width: 15, align: 'right' }],
+      dados.financeiro.lotes.map((x) => [x.rotulo, x.tipo === 'lote' ? 'Recebido' : 'A receber', x.data ? new Date(x.data).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—', formatBRL(x.valor)])
+    );
+  }
 
   // ---- Seção 2: Estornos e pendências ----
   titulo('Estornos');

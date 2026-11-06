@@ -295,7 +295,23 @@ async function lotesAReceber() {
   }
 }
 
+// Única fonte do dinheiro dos lotes para o Financeiro, o Painel e o relatório. inicioMes: começo do mês no Rio.
+async function somasDosLotes({ inicioMes } = {}) {
+  const [recebidos, aReceber] = await Promise.all([lotesRecebidos(), lotesAReceber()]);
+  const soma = (l) => Math.round(l.reduce((s, x) => s + x.valor, 0) * 100) / 100;
+  return {
+    recebidoTotal: soma(recebidos),
+    recebidoMes: soma(inicioMes ? recebidos.filter((x) => new Date(x.recebidoEm) >= inicioMes) : recebidos),
+    aReceberTotal: soma(aReceber),
+    linhas: [
+      ...recebidos.map((x) => ({ tipo: 'lote', valor: x.valor, data: x.recebidoEm, escola: x.escola, curso: x.curso, loteId: x.lote.id, rotulo: `Lote: ${x.escola} · ${x.curso} · ${x.vagas} vagas` })),
+      ...aReceber.map((x) => ({ tipo: 'lote_a_receber', valor: x.valor, data: x.lote.criadoEm, escola: x.escola, curso: x.curso, loteId: x.lote.id, rotulo: `Lote: ${x.escola} (a receber)` })),
+    ],
+  };
+}
+
 module.exports = {
+  somasDosLotes,
   FORMAS, MAX_VAGAS, situacaoDoLote, criarLote, cadastrarFuncionario, entrarPorConvite, loteDoConvite, removerVaga,
   trocarConvite, desligarConvite, adicionarGestor, removerGestor, alterarLote, apagarLote, escolasDoGestor,
   ehGestorDoLote, funcionariosDoLote, vagaAtiva, lotesRecebidos, lotesAReceber, comecou, POR_ORDEM,

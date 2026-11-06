@@ -15,6 +15,8 @@ const pesquisa = require('../lib/pesquisa');
 const { FORA_DO_PRESENCIAL } = require('../lib/turma-online');
 // Curso só online (etapa 5): fora das listas do presencial e sem turma presencial.
 const { semSoOnline, ehSoOnline } = require('../lib/ead-curso-online');
+// Lotes de escolas (etapa 6): dinheiro no Financeiro, no Painel e no relatório.
+const { somasDosLotes } = require('../lib/ead-lote');
 const MSG_SO_ONLINE = 'Este curso existe só online: não tem turma presencial.';
 const comprovanteSaude = require('../lib/comprovante-saude');
 const prisma = require('../db');
@@ -828,7 +830,8 @@ router.get('/', async (req, res) => {
   ]);
   const pagProximas = await pagamentosPorTurma(proximasTurmas.map((t) => t.id));
   proximasTurmas.forEach((t) => { t.pag = pagProximas[t.id]; });
-  const recebidoMes = cursoPagoMes.reduce((t, m) => t + Number(m.valorCurso), 0)
+  const lotesMes = await somasDosLotes({ inicioMes });
+  const recebidoMes = lotesMes.recebidoMes + cursoPagoMes.reduce((t, m) => t + Number(m.valorCurso), 0)
     + taxaSoMes.reduce((t, m) => t + (Number(m.valorTaxaMatricula) || 100), 0)
     + (mr.ok ? mr.recebidoMes : 0);
 
@@ -2111,6 +2114,11 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
       }
     }
   } catch (e) { /* sem a matrícula rápida, os cartões mostram só o da escola */ }
+  // Etapa 6: lotes de escolas do curso online (recebidos na conta "manual", na data do recebimento).
+  const lotesFin = await somasDosLotes({ inicioMes: inicioMesFin });
+  recebidoPorConta.manual += lotesFin.recebidoTotal;
+  mesPorConta.manual += lotesFin.recebidoMes;
+  qtdPorConta.manual += lotesFin.linhas.filter((x) => x.tipo === 'lote').length;
   for (const k of Object.keys(recebidoPorConta)) {
     recebidoPorConta[k] = Math.round(recebidoPorConta[k] * 100) / 100;
     mesPorConta[k] = Math.round(mesPorConta[k] * 100) / 100;
@@ -2166,11 +2174,14 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     0
   );
 
+  // Lotes de escolas entram quando a lista é de todas as contas ou da conta "manual".
+  const comLotes = contaFiltro === 'todas' || contaFiltro === 'manual';
+  const lotesLinhas = comLotes ? lotesFin.linhas : [];
   const totalRecebido =
     matriculaGeradaLista.reduce((s, m) => s + Number(m.valorCurso), 0) +
-    totalTaxaSemMatricula;
+    totalTaxaSemMatricula + (comLotes ? lotesFin.recebidoTotal : 0);
 
-  const totalPendente = cursoPendenteLista.reduce((s, m) => s + valorEmAberto(m), 0);
+  const totalPendente = cursoPendenteLista.reduce((s, m) => s + valorEmAberto(m), 0) + (comLotes ? lotesFin.aReceberTotal : 0);
 
   const totalEstornado = estornos.reduce(
     (s, m) => s + Number(m.valorCurso),
@@ -2203,6 +2214,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     codigoMatricula,
     motivos,
     pagamentos,
+    lotesLinhas,
     aReceberCount: cursoPendenteLista.length,
     flash: req.query.ok || null,
     erro: req.query.erro || null,
