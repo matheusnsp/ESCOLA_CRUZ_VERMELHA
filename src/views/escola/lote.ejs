@@ -69,12 +69,12 @@
         <tbody>
           <% funcionarios.forEach(function (f) { var rem = !!f.vaga.removidaEm; %>
             <tr class="<%= rem ? 'removido' : '' %>">
-              <td><b><%= f.usuario.nome %></b><br><small><%= f.usuario.email %></small></td>
-              <td><%= mascararCpf(f.usuario.cpfCnpj) || '—' %></td>
-              <td><%= dataBR(f.vaga.criadoEm) %><br><small><%= ORIGEM[f.vaga.origem] || f.vaga.origem %></small></td>
-              <td><%= rem ? 'retirado' : f.percentual + '%' %></td>
-              <td><%= dataBR(f.concluidoEm) %></td>
-              <td><%= f.livro ? 'Livro ' + f.livro + ' · Reg. ' + f.registro : '—' %></td>
+              <td data-rotulo="Nome"><b><%= f.usuario.nome %></b><br><small><%= f.usuario.email %></small></td>
+              <td data-rotulo="CPF"><%= mascararCpf(f.usuario.cpfCnpj) || '—' %></td>
+              <td data-rotulo="Entrou"><%= dataBR(f.vaga.criadoEm) %><br><small><%= ORIGEM[f.vaga.origem] || f.vaga.origem %></small></td>
+              <td data-rotulo="Concluído"><%= rem ? 'retirado' : f.percentual + '%' %></td>
+              <td data-rotulo="Concluiu em"><%= dataBR(f.concluidoEm) %></td>
+              <td data-rotulo="Certificado"><%= f.livro ? 'Livro ' + f.livro + ' · Reg. ' + f.registro : '—' %></td>
               <td>
                 <% if (!rem && !f.comecou) { %>
                   <form method="POST" action="/minha-escola/lote/<%= lote.id %>/remover/<%= f.vaga.id %>"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="esc-tirar" title="A vaga volta para o lote">Tirar</button></form>

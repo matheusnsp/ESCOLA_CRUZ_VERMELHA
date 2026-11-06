@@ -13,13 +13,14 @@ const { INCLUDE_PROGRESSO, progressoDe, ultimoAcessoDe } = require('./ead-relato
 const { vagasDoAluno } = require('./ead-lote');
 
 const PAGOS = ['PAGO', 'PARCELADO'];
-const ORDEM = { andamento: 0, novo: 1, concluido: 2, pendente: 3 };
+const ORDEM = { andamento: 0, novo: 1, concluido: 2, pendente: 3, cancelado: 4 };
+const CANCELADOS = ['ESTORNADO', 'CANCELADO'];
 
 async function meusCursosOnline(usuarioId, agora = new Date()) {
   if (!ehId(usuarioId)) return [];
   const [matriculas, vagas] = await Promise.all([
     prisma.matricula.findMany({
-      where: { alunoId: usuarioId, turma: { status: 'ONLINE' }, statusPagamento: { in: [...PAGOS, 'PENDENTE'] } },
+      where: { alunoId: usuarioId, turma: { status: 'ONLINE' }, statusPagamento: { in: [...PAGOS, 'PENDENTE', ...CANCELADOS] } },
       include: { cupomEad: { select: { precoFinal: true } }, pagamentos: { where: { status: 'PENDENTE' }, select: { id: true }, take: 1 }, turma: { select: { cursoId: true } } },
     }),
     vagasDoAluno(usuarioId),
@@ -41,6 +42,12 @@ async function meusCursosOnline(usuarioId, agora = new Date()) {
       porCurso.set(m.turma.cursoId, { cursoId: m.turma.cursoId, origem: 'comprado', pendente: true });
     }
   }
+  // Etapa 8: compra estornada ou cancelada continua na lista (sem acesso), se não houver outro acesso ao curso.
+  for (const m of matriculas) {
+    if (CANCELADOS.includes(m.statusPagamento) && !porCurso.has(m.turma.cursoId)) {
+      porCurso.set(m.turma.cursoId, { cursoId: m.turma.cursoId, origem: 'comprado', cancelado: true });
+    }
+  }
   if (!porCurso.size) return [];
 
   const cos = await prisma.cursoOnline.findMany({ where: { cursoId: { in: [...porCurso.keys()] } }, include: { curso: { select: { nome: true, imagemUrl: true } } } });
@@ -51,7 +58,8 @@ async function meusCursosOnline(usuarioId, agora = new Date()) {
       cursoId: co.cursoId, curso: co.curso.nome, imagemUrl: co.curso.imagemUrl, origem: base.origem, escola: base.escola || null,
       situacao: 'pendente', percentual: 0, ultimoAcesso: null, concluidoEm: null, link: `/online/${co.cursoId}`,
     };
-    if (!base.pendente) {
+    if (base.cancelado) item.situacao = 'cancelado';
+    else if (!base.pendente) {
       const ac = await prisma.alunoCursoEad.findUnique({ where: { usuarioId_cursoOnlineId: { usuarioId, cursoOnlineId: co.id } }, include: INCLUDE_PROGRESSO });
       if (ac && ac.concluidoEm) {
         Object.assign(item, { situacao: 'concluido', percentual: 100, concluidoEm: ac.concluidoEm, ultimoAcesso: ultimoAcessoDe(ac) });

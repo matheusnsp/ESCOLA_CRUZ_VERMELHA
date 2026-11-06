@@ -78,15 +78,15 @@ describe('dúvidas no banco', { skip: temBanco ? false : 'sem DATABASE_URL local
     assert.deepEqual(await d.responder(pBia2.duvida.id, 'Resposta.', 'dev', { linkBase: '/x' }), { ok: true });
     assert.deepEqual(await d.tirarDoAr(pBia2.duvida.id, 'dev'), { ok: true });
     // Bia: vê a própria descartada; não vê a aguardando da Ana; não vê a oculta
-    let visto = await d.duvidasDaTela(tela.id, acBia.id);
+    let visto = (await d.duvidasDaTela(tela.id, acBia.id)).lista;
     assert.deepEqual(visto.map((x) => [x.texto.slice(0, 18), x.status, x.minha]), [['Pergunta da Bia qu', 'DESCARTADA', true]]);
     // responde a da Ana: agora todos veem, com o nome público
     assert.deepEqual(await d.responder(d1.id, 'Esta é a resposta.', 'dev', { linkBase: '/online/c' }), { ok: true });
-    visto = await d.duvidasDaTela(tela.id, acBia.id);
+    visto = (await d.duvidasDaTela(tela.id, acBia.id)).lista;
     const daAna = visto.find((x) => x.id === d1.id);
     assert.equal(daAna.nome, 'Ana S.'); assert.equal(daAna.minha, false); assert.equal(daAna.resposta, 'Esta é a resposta.');
     // visitante: só respondidas
-    assert.deepEqual((await d.duvidasDaTela(tela.id, null)).map((x) => x.id), [d1.id]);
+    assert.deepEqual((await d.duvidasDaTela(tela.id, null)).lista.map((x) => x.id), [d1.id]);
     // descartada não tem o motivo exposto
     assert.equal(visto.find((x) => x.status === 'DESCARTADA').motivoDescarte, undefined);
   });
@@ -136,7 +136,7 @@ describe('dúvidas no banco', { skip: temBanco ? false : 'sem DATABASE_URL local
     const log = await prisma.logAuditoria.findFirst({ where: { alvoId: p.duvida.id, acao: 'EAD_DUVIDA_RESPONDEU' } });
     assert.equal(log.detalhe.resposta, 'Texto da resposta que não pode sumir.');
     // para os alunos, a pendente com resposta guardada não mostra a resposta
-    assert.ok(!(await d.duvidasDaTela(tela.id, null)).some((x) => x.id === p.duvida.id));
+    assert.ok(!(await d.duvidasDaTela(tela.id, null)).lista.some((x) => x.id === p.duvida.id));
   });
 
   test('[revisão M8] listarCentral traz o nome de quem respondeu', async () => {

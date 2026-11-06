@@ -337,3 +337,13 @@ div.ea-mod { cursor: default; }
 .esc-tirar { border: 1px solid #d9d4cc; background: #fff; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 .esc-tirar:hover { border-color: var(--r); color: var(--r); }
 .esc-convite-pg { max-width: 520px; }
+
+/* Etapa 8: "Minha escola" no celular — a tabela da equipe vira cartões (sem rolagem lateral). */
+@media (max-width: 640px) {
+  .esc-tabela table, .esc-tabela tbody, .esc-tabela tr, .esc-tabela td { display: block; width: 100%; }
+  .esc-tabela thead { display: none; }
+  .esc-tabela tr { border: 1px solid #e6e2dc; border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; background: #fff; }
+  .esc-tabela td { border: 0; padding: 4px 0; }
+  .esc-tabela td[data-rotulo]::before { content: attr(data-rotulo) ": "; font-weight: 600; color: #666; }
+  .esc-tabela td[data-rotulo="Nome"]::before { content: none; }
+}

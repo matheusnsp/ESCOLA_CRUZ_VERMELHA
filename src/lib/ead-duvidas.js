@@ -15,12 +15,17 @@ const MIN = 10; const MAX = 1000; const MAX_RESPOSTA = 2000; const LIMITE_AGUARD
 const capitalizar = (p) => p.charAt(0).toLocaleUpperCase('pt-BR') + p.slice(1).toLocaleLowerCase('pt-BR');
 
 // "maria da silva" ⇒ "Maria S."; uma palavra só ⇒ só ela. O que os outros alunos veem.
+const AGNOMES = new Set(['neto', 'filho', 'júnior', 'junior', 'sobrinho', 'segundo', 'terceiro']);
+
 function nomePublico(nome) {
   const partes = String(nome || '').trim().split(/\s+/).filter(Boolean);
   if (!partes.length) return 'Aluno';
   const primeiro = capitalizar(partes[0]);
   if (partes.length === 1) return primeiro;
-  return `${primeiro} ${partes[partes.length - 1].charAt(0).toLocaleUpperCase('pt-BR')}.`;
+  // Agnome (Neto, Filho, Júnior…) não é sobrenome: "João Silva Neto" sai "João S.". Com só duas palavras, fica.
+  let sobrenome = partes[partes.length - 1];
+  if (partes.length > 2 && AGNOMES.has(sobrenome.toLocaleLowerCase('pt-BR'))) sobrenome = partes[partes.length - 2];
+  return `${primeiro} ${sobrenome.charAt(0).toLocaleUpperCase('pt-BR')}.`;
 }
 
 async function auditar(atorId, acao, duvidaId, detalhe) {
@@ -46,7 +51,10 @@ async function enviarDuvida({ alunoCursoId, telaId, texto }) {
 }
 
 // O que a tela mostra: as do aluno (não respondidas) primeiro, depois as respondidas, mais novas primeiro.
-async function duvidasDaTela(telaId, alunoCursoId) {
+// Etapa 8: sem `todas`, as 20 respondidas mais recentes (as pendentes do próprio aluno sempre aparecem).
+// Devolve { lista, total }; total conta todas as visíveis.
+const DUVIDAS_POR_TELA = 20;
+async function duvidasDaTela(telaId, alunoCursoId, { todas: verTodas = false } = {}) {
   const where = alunoCursoId
     ? { telaId, OR: [{ status: 'RESPONDIDA' }, { alunoCursoId, status: { in: ['AGUARDANDO', 'DESCARTADA'] } }] }
     : { telaId, status: 'RESPONDIDA' };
@@ -62,7 +70,8 @@ async function duvidasDaTela(telaId, alunoCursoId) {
   const todas = lista.map(mapa);
   const minhasPendentes = todas.filter((x) => x.minha && x.status !== 'RESPONDIDA');
   const respondidas = todas.filter((x) => x.status === 'RESPONDIDA').sort((a, b) => new Date(b.respondidaEm) - new Date(a.respondidaEm));
-  return [...minhasPendentes, ...respondidas];
+  const total = minhasPendentes.length + respondidas.length;
+  return { lista: [...minhasPendentes, ...(verTodas ? respondidas : respondidas.slice(0, DUVIDAS_POR_TELA))], total };
 }
 
 async function marcarLidas(alunoCursoId, telaId) {

@@ -42,12 +42,18 @@
         <% } else { %>
           <p class="ea-kicker">Curso online</p>
           <% if (compra.cupom) { %>
-          <h2><s><%= brl(compra.cupom.precoCheio) %></s> <%= brl(compra.cupom.precoFinal) %><span style="color:var(--r)">.</span></h2>
+          <h2><s><%= brl(compra.cupom.precoCheio) %></s> <%= compra.gratis ? 'Grátis' : brl(compra.cupom.precoFinal) %><span style="color:var(--r)">.</span></h2>
           <% } else { %>
           <h2><%= compra.preco !== null ? brl(compra.preco) : 'Em breve' %><span style="color:var(--r)">.</span></h2>
           <% } %>
-          <% if (compra.maxParcelas > 1 && !compra.gratis) { %><p class="ea-obs">À vista no PIX ou em até <%= compra.maxParcelas %>x no cartão.</p><% } %>
+          <% if (compra.gratis) { %>
+          <p>Cortesia com o cupom. Acesso pelo celular, no seu ritmo, com certificado ao concluir. Capacitação teórica, sem prática em manequim.</p>
+          <% } else if (compra.maxParcelas > 1) { %>
+          <p class="ea-obs">À vista no PIX ou em até <%= compra.maxParcelas %>x no cartão.</p>
+          <p>Acesso pelo celular, no seu ritmo, com certificado ao concluir. Capacitação teórica, sem prática em manequim.</p>
+          <% } else { %>
           <p>Pagamento único, por PIX ou cartão. Acesso pelo celular, no seu ritmo, com certificado ao concluir. Capacitação teórica, sem prática em manequim.</p>
+          <% } %>
         <% } %>
         <% if (compra.erro) { %><p class="ea-obs" role="alert"><b><%= compra.erro %></b></p><% } %>
         <% if (compra.preco !== null && (co.publicado || compra.situacao === 'pendente')) { %>
@@ -61,7 +67,7 @@
               <input id="eaCupom" type="text" name="cupom" maxlength="40" autocomplete="off" autocapitalize="characters" placeholder="CÓDIGO">
               <button type="submit" class="ea-pilula ea-pilula-clara">Aplicar</button>
             </span>
-            <% if (compra.erroCupom) { %><p class="ea-obs" role="alert"><b><%= compra.erroCupom %></b></p><% } %>
+            <% if (compra.erroCupom) { %><p class="ea-obs" role="alert"><b><%= compra.erroCupom %></b> <a href="<%= base %>?cupom=">tirar</a></p><% } %>
           </form>
           <% } %>
           <% if (compra.logado) { %>
@@ -81,7 +87,7 @@
             <% } %>
           </form>
           <% } else { %>
-          <a class="ea-pilula ea-pilula-red" href="<%= base %>/criar-conta">Comprar · <%= brl(compra.cupom ? compra.cupom.precoFinal : compra.preco) %></a>
+          <a class="ea-pilula ea-pilula-red" href="<%= base %>/criar-conta"><%= compra.gratis ? 'Criar conta e liberar' : 'Comprar · ' + brl(compra.cupom ? compra.cupom.precoFinal : compra.preco) %></a>
           <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/continuar">Já tenho conta</a>
           <% } %>
         <% } %>

@@ -348,6 +348,7 @@
                              : 'Comprado';
                   var selo = c.situacao === 'concluido' ? ['pago', 'CONCLUÍDO']
                            : c.situacao === 'pendente' ? ['pendente', 'PAGAMENTO PENDENTE']
+                           : c.situacao === 'cancelado' ? ['cancelado', 'CANCELADO']
                            : ['pago', c.situacao === 'andamento' ? 'EM ANDAMENTO' : 'LIBERADO'];
                 %>
                 <article class="ct-insc">
@@ -358,7 +359,10 @@
                   <div class="ct-insc-corpo">
                     <div class="ct-insc-topo"><h3><%= c.curso %></h3><span class="ct-selo ct-selo-<%= selo[0] %>"><%= selo[1] %></span></div>
                     <p class="ct-insc-sub"><b>Curso online</b> · <%= origem %></p>
-                    <% if (c.situacao === 'pendente') { %>
+                    <% if (c.situacao === 'cancelado') { %>
+                      <p class="ct-insc-sub">Pagamento cancelado ou devolvido: o curso fica fechado.</p>
+                      <a class="ct-btn-retomar" href="<%= c.link %>">Ver o curso <i class="fa-solid fa-arrow-right"></i></a>
+                    <% } else if (c.situacao === 'pendente') { %>
                       <p class="ct-insc-sub">Pagamento pendente. Assim que o banco confirmar, o curso abre.</p>
                       <a class="ct-btn-retomar" href="<%= c.link %>">Ver o pagamento <i class="fa-solid fa-arrow-right"></i></a>
                     <% } else { %>

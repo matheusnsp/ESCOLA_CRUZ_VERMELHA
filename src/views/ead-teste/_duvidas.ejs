@@ -30,6 +30,7 @@
         </li>
       <% }) %>
     </ul>
+    <% if (b.todasUrl) { %><a class="ea-pilula ea-pilula-clara" href="<%= b.todasUrl %>">Ver todas as <%= b.total %> dúvidas</a><% } %>
   <% } %>
 
   <% if (b.logado) { %>

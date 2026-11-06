@@ -152,7 +152,8 @@ async function cupomDaCapa(req, co, m) {
   const daSessao = req.session && req.session.cupomEad && req.session.cupomEad.co === co.id ? req.session.cupomEad.codigo : '';
   const pediu = req.query.cupom !== undefined;
   let codigo = pediu ? cupons.normalizarCodigo(req.query.cupom) : daSessao;
-  if (req.session && pediu) req.session.cupomEad = codigo ? { co: co.id, codigo } : undefined;
+  // Só o cupom válido fica guardado na sessão (etapa 8); o inválido aparece uma vez, com "tirar".
+  if (req.session && pediu) req.session.cupomEad = undefined;
   if (!codigo && !pediu && m && m.statusPagamento === 'PENDENTE') {
     const cm = await prisma.cupomMatriculaEad.findUnique({ where: { matriculaId: m.id }, include: { cupom: { select: { codigo: true } } } });
     codigo = cm ? cm.cupom.codigo : '';
@@ -161,6 +162,7 @@ async function cupomDaCapa(req, co, m) {
   if (req.cupomBloqueado) return { cupom: null, erroCupom: MSG_TENTATIVAS };
   const v = await cupons.validarCupom(codigo, co);
   if (v.erro) return { cupom: null, erroCupom: v.erro };
+  if (req.session && pediu) req.session.cupomEad = { co: co.id, codigo: v.cupom.codigo };
   return { cupom: { codigo: v.cupom.codigo, precoCheio: v.precoCheio, desconto: v.desconto, precoFinal: v.precoFinal }, erroCupom: null };
 }
 
@@ -257,10 +259,12 @@ router.get(P('/tela/:telaId'), comCurso(async (req, res, co, base, curso) => {
     else { fimUrl = base; fimTitulo = 'Fim do curso — voltar ao menu'; }
   }
   // Dúvidas desta aula (etapa 5): as respondidas de todos e as pendentes do próprio aluno.
-  const duvidas = await duv.duvidasDaTela(req.params.telaId, ctx ? ctx.alunoCurso.id : null);
+  const verTodas = req.query.duvidas === 'todas';
+  const duvidas = await duv.duvidasDaTela(req.params.telaId, ctx ? ctx.alunoCurso.id : null, { todas: verTodas });
   if (ctx) await duv.marcarLidas(ctx.alunoCurso.id, req.params.telaId);
   const blocoDuvidas = {
-    lista: duvidas, logado: !!ctx, msg: MSG_DUVIDA[req.query.duvida] || null, ok: req.query.duvida === 'enviada',
+    lista: duvidas.lista, total: duvidas.total, todasUrl: duvidas.lista.length < duvidas.total ? `${base}/tela/${req.params.telaId}?duvidas=todas#duvidas` : null,
+    logado: !!ctx, msg: MSG_DUVIDA[req.query.duvida] || null, ok: req.query.duvida === 'enviada',
     postUrl: `${base}/tela/${req.params.telaId}/duvida`, entrarUrl: `${base}/tela/${req.params.telaId}/entrar`, max: duv.MAX,
   };
   res.render('ead-teste/tela', { ...tc, base, fimUrl, fimTitulo, menuUrl: base, quizForm, ctx, blocoDuvidas });
