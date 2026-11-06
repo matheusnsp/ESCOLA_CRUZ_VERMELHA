@@ -14,7 +14,7 @@
 </div>
 <%- include('_mensagens') %>
 
-<div class="adm-box adm-box-pad adm-espaco" id="iaEstado" data-estado-url="/ead/ia/<%= g.id %>/estado.json" data-status="<%= g.status %>" data-andando="<%= andando ? '1' : '0' %>">
+<div class="adm-box adm-box-pad adm-espaco" id="iaEstado" data-estado-url="/ead/ia/<%= g.id %>/estado.json" data-status="<%= g.status %>" data-andando="<%= andando ? '1' : '0' %>" data-assinatura="<%= JSON.stringify([g.status, mods.map(function (m) { return m.status; })]) %>">
   <p><span class="ead-selo <%= g.status === 'CONCLUIDA' ? 'validado' : 'rascunho' %>"><%= STATUS[g.status] || g.status %></span>
      <span class="adm-mut">Tema: <%= g.pedido.tema %> · custo até agora: <%= usd(g.custoUsd) %> (<%= g.tokensEntrada + g.tokensSaida + g.tokensCache %> tokens)</span></p>
   <% if (g.erro) { %><p class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= g.erro %></p><% } %>

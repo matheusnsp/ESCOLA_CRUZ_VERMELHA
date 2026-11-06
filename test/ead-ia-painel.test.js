@@ -180,6 +180,15 @@ describe('Painel → Criar curso com IA', { skip: temBanco ? false : 'sem DATABA
     await prisma.geracaoIaEad.updateMany({ where: { criadoPor: quem }, data: { custoUsd: 0 } });
   });
 
+  test('acompanhamento compara com o estado mostrado ao abrir (não com a primeira consulta)', async () => {
+    const g = await prisma.geracaoIaEad.create({ data: { criadoPor: `${quem}-3`, status: 'MODULOS_GERANDO', pedido: { destino: { tipo: 'existente', cursoOnlineId: coEx.id }, tema: 'Tema', nModulos: 2 }, roteiro: roteiroBom(2), cursoOnlineId: coEx.id, modulos: [{ ordem: 0, titulo: 'A', status: 'pronto' }, { ordem: 1, titulo: 'B', status: 'gerando' }] } });
+    const html = await get(`/ead/ia/${g.id}`);
+    assert.match(html, /data-assinatura="\[&#34;MODULOS_GERANDO&#34;,\[&#34;pronto&#34;,&#34;gerando&#34;\]\]"/);
+    const js = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'js', 'ead-ia.js'), 'utf8');
+    assert.match(js, /getAttribute\('data-assinatura'\)/);
+    await prisma.geracaoIaEad.update({ where: { id: g.id }, data: { criadoPor: quem, status: 'CANCELADA' } });
+  });
+
   test('conta não DEV ⇒ 404', async () => {
     assert.equal((await fetch(`${semDevSite}/ead/ia`)).status, 404);
   });

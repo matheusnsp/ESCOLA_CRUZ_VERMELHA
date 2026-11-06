@@ -4,12 +4,13 @@
   var estado = document.getElementById('iaEstado');
   if (estado && estado.getAttribute('data-andando') === '1') {
     var url = estado.getAttribute('data-estado-url');
-    var antes = null;
+    // Compara com o estado que a página mostrou ao abrir: se a IA terminou um passo antes da primeira consulta,
+    // a página recarrega do mesmo jeito.
+    var antes = estado.getAttribute('data-assinatura');
     setInterval(function () {
       fetch(url, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (e) {
         var agora = JSON.stringify([e.status, (e.modulos || []).map(function (m) { return m.status; })]);
-        if (antes !== null && agora !== antes) window.location.reload();
-        antes = agora;
+        if (agora !== antes) window.location.reload();
       }).catch(function () {});
     }, 5000);
   }
