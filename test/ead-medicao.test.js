@@ -109,6 +109,17 @@ describe('medição nas páginas do curso online', { skip: temBanco ? false : 's
     assert.doesNotMatch(h2, /purchase/);
   });
 
+  test('passar por /continuar (que redireciona) não gasta o evento: ele sai na página seguinte', async () => {
+    const u = await prisma.usuario.create({ data: { nome: 'Cont Medicao', email: `cont-med-${s}@teste.local`, papel: 'ALUNO', cpfCnpj: cpf() } });
+    const m = await novaMatricula(u, 0.1);
+    const r1 = await pagina(`/online/${curso.id}/continuar`, u);
+    assert.equal(r1.status, 302);
+    const cookie = r1.headers.get('set-cookie').split(';')[0];
+    const destino = r1.headers.get('location');
+    const h = await (await pagina(destino, u, cookie)).text();
+    assert.ok(h.includes(m.id) && /"purchase"/.test(h), 'purchase na página depois do redirecionamento');
+  });
+
   test('sem purchase para pagamento antigo e para vaga de escola', async () => {
     assert.doesNotMatch(await (await pagina(`/online/${curso.id}`, us.Antigo)).text(), /purchase/);
     assert.doesNotMatch(await (await pagina(`/online/${curso.id}`, us.Lote)).text(), /purchase/);

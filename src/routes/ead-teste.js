@@ -142,6 +142,12 @@ const comCurso = (fn, { livre = false } = {}) => asyncHandler(async (req, res, n
     res.locals.medir = true;
     const compra = r.acesso.liberado ? await medicao.compraParaMedir(req, r.co, r.co.curso.nome, r.acesso) : null;
     res.locals.eventosMedicao = compra ? [compra] : [];
+    // Página que só redireciona (/continuar, "Liberar curso") não escreve o evento: devolve a compra para a
+    // próxima página medir.
+    if (compra) {
+      const redirecionar = res.redirect.bind(res);
+      res.redirect = (...args) => { medicao.desfazerMedida(req, compra.ga[1].transaction_id); return redirecionar(...args); };
+    }
     res.locals.jsonSeguro = medicao.jsonSeguro;
   }
   return fn(req, res, r.co, r.base, r.curso, next);

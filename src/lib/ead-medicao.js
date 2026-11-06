@@ -41,6 +41,11 @@ async function compraParaMedir(req, co, cursoNome, acesso) {
   return { ga: ['purchase', ga], meta: ['Purchase', { currency: 'BRL', value, content_ids: [co.cursoId], content_type: 'product' }, { eventID: m.id }] };
 }
 
+// A página não chegou a escrever o evento (redirecionou): a matrícula volta a ser "não medida" nesta sessão.
+function desfazerMedida(req, matriculaId) {
+  if (req.session && Array.isArray(req.session.eadMedidas)) req.session.eadMedidas = req.session.eadMedidas.filter((id) => id !== matriculaId);
+}
+
 function jsonLdCurso(co, curso, urlSite) {
   const ld = {
     '@context': 'https://schema.org',
@@ -55,4 +60,4 @@ function jsonLdCurso(co, curso, urlSite) {
   return ld;
 }
 
-module.exports = { jsonSeguro, dadosItem, eventoInicioCompra, compraParaMedir, jsonLdCurso };
+module.exports = { jsonSeguro, dadosItem, eventoInicioCompra, compraParaMedir, desfazerMedida, jsonLdCurso };
