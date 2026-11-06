@@ -156,7 +156,7 @@
           <td class="adm-acoes">
             <% if (pode('cursos:gerenciar')) { %>
               <div class="adm-pend-acoes">
-                <a href="/cursos/<%= c.id %>/editar" class="adm-pend-btn"><i class="fa-solid fa-pen"></i> Editar</a>
+                <a href="<%= urlEditarCurso(c) %>" class="adm-pend-btn"><i class="fa-solid fa-pen"></i> Editar</a>
                 <form method="POST" action="/cursos/<%= c.id %>/ativar"
                       data-confirmar="<%= c.ativo ? 'Ocultar ' + c.nome + ' do site? As turmas e inscrições continuam; o curso só deixa de aparecer para os alunos.' : 'Mostrar ' + c.nome + ' no site da escola?' %>"
                       data-botao="<%= c.ativo ? 'Ocultar do site' : 'Mostrar no site' %>">

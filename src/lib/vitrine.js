@@ -101,5 +101,7 @@ const urlCurso = (curso) => '/cursos/' + slugCurso(curso && curso.nome);
 // Curso online (etapa 8): o mesmo endereço pelo nome, /online/<nome>. O endereço com o id continua valendo
 // (routes/ead-teste.js redireciona para este).
 const urlOnline = (curso) => '/online/' + slugCurso(curso && curso.nome);
+// Painel: editar o curso pelo nome, /cursos/<nome>/editar. O endereço com o id continua valendo (routes/admin.js).
+const urlEditarCurso = (curso) => '/cursos/' + slugCurso(curso && curso.nome) + '/editar';
 
-module.exports = { CATEGORIAS, icone, reais, dataTurma, quando, agenda, ordenar, larguras, categoriasEmUso, slugCurso, urlCurso, urlOnline };
+module.exports = { CATEGORIAS, icone, reais, dataTurma, quando, agenda, ordenar, larguras, categoriasEmUso, slugCurso, urlCurso, urlOnline, urlEditarCurso };
