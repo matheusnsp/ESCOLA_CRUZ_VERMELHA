@@ -19,6 +19,10 @@ const duv = require('../lib/ead-duvidas');
 const cursoSoOnline = require('../lib/ead-curso-online');
 const lotes = require('../lib/ead-lote');
 const cupons = require('../lib/ead-cupom');
+const ia = require('../lib/ead-ia');
+const iaFila = require('../lib/ead-ia-fila');
+const iaEsquema = require('../lib/ead-ia-esquema');
+const multer = require('multer');
 const { emitirCertificadoEad } = require('../lib/ead-certificado');
 const { gerarCartao } = require('../lib/ead-cartao');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
@@ -267,6 +271,130 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (imagemUrl !== undefined && atual.imagemUrl) await removerFotoCurso(atual.imagemUrl);
     await auditar(req, 'EAD_EDITOU_CURSO_ONLINE', 'CursoOnline', co.id, { cursoId: co.cursoId });
     voltar(res, `/ead/curso/${co.id}`, 'ok', 'Dados do curso salvos.');
+  });
+
+  // ─── Criar curso com IA (etapa 9) ──────────────────────────────────────────────────────────────
+  // As regras ficam em lib/ead-ia.js; a fila (lib/ead-ia-fila.js) faz o roteiro e os módulos em segundo plano.
+  const MAX_BYTES_MATERIAL = 20 * 1024 * 1024;
+  const materialUpload = multer({ storage: multer.memoryStorage(), limits: { files: 3, fileSize: MAX_BYTES_MATERIAL } });
+  const ehMaterial = (f) => /\.(pdf|docx)$/i.test(f.originalname || '');
+  function uploadMaterial(req, res, next) {
+    materialUpload.array('material', 3)(req, res, (err) => {
+      if (err) req.uploadErro = err.code === 'LIMIT_FILE_SIZE' ? 'Os arquivos passam de 20 MB.' : err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE' ? 'Envie até 3 arquivos.' : 'Não foi possível ler os arquivos.';
+      next();
+    });
+  }
+  const cursosOnlineParaIa = () => prisma.cursoOnline.findMany({ select: { id: true, curso: { select: { nome: true } } }, orderBy: { criadoEm: 'asc' } });
+
+  // Confere o formulário; devolve { pedido } ou { erro }.
+  async function lerPedidoIa(b, arquivos) {
+    const tema = String(b.tema || '').trim();
+    const publico = String(b.publico || '').trim();
+    const observacoes = String(b.observacoes || '').trim();
+    const texto = String(b.texto || '');
+    const nModulos = Number(b.nModulos);
+    if (tema.length < 5 || tema.length > 300) return { erro: 'Tema: de 5 a 300 caracteres.' };
+    if (publico.length > 200) return { erro: 'Público: até 200 caracteres.' };
+    if (observacoes.length > 2000) return { erro: 'Observações: até 2000 caracteres.' };
+    if (!Number.isInteger(nModulos) || nModulos < 2 || nModulos > 12) return { erro: 'Módulos: de 2 a 12.' };
+    if (texto.length > 100000) return { erro: 'Texto colado: até 100 mil caracteres.' };
+    if (arquivos.some((f) => !ehMaterial(f))) return { erro: 'Envie só arquivos PDF ou Word (.docx).' };
+    if (arquivos.reduce((t, f) => t + f.size, 0) > MAX_BYTES_MATERIAL) return { erro: 'Os arquivos passam de 20 MB.' };
+    let destino;
+    if (b.destino === 'existente') {
+      if (!edb.ehId(b.cursoOnlineId) || !(await prisma.cursoOnline.findUnique({ where: { id: b.cursoOnlineId } }))) return { erro: 'Escolha o curso online.' };
+      destino = { tipo: 'existente', cursoOnlineId: b.cursoOnlineId };
+    } else {
+      const v = cursoSoOnline.validar({ nome: b.nome, descricao: b.descricao, cargaHoraria: b.cargaHoraria });
+      if (v.erro) return { erro: v.erro };
+      if (await cursoSoOnline.nomeEmUso(v.dados.nome)) return { erro: 'Já existe um curso com esse nome (ou com o mesmo endereço no site).' };
+      const precoTxt = String(b.precoOnline || '').trim();
+      const precoOnline = precoTxt ? publicacao.lerPreco(precoTxt) : null;
+      if (precoTxt && precoOnline === null) return { erro: 'Preço: um valor em reais (ex.: 49,90), ou em branco.' };
+      const maxParcelas = Number(b.maxParcelas || 1);
+      if (!Number.isInteger(maxParcelas) || maxParcelas < 1 || maxParcelas > 12) return { erro: 'Parcelas: de 1 a 12.' };
+      destino = { tipo: 'novo', ...v.dados, precoOnline, maxParcelas };
+    }
+    return { pedido: { destino, tema, publico, nModulos, observacoes }, texto };
+  }
+
+  router.get('/ead/ia', async (req, res) => {
+    const lista = await prisma.geracaoIaEad.findMany({ orderBy: { criadoEm: 'desc' }, take: 50 });
+    const nomes = new Map((await prisma.usuario.findMany({ where: { id: { in: [...new Set(lista.map((g) => g.criadoPor))].filter(edb.ehId) } }, select: { id: true, nome: true } })).map((u) => [u.id, u.nome]));
+    const cos = new Map((await prisma.cursoOnline.findMany({ where: { id: { in: lista.map((g) => g.cursoOnlineId || (g.pedido.destino && g.pedido.destino.cursoOnlineId)).filter(Boolean) } }, select: { id: true, curso: { select: { nome: true } } } })).map((c) => [c.id, c.curso.nome]));
+    res.render('admin/ead/ia-lista', {
+      lista: lista.map((g) => ({ ...g, quem: nomes.get(g.criadoPor) || 'Dev', cursoNome: cos.get(g.cursoOnlineId || (g.pedido.destino && g.pedido.destino.cursoOnlineId)) || (g.pedido.destino && g.pedido.destino.nome) || '—' })),
+      gasto: await ia.gastoDoMes(), teto: await ia.tetoMensal(), chave: ia.ehChaveConfigurada(), msgChave: ia.MSG_CHAVE, ...flash(req),
+    });
+  });
+
+  async function formIa(res, { valores = {}, erro = null, status = 200 } = {}) {
+    res.status(status).render('admin/ead/ia-form', {
+      valores: { destino: 'novo', nModulos: 6, maxParcelas: 1, ...valores }, cursos: await cursosOnlineParaIa(), erro, chave: ia.ehChaveConfigurada(), msgChave: ia.MSG_CHAVE,
+    });
+  }
+  router.get('/ead/ia/novo', async (req, res) => formIa(res));
+  router.post('/ead/ia/novo', uploadMaterial, async (req, res) => {
+    const valores = { ...req.body };
+    if (req.uploadErro) return formIa(res, { valores, erro: req.uploadErro, status: 400 });
+    const pode = await ia.podeComecar(ator(req));
+    if (!pode.ok) return formIa(res, { valores, erro: pode.erro, status: 400 });
+    const arquivos = req.files || [];
+    const r = await lerPedidoIa(req.body, arquivos);
+    if (r.erro) return formIa(res, { valores, erro: r.erro, status: 400 });
+    let material;
+    try {
+      material = await ia.prepararMaterial({ arquivos: arquivos.map((f) => ({ nome: f.originalname, mimetype: f.mimetype, buffer: f.buffer })), texto: r.texto });
+    } catch (e) {
+      return formIa(res, { valores, erro: 'Não foi possível ler o arquivo Word. Confira se é um .docx válido.', status: 400 });
+    }
+    const g = await ia.criarGeracao({ pedido: r.pedido, material, criadoPor: ator(req) });
+    iaFila.acordar();
+    res.redirect(`/ead/ia/${g.id}`);
+  });
+
+  const acharGeracao = (id) => (edb.ehId(id) ? prisma.geracaoIaEad.findUnique({ where: { id } }) : null);
+  async function paginaGeracao(res, g, { erro = null, ok = null, roteiro = null, status = 200 } = {}) {
+    const co = g.cursoOnlineId ? await prisma.cursoOnline.findUnique({ where: { id: g.cursoOnlineId }, select: { id: true, curso: { select: { nome: true } } } }) : null;
+    const coDestino = !co && g.pedido.destino && g.pedido.destino.cursoOnlineId ? await prisma.cursoOnline.findUnique({ where: { id: g.pedido.destino.cursoOnlineId }, select: { curso: { select: { nome: true } } } }) : null;
+    res.status(status).render('admin/ead/ia-geracao', { g, roteiro: roteiro || g.roteiro, co, cursoNome: co ? co.curso.nome : coDestino ? coDestino.curso.nome : g.pedido.destino && g.pedido.destino.nome, erro, ok });
+  }
+  router.get('/ead/ia/:id', async (req, res) => {
+    const g = await acharGeracao(req.params.id);
+    if (!g) return naoAchou(res);
+    paginaGeracao(res, g, flash(req));
+  });
+  router.get('/ead/ia/:id/estado.json', async (req, res) => {
+    const g = await acharGeracao(req.params.id);
+    if (!g) return res.status(404).json({ erro: 'não encontrada' });
+    res.json({ status: g.status, modulos: g.modulos || [], custoUsd: Number(g.custoUsd), erro: g.erro });
+  });
+  router.post('/ead/ia/:id/confirmar', async (req, res) => {
+    const g = await acharGeracao(req.params.id);
+    if (!g) return naoAchou(res);
+    const roteiro = iaEsquema.roteiroDoFormulario(req.body);
+    const r = await ia.confirmarRoteiro(g.id, roteiro, ator(req));
+    if (!r.ok) return paginaGeracao(res, await acharGeracao(g.id), { erro: r.erro, roteiro, status: 400 });
+    iaFila.acordar();
+    voltar(res, `/ead/ia/${g.id}`, 'ok', 'Roteiro confirmado. Os módulos estão sendo escritos.');
+  });
+  router.post('/ead/ia/:id/roteiro-de-novo', async (req, res) => {
+    const r = await ia.pedirOutroRoteiro(req.params.id, ator(req));
+    if (r.ok) iaFila.acordar();
+    voltar(res, `/ead/ia/${req.params.id}`, r.ok ? 'ok' : 'erro', r.ok ? 'Pedimos outro roteiro à IA.' : r.erro);
+  });
+  router.post('/ead/ia/:id/modulo/:ordem/tentar', async (req, res) => {
+    const r = await ia.tentarDeNovo(req.params.id, Number(req.params.ordem), ator(req));
+    if (r.ok) iaFila.acordar();
+    voltar(res, `/ead/ia/${req.params.id}`, r.ok ? 'ok' : 'erro', r.ok ? 'O módulo voltou para a fila.' : r.erro);
+  });
+  router.post('/ead/ia/:id/cancelar', async (req, res) => {
+    const r = await ia.cancelar(req.params.id, ator(req));
+    voltar(res, `/ead/ia/${req.params.id}`, r.ok ? 'ok' : 'erro', r.ok ? 'Geração cancelada. O que já foi gravado fica no curso.' : r.erro);
+  });
+  router.post('/ead/ia/teto', async (req, res) => {
+    const r = await ia.definirTeto(req.body.teto, ator(req));
+    voltar(res, '/ead/ia', r.ok ? 'ok' : 'erro', r.ok ? 'Teto mensal salvo.' : r.erro);
   });
 
   // ─── Cupons de desconto (etapa 7) ─────────────────────────────────────────────────────────────

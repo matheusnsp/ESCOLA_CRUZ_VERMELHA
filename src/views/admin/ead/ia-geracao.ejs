@@ -1,0 +1,92 @@
+<%
+  var usd = function (v) { return 'US$ ' + Number(v || 0).toFixed(2); };
+  var STATUS = { ROTEIRO_GERANDO: 'Escrevendo o roteiro…', ROTEIRO_PRONTO: 'Roteiro pronto para revisar', MODULOS_GERANDO: 'Escrevendo os módulos…', CONCLUIDA: 'Concluída', ERRO_ROTEIRO: 'Erro no roteiro', CANCELADA: 'Cancelada' };
+  var STATUS_MOD = { pendente: 'na fila', gerando: 'escrevendo…', pronto: 'pronto', erro: 'erro' };
+  var andando = ['ROTEIRO_GERANDO', 'MODULOS_GERANDO'].indexOf(g.status) !== -1;
+  var mods = g.modulos || [];
+%>
+<%- include('../head', { titulo: 'Criar curso com IA' }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= cursoNome || 'Curso com IA' %></h1>
+  <a href="/ead/ia" class="adm-link">← Gerações</a>
+</div>
+<%- include('_mensagens') %>
+
+<div class="adm-box adm-box-pad adm-espaco" id="iaEstado" data-estado-url="/ead/ia/<%= g.id %>/estado.json" data-status="<%= g.status %>" data-andando="<%= andando ? '1' : '0' %>">
+  <p><span class="ead-selo <%= g.status === 'CONCLUIDA' ? 'validado' : 'rascunho' %>"><%= STATUS[g.status] || g.status %></span>
+     <span class="adm-mut">Tema: <%= g.pedido.tema %> · custo até agora: <%= usd(g.custoUsd) %> (<%= g.tokensEntrada + g.tokensSaida + g.tokensCache %> tokens)</span></p>
+  <% if (g.erro) { %><p class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= g.erro %></p><% } %>
+  <% if (g.status === 'CONCLUIDA' && co) { %>
+    <p>Pronto: os módulos estão em rascunho em <a class="adm-link" href="/ead/curso/<%= co.id %>"><%= co.curso.nome %></a>. Revise e valide cada um antes de publicar.</p>
+  <% } %>
+  <% if (['ERRO_ROTEIRO', 'ROTEIRO_PRONTO'].indexOf(g.status) !== -1) { %>
+    <form method="POST" action="/ead/ia/<%= g.id %>/roteiro-de-novo" class="ead-acoes" data-confirmar="Pedir outro roteiro à IA? Custa outra chamada e conta no teto." data-botao="Pedir outro">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="adm-btn adm-btn-out"><i class="fa-solid fa-rotate"></i> Gerar outro roteiro</button>
+    </form>
+  <% } %>
+  <% if (['ROTEIRO_GERANDO', 'ROTEIRO_PRONTO', 'MODULOS_GERANDO', 'ERRO_ROTEIRO'].indexOf(g.status) !== -1) { %>
+    <form method="POST" action="/ead/ia/<%= g.id %>/cancelar" class="ead-acoes" data-confirmar="Cancelar a geração? O módulo em andamento termina; o que já foi gravado fica no curso." data-botao="Cancelar geração">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="adm-btn adm-btn-out">Cancelar</button>
+    </form>
+  <% } %>
+</div>
+
+<% if (mods.length) { %>
+  <div class="adm-box adm-espaco">
+    <ul class="ead-lista">
+      <% mods.forEach(function (m) { %>
+        <li>
+          <span class="ead-num"><%= m.ordem + 1 %></span>
+          <div class="ead-tit"><%= m.titulo %><% if (m.erro) { %><small class="adm-erro-texto"><%= m.erro %></small><% } %></div>
+          <span class="ead-selo <%= m.status === 'pronto' ? 'validado' : m.status === 'erro' ? 'final' : 'rascunho' %>" data-modulo="<%= m.ordem %>"><%= STATUS_MOD[m.status] || m.status %></span>
+          <% if (m.status === 'erro' && g.status === 'MODULOS_GERANDO') { %>
+            <form method="POST" action="/ead/ia/<%= g.id %>/modulo/<%= m.ordem %>/tentar" class="ead-acoes">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button type="submit" class="adm-btn adm-btn-out">Tentar de novo</button>
+            </form>
+          <% } %>
+        </li>
+      <% }) %>
+    </ul>
+  </div>
+<% } %>
+
+<% if (g.status === 'ROTEIRO_PRONTO' && roteiro) { %>
+  <form method="POST" action="/ead/ia/<%= g.id %>/confirmar" class="adm-box adm-box-pad ia-roteiro" id="iaRoteiro">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <h2 class="adm-h2 adm-form-h">Roteiro proposto</h2>
+    <p class="adm-mut">Ajuste à vontade: renomeie, tire, mude a ordem, acrescente tópicos. Só o último módulo pode ser o final (com 2 a 4 cenários).</p>
+    <% roteiro.modulos.forEach(function (m, i) { %>
+      <fieldset class="ia-modulo" data-modulo>
+        <input type="hidden" name="ordem[]" value="<%= i %>">
+        <div class="adm-form adm-campos">
+          <label class="full">Módulo<input type="text" name="modulos[<%= i %>][titulo]" value="<%= m.titulo %>" maxlength="160" required></label>
+          <label>Minutos<input type="number" name="modulos[<%= i %>][minutos]" value="<%= m.minutos %>" min="0" max="600"></label>
+          <label><input type="checkbox" name="modulos[<%= i %>][final]" value="1" <%= m.final ? 'checked' : '' %>> Módulo final (cenários)</label>
+          <label><input type="checkbox" name="modulos[<%= i %>][remover]" value="1"> Tirar este módulo</label>
+        </div>
+        <div class="ia-topicos" data-topicos data-nome="modulos[<%= i %>][topicos]">
+          <% m.topicos.forEach(function (t, j) { %><label class="full">Tópico<input type="text" name="modulos[<%= i %>][topicos][<%= j %>]" value="<%= t.titulo %>" maxlength="160"></label><% }) %>
+        </div>
+        <button type="button" class="adm-btn adm-btn-out" data-mais-topico>+ tópico</button>
+        <% if (m.final) { %>
+          <div class="ia-topicos">
+            <% (m.cenarios || []).forEach(function (c, j) { %><label class="full">Cenário<input type="text" name="modulos[<%= i %>][cenarios][<%= j %>]" value="<%= c.titulo %>" maxlength="160"></label><% }) %>
+          </div>
+        <% } %>
+        <div class="ead-acoes">
+          <button type="button" class="adm-btn adm-btn-out" data-subir>↑ Subir</button>
+          <button type="button" class="adm-btn adm-btn-out" data-descer>↓ Descer</button>
+        </div>
+      </fieldset>
+    <% }) %>
+    <button type="submit" class="adm-btn"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar o curso</button>
+  </form>
+<% } %>
+
+<script src="<%= asset('/js/ead-ia.js') %>"></script>
+<%- include('../foot') %>

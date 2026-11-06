@@ -93,4 +93,4 @@ async function cursosSoOnlinePublicados() {
   }
 }
 
-module.exports = { criarCursoOnline, editarCursoOnline, apagarCursoSoOnline, idsSoOnline, semSoOnline, ehSoOnline, cursosSoOnlinePublicados };
+module.exports = { criarCursoOnline, editarCursoOnline, apagarCursoSoOnline, idsSoOnline, semSoOnline, ehSoOnline, cursosSoOnlinePublicados, validar, nomeEmUso };

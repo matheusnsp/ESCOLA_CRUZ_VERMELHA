@@ -1,0 +1,45 @@
+<%
+  var dataBR = function (d) { return d ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }) : '—'; };
+  var usd = function (v) { return 'US$ ' + Number(v || 0).toFixed(2); };
+  var STATUS = { ROTEIRO_GERANDO: 'Escrevendo o roteiro', ROTEIRO_PRONTO: 'Roteiro para revisar', MODULOS_GERANDO: 'Escrevendo os módulos', CONCLUIDA: 'Concluída', ERRO_ROTEIRO: 'Erro no roteiro', CANCELADA: 'Cancelada' };
+%>
+<%- include('../head', { titulo: 'Criar curso com IA' }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Criar curso com IA</h1>
+  <% if (chave) { %><a class="adm-btn" href="/ead/ia/novo"><i class="fa-solid fa-wand-magic-sparkles"></i> Criar curso com IA</a><% } %>
+</div>
+<%- include('_mensagens') %>
+<% if (!chave) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= msgChave %></div><% } %>
+<p class="adm-mut">A IA propõe o roteiro, você ajusta e ela escreve os módulos. Tudo entra em rascunho, com o selo "Gerado por IA": a área técnica revisa e valida antes de ir ao site.</p>
+
+<div class="adm-box adm-box-pad adm-espaco">
+  <p><b>Gasto deste mês:</b> <%= usd(gasto) %> de <%= usd(teto) %> (teto mensal)</p>
+  <form method="POST" action="/ead/ia/teto" class="ead-acoes">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label class="adm-mut">Teto mensal (US$) <input type="number" name="teto" min="0" max="1000" step="1" value="<%= teto %>" style="width:7em"></label>
+    <button type="submit" class="adm-btn adm-btn-out">Salvar teto</button>
+  </form>
+</div>
+
+<% if (!lista.length) { %>
+  <div class="adm-box adm-box-pad"><p class="ead-vazio">Nenhuma geração ainda.</p></div>
+<% } else { %>
+  <div class="adm-box adm-espaco"><div class="ead-tabela-rolagem"><table class="adm-table">
+    <thead><tr><th>Quando</th><th>Quem</th><th>Curso</th><th>Tema</th><th>Situação</th><th>Custo</th></tr></thead>
+    <tbody>
+      <% lista.forEach(function (g) { %>
+        <tr>
+          <td><a class="adm-link" href="/ead/ia/<%= g.id %>"><%= dataBR(g.criadoEm) %></a></td>
+          <td><%= g.quem %></td>
+          <td><%= g.cursoNome %></td>
+          <td><%= g.pedido.tema %></td>
+          <td><span class="ead-selo <%= g.status === 'CONCLUIDA' ? 'validado' : 'rascunho' %>"><%= STATUS[g.status] || g.status %></span></td>
+          <td><%= usd(g.custoUsd) %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table></div></div>
+<% } %>
+<%- include('../foot') %>

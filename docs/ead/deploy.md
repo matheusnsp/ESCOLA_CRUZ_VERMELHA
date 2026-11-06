@@ -11,20 +11,21 @@ Roteiro para colocar no ar o curso online. São as etapas 1 a 8, do PR final `ea
      ```sql
      SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY migration_name;
      ```
-   - Confira que todas as migrações **anteriores** ao EAD já constam como aplicadas. As únicas pendentes devem ser as 6 do EAD, nesta ordem:
+   - Confira que todas as migrações **anteriores** ao EAD já constam como aplicadas. As únicas pendentes devem ser as do EAD, nesta ordem:
      1. `20261105120000_ead_estrutura`: conteúdo do curso online e a turma ONLINE.
      2. `20261106120000_ead_aluno`: progresso do aluno.
      3. `20261107120000_ead_venda`: preço e publicação do curso online.
      4. `20261108120000_ead_duvidas`: dúvidas por aula e curso só online.
      5. `20261109120000_ead_lote`: escolas, lotes e vagas.
      6. `20261110120000_ead_cupom`: cupons e parcelas.
+     7. `20261111120000_ead_ia`: criar curso com IA (etapa 9; só se este pacote incluir a etapa 9).
    - Se aparecer outra migração pendente, **pare** e confira antes de seguir.
    - Todas as migrações do EAD só **acrescentam** tabelas e colunas. O `scripts/checar-migracao-ead.js` confere isso.
 
 ## Deploy
 
-3. `npx prisma migrate deploy`: aplica as 6 migrações.
-4. **Variáveis de ambiente:** as de sempre (`DATABASE_URL`, `APP_URL`, Únicopag, e-mail). O EAD não pede nenhuma nova.
+3. `npx prisma migrate deploy`: aplica as migrações do EAD.
+4. **Variáveis de ambiente:** as de sempre (`DATABASE_URL`, `APP_URL`, Únicopag, e-mail). A etapa 9 (criar curso com IA) usa `ANTHROPIC_API_KEY`; sem ela, o botão aparece desligado e o resto funciona igual.
 5. Faça o deploy da aplicação (o mesmo processo de hoje).
 
 ## Depois

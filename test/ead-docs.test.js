@@ -15,6 +15,6 @@ test('roteiro de deploy cita backup, _prisma_migrations e cada migração do EAD
   const d = ler('deploy.md');
   for (const t of ['backup', '_prisma_migrations', 'prisma migrate deploy', 'link de teste']) assert.ok(d.toLowerCase().includes(t.toLowerCase()), t);
   const migs = fs.readdirSync(path.join(__dirname, '..', 'prisma', 'migrations')).filter((m) => /_ead_/.test(m));
-  assert.equal(migs.length, 6);
+  assert.equal(migs.length, 7);
   for (const m of migs) assert.ok(d.includes(m), m);
 });

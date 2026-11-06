@@ -23,6 +23,7 @@
     <div class="ead-acoes">
       <span class="ead-selo <%= validado ? 'validado' : 'rascunho' %>"><i class="fa-solid <%= validado ? 'fa-circle-check' : 'fa-pen' %>"></i> <%= validado ? 'Validado' : 'Rascunho' %></span>
       <% if (modulo.final) { %><span class="ead-selo final">Módulo final · cenários</span><% } %>
+      <% if (modulo.geradoPorIa) { %><span class="ead-selo final">Gerado por IA — revise antes de validar</span><% } %>
       <span class="adm-mut"><%= modulo.minutosEstimados %> min</span>
       <% if (validado) { %><span class="adm-mut">por <%= validadoPorNome || '—' %> em <%= new Date(modulo.validadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) %></span><% } %>
     </div>

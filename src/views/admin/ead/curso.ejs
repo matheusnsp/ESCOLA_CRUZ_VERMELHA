@@ -91,6 +91,7 @@
           </div>
           <% if (m.final) { %><span class="ead-selo final">Final · cenários</span><% } %>
           <span class="ead-selo <%= m.status === 'VALIDADO' ? 'validado' : 'rascunho' %>"><%= m.status === 'VALIDADO' ? 'Validado' : 'Rascunho' %></span>
+          <% if (m.geradoPorIa) { %><span class="ead-selo final" title="Etapa 9: escrito pela IA">Gerado por IA — revise antes de validar</span><% } %>
           <div class="ead-acoes">
             <% if (!m.final) ['subir', 'descer'].forEach(function (d) { %>
               <form method="POST" action="/ead/modulo/<%= m.id %>/<%= d %>" <% if (m.status === 'VALIDADO') { %>data-confirmar="Mudar a ordem volta este módulo (e o vizinho, se validado) para rascunho. Continuar?"<% } %>>
