@@ -43,7 +43,7 @@ async function alunosDoCurso(cursoOnlineId, { filtro = 'todos', agora = new Date
   const r = await carregarCursoParaAluno(cursoOnlineId);
   if (!r) return [];
   const [matriculas, acs] = await Promise.all([
-    prisma.matricula.findMany({ where: { turma: { cursoId: r.co.cursoId, status: 'ONLINE' } }, include: { aluno: { select: { id: true, nome: true, email: true } } } }),
+    prisma.matricula.findMany({ where: { turma: { cursoId: r.co.cursoId, status: 'ONLINE' } }, include: { aluno: { select: { id: true, nome: true, email: true } }, cupomEad: { select: { cupom: { select: { codigo: true } } } } } }),
     prisma.alunoCursoEad.findMany({ where: { cursoOnlineId }, include: INCLUDE_PROGRESSO }),
   ]);
   const acDe = new Map(acs.map((a) => [a.usuarioId, a]));
@@ -61,6 +61,7 @@ async function alunosDoCurso(cursoOnlineId, { filtro = 'todos', agora = new Date
       origem: vaga ? `Escola: ${vaga.lote.escola.nome}` : m ? 'Pago' : 'Teste',
       inscricaoEm: vaga ? vaga.criadoEm : m ? m.criadoEm : a.criadoEm,
       pagamento: m ? m.statusPagamento : null,
+      cupom: m && m.cupomEad ? m.cupomEad.cupom.codigo : null, // etapa 7
       percentual: estado ? estado.percentual : 0,
       ultimoAcesso: a ? ultimoAcessoDe(a) : null,
       fase: faseDe(inicio, agora),

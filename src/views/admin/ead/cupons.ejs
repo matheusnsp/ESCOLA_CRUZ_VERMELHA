@@ -1,0 +1,47 @@
+<%
+  var dataBR = function (d) { return d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'; };
+  var brl = function (v) { return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); };
+  var desconto = function (c) { return c.tipo === 'PERCENTUAL' ? Number(c.valor).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '%' : brl(c.valor); };
+%>
+<%- include('../head', { titulo: 'Cupons' }) %>
+<%- include('../header', { ativo: 'cupons' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Cupons de desconto</h1>
+  <a class="adm-btn" href="/ead/cupons/novo"><i class="fa-solid fa-plus"></i> Novo cupom</a>
+</div>
+<%- include('_mensagens') %>
+<p class="adm-mut">Códigos de desconto do curso online. O aluno digita o código na página do curso, ou chega por um link com <code>?cupom=CÓDIGO</code>. Os usos contam só as compras pagas.</p>
+
+<nav class="ead-filtros" aria-label="Filtro">
+  <a href="/ead/cupons" class="<%= ativos === undefined ? 'on' : '' %>">Todos</a>
+  <a href="/ead/cupons?ativos=1" class="<%= ativos === true ? 'on' : '' %>">Ativos</a>
+  <a href="/ead/cupons?ativos=0" class="<%= ativos === false ? 'on' : '' %>">Desativados</a>
+</nav>
+
+<% if (!lista.length) { %>
+  <div class="adm-box adm-box-pad"><p class="ead-vazio">Nenhum cupom<%= ativos === undefined ? ' ainda. Crie o primeiro.' : ' neste filtro.' %></p></div>
+<% } else { %>
+  <div class="adm-box adm-espaco">
+    <div class="ead-tabela-rolagem">
+      <table class="adm-table">
+        <thead><tr><th>Código</th><th>Desconto</th><th>Curso</th><th>Validade</th><th class="centro">Usos</th><th>Desconto dado</th><th>Situação</th></tr></thead>
+        <tbody>
+          <% lista.forEach(function (c) { %>
+            <tr>
+              <td><a class="adm-link" href="/ead/cupons/<%= c.id %>"><b><%= c.codigo %></b></a></td>
+              <td><%= desconto(c) %></td>
+              <td><%= c.curso || 'Todos os cursos online' %></td>
+              <td><%= c.validoAte ? 'até ' + dataBR(c.validoAte) : 'sem prazo' %></td>
+              <td class="centro"><%= c.usos %> / <%= c.limiteUsos === null ? '∞' : c.limiteUsos %></td>
+              <td><%= brl(c.totalDesconto) %></td>
+              <td><span class="ead-selo <%= c.ativo ? 'validado' : 'rascunho' %>"><%= c.ativo ? 'Ativo' : 'Desativado' %></span></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } %>
+
+<%- include('../foot') %>

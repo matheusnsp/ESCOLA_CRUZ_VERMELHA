@@ -1,0 +1,95 @@
+<%
+  var v = valores || {};
+  var dataBR = function (d) { return d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'; };
+  var brl = function (x) { return Number(x).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); };
+  var SITUACAO = { PAGO: 'Pago', PARCELADO: 'Parcelado', PENDENTE: 'Pendente', CANCELADO: 'Cancelado', ESTORNADO: 'Estornado' };
+  var travado = !!cupom && compras.length > 0;
+%>
+<%- include('../head', { titulo: cupom ? 'Cupom ' + cupom.codigo : 'Novo cupom' }) %>
+<%- include('../header', { ativo: 'cupons' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= cupom ? 'Cupom ' + cupom.codigo : 'Novo cupom' %></h1>
+  <a href="/ead/cupons" class="adm-link">← Cupons</a>
+</div>
+<%- include('_mensagens') %>
+
+<% if (cupom) { %>
+  <div class="adm-box adm-box-pad adm-espaco">
+    <p>
+      <span class="ead-selo <%= cupom.ativo ? 'validado' : 'rascunho' %>"><%= cupom.ativo ? 'Ativo' : 'Desativado' %></span>
+      <%= usos %> uso<%= usos === 1 ? '' : 's' %> pago<%= usos === 1 ? '' : 's' %><%= cupom.limiteUsos !== null ? ' de ' + cupom.limiteUsos : '' %>.
+    </p>
+    <div class="ead-acoes">
+      <form method="POST" action="/ead/cupons/<%= cupom.id %>/ativar">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="ativo" value="<%= cupom.ativo ? '0' : '1' %>">
+        <button type="submit" class="adm-btn adm-btn-out"><%= cupom.ativo ? 'Desativar' : 'Ativar' %></button>
+      </form>
+      <% if (!compras.length) { %>
+        <form method="POST" action="/ead/cupons/<%= cupom.id %>/apagar" data-confirmar="Apagar o cupom <%= cupom.codigo %>?" data-botao="Apagar">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="adm-btn adm-btn-out"><i class="fa-solid fa-trash"></i> Apagar</button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+<% } %>
+
+<form method="POST" action="<%= cupom ? '/ead/cupons/' + cupom.id : '/ead/cupons/novo' %>" class="adm-box adm-box-pad adm-espaco">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <% if (travado) { %><p class="adm-mut">Este cupom já foi usado numa compra: o código e o tipo não mudam.</p><% } %>
+  <div class="adm-form adm-campos">
+    <label>Código
+      <input type="text" name="codigo" maxlength="30" required value="<%= v.codigo || '' %>" placeholder="LEILUCAS10" <%= travado ? 'readonly' : '' %> style="text-transform: uppercase">
+    </label>
+    <label>Tipo do desconto
+      <select name="tipo" <%= travado ? 'disabled' : '' %>>
+        <option value="PERCENTUAL" <%= v.tipo === 'PERCENTUAL' ? 'selected' : '' %>>% do preço</option>
+        <option value="VALOR" <%= v.tipo === 'VALOR' ? 'selected' : '' %>>R$ fixo</option>
+      </select>
+      <% if (travado) { %><input type="hidden" name="tipo" value="<%= v.tipo %>"><% } %>
+    </label>
+    <label>Desconto (% ou R$)<input type="text" name="valor" inputmode="decimal" required value="<%= v.valor || '' %>" placeholder="10"></label>
+    <label>Curso
+      <select name="cursoOnlineId">
+        <option value="">Todos os cursos online</option>
+        <% cursos.forEach(function (c) { %><option value="<%= c.id %>" <%= v.cursoOnlineId === c.id ? 'selected' : '' %>><%= c.curso.nome %></option><% }) %>
+      </select>
+    </label>
+    <label>Vale até (opcional)<input type="date" name="validoAte" value="<%= v.validoAte || '' %>"></label>
+    <label>Limite de usos (opcional)<input type="number" name="limiteUsos" min="1" step="1" value="<%= v.limiteUsos || '' %>"></label>
+    <label class="full">Observação (interna)<input type="text" name="observacao" maxlength="500" value="<%= v.observacao || '' %>"></label>
+  </div>
+  <p class="adm-mut">100% libera o curso sem pagamento (cortesia). O desconto nunca passa do preço; os juros do parcelamento incidem sobre o preço com desconto.</p>
+  <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> <%= cupom ? 'Salvar' : 'Criar cupom' %></button>
+</form>
+
+<% if (cupom) { %>
+  <div class="adm-box adm-espaco">
+    <h2 class="adm-h2 adm-box-pad" style="margin: 0">Compras com este cupom</h2>
+    <% if (!compras.length) { %>
+      <p class="ead-vazio adm-box-pad">Ninguém usou ainda.</p>
+    <% } else { %>
+      <div class="ead-tabela-rolagem">
+        <table class="adm-table">
+          <thead><tr><th>Aluno</th><th>Curso</th><th>Data</th><th>Preço cheio</th><th>Desconto</th><th>Pago</th><th>Situação</th></tr></thead>
+          <tbody>
+            <% compras.forEach(function (x) { %>
+              <tr>
+                <td><b><%= x.aluno.nome %></b><br><small class="adm-mut"><%= x.aluno.email %></small></td>
+                <td><%= x.curso %></td>
+                <td><%= dataBR(x.data) %></td>
+                <td><%= brl(x.precoCheio) %></td>
+                <td><%= brl(x.desconto) %></td>
+                <td><%= brl(x.precoFinal) %></td>
+                <td><%= SITUACAO[x.situacao] || x.situacao %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+
+<%- include('../foot') %>

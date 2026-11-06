@@ -35,7 +35,7 @@
               <% if (l.alunoCursoId) { %><a href="/ead/curso/<%= co.id %>/alunos/<%= l.alunoCursoId %>"><strong><%= l.usuario.nome %></strong></a><% } else { %><strong><%= l.usuario.nome %></strong><% } %>
               <br><small class="adm-mut"><%= l.usuario.email %></small>
             </td>
-            <td><span class="ead-selo <%= l.origem === 'Pago' ? 'validado' : 'final' %>"><%= l.origem %></span></td>
+            <td><span class="ead-selo <%= l.origem === 'Pago' ? 'validado' : 'final' %>"><%= l.origem %></span><% if (l.cupom) { %><br><small class="adm-mut">Cupom <%= l.cupom %></small><% } %></td>
             <td><%= dataBR(l.inscricaoEm) %></td>
             <td><%= l.pagamento ? ROT_PAG[l.pagamento] || l.pagamento : '—' %></td>
             <td class="centro">

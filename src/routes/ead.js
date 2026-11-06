@@ -18,6 +18,7 @@ const relatorios = require('../lib/ead-relatorios');
 const duv = require('../lib/ead-duvidas');
 const cursoSoOnline = require('../lib/ead-curso-online');
 const lotes = require('../lib/ead-lote');
+const cupons = require('../lib/ead-cupom');
 const { emitirCertificadoEad } = require('../lib/ead-certificado');
 const { gerarCartao } = require('../lib/ead-cartao');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
@@ -264,6 +265,60 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (imagemUrl !== undefined && atual.imagemUrl) await removerFotoCurso(atual.imagemUrl);
     await auditar(req, 'EAD_EDITOU_CURSO_ONLINE', 'CursoOnline', co.id, { cursoId: co.cursoId });
     voltar(res, `/ead/curso/${co.id}`, 'ok', 'Dados do curso salvos.');
+  });
+
+  // ─── Cupons de desconto (etapa 7) ─────────────────────────────────────────────────────────────
+  // As regras e a auditoria ficam em lib/ead-cupom.js. Validade: a data do formulário, gravada ao meio-dia no Rio
+  // (vale até o fim desse dia).
+  const diaDoCupom = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) ? new Date(`${d}T12:00:00-03:00`) : null);
+  const dadosDoCupom = (b) => ({
+    codigo: b.codigo, tipo: b.tipo, valor: publicacao.lerPreco(b.valor) ?? NaN,
+    cursoOnlineId: b.cursoOnlineId || null, validoAte: diaDoCupom(b.validoAte), limiteUsos: String(b.limiteUsos || '').trim(),
+    observacao: b.observacao,
+  });
+  const valoresDoCupom = (c) => ({
+    codigo: c.codigo, tipo: c.tipo, valor: Number(c.valor).toLocaleString('pt-BR', { maximumFractionDigits: 2 }), cursoOnlineId: c.cursoOnlineId || '',
+    validoAte: c.validoAte ? new Date(c.validoAte).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }) : '',
+    limiteUsos: c.limiteUsos === null ? '' : String(c.limiteUsos), observacao: c.observacao || '',
+  });
+  const cursosDoForm = () => prisma.cursoOnline.findMany({ select: { id: true, curso: { select: { nome: true } } }, orderBy: { criadoEm: 'asc' } });
+
+  router.get('/ead/cupons', async (req, res) => {
+    const ativos = req.query.ativos === '1' ? true : req.query.ativos === '0' ? false : undefined;
+    res.render('admin/ead/cupons', { lista: await cupons.listarCupons({ ativos }), ativos, ...flash(req) });
+  });
+
+  async function formCupom(res, { cupom = null, valores = {}, erro = null, compras = [], status = 200, ok = null } = {}) {
+    res.status(status).render('admin/ead/cupom-form', { cupom, valores, erro, ok, compras, cursos: await cursosDoForm(), usos: cupom ? await cupons.usosDoCupom(cupom.id) : 0 });
+  }
+  router.get('/ead/cupons/novo', async (req, res) => formCupom(res, { valores: { tipo: 'PERCENTUAL' } }));
+  router.post('/ead/cupons/novo', async (req, res) => {
+    const r = await cupons.criarCupom(dadosDoCupom(req.body), ator(req));
+    if (r.erro) return formCupom(res, { valores: req.body, erro: r.erro, status: 400 });
+    voltar(res, `/ead/cupons/${r.cupom.id}`, 'ok', `Cupom ${r.cupom.codigo} criado.`);
+  });
+  router.get('/ead/cupons/:id', async (req, res) => {
+    const cupom = edb.ehId(req.params.id) ? await prisma.cupomEad.findUnique({ where: { id: req.params.id } }) : null;
+    if (!cupom) return naoAchou(res);
+    formCupom(res, { cupom, valores: valoresDoCupom(cupom), compras: await cupons.comprasDoCupom(cupom.id), ...flash(req) });
+  });
+  router.post('/ead/cupons/:id', async (req, res) => {
+    const cupom = edb.ehId(req.params.id) ? await prisma.cupomEad.findUnique({ where: { id: req.params.id } }) : null;
+    if (!cupom) return naoAchou(res);
+    const r = await cupons.alterarCupom(cupom.id, dadosDoCupom(req.body), ator(req));
+    if (r.erro) return formCupom(res, { cupom, valores: req.body, erro: r.erro, compras: await cupons.comprasDoCupom(cupom.id), status: 400 });
+    voltar(res, `/ead/cupons/${cupom.id}`, 'ok', 'Cupom salvo.');
+  });
+  router.post('/ead/cupons/:id/ativar', async (req, res) => {
+    const ativo = req.body.ativo === '1';
+    const r = await cupons.ativarCupom(req.params.id, ativo, ator(req));
+    if (r.erro) return naoAchou(res);
+    voltar(res, `/ead/cupons/${req.params.id}`, 'ok', ativo ? 'Cupom ativado.' : 'Cupom desativado: ninguém mais consegue usar.');
+  });
+  router.post('/ead/cupons/:id/apagar', async (req, res) => {
+    const r = await cupons.apagarCupom(req.params.id, ator(req));
+    if (r.erro) return voltar(res, `/ead/cupons/${req.params.id}`, 'erro', r.erro);
+    voltar(res, '/ead/cupons', 'ok', 'Cupom apagado.');
   });
 
   // ─── Escolas e lotes (etapa 6) ────────────────────────────────────────────────────────────────
