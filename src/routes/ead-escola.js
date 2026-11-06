@@ -85,6 +85,15 @@ router.post('/minha-escola/lote/:id/convite/:acao(trocar|desligar)', requireLogi
   voltar(res, lote.id, 'ok', req.params.acao === 'trocar' ? 'Link de convite novo criado. O anterior não abre mais.' : 'Link de convite desligado.');
 }));
 
+router.get('/minha-escola/lote/:id/:arquivo(declaracao.pdf|planilha.xlsx)', requireLogin, comLote(async (req, res, lote) => {
+  const { gerarDeclaracao, gerarPlanilhaLote } = require('../lib/ead-lote-declaracao');
+  const pdf = req.params.arquivo === 'declaracao.pdf';
+  const { buffer, nomeArquivo } = pdf ? await gerarDeclaracao(lote.id) : await gerarPlanilhaLote(lote.id);
+  res.set('Content-Type', pdf ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.set('Content-Disposition', `attachment; filename="${nomeArquivo}"`);
+  res.send(buffer);
+}));
+
 // ─── Convite ────────────────────────────────────────────────────────────────────────────────────
 const comConvite = (fn) => asyncHandler(async (req, res, next) => {
   const lote = await L.loteDoConvite(req.params.codigo);
