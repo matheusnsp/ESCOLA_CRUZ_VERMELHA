@@ -1120,6 +1120,8 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
       etapa: etapaAtual,
       transacaoRef: String(t || matricula?.id || ''),
       destinoFinal: destinoAposPagamento(matricula),
+      eventosMedicao: await eventosInicioCompra(matricula),
+      jsonSeguro: require('../lib/ead-medicao').jsonSeguro,
       pixQrCode: pagamento?.pixQrCode || null,
       pixUrl: pagamento?.pixUrl || null,
       pixBase64: pagamento?.pixBase64 || null,
@@ -1158,8 +1160,18 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
       opcoesParcelas,
       transacaoRef: String(t || matricula.id),
       destinoFinal: destinoAposPagamento(matricula),
+      eventosMedicao: await eventosInicioCompra(matricula),
+      jsonSeguro: require('../lib/ead-medicao').jsonSeguro,
     });
 });
+
+// Etapa 8: "início da compra" do curso online na tela de retorno (Analytics/Pixel; o rastreamento vem do site-head).
+async function eventosInicioCompra(matricula) {
+  if (!matricula || !ehOnline(matricula.turma)) return [];
+  const medicao = require('../lib/ead-medicao');
+  const cm = await prisma.cupomMatriculaEad.findUnique({ where: { matriculaId: matricula.id }, include: { cupom: { select: { codigo: true } } } }).catch(() => null);
+  return [medicao.eventoInicioCompra(matricula, matricula.turma.curso.nome, cm ? cm.cupom.codigo : null)];
+}
 
 // Máximo de parcelas do curso online desta turma (1 a 12; sem cadastro, 1).
 async function maxParcelasOnline(turma) {

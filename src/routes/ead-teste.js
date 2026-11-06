@@ -27,6 +27,7 @@ const { cursoOnlineDoEndereco, acessoPago } = require('../lib/ead-acesso');
 const { urlRetorno } = require('../lib/cobranca-avista');
 const duv = require('../lib/ead-duvidas');
 const cupons = require('../lib/ead-cupom');
+const medicao = require('../lib/ead-medicao');
 const { limiteCupom, MSG_TENTATIVAS } = require('../lib/limite-cupom');
 
 // Etapa 3: ao concluir o curso, emite o certificado (número, Redação, e-mail) SEM esperar.
@@ -131,6 +132,14 @@ const comCurso = (fn, { livre = false } = {}) => asyncHandler(async (req, res, n
   req.ead = { base: r.base, modo: r.modo, acesso: r.acesso };
   res.locals.eadModo = r.modo;
   if (r.modo === 'pago' && !r.acesso.liberado && !livre) return res.redirect(r.base);
+  // Etapa 8: medição só no curso pago (o link de teste tem o código secreto no endereço). A compra concluída sai
+  // na primeira página aberta depois da confirmação (lib/ead-medicao.js).
+  if (r.modo === 'pago') {
+    res.locals.medir = true;
+    const compra = r.acesso.liberado ? await medicao.compraParaMedir(req, r.co, r.co.curso.nome, r.acesso) : null;
+    res.locals.eventosMedicao = compra ? [compra] : [];
+    res.locals.jsonSeguro = medicao.jsonSeguro;
+  }
   return fn(req, res, r.co, r.base, r.curso, next);
 });
 const P = (sufixo = '') => [`/ead-teste/:codigo${sufixo}`, `/online/:cursoId${sufixo}`];
@@ -182,6 +191,7 @@ router.get(P(), limiteCupom, comCurso(async (req, res, co, base, curso) => {
   const indexavel = req.ead.modo === 'pago' && co.publicado;
   if (indexavel) res.removeHeader('X-Robots-Tag');
   res.locals.indexavel = indexavel;
+  if (indexavel) res.locals.jsonLd = medicao.jsonLdCurso(co, co.curso, res.locals.urlSite);
   res.render('ead-teste/capa', {
     co, base, ctx, modo: req.ead.modo, compra: pagoSemAcesso ? await compraDaCapa(req, co, base) : null,
     continuarUrl: ctx ? urlDoPasso(co, base, ctx.estado.proximo) : null,

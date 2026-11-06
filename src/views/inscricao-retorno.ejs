@@ -861,4 +861,8 @@ const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
 
 <% } %>
 
+<%# Etapa 8: início da compra do curso online (eventos na fila até o aceite de cookies). %>
+<% (typeof eventosMedicao !== 'undefined' ? eventosMedicao : []).forEach(function (ev) { %>
+<script>if (window.gtag) gtag('event', <%- jsonSeguro(ev.ga[0]) %>, <%- jsonSeguro(ev.ga[1]) %>);if (window.fbq) fbq('track', <%- ev.meta.map(jsonSeguro).join(', ') %>);</script>
+<% }) %>
 <%- include('partials/site-footer') %>

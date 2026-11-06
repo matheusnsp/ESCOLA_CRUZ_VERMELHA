@@ -10,7 +10,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="<%= asset('/ead.css') %>">
-<%# Sem partials/rastreamento de propósito: Analytics/Pixel gravariam o endereço, que tem o código secreto. %>
+<%# Medição só no curso pago (etapa 8). No link de teste, nunca: Analytics/Pixel gravariam o endereço, que tem o código secreto. %>
+<% if (typeof medir !== 'undefined' && medir) { %>
+<%- include('../partials/rastreamento') %>
+<% (typeof eventosMedicao !== 'undefined' ? eventosMedicao : []).forEach(function (ev) { %>
+<script>gtag('event', <%- jsonSeguro(ev.ga[0]) %>, <%- jsonSeguro(ev.ga[1]) %>);fbq('track', <%- ev.meta.map(jsonSeguro).join(', ') %>);</script>
+<% }) %>
+<% } %>
+<% if (typeof jsonLd !== 'undefined' && jsonLd) { %><script type="application/ld+json"><%- jsonSeguro(jsonLd) %></script><% } %>
 </head>
 <body class="ea-pagina">
 <div class="ea-topbar"><div class="ea-wrap"><span>Cruz Vermelha Brasileira · Rio de Janeiro</span><span>Curso 100% online</span></div></div>
