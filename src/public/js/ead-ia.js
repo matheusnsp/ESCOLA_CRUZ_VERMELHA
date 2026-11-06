@@ -30,7 +30,7 @@
       var n = lista.querySelectorAll('input').length;
       var label = document.createElement('label');
       label.className = 'full';
-      label.textContent = 'Tópico';
+      label.textContent = 'Tópico ' + (n + 1);
       var input = document.createElement('input');
       input.type = 'text'; input.maxLength = 160;
       input.name = lista.getAttribute('data-nome') + '[' + n + ']';

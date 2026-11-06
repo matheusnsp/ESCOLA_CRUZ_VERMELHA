@@ -116,3 +116,9 @@
 .ead-gestores form { display: inline; }
 .ead-sumario { cursor: pointer; font-weight: 700; color: var(--vermelho); margin: 8px 0; }
 .ead-removido td { opacity: .55; }
+
+/* Etapa 9: editor do roteiro gerado pela IA */
+.ia-roteiro .ia-modulo { border: 1px solid #e6e2dc; border-radius: 12px; padding: 14px 16px 12px; margin: 0 0 14px; }
+.ia-roteiro .ia-topicos { margin: 10px 0 8px; padding-left: 12px; border-left: 3px solid #f1d4d4; }
+.ia-roteiro [data-mais-topico] { margin: 0 0 10px; }
+html[data-tema="escuro"] .ia-roteiro .ia-modulo { border-color: #3a4149; }

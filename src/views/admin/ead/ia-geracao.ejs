@@ -66,16 +66,16 @@
         <div class="adm-form adm-campos">
           <label class="full">Módulo<input type="text" name="modulos[<%= i %>][titulo]" value="<%= m.titulo %>" maxlength="160" required></label>
           <label>Minutos<input type="number" name="modulos[<%= i %>][minutos]" value="<%= m.minutos %>" min="0" max="600"></label>
-          <label><input type="checkbox" name="modulos[<%= i %>][final]" value="1" <%= m.final ? 'checked' : '' %>> Módulo final (cenários)</label>
-          <label><input type="checkbox" name="modulos[<%= i %>][remover]" value="1"> Tirar este módulo</label>
+          <label class="check"><input type="checkbox" name="modulos[<%= i %>][final]" value="1" <%= m.final ? 'checked' : '' %>> Módulo final (cenários)</label>
+          <label class="check"><input type="checkbox" name="modulos[<%= i %>][remover]" value="1"> Tirar este módulo</label>
         </div>
-        <div class="ia-topicos" data-topicos data-nome="modulos[<%= i %>][topicos]">
-          <% m.topicos.forEach(function (t, j) { %><label class="full">Tópico<input type="text" name="modulos[<%= i %>][topicos][<%= j %>]" value="<%= t.titulo %>" maxlength="160"></label><% }) %>
+        <div class="adm-form adm-campos ia-topicos" data-topicos data-nome="modulos[<%= i %>][topicos]">
+          <% m.topicos.forEach(function (t, j) { %><label class="full">Tópico <%= j + 1 %><input type="text" name="modulos[<%= i %>][topicos][<%= j %>]" value="<%= t.titulo %>" maxlength="160"></label><% }) %>
         </div>
         <button type="button" class="adm-btn adm-btn-out" data-mais-topico>+ tópico</button>
         <% if (m.final) { %>
-          <div class="ia-topicos">
-            <% (m.cenarios || []).forEach(function (c, j) { %><label class="full">Cenário<input type="text" name="modulos[<%= i %>][cenarios][<%= j %>]" value="<%= c.titulo %>" maxlength="160"></label><% }) %>
+          <div class="adm-form adm-campos ia-topicos">
+            <% (m.cenarios || []).forEach(function (c, j) { %><label class="full">Cenário <%= j + 1 %><input type="text" name="modulos[<%= i %>][cenarios][<%= j %>]" value="<%= c.titulo %>" maxlength="160"></label><% }) %>
           </div>
         <% } %>
         <div class="ead-acoes">
