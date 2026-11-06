@@ -580,7 +580,7 @@ async function coletarLancamentosOfx(prisma, opts = {}) {
     },
   });
 
-  return pagamentos.map((p) => {
+  const lancamentos = pagamentos.map((p) => {
     const ehEstorno = p.status === 'ESTORNADO';
     const aluno = p.matricula?.aluno?.nome || 'Aluno nao identificado';
     const curso = p.matricula?.turma?.curso?.nome || 'Curso nao identificado';
@@ -603,8 +603,23 @@ async function coletarLancamentosOfx(prisma, opts = {}) {
       name: asciiOfx(aluno).slice(0, 32),
     };
   });
-}
 
+  // Etapa 8: lotes de escolas (curso online) recebidos no período, como crédito na data do recebimento.
+  const de = opts.de ? new Date(opts.de) : undefined;
+  const ate = opts.ate ? new Date(new Date(opts.ate).getTime() + 1) : undefined; // o OFX inclui o dia "até"
+  const lotes = await require('./ead-lote').lotesRecebidos({ de, ate });
+  for (const x of lotes) {
+    lancamentos.push({
+      fitid: `LOTE${String(x.lote.id).replace(/-/g, '')}`.slice(0, 32).toUpperCase(),
+      data: x.recebidoEm,
+      valor: Number(x.valor || 0),
+      tipoTrn: 'CREDIT',
+      memo: asciiOfx(`Lote: ${x.escola} - ${x.curso}`).slice(0, 255),
+      name: asciiOfx(x.escola).slice(0, 32),
+    });
+  }
+  return lancamentos.sort((p, q) => new Date(p.data) - new Date(q.data));
+}
 /**
  * Monta o arquivo OFX como string.
  * @returns {string} conteúdo pronto pra escrever no response

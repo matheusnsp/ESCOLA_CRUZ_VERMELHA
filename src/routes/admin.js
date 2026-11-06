@@ -30,6 +30,7 @@ const { simularValores } = require('../lib/simular-valores');
 const { estornarTransacao } = require('../lib/unicopag'); // 💡 A3 — refund real no gateway
 const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarTextoWhats, montarLinkProspeccao } = require('../lib/lembretes');
 const { coletarDadosRelatorio, gerarExcel, gerarPdf, coletarLancamentosOfx, gerarOfx } = require('../lib/relatorio'); // relatórios Excel/PDF
+const { estornosExtras, totalEstornado: somarEstornos, lotesDaTabela } = require('../lib/financeiro-estornos');
 const { concluirTurmasPassadas } = require('../lib/concluir-turmas');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 const permissoes = require('../lib/permissoes');
@@ -2176,17 +2177,22 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
 
   // Lotes de escolas entram quando a lista é de todas as contas ou da conta "manual".
   const comLotes = contaFiltro === 'todas' || contaFiltro === 'manual';
-  const lotesLinhas = comLotes ? lotesFin.linhas : [];
+  // Etapa 8: na tabela de pagamentos, só o lote recebido; o "a receber" fica no total e na lista própria.
+  const lotesLinhas = comLotes ? lotesDaTabela(lotesFin.linhas) : [];
   const totalRecebido =
     matriculaGeradaLista.reduce((s, m) => s + Number(m.valorCurso), 0) +
     totalTaxaSemMatricula + (comLotes ? lotesFin.recebidoTotal : 0);
 
   const totalPendente = cursoPendenteLista.reduce((s, m) => s + valorEmAberto(m), 0) + (comLotes ? lotesFin.aReceberTotal : 0);
 
-  const totalEstornado = estornos.reduce(
-    (s, m) => s + Number(m.valorCurso),
-    0
-  );
+  // Etapa 8: os estornos que a linha da matrícula não mostra (comprou de novo depois do estorno; ou o estorno
+  // antigo de quem foi estornado duas vezes). Com uma conta escolhida, só os pagamentos daquela conta.
+  let extrasEstorno = await estornosExtras(prisma);
+  if (contaFiltro !== 'todas') {
+    const contaDoPagamento = (pg) => (!pg.gateway || pg.gateway === 'manual' || String(pg.gatewayStatus || '').startsWith('manual:') ? 'manual' : unicopagContaDoGateway(pg.gateway));
+    extrasEstorno = extrasEstorno.filter((x) => contaDoPagamento(x.pagamento) === contaFiltro);
+  }
+  const totalEstornado = somarEstornos(estornos, extrasEstorno);
 
   // Uma linha por matrícula que já teve dinheiro entrando (taxa, curso ou os dois), em vez de
   // listar a mesma pessoa em "Inscrição paga" e de novo em "Matrículas pagas". Estornadas entram
@@ -2201,7 +2207,8 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
       return { m, tipo: 'curso', valor: Number(m.valorCurso), data: m.confirmadaEm || m.taxaConfirmadaEm };
     }
     return { m, tipo: 'taxa', valor: Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO, data: m.taxaConfirmadaEm };
-  }).sort((x, y) => new Date(y.data || 0) - new Date(x.data || 0));
+  }).concat(extrasEstorno.map((x) => ({ m: x.m, tipo: 'estornado', valor: x.valor, data: x.data, extra: true })))
+    .sort((x, y) => new Date(y.data || 0) - new Date(x.data || 0));
 
   res.render('admin/financeiro', {
     contaFiltro,
@@ -2227,7 +2234,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
       totalPendente,
       totalTaxasPagas,
       totalCursosPagos,
-      estornosCount: estornos.length,
+      estornosCount: estornos.length + extrasEstorno.length,
       totalEstornado,
 
       reembolsosCount: reembolsosPendentesLista.length,
