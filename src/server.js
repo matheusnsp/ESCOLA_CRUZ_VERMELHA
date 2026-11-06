@@ -381,6 +381,10 @@ setInterval(() => require('./lib/pesquisa').enviarPendentes(), 15 * 60 * 1000).u
 // pagamentos pendentes cujo aviso se perdeu. Só um dos serviços faz cada passada.
 require('./lib/reconciliacao').agendar();
 
+// Criar curso com IA (etapa 9): ao subir, retoma a geração que ficou no meio (lib/ead-ia-fila.js). Só com a chave
+// da API configurada; a marca em Configuracao evita dois serviços no mesmo passo.
+if (require('./lib/ead-ia').ehChaveConfigurada()) setTimeout(() => require('./lib/ead-ia-fila').retomar(), 15000).unref();
+
 const port = process.env.PORT || 3000;
 
 app.listen(port, () => {
