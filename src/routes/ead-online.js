@@ -15,6 +15,7 @@ const { iniciarCobrancaAVista } = require('../lib/cobranca-avista');
 const { lerOrigem } = require('../lib/origem-da-visita');
 const { transacao } = require('../lib/transacao');
 const cupons = require('../lib/ead-cupom');
+const { limiteCupom } = require('../lib/limite-cupom');
 
 const router = express.Router();
 
@@ -71,11 +72,13 @@ async function liberarPorCupom(alunoId, turmaId, v) {
       ? await tx.matricula.update({ where: { id: existente.id }, data: dados })
       : await tx.matricula.create({ data: { ...dados, alunoId, turmaId } });
     await gravarCupom(tx, matricula.id, v);
+    // Cobranças de antes (PIX/cartão) não servem mais: o curso foi liberado de graça.
+    await tx.pagamento.updateMany({ where: { matriculaId: matricula.id, status: 'PENDENTE' }, data: { status: 'CANCELADO' } });
     return { matricula, nova: true };
   });
 }
 
-router.post('/online/:cursoId/comprar', requireLogin, asyncHandler(async (req, res, next) => {
+router.post('/online/:cursoId/comprar', requireLogin, limiteCupom, asyncHandler(async (req, res, next) => {
   const coId = await cursoOnlineDoEndereco(req.params.cursoId);
   const co = coId ? await prisma.cursoOnline.findUnique({ where: { id: coId }, include: { curso: { select: { nome: true } } } }) : null;
   if (!co) return next();
@@ -95,6 +98,7 @@ router.post('/online/:cursoId/comprar', requireLogin, asyncHandler(async (req, r
   const voltaCupom = () => res.redirect(`${base}?cupom=${encodeURIComponent(codigo)}`);
   let v = null;
   if (codigo) {
+    if (req.cupomBloqueado) return voltaCupom(); // a capa mostra o aviso de tentativas
     v = await cupons.validarCupom(codigo, co);
     if (v.erro) return voltaCupom();
   }

@@ -1104,7 +1104,15 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
 
   // ---------------- PIX: view de sempre ----------------
   if (isPix || !matricula) {
-    const pagamento = matricula?.pagamentos?.[0] || null;
+    let pagamento = matricula?.pagamentos?.[0] || null;
+    // Curso online (etapa 7): com cupom aplicado e tirado, a matrícula pode ter QRs de valores diferentes. Mostra o
+    // PIX do valor atual da matrícula, não o mais recente.
+    if (matricula && ehOnline(matricula.turma)) {
+      pagamento = await prisma.pagamento.findFirst({
+        where: { matriculaId: matricula.id, tipo: 'CURSO', metodo: 'PIX', valor: matricula.valorCurso },
+        orderBy: { criadoEm: 'desc' },
+      }) || pagamento;
+    }
     return res.render('inscricao-retorno', {
       matricula,
       formatBRL,

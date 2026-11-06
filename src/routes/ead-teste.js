@@ -27,6 +27,7 @@ const { cursoOnlineDoEndereco, acessoPago } = require('../lib/ead-acesso');
 const { urlRetorno } = require('../lib/cobranca-avista');
 const duv = require('../lib/ead-duvidas');
 const cupons = require('../lib/ead-cupom');
+const { limiteCupom, MSG_TENTATIVAS } = require('../lib/limite-cupom');
 
 // Etapa 3: ao concluir o curso, emite o certificado (número, Redação, e-mail) SEM esperar.
 // O link do e-mail é o do modo em que a pessoa concluiu.
@@ -148,6 +149,7 @@ async function cupomDaCapa(req, co, m) {
     codigo = cm ? cm.cupom.codigo : '';
   }
   if (!codigo || co.precoOnline === null || co.precoOnline === undefined) return { cupom: null, erroCupom: null };
+  if (req.cupomBloqueado) return { cupom: null, erroCupom: MSG_TENTATIVAS };
   const v = await cupons.validarCupom(codigo, co);
   if (v.erro) return { cupom: null, erroCupom: v.erro };
   return { cupom: { codigo: v.cupom.codigo, precoCheio: v.precoCheio, desconto: v.desconto, precoFinal: v.precoFinal }, erroCupom: null };
@@ -171,7 +173,7 @@ async function compraDaCapa(req, co, base) {
   };
 }
 
-router.get(P(), comCurso(async (req, res, co, base, curso) => {
+router.get(P(), limiteCupom, comCurso(async (req, res, co, base, curso) => {
   const pagoSemAcesso = req.ead.modo === 'pago' && !req.ead.acesso.liberado;
   const ctx = pagoSemAcesso ? null : await contexto(req, co, curso);
   if (ctx) ctx.duvidasRespondidas = await duv.respondidasNaoLidas(ctx.alunoCurso.id); // aviso "Sua dúvida foi respondida"

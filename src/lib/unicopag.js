@@ -64,7 +64,8 @@ async function consultarParcelamento(amountCentavos, contaId) {
 
   try {
     const url = `https://api.cloud.unicopag.com.br/public/v1/installments?amount=${amountCentavos}&api_token=${token.trim()}`;
-    const resp = await fetch(url);
+    // Limite de tempo: a tela do cartão espera esta consulta (Únicopag lento não trava a página).
+    const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const json = await resp.json();
 
     if (!resp.ok || !Array.isArray(json.data)) {

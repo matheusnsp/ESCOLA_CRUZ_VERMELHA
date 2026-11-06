@@ -14,19 +14,47 @@ const consultas = [];
 unicopag.criarTransacao = async (d) => { gateway.push(d); return { gatewayRef: `falso-parc-${Date.now()}-${gateway.length}`, hash: 'h', paymentStatus: 'processing', pixQrCode: 'QR' }; };
 const tabelaFalsa = async (centavos, n) => { consultas.push([centavos, n]); return { installments: n, installment_rate: 10, installment_amount: Math.round((centavos * 1.1) / n), total_amount: Math.round(centavos * 1.1) }; };
 unicopag.obterOpcaoParcelamento = tabelaFalsa;
+// A tela do cartão consulta a tabela inteira uma vez (revisão I4).
+const tabelasConsultadas = [];
+const tabelaInteira = async (centavos) => { tabelasConsultadas.push(centavos); return Promise.all(Array.from({ length: 12 }, (_, i) => tabelaFalsa(centavos, i + 1))); };
+unicopag.consultarParcelamento = tabelaInteira;
 
 const { opcoesParcelasOnline, cobrancaCartaoOnline } = require('../src/lib/cobranca-avista');
 
-test('opcoesParcelasOnline: 1x sempre, sem juros; falha numa consulta ⇒ fica o que veio; max 1 ⇒ sem consulta', async () => {
-  const ops = await opcoesParcelasOnline(100.01, 3, tabelaFalsa);
-  assert.deepEqual(ops.map((o) => o.n), [1, 2, 3]);
+test('opcoesParcelasOnline: uma consulta só da tabela; 1x sempre, sem juros; falha ⇒ só 1x; max 1 ⇒ sem consulta', async () => {
+  const antes = tabelasConsultadas.length;
+  const ops = await opcoesParcelasOnline(100.01, 6, tabelaInteira);
+  assert.equal(tabelasConsultadas.length, antes + 1, 'uma consulta para as 6 opções');
+  assert.deepEqual(ops.map((o) => o.n), [1, 2, 3, 4, 5, 6]);
   assert.deepEqual(ops[0], { n: 1, valorParcela: 100.01, total: 100.01 });
   assert.equal(ops[2].total, 110.01);
-  const falha3 = async (c, n) => (n === 3 ? null : tabelaFalsa(c, n));
-  assert.deepEqual((await opcoesParcelasOnline(100.02, 3, falha3)).map((o) => o.n), [1, 2]);
-  const antes = consultas.length;
-  assert.deepEqual((await opcoesParcelasOnline(100.03, 1, tabelaFalsa)).map((o) => o.n), [1]);
-  assert.equal(consultas.length, antes);
+  await opcoesParcelasOnline(100.01, 6, tabelaInteira);
+  assert.equal(tabelasConsultadas.length, antes + 1, 'a mesma tabela fica guardada');
+  assert.deepEqual((await opcoesParcelasOnline(100.02, 3, async () => null)).map((o) => o.n), [1]);
+  const semN3 = async (c) => (await tabelaInteira(c)).filter((o) => o.installments !== 3);
+  assert.deepEqual((await opcoesParcelasOnline(100.04, 4, semN3)).map((o) => o.n), [1, 2, 4]);
+  const n = tabelasConsultadas.length;
+  assert.deepEqual((await opcoesParcelasOnline(100.03, 1, tabelaInteira)).map((o) => o.n), [1]);
+  assert.equal(tabelasConsultadas.length, n);
+});
+
+test('consultarParcelamento tem limite de tempo (a tela do cartão não trava com o Únicopag lento)', async () => {
+  const nf = require.resolve('node-fetch');
+  const fetchOriginal = require.cache[nf]; const tokenOriginal = process.env.UNICOPAG_API_TOKEN;
+  let sinal = null;
+  require.cache[nf] = { id: nf, filename: nf, loaded: true, exports: async (url, opts) => { sinal = opts && opts.signal; return { ok: true, json: async () => ({ data: [] }) }; } };
+  process.env.UNICOPAG_API_TOKEN = 'token-falso';
+  try {
+    delete require.cache[require.resolve('../src/lib/unicopag')];
+    const real = require('../src/lib/unicopag');
+    await real.consultarParcelamento(1000);
+    assert.ok(sinal, 'fetch recebe um AbortSignal');
+  } finally {
+    if (fetchOriginal) require.cache[nf] = fetchOriginal; else delete require.cache[nf];
+    if (tokenOriginal === undefined) delete process.env.UNICOPAG_API_TOKEN; else process.env.UNICOPAG_API_TOKEN = tokenOriginal;
+    delete require.cache[require.resolve('../src/lib/unicopag')];
+    require.cache[require.resolve('../src/lib/unicopag')] = { id: require.resolve('../src/lib/unicopag'), filename: require.resolve('../src/lib/unicopag'), loaded: true, exports: unicopag };
+  }
 });
 
 test('cobrancaCartaoOnline: valor base é o da matrícula; com a opção, total e parcela com juros', () => {
@@ -164,6 +192,31 @@ describe('cartão parcelado do curso online', { skip: temBanco ? false : 'sem DA
     const d = await matriculaDe(bia);
     assert.equal(d.statusPagamento, 'PAGO');
     assert.equal(Number(d.valorCurso), 120);
+  });
+
+  test('[revisão I2] PIX gerado, tentativa 3x recusada, PIX pago ⇒ PAGO, A_VISTA, forma PIX', async () => {
+    const duda = await prisma.usuario.create({ data: { nome: 'Duda Parc', email: `duda-parc-${s}@teste.local`, papel: 'ALUNO', cpfCnpj: cpf() } });
+    try {
+      await post(`${site}/online/${curso.id}/comprar`, duda, { forma: 'PIX' });
+      let m = await matriculaDe(duda);
+      const pix = m.pagamentos.at(-1);
+      assert.equal(pix.metodo, 'PIX');
+      await prisma.pagamento.update({ where: { id: pix.id }, data: { criadoEm: new Date(Date.now() - 5 * 60e3) } }); // fora da trava de 3 min
+      await cartaoPost(duda, m, 3);
+      assert.equal((await matriculaDe(duda)).plano, 'PARCELADO');
+      await prisma.pagamento.updateMany({ where: { matriculaId: m.id, metodo: 'CREDITO' }, data: { status: 'CANCELADO' } }); // recusado
+      await aplicarStatus(await prisma.pagamento.findUnique({ where: { id: pix.id } }), { status: 'paid', payload: {} });
+      m = await matriculaDe(duda);
+      assert.equal(m.statusPagamento, 'PAGO');
+      assert.equal(m.plano, 'A_VISTA');
+      assert.equal(m.forma, 'PIX');
+      assert.equal(Number(m.valorCurso), 120);
+    } finally {
+      const ms = await prisma.matricula.findMany({ where: { alunoId: duda.id }, select: { id: true } });
+      await prisma.pagamento.deleteMany({ where: { matriculaId: { in: ms.map((x) => x.id) } } });
+      await prisma.matricula.deleteMany({ where: { alunoId: duda.id } });
+      await prisma.usuario.delete({ where: { id: duda.id } });
+    }
   });
 
   test('com maxParcelas 1: tela sem seletor e só 1x aceito', async () => {

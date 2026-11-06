@@ -46,6 +46,7 @@ describe('/online: compra com cupom', { skip: temBanco ? false : 'sem DATABASE_U
     });
     app.use(require('../src/routes/ead-online'));
     app.use(require('../src/routes/ead-teste'));
+    app.use(require('../src/routes/cursos')); // tela de retorno do PIX
     await new Promise((r) => { server = app.listen(0, r); });
     base = `http://127.0.0.1:${server.address().port}/online/${curso.id}`;
   });
@@ -59,7 +60,7 @@ describe('/online: compra com cupom', { skip: temBanco ? false : 'sem DATABASE_U
     await prisma.matricula.deleteMany({ where: { turma: { cursoId: curso.id } } });
     await prisma.turma.deleteMany({ where: { cursoId: curso.id } });
     await prisma.alunoCursoEad.deleteMany({ where: { cursoOnlineId: co.id } });
-    await prisma.usuario.deleteMany({ where: { id: { in: [ana.id, bia.id, caio.id] } } });
+    await prisma.usuario.deleteMany({ where: { email: { contains: `-cp-${s}@` } } });
     await prisma.topicoEad.deleteMany({ where: { modulo: { cursoOnlineId: co.id } } });
     await prisma.moduloEad.deleteMany({ where: { cursoOnlineId: co.id } });
     await prisma.cursoOnline.delete({ where: { id: co.id } });
@@ -69,6 +70,8 @@ describe('/online: compra com cupom', { skip: temBanco ? false : 'sem DATABASE_U
 
   const req = (url, usuario, opts = {}) => fetch(url, { redirect: 'manual', ...opts, headers: { ...(opts.headers || {}), ...(usuario ? { 'x-teste-usuario': usuario.id } : {}) } });
   const post = (url, usuario, corpo = {}) => req(url, usuario, { method: 'POST', body: new URLSearchParams(corpo), headers: { 'content-type': 'application/x-www-form-urlencoded' } });
+  const { aplicarStatus } = require('../src/lib/status-pagamento');
+  const novaPessoa = (n) => prisma.usuario.create({ data: { nome: `${n} Cupom`, email: `${n.toLowerCase()}-cp-${s}@teste.local`, papel: 'ALUNO', cpfCnpj: cpf() } });
   const matriculaDe = (u) => prisma.matricula.findFirst({ where: { alunoId: u.id, turma: { cursoId: curso.id } }, include: { pagamentos: { orderBy: { criadoEm: 'asc' } }, cupomEad: true } });
 
   test('capa com ?cupom: preço cheio riscado, preço final, aviso e o código no formulário; "em até 6x"', async () => {
@@ -180,5 +183,58 @@ describe('/online: compra com cupom', { skip: temBanco ? false : 'sem DATABASE_U
     } finally {
       await prisma.usuario.delete({ where: { id: dani.id } });
     }
+  });
+
+  test('[revisão C1] sem cupom → com cupom → sem cupom: a tela do PIX mostra o QR de R$ 49,90', async () => {
+    const eva = await novaPessoa('Eva');
+    await post(`${base}/comprar`, eva, { forma: 'PIX' });
+    await post(`${base}/comprar`, eva, { forma: 'PIX', cupom: cod('LEI10') });
+    const r = await post(`${base}/comprar`, eva, { forma: 'PIX' });
+    const m = await matriculaDe(eva);
+    assert.equal(Number(m.valorCurso), 49.9);
+    const qrCheio = m.pagamentos.find((p) => Number(p.valor) === 49.9).pixQrCode;
+    const qrDesconto = m.pagamentos.find((p) => Number(p.valor) === 44.91).pixQrCode;
+    const html = await (await req(new URL(r.headers.get('location'), base).href, eva)).text();
+    assert.ok(html.includes(qrCheio), 'mostra o QR do valor da matrícula');
+    assert.ok(!html.includes(qrDesconto));
+  });
+
+  test('[revisão C1] pagou um QR de outro valor: a matrícula fica com o valor pago e o cupom acompanha', async () => {
+    const eva = await prisma.usuario.findFirst({ where: { email: `eva-cp-${s}@teste.local` } });
+    let m = await matriculaDe(eva); // 49,90 sem cupom, mas o QR de 44,91 (com cupom) continua pagável
+    await aplicarStatus(m.pagamentos.find((p) => Number(p.valor) === 44.91), { status: 'paid', payload: {} });
+    m = await matriculaDe(eva);
+    assert.equal(m.statusPagamento, 'PAGO');
+    assert.equal(Number(m.valorCurso), 44.91);
+
+    const fabi = await novaPessoa('Fabi');
+    await post(`${base}/comprar`, fabi, { forma: 'PIX' }); // QR de 49,90
+    await post(`${base}/comprar`, fabi, { forma: 'PIX', cupom: cod('LEI10') }); // agora 44,91 com cupom
+    m = await matriculaDe(fabi);
+    await aplicarStatus(m.pagamentos.find((p) => Number(p.valor) === 49.9), { status: 'paid', payload: {} });
+    m = await matriculaDe(fabi);
+    assert.equal(Number(m.valorCurso), 49.9);
+    assert.equal(m.cupomEad, null, 'pagou o preço cheio: o cupom não foi usado');
+  });
+
+  test('[revisão C1] "Liberar curso" cancela as cobranças pendentes da matrícula', async () => {
+    const gabi = await novaPessoa('Gabi');
+    await post(`${base}/comprar`, gabi, { forma: 'PIX' });
+    await post(`${base}/comprar`, gabi, { forma: 'CUPOM', cupom: gratis.codigo });
+    const m = await matriculaDe(gabi);
+    assert.equal(m.statusPagamento, 'PAGO');
+    assert.deepEqual(m.pagamentos.map((p) => p.status), ['CANCELADO']);
+  });
+
+  // Por último: esgota o limite de tentativas deste IP.
+  test('[revisão I3] tentativas de cupom têm limite: depois de 30, a capa avisa e a compra não usa o cupom', async () => {
+    let html = '';
+    for (let i = 0; i < 31; i++) html = await (await req(`${base}?cupom=CHUTE${i}`, null)).text();
+    assert.match(html, /Muitas tentativas de cupom\. Espere alguns minutos e tente de novo\./);
+    assert.doesNotMatch(html, /Cupom não encontrado/);
+    const hugo = await novaPessoa('Hugo');
+    const r = await post(`${base}/comprar`, hugo, { forma: 'CUPOM', cupom: gratis.codigo });
+    assert.equal(r.status, 302);
+    assert.equal(await matriculaDe(hugo), null);
   });
 });

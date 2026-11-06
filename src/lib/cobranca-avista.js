@@ -99,17 +99,28 @@ function cobrancaCartaoOnline(matricula, parcelas = 1, opcao = null) {
   return { valorCobranca: v, valorBase: v, numParcelas: n, valorParcela: n > 1 ? Math.round((v / n) * 100) / 100 : null, tipo: 'CURSO' };
 }
 
-const buscarParcelamentoPadrao = (centavos, n) => require('./unicopag').obterOpcaoParcelamento(centavos, n);
+const buscarTabelaPadrao = (centavos) => require('./unicopag').consultarParcelamento(centavos);
+const TTL_TABELA_MS = 10 * 60 * 1000;
+const tabelas = new Map(); // centavos → { tabela, em }; só respostas boas ficam guardadas
 
-// As opções do seletor de parcelas do curso online: 1x sempre (sem juros); de 2 até max, a tabela do Únicopag
-// (com o cache de 10 min de lib/simular-valores.js). Consulta que falha fica de fora.
-async function opcoesParcelasOnline(valor, max, buscar = buscarParcelamentoPadrao) {
-  const { opcaoComCache } = require('./simular-valores');
+// As opções do seletor de parcelas do curso online: 1x sempre (sem juros); de 2 até max, da tabela do Únicopag
+// (uma consulta só por valor, guardada por 10 min). Sem tabela, só 1x.
+async function opcoesParcelasOnline(valor, max, buscarTabela = buscarTabelaPadrao) {
   const v = Number(valor);
   const opcoes = [{ n: 1, valorParcela: v, total: v }];
+  const limite = Math.min(Number(max) || 1, 12);
+  if (limite < 2) return opcoes;
   const centavos = Math.round(v * 100);
-  for (let n = 2; n <= Math.min(Number(max) || 1, 12); n++) {
-    const o = await opcaoComCache(centavos, n, buscar);
+  let guardada = tabelas.get(centavos);
+  if (!guardada || Date.now() - guardada.em > TTL_TABELA_MS) {
+    let tabela = null;
+    try { tabela = await buscarTabela(centavos); } catch (e) { tabela = null; }
+    guardada = Array.isArray(tabela) ? { tabela, em: Date.now() } : null;
+    if (guardada) tabelas.set(centavos, guardada);
+  }
+  if (!guardada) return opcoes;
+  for (let n = 2; n <= limite; n++) {
+    const o = guardada.tabela.find((x) => Number(x.installments) === n);
     if (o) opcoes.push({ n, valorParcela: o.installment_amount / 100, total: o.total_amount / 100 });
   }
   return opcoes;
