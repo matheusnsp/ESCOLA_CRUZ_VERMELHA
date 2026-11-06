@@ -177,7 +177,7 @@
 
 **Files:**
 - Create: `docs/ead/como-publicar-um-curso.md`, `docs/ead/deploy.md`
-- Test: `test/ead-docs.test.js` (os dois arquivos existem; o guia cita "link de teste", "Validar" e "Publicar"; o deploy cita `_prisma_migrations`, `prisma migrate deploy` e as 7 pastas `prisma/migrations/2026110*_ead_*` que existem no repositório)
+- Test: `test/ead-docs.test.js` (os dois arquivos existem; o guia cita "link de teste", "Validar" e "Publicar"; o deploy cita `_prisma_migrations`, `prisma migrate deploy` e as 6 pastas `prisma/migrations/2026110*_ead_*` que existem no repositório (estrutura, aluno, venda, duvidas, lote, cupom))
 
 - [ ] **Step 1:** Teste.
 - [ ] **Step 2:** `node --test test/ead-docs.test.js` → FAIL.
