@@ -13,7 +13,7 @@ function roteiroBom(n = 3) {
         titulo: final ? 'Juntando tudo' : `Módulo ${i + 1}`,
         minutos: 20,
         final,
-        topicos: final ? [{ titulo: 'Revisão geral' }] : [{ titulo: `Tópico ${i + 1}.1` }, { titulo: `Tópico ${i + 1}.2` }, { titulo: `Tópico ${i + 1}.3` }],
+        topicos: final ? [] : [{ titulo: `Tópico ${i + 1}.1` }, { titulo: `Tópico ${i + 1}.2` }, { titulo: `Tópico ${i + 1}.3` }],
         cenarios: final ? [{ titulo: 'Engasgo no recreio' }, { titulo: 'Queda na escada' }] : [],
       };
     }),
@@ -24,7 +24,7 @@ function roteiroBom(n = 3) {
 function moduloBom(m) {
   return {
     introducao: `Neste módulo: ${m.titulo}.`,
-    topicos: m.topicos.map((t, i) => ({ titulo: t.titulo, telas: [tela(i + 1), tela(i + 2)], perguntas: [1, 2, 3].map((k) => pergunta(i * 3 + k)) })),
+    topicos: (m.final ? [] : m.topicos).map((t, i) => ({ titulo: t.titulo, telas: [tela(i + 1), tela(i + 2)], perguntas: [1, 2, 3].map((k) => pergunta(i * 3 + k)) })),
     cenarios: (m.cenarios || []).map((c) => ({ titulo: c.titulo, cena: `Cena: ${c.titulo}.`, tempoSugeridoSeg: 240, decisoes: [1, 2, 3].map((k) => ({ pergunta: `Decisão ${k}?`, opcoes: opcoes() })) })),
   };
 }
@@ -48,4 +48,9 @@ function clienteFalso(respostas) {
   };
 }
 
-module.exports = { roteiroBom, moduloBom, clienteFalso, alternativas };
+// Roteiro só com módulos comuns (para acrescentar a um curso que já tem módulo final).
+function roteiroComum(n = 3) {
+  return { modulos: Array.from({ length: n }, (_, i) => ({ titulo: `Módulo ${i + 1}`, minutos: 20, final: false, topicos: [{ titulo: `Tópico ${i + 1}.1` }, { titulo: `Tópico ${i + 1}.2` }, { titulo: `Tópico ${i + 1}.3` }], cenarios: [] })) };
+}
+
+module.exports = { roteiroBom, roteiroComum, moduloBom, clienteFalso, alternativas };

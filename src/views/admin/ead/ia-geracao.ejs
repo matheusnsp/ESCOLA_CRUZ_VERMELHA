@@ -56,36 +56,41 @@
 <% } %>
 
 <% if (g.status === 'ROTEIRO_PRONTO' && roteiro) { %>
+  <%
+    // Um módulo do editor. i: índice nos nomes dos campos (o modelo usa "__i__", trocado pelo script).
+    var blocoModulo = function (m, i) {
+      var nome = 'modulos[' + i + ']';
+      var final = !!m.final;
+      var h = '<fieldset class="ia-modulo' + (final ? ' ia-final' : '') + '" data-modulo>';
+      h += '<input type="hidden" name="ordem[]" value="' + i + '">';
+      h += '<div class="adm-form adm-campos">';
+      h += '<label class="full">Módulo<input type="text" name="' + nome + '[titulo]" value="' + esc(m.titulo) + '" maxlength="120" required></label>';
+      h += '<label>Minutos<input type="number" name="' + nome + '[minutos]" value="' + esc(m.minutos) + '" min="0" max="600"></label>';
+      h += '<label class="check"><input type="checkbox" name="' + nome + '[final]" value="1" data-final' + (final ? ' checked' : '') + '> Módulo final (só cenários)</label>';
+      h += '<label class="check"><input type="checkbox" name="' + nome + '[remover]" value="1"> Tirar este módulo</label>';
+      h += '</div>';
+      h += '<div class="ia-bloco-topicos"><div class="adm-form adm-campos ia-topicos" data-topicos data-nome="' + nome + '[topicos]">';
+      (m.topicos || []).forEach(function (t, j) { h += '<label class="full">Tópico ' + (j + 1) + '<input type="text" name="' + nome + '[topicos][' + j + ']" value="' + esc(t.titulo) + '" maxlength="120"></label>'; });
+      h += '</div><button type="button" class="adm-btn adm-btn-out" data-mais-topico>+ tópico</button></div>';
+      h += '<div class="ia-bloco-cenarios"><div class="adm-form adm-campos ia-topicos" data-cenarios data-nome="' + nome + '[cenarios]">';
+      (m.cenarios || []).forEach(function (c, j) { h += '<label class="full">Cenário ' + (j + 1) + '<input type="text" name="' + nome + '[cenarios][' + j + ']" value="' + esc(c.titulo) + '" maxlength="120"></label>'; });
+      h += '</div><button type="button" class="adm-btn adm-btn-out" data-mais-cenario>+ cenário</button></div>';
+      h += '<div class="ead-acoes"><button type="button" class="adm-btn adm-btn-out" data-subir>↑ Subir</button><button type="button" class="adm-btn adm-btn-out" data-descer>↓ Descer</button></div>';
+      return h + '</fieldset>';
+    };
+    var esc = function (v) { return String(v === undefined || v === null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&#34;'); };
+  %>
   <form method="POST" action="/ead/ia/<%= g.id %>/confirmar" class="adm-box adm-box-pad ia-roteiro" id="iaRoteiro">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <h2 class="adm-h2 adm-form-h">Roteiro proposto</h2>
-    <p class="adm-mut">Ajuste à vontade: renomeie, tire, mude a ordem, acrescente tópicos. Só o último módulo pode ser o final (com 2 a 4 cenários).</p>
-    <% roteiro.modulos.forEach(function (m, i) { %>
-      <fieldset class="ia-modulo" data-modulo>
-        <input type="hidden" name="ordem[]" value="<%= i %>">
-        <div class="adm-form adm-campos">
-          <label class="full">Módulo<input type="text" name="modulos[<%= i %>][titulo]" value="<%= m.titulo %>" maxlength="160" required></label>
-          <label>Minutos<input type="number" name="modulos[<%= i %>][minutos]" value="<%= m.minutos %>" min="0" max="600"></label>
-          <label class="check"><input type="checkbox" name="modulos[<%= i %>][final]" value="1" <%= m.final ? 'checked' : '' %>> Módulo final (cenários)</label>
-          <label class="check"><input type="checkbox" name="modulos[<%= i %>][remover]" value="1"> Tirar este módulo</label>
-        </div>
-        <div class="adm-form adm-campos ia-topicos" data-topicos data-nome="modulos[<%= i %>][topicos]">
-          <% m.topicos.forEach(function (t, j) { %><label class="full">Tópico <%= j + 1 %><input type="text" name="modulos[<%= i %>][topicos][<%= j %>]" value="<%= t.titulo %>" maxlength="160"></label><% }) %>
-        </div>
-        <button type="button" class="adm-btn adm-btn-out" data-mais-topico>+ tópico</button>
-        <% if (m.final) { %>
-          <div class="adm-form adm-campos ia-topicos">
-            <% (m.cenarios || []).forEach(function (c, j) { %><label class="full">Cenário <%= j + 1 %><input type="text" name="modulos[<%= i %>][cenarios][<%= j %>]" value="<%= c.titulo %>" maxlength="160"></label><% }) %>
-          </div>
-        <% } %>
-        <div class="ead-acoes">
-          <button type="button" class="adm-btn adm-btn-out" data-subir>↑ Subir</button>
-          <button type="button" class="adm-btn adm-btn-out" data-descer>↓ Descer</button>
-        </div>
-      </fieldset>
-    <% }) %>
+    <p class="adm-mut">Ajuste à vontade: renomeie, tire, mude a ordem, acrescente módulos e tópicos. Só o último módulo pode ser o final, que tem só cenários (2 a 4).</p>
+    <div data-modulos>
+      <% roteiro.modulos.forEach(function (m, i) { %><%- blocoModulo(m, i) %><% }) %>
+    </div>
+    <p><button type="button" class="adm-btn adm-btn-out" data-mais-modulo>+ módulo</button></p>
     <button type="submit" class="adm-btn"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar o curso</button>
   </form>
+  <template id="iaModeloModulo"><%- blocoModulo({ titulo: '', minutos: 20, final: false, topicos: [{ titulo: '' }], cenarios: [] }, '__i__') %></template>
 <% } %>
 
 <script src="<%= asset('/js/ead-ia.js') %>"></script>

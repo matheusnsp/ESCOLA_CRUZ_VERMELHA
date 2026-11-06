@@ -383,7 +383,8 @@ require('./lib/reconciliacao').agendar();
 
 // Criar curso com IA (etapa 9): ao subir, retoma a geração que ficou no meio (lib/ead-ia-fila.js). Só com a chave
 // da API configurada; a marca em Configuracao evita dois serviços no mesmo passo.
-if (require('./lib/ead-ia').ehChaveConfigurada()) setTimeout(() => require('./lib/ead-ia-fila').retomar(), 15000).unref();
+// A varredura periódica destrava a geração de um serviço que morreu no meio de um passo.
+if (require('./lib/ead-ia').ehChaveConfigurada()) require('./lib/ead-ia-fila').agendar();
 
 const port = process.env.PORT || 3000;
 

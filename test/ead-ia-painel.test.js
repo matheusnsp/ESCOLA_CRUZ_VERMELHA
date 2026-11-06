@@ -52,9 +52,9 @@ describe('Painel → Criar curso com IA', { skip: temBanco ? false : 'sem DATABA
     fila.definirCliente(null);
     server.close(); semDev.close();
     if (chaveAntes === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = chaveAntes;
-    const gs = await prisma.geracaoIaEad.findMany({ where: { criadoPor: quem } });
+    const gs = await prisma.geracaoIaEad.findMany({ where: { criadoPor: { startsWith: quem } } });
     await prisma.logAuditoria.deleteMany({ where: { alvoId: { in: gs.map((g) => g.id) } } });
-    await prisma.geracaoIaEad.deleteMany({ where: { criadoPor: quem } });
+    await prisma.geracaoIaEad.deleteMany({ where: { criadoPor: { startsWith: quem } } });
     await prisma.configuracao.deleteMany({ where: { chave: { in: ['ead-ia:teto-mensal-usd'] } } });
     const cos = [coEx.id, ...gs.map((g) => g.cursoOnlineId).filter(Boolean)];
     const cursos = (await prisma.cursoOnline.findMany({ where: { id: { in: cos } }, select: { cursoId: true } })).map((c) => c.cursoId);
@@ -186,6 +186,34 @@ describe('Painel → Criar curso com IA', { skip: temBanco ? false : 'sem DATABA
     assert.match(html, /data-assinatura="\[&#34;MODULOS_GERANDO&#34;,\[&#34;pronto&#34;,&#34;gerando&#34;\]\]"/);
     const js = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'js', 'ead-ia.js'), 'utf8');
     assert.match(js, /getAttribute\('data-assinatura'\)/);
+    await prisma.geracaoIaEad.update({ where: { id: g.id }, data: { criadoPor: quem, status: 'CANCELADA' } });
+  });
+
+  test('[revisão I5] lista, página e estado.json não leem o material (PDFs) do banco', async () => {
+    const g = await prisma.geracaoIaEad.create({ data: { criadoPor: `${quem}-5`, status: 'MODULOS_GERANDO', pedido: { destino: { tipo: 'existente', cursoOnlineId: coEx.id }, tema: 'Tema', nModulos: 2 }, roteiro: roteiroBom(2), cursoOnlineId: coEx.id, materialPdfs: [{ nome: 'grande.pdf', base64: 'QUJD' }], modulos: [{ ordem: 0, titulo: 'A', status: 'gerando' }] } });
+    const consultas = [];
+    const orig = { u: prisma.geracaoIaEad.findUnique, m: prisma.geracaoIaEad.findMany };
+    prisma.geracaoIaEad.findUnique = (a) => { consultas.push(a); return orig.u.call(prisma.geracaoIaEad, a); };
+    prisma.geracaoIaEad.findMany = (a) => { consultas.push(a); return orig.m.call(prisma.geracaoIaEad, a); };
+    try {
+      await get('/ead/ia'); await get(`/ead/ia/${g.id}`); await fetch(`${site}/ead/ia/${g.id}/estado.json`);
+    } finally {
+      prisma.geracaoIaEad.findUnique = orig.u; prisma.geracaoIaEad.findMany = orig.m;
+    }
+    assert.ok(consultas.length >= 3);
+    for (const c of consultas) assert.ok(c.select && !c.select.materialPdfs && !c.select.materialTexto, JSON.stringify(c));
+    await prisma.geracaoIaEad.update({ where: { id: g.id }, data: { criadoPor: quem, status: 'CANCELADA' } });
+  });
+
+  test('[revisão I7] editor do roteiro: acrescentar módulo e cenário; o bloco de cenários existe em todo módulo', async () => {
+    const g = await prisma.geracaoIaEad.create({ data: { criadoPor: `${quem}-7`, status: 'ROTEIRO_PRONTO', pedido: { destino: { tipo: 'existente', cursoOnlineId: coEx.id }, tema: 'Tema', nModulos: 3 }, roteiro: roteiroBom(3) } });
+    const html = await get(`/ead/ia/${g.id}`);
+    assert.match(html, /data-mais-modulo/);
+    assert.equal((html.match(/data-cenarios /g) || []).length, 4, '3 módulos + o modelo do módulo novo');
+    assert.equal((html.match(/data-mais-cenario/g) || []).length, 4);
+    assert.match(html, /<template id="iaModeloModulo">/);
+    const js = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'js', 'ead-ia.js'), 'utf8');
+    for (const k of ['data-mais-modulo', 'data-mais-cenario', 'iaModeloModulo']) assert.ok(js.includes(k), k);
     await prisma.geracaoIaEad.update({ where: { id: g.id }, data: { criadoPor: quem, status: 'CANCELADA' } });
   });
 

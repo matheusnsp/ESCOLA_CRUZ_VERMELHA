@@ -29,7 +29,7 @@ const REGRAS_SYSTEM = [
   'Quando houver material de base, siga o material; não invente dados técnicos, números ou protocolos que ele não traga.',
   'Cada tópico tem de 1 a 4 telas e de 3 a 6 perguntas de uma resposta, cada uma com 4 alternativas, só uma correta, e o porquê.',
   'Um módulo comum soma pelo menos 8 perguntas (para ter pré-teste).',
-  'O módulo final reúne o curso em 2 a 4 cenários práticos, cada um com 3 a 5 decisões; cada decisão tem 3 opções, só uma correta, e o porquê de cada opção. O tempo sugerido de cada cenário fica entre 60 e 900 segundos.',
+  'O módulo final não tem tópicos nem telas: reúne o curso em 2 a 4 cenários práticos, cada um com 3 a 5 decisões; cada decisão tem 3 opções, só uma correta, e o porquê de cada opção. O tempo sugerido de cada cenário fica entre 60 e 900 segundos.',
   'Responda só no formato JSON pedido.',
 ].join('\n');
 
@@ -147,14 +147,10 @@ async function podeComecar(usuarioId) {
 
 async function somarCusto(geracaoId, usage) {
   if (!usage) return;
+  const t = E.tokensDe(usage); // com o fallback, soma todas as tentativas (usage.iterations)
   await prisma.geracaoIaEad.update({
     where: { id: geracaoId },
-    data: {
-      tokensEntrada: { increment: usage.input_tokens || 0 },
-      tokensSaida: { increment: usage.output_tokens || 0 },
-      tokensCache: { increment: (usage.cache_read_input_tokens || 0) + (usage.cache_creation_input_tokens || 0) },
-      custoUsd: { increment: E.custoUsd(usage) },
-    },
+    data: { tokensEntrada: { increment: t.entrada }, tokensSaida: { increment: t.saida }, tokensCache: { increment: t.cache }, custoUsd: { increment: E.custoUsd(usage) } },
   });
 }
 
@@ -181,7 +177,7 @@ async function gerarRoteiro(geracaoId, { cliente }) {
   const pedido = [
     descricaoDoPedido(g.pedido),
     `Proponha o roteiro do curso com cerca de ${g.pedido.nModulos} módulos: o último é o módulo final ("Juntando tudo"), com 2 a 4 cenários.`,
-    'Para cada módulo: título, minutos estimados, final (só o último) e de 1 a 6 tópicos; para o final, os títulos dos cenários.',
+    'Para cada módulo comum: título, minutos estimados e de 1 a 6 tópicos. O módulo final (só o último) não tem tópicos: só os títulos dos cenários.',
   ].join('\n\n');
   try {
     const { system, messages } = montarMensagens(g, pedido);
@@ -227,6 +223,10 @@ async function confirmarRoteiro(geracaoId, roteiroEditado, atorId) {
   } else {
     const co = d.cursoOnlineId ? await prisma.cursoOnline.findUnique({ where: { id: d.cursoOnlineId } }) : null;
     if (!co) return { ok: false, erro: 'O curso online escolhido não existe mais.' };
+    // Um só módulo final por curso (lib/ead-db.js).
+    if (v.roteiro.modulos.some((m) => m.final) && await prisma.moduloEad.count({ where: { cursoOnlineId: co.id, final: true } })) {
+      return { ok: false, erro: 'Este curso já tem um módulo final: desmarque "final" no roteiro.' };
+    }
     cursoOnlineId = co.id;
   }
   const modulos = v.roteiro.modulos.map((m, i) => ({ ordem: i, titulo: m.titulo, status: 'pendente' }));
@@ -259,14 +259,18 @@ function pedidoDoModulo(g, ordem) {
   return [
     descricaoDoPedido(g.pedido),
     `Roteiro do curso:\n${sumario}`,
-    `Escreva agora o módulo ${ordem + 1}: "${m.titulo}" (${m.minutos} minutos), com exatamente estes tópicos, nesta ordem: ${m.topicos.map((t) => `"${t.titulo}"`).join(', ')}.`,
-    m.final ? `É o módulo final: escreva também os cenários ${m.cenarios.map((c) => `"${c.titulo}"`).join(', ')}.` : 'Não é o módulo final: a lista de cenários fica vazia.',
+    m.final
+      ? `Escreva agora o módulo ${ordem + 1}, o módulo final: "${m.titulo}" (${m.minutos} minutos). Ele não tem tópicos (a lista de tópicos fica vazia); escreva exatamente estes cenários, nesta ordem: ${m.cenarios.map((c) => `"${c.titulo}"`).join(', ')}.`
+      : `Escreva agora o módulo ${ordem + 1}: "${m.titulo}" (${m.minutos} minutos), com exatamente estes tópicos, nesta ordem: ${m.topicos.map((t) => `"${t.titulo}"`).join(', ')}. Não é o módulo final: a lista de cenários fica vazia.`,
   ].join('\n\n');
 }
 
+// Grava o módulo e marca "pronto" na mesma transação, sob a trava da geração (revisão I8): um módulo gravado nunca
+// fica sem a marca (e nunca é refeito).
 async function gravarModulo(g, ordem, m) {
   const doRoteiro = g.roteiro.modulos[ordem];
   return transacao(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'ia:' + g.id}))`;
     const ultimo = await tx.moduloEad.findFirst({ where: { cursoOnlineId: g.cursoOnlineId }, orderBy: { ordem: 'desc' }, select: { ordem: true } });
     const mod = await tx.moduloEad.create({
       data: {
@@ -286,18 +290,21 @@ async function gravarModulo(g, ordem, m) {
     for (const [i, c] of (doRoteiro.final ? m.cenarios : []).entries()) {
       await tx.cenarioEad.create({
         data: {
-          moduloId: mod.id, ordem: i, titulo: c.titulo, cena: c.cena, tempoSugeridoSeg: c.tempoSugeridoSeg,
+          moduloId: mod.id, ordem: i, titulo: doRoteiro.cenarios[i] ? doRoteiro.cenarios[i].titulo : c.titulo, cena: c.cena, tempoSugeridoSeg: c.tempoSugeridoSeg,
           decisoes: { create: c.decisoes.map((d, k) => ({ ordem: k, pergunta: d.pergunta, opcoes: { create: d.opcoes.map((o, n) => ({ ordem: n, texto: o.texto, correta: o.correta, feedback: o.porque })) } })) },
         },
       });
     }
+    const atual = await tx.geracaoIaEad.findUnique({ where: { id: g.id }, select: { modulos: true } });
+    const mods = atual.modulos.map((x) => (x.ordem === ordem ? { ...x, status: 'pronto', moduloId: mod.id, erro: null } : x));
+    await tx.geracaoIaEad.update({ where: { id: g.id }, data: { modulos: mods } });
     return mod;
   });
 }
 
 async function gerarModulo(geracaoId, ordem, { cliente }) {
-  const ini = await mudarModulo(geracaoId, ordem, (m) => {
-    if (m.status !== 'pendente') return false;
+  const ini = await mudarModulo(geracaoId, ordem, (m, ger) => {
+    if (m.status !== 'pendente' || ger.status !== 'MODULOS_GERANDO') return false;
     m.status = 'gerando'; m.erro = null;
     return true;
   });
@@ -310,8 +317,7 @@ async function gerarModulo(geracaoId, ordem, { cliente }) {
     const v = E.validarModulo(json, g.roteiro.modulos[ordem]);
     if (!v.ok) throw new ErroIa(v.erro);
     const mod = await gravarModulo(g, ordem, v.modulo);
-    await mudarModulo(geracaoId, ordem, (m) => { m.status = 'pronto'; m.moduloId = mod.id; m.erro = null; });
-    await auditar('SISTEMA', 'EAD_IA_MODULO_GERADO', geracaoId, { ordem, moduloId: mod.id });
+    await auditar('SISTEMA', 'EAD_IA_MODULO_GERADO', geracaoId, { ordem, moduloId: mod.id }).catch((e) => console.error('[EAD IA] auditoria:', e.message));
   } catch (e) {
     if (!(e instanceof ErroIa)) console.error('[EAD IA] módulo:', e);
     if (e.usage) await somarCusto(geracaoId, e.usage);

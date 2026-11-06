@@ -5,7 +5,7 @@ const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { roteiroBom, moduloBom, clienteFalso } = require('./helpers/ia-falso');
+const { roteiroBom, roteiroComum, moduloBom, clienteFalso } = require('./helpers/ia-falso');
 
 const IA = require('../src/lib/ead-ia');
 
@@ -160,8 +160,9 @@ describe('gerador no banco', { skip: temBanco ? false : 'sem DATABASE_URL local'
     assert.equal(p.feedback, 'Porque garante a segurança da cena.');
     assert.equal(p.alternativas.length, 4);
     assert.equal(p.alternativas.filter((a) => a.correta).length, 1);
-    const fim = await prisma.moduloEad.findUnique({ where: { id: d.modulos[2].moduloId }, include: { cenarios: { include: { decisoes: { include: { opcoes: true } } } } } });
+    const fim = await prisma.moduloEad.findUnique({ where: { id: d.modulos[2].moduloId }, include: { topicos: true, cenarios: { include: { decisoes: { include: { opcoes: true } } } } } });
     assert.equal(fim.final, true);
+    assert.equal(fim.topicos.length, 0, '[revisão I3] módulo final só com cenários');
     assert.equal(fim.cenarios.length, 2);
     assert.equal(fim.cenarios[0].decisoes.length, 3);
     assert.equal(fim.cenarios[0].decisoes[0].opcoes.filter((o) => o.correta).length, 1);
@@ -176,8 +177,8 @@ describe('gerador no banco', { skip: temBanco ? false : 'sem DATABASE_URL local'
   test('gerarModulo com resposta fora das regras: erro, nada gravado', async () => {
     const g = await novaGeracao();
     await IA.gerarRoteiro(g.id, { cliente: clienteFalso([() => roteiroBom(3)]) });
-    await IA.confirmarRoteiro(g.id, roteiroBom(3), 'dev');
-    const ruim = moduloBom(roteiroBom(3).modulos[1]); ruim.topicos[0].perguntas[0].alternativas.forEach((a) => { a.correta = true; });
+    await IA.confirmarRoteiro(g.id, roteiroComum(3), 'dev');
+    const ruim = moduloBom(roteiroComum(3).modulos[1]); ruim.topicos[0].perguntas[0].alternativas.forEach((a) => { a.correta = true; });
     const antes = await prisma.moduloEad.count({ where: { cursoOnlineId: coEx.id } });
     await IA.gerarModulo(g.id, 1, { cliente: clienteFalso([() => ruim]) });
     const d = await prisma.geracaoIaEad.findUnique({ where: { id: g.id } });
@@ -200,5 +201,43 @@ describe('gerador no banco', { skip: temBanco ? false : 'sem DATABASE_URL local'
     await prisma.geracaoIaEad.update({ where: { id: g.id }, data: { custoUsd: Math.max(0, 50 - gasto) + 0.01, status: 'CONCLUIDA' } });
     assert.deepEqual(await IA.podeComecar(`outro-${s}`), { ok: false, erro: 'O teto de gasto com IA deste mês (US$ 50.00) foi atingido.' });
     await prisma.geracaoIaEad.update({ where: { id: g.id }, data: { custoUsd: 0 } });
+  });
+
+  test('[revisão I4] curso que já tem módulo final: roteiro com final é recusado', async () => {
+    const c = await prisma.curso.create({ data: { nome: `Curso Com Final ${s}`, cargaHoraria: 2, precoAvista: 0, precoCheio: 0, valorParcela: 0, ativo: false } });
+    const co = await prisma.cursoOnline.create({ data: { cursoId: c.id } });
+    cursosCriados.push({ co: co.id, curso: c.id });
+    await prisma.moduloEad.create({ data: { cursoOnlineId: co.id, titulo: 'Final antigo', ordem: 0, final: true } });
+    const g = await novaGeracao({ destino: { tipo: 'existente', cursoOnlineId: co.id } });
+    await IA.gerarRoteiro(g.id, { cliente: clienteFalso([() => roteiroBom(3)]) });
+    assert.deepEqual(await IA.confirmarRoteiro(g.id, roteiroBom(3), 'dev'), { ok: false, erro: 'Este curso já tem um módulo final: desmarque "final" no roteiro.' });
+    const semFinal = roteiroBom(3); semFinal.modulos[2] = { ...semFinal.modulos[0], titulo: 'Mais um' };
+    assert.equal((await IA.confirmarRoteiro(g.id, semFinal, 'dev')).ok, true);
+  });
+
+  test('[revisão I8] o módulo é gravado e marcado "pronto" juntos: erro depois disso não o faz ser refeito', async () => {
+    const g = await novaGeracao();
+    await IA.gerarRoteiro(g.id, { cliente: clienteFalso([() => roteiroBom(3)]) });
+    await IA.confirmarRoteiro(g.id, roteiroComum(3), 'dev');
+    const original = prisma.logAuditoria.create;
+    prisma.logAuditoria.create = async () => { throw new Error('auditoria fora do ar'); };
+    try {
+      await IA.gerarModulo(g.id, 0, { cliente: clienteFalso([() => moduloBom(roteiroComum(3).modulos[0])]) });
+    } finally {
+      prisma.logAuditoria.create = original;
+    }
+    const d = await prisma.geracaoIaEad.findUnique({ where: { id: g.id } });
+    assert.equal(d.modulos[0].status, 'pronto');
+    assert.ok(d.modulos[0].moduloId);
+  });
+
+  test('geração cancelada: gerarModulo não começa o módulo', async () => {
+    const g = await novaGeracao();
+    await IA.gerarRoteiro(g.id, { cliente: clienteFalso([() => roteiroBom(3)]) });
+    await IA.confirmarRoteiro(g.id, roteiroComum(3), 'dev');
+    await IA.cancelar(g.id, 'dev');
+    const cli = clienteFalso([() => moduloBom(roteiroComum(3).modulos[0])]);
+    await IA.gerarModulo(g.id, 0, { cliente: cli });
+    assert.equal(cli.chamadas.length, 0);
   });
 });

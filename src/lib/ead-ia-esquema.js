@@ -50,7 +50,7 @@ const ESQUEMA_MODULO = objeto({
 // ─── Roteiro ───────────────────────────────────────────────────────────────────────────────────
 const MSG_ROTEIRO = {
   modulos: 'O roteiro precisa de 2 a 12 módulos.',
-  topicos: 'Cada módulo precisa de 1 a 6 tópicos.',
+  topicos: 'Cada módulo comum precisa de 1 a 6 tópicos.',
   final: 'Só o último módulo pode ser o final.',
   cenarios: 'O módulo final precisa de 2 a 4 cenários.',
   titulo: 'Todo módulo e tópico precisa de título.',
@@ -60,11 +60,12 @@ const titulo = (t) => typeof t === 'string' && t.trim().length > 0;
 function validarRoteiro(json) {
   const mods = json && Array.isArray(json.modulos) ? json.modulos : [];
   if (mods.length < 2 || mods.length > 12) return { ok: false, erro: MSG_ROTEIRO.modulos };
-  if (mods.some((m) => !Array.isArray(m.topicos) || m.topicos.length < 1 || m.topicos.length > 6)) return { ok: false, erro: MSG_ROTEIRO.topicos };
+  // Módulo final tem cenários e não tem tópicos (regra do editor, lib/ead-db.js): os tópicos dele são ignorados.
+  if (mods.some((m) => !m.final && (!Array.isArray(m.topicos) || m.topicos.length < 1 || m.topicos.length > 6))) return { ok: false, erro: MSG_ROTEIRO.topicos };
   if (mods.some((m, i) => m.final && i !== mods.length - 1)) return { ok: false, erro: MSG_ROTEIRO.final };
   const ultimo = mods[mods.length - 1];
   if (ultimo.final && (!Array.isArray(ultimo.cenarios) || ultimo.cenarios.length < 2 || ultimo.cenarios.length > 4)) return { ok: false, erro: MSG_ROTEIRO.cenarios };
-  if (mods.some((m) => !titulo(m.titulo) || m.topicos.some((t) => !titulo(t && t.titulo)) || (m.final && m.cenarios.some((c) => !titulo(c && c.titulo))))) return { ok: false, erro: MSG_ROTEIRO.titulo };
+  if (mods.some((m) => !titulo(m.titulo) || (!m.final && m.topicos.some((t) => !titulo(t && t.titulo))) || (m.final && m.cenarios.some((c) => !titulo(c && c.titulo))))) return { ok: false, erro: MSG_ROTEIRO.titulo };
   return {
     ok: true,
     roteiro: {
@@ -72,7 +73,7 @@ function validarRoteiro(json) {
         titulo: m.titulo.trim(),
         minutos: Math.max(0, Math.min(600, Number.parseInt(m.minutos, 10) || 0)),
         final: !!m.final,
-        topicos: m.topicos.map((t) => ({ titulo: t.titulo.trim() })),
+        topicos: m.final ? [] : m.topicos.map((t) => ({ titulo: t.titulo.trim() })),
         cenarios: m.final ? m.cenarios.map((c) => ({ titulo: c.titulo.trim() })) : [],
       })),
     },
@@ -97,22 +98,23 @@ const Decisao = z.object({
   opcoes: z.array(z.object({ texto: naoVazio, correta: z.boolean(), porque: naoVazio })).length(3).refine(umaCorreta, 'Cada decisão precisa de exatamente uma opção correta.'),
 });
 const Cenario = z.object({ titulo: naoVazio, cena: naoVazio, tempoSugeridoSeg: z.number().int().min(60).max(900), decisoes: z.array(Decisao).min(3).max(5) });
-const Modulo = z.object({ introducao: z.string(), topicos: z.array(Topico), cenarios: z.array(Cenario) });
+const ModuloComum = z.object({ introducao: z.string(), topicos: z.array(Topico), cenarios: z.any() });
+const ModuloFinal = z.object({ introducao: z.string(), topicos: z.array(z.any()).max(0, 'O módulo final não tem tópicos, só cenários.'), cenarios: z.array(Cenario) });
 
 function validarModulo(json, moduloDoRoteiro) {
-  const r = Modulo.safeParse(json);
+  const r = (moduloDoRoteiro.final ? ModuloFinal : ModuloComum).safeParse(json);
   if (!r.success) {
     const i = r.error.issues[0];
     return { ok: false, erro: `A resposta da IA não segue as regras do curso (${i.path.join('.')}: ${i.message}).` };
   }
   const m = r.data;
-  if (m.topicos.length !== moduloDoRoteiro.topicos.length) return { ok: false, erro: 'A resposta da IA não tem os tópicos do roteiro.' };
   if (moduloDoRoteiro.final) {
-    if (m.cenarios.length < 2 || m.cenarios.length > 4) return { ok: false, erro: 'O módulo final precisa de 2 a 4 cenários.' };
-  } else if (m.topicos.reduce((s, t) => s + t.perguntas.length, 0) < 8) {
-    return { ok: false, erro: 'O módulo precisa de pelo menos 8 perguntas (para ter pré-teste).' };
+    if (m.cenarios.length !== moduloDoRoteiro.cenarios.length) return { ok: false, erro: 'A resposta da IA não tem os cenários do roteiro.' };
+    return { ok: true, modulo: { ...m, topicos: [] } };
   }
-  return { ok: true, modulo: m };
+  if (m.topicos.length !== moduloDoRoteiro.topicos.length) return { ok: false, erro: 'A resposta da IA não tem os tópicos do roteiro.' };
+  if (m.topicos.reduce((s, t) => s + t.perguntas.length, 0) < 8) return { ok: false, erro: 'O módulo precisa de pelo menos 8 perguntas (para ter pré-teste).' };
+  return { ok: true, modulo: { ...m, cenarios: [] } };
 }
 
 // ─── Editor do roteiro (formulário) ─────────────────────────────────────────────────────────────
@@ -120,29 +122,51 @@ const comoLista = (v) => (Array.isArray(v) ? v : v && typeof v === 'object' ? Ob
 const limpos = (v) => comoLista(v).map((x) => String(x || '').trim()).filter(Boolean);
 
 function roteiroDoFormulario(body) {
-  const mods = comoLista(body && body.modulos);
-  const ordem = comoLista(body && body.ordem).map((x) => Number.parseInt(x, 10)).filter((i) => Number.isInteger(i) && mods[i]);
-  const indices = ordem.length ? ordem : mods.map((_, i) => i);
+  // body.modulos vem do qs como lista (índices 0, 1, 2…) ou como objeto (quando o editor acrescenta um módulo com
+  // índice "n<hora>"); ordem[] traz os índices na ordem da tela.
+  const bruto = (body && body.modulos) || {};
+  const porIndice = new Map(Array.isArray(bruto) ? bruto.map((m, i) => [String(i), m]) : Object.entries(bruto));
+  const ordem = comoLista(body && body.ordem).map(String).filter((k) => porIndice.has(k));
+  const indices = ordem.length ? ordem : [...porIndice.keys()];
   return {
-    modulos: indices.map((i) => mods[i]).filter((m) => m && m.remover !== '1').map((m) => {
+    modulos: indices.map((k) => porIndice.get(k)).filter((m) => m && m.remover !== '1').map((m) => {
       const final = m.final === '1' || m.final === 'on' || m.final === true;
       return {
         titulo: String(m.titulo || '').trim(),
         minutos: Number.parseInt(m.minutos, 10) || 0,
         final,
-        topicos: limpos(m.topicos).map((t) => ({ titulo: t })),
+        topicos: final ? [] : limpos(m.topicos).map((t) => ({ titulo: t })),
         cenarios: final ? limpos(m.cenarios).map((t) => ({ titulo: t })) : [],
       };
     }),
   };
 }
 
-// ─── Custo (US$ por milhão de tokens, Claude Opus 5.5) ──────────────────────────────────────────
-const PRECO = { entrada: 4, saida: 20, cacheLeitura: 0.2, cacheEscrita: 5 };
+// ─── Custo (US$ por milhão de tokens) ───────────────────────────────────────────────────────────
+// Com o fallback do servidor (recusa), usage.iterations traz cada tentativa com o próprio modelo: a recusada no
+// meio também é cobrada, e a de reserva pelo preço do modelo de reserva (revisão I6). Sem iterations, o modelo
+// é o Claude Opus 5.5.
+const PRECOS = {
+  'claude-opus-5-5': { entrada: 4, saida: 20, cacheLeitura: 0.2, cacheEscrita: 5 },
+  'claude-opus-4-8': { entrada: 5, saida: 25, cacheLeitura: 0.5, cacheEscrita: 6.25 },
+  'claude-opus-5': { entrada: 5, saida: 25, cacheLeitura: 0.5, cacheEscrita: 6.25 },
+  'claude-fable-5-1': { entrada: 10, saida: 50, cacheLeitura: 1, cacheEscrita: 12.5 },
+  'claude-sonnet-5-5': { entrada: 2, saida: 10, cacheLeitura: 0.2, cacheEscrita: 2.5 },
+};
+const PRECO = PRECOS['claude-opus-5-5'];
+const partes = (u) => (Array.isArray(u && u.iterations) && u.iterations.length ? u.iterations : [u || {}]);
 function custoUsd(u = {}) {
-  const v = ((u.input_tokens || 0) * PRECO.entrada + (u.output_tokens || 0) * PRECO.saida
-    + (u.cache_read_input_tokens || 0) * PRECO.cacheLeitura + (u.cache_creation_input_tokens || 0) * PRECO.cacheEscrita) / 1e6;
+  const v = partes(u).reduce((t, x) => {
+    const p = PRECOS[x.model] || (x.model ? PRECOS['claude-fable-5-1'] : PRECO); // modelo desconhecido: o mais caro (não subconta o teto)
+    return t + ((x.input_tokens || 0) * p.entrada + (x.output_tokens || 0) * p.saida
+      + (x.cache_read_input_tokens || 0) * p.cacheLeitura + (x.cache_creation_input_tokens || 0) * p.cacheEscrita);
+  }, 0) / 1e6;
   return Math.round(v * 1e4) / 1e4;
 }
+const tokensDe = (u) => partes(u).reduce((t, x) => ({
+  entrada: t.entrada + (x.input_tokens || 0),
+  saida: t.saida + (x.output_tokens || 0),
+  cache: t.cache + (x.cache_read_input_tokens || 0) + (x.cache_creation_input_tokens || 0),
+}), { entrada: 0, saida: 0, cache: 0 });
 
-module.exports = { ESQUEMA_ROTEIRO, ESQUEMA_MODULO, MSG_ROTEIRO, validarRoteiro, validarModulo, roteiroDoFormulario, custoUsd, PRECO };
+module.exports = { ESQUEMA_ROTEIRO, ESQUEMA_MODULO, MSG_ROTEIRO, validarRoteiro, validarModulo, roteiroDoFormulario, custoUsd, tokensDe, PRECO, PRECOS };

@@ -16,7 +16,7 @@ test('[Review Focus 3] validarRoteiro recusa com a mensagem exata', () => {
   const casos = [
     [roteiroBom(1), 'O roteiro precisa de 2 a 12 módulos.'],
     [roteiroBom(13), 'O roteiro precisa de 2 a 12 módulos.'],
-    [(() => { const r = roteiroBom(3); r.modulos[0].topicos = []; return r; })(), 'Cada módulo precisa de 1 a 6 tópicos.'],
+    [(() => { const r = roteiroBom(3); r.modulos[0].topicos = []; return r; })(), 'Cada módulo comum precisa de 1 a 6 tópicos.'],
     [(() => { const r = roteiroBom(3); r.modulos[0].final = true; return r; })(), 'Só o último módulo pode ser o final.'],
     [(() => { const r = roteiroBom(3); r.modulos[1].final = true; r.modulos[1].cenarios = r.modulos[2].cenarios; return r; })(), 'Só o último módulo pode ser o final.'],
     [(() => { const r = roteiroBom(3); r.modulos[2].cenarios = [{ titulo: 'Só um' }]; return r; })(), 'O módulo final precisa de 2 a 4 cenários.'],
@@ -79,4 +79,41 @@ test('esquemas: additionalProperties false em todo objeto, e required com todas 
   };
   visitar(E.ESQUEMA_ROTEIRO, 'roteiro');
   visitar(E.ESQUEMA_MODULO, 'modulo');
+});
+
+test('[revisão I3] módulo final não tem tópicos: os propostos pela IA são ignorados, e o módulo final não pede tópicos', () => {
+  const r = roteiroBom(3); r.modulos[2].topicos = [{ titulo: 'Revisão' }];
+  const v = E.validarRoteiro(r);
+  assert.equal(v.ok, true, v.erro);
+  assert.deepEqual(v.roteiro.modulos[2].topicos, []);
+  const fim = v.roteiro.modulos[2];
+  const comTopicos = moduloBom({ ...fim, final: false, topicos: [{ titulo: 'X' }, { titulo: 'Y' }, { titulo: 'Z' }] });
+  assert.equal(E.validarModulo({ ...moduloBom(fim), topicos: comTopicos.topicos }, fim).ok, false, 'final com tópicos é recusado');
+  const ok = E.validarModulo(moduloBom(fim), fim);
+  assert.equal(ok.ok, true, ok.erro);
+  assert.equal(E.validarModulo({ ...moduloBom(fim), cenarios: moduloBom(fim).cenarios.slice(0, 1) }, fim).ok, false, 'cenários diferentes do roteiro');
+});
+
+test('[revisão I3] módulo comum: cenários mal formados são ignorados (não fazem falhar)', () => {
+  const m = roteiroBom(3).modulos[0];
+  assert.equal(E.validarModulo({ ...moduloBom(m), cenarios: [{ lixo: 1 }] }, m).ok, true);
+});
+
+test('[revisão I6] custoUsd soma usage.iterations com o preço de cada modelo (fallback)', () => {
+  const usage = { input_tokens: 10, output_tokens: 10, iterations: [
+    { type: 'message', model: 'claude-opus-5-5', input_tokens: 1e6, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+    { type: 'fallback_message', model: 'claude-opus-4-8', input_tokens: 0, output_tokens: 1e6, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+  ] };
+  assert.equal(E.custoUsd(usage), 4 + 25);
+  assert.deepEqual(E.tokensDe(usage), { entrada: 1e6, saida: 1e6, cache: 0 });
+});
+
+test('[revisão I7] roteiroDoFormulario: módulo acrescentado no editor (índice "n…") entra na ordem', () => {
+  const body = {
+    modulos: { 0: { titulo: 'A', minutos: '10', topicos: ['A1'] }, n1700000000000: { titulo: 'Novo', minutos: '15', topicos: ['N1'] }, 1: { titulo: 'Final', minutos: '20', final: '1', topicos: ['x'], cenarios: ['C1', 'C2'] } },
+    ordem: ['0', 'n1700000000000', '1'],
+  };
+  const r = E.roteiroDoFormulario(body);
+  assert.deepEqual(r.modulos.map((m) => m.titulo), ['A', 'Novo', 'Final']);
+  assert.equal(E.validarRoteiro(r).ok, true, E.validarRoteiro(r).erro);
 });

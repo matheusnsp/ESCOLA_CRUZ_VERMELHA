@@ -3,7 +3,7 @@
 require('dotenv').config();
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { roteiroBom, moduloBom, clienteFalso } = require('./helpers/ia-falso');
+const { roteiroBom, roteiroComum, moduloBom, clienteFalso } = require('./helpers/ia-falso');
 
 const temBanco = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');
 
@@ -13,7 +13,7 @@ describe('fila da geração com IA', { skip: temBanco ? false : 'sem DATABASE_UR
   const fila = require('../src/lib/ead-ia-fila');
   const s = String(Date.now()).slice(-7);
   let curso; let co; const geracoes = [];
-  const rot = roteiroBom(3);
+  const rot = roteiroComum(3);
   const responde = () => (params) => {
     const pedido = params.messages[0].content.at(-1).text;
     const n = Number((pedido.match(/Escreva agora o módulo (\d+)/) || [])[1]);
@@ -25,7 +25,8 @@ describe('fila da geração com IA', { skip: temBanco ? false : 'sem DATABASE_UR
     const g = await IA.criarGeracao({ pedido: { destino: { tipo: 'existente', cursoOnlineId: co.id }, tema: 'Tema', publico: '', nModulos: 3, observacoes: '' }, material: { materialTexto: null, materialPdfs: [{ nome: 'a.pdf', base64: 'QUJD' }] }, criadoPor: `fila-${s}` });
     geracoes.push(g.id);
     await IA.gerarRoteiro(g.id, { cliente: clienteFalso([() => roteiroBom(3)]) });
-    await IA.confirmarRoteiro(g.id, roteiroBom(3), 'dev');
+    const c = await IA.confirmarRoteiro(g.id, roteiroComum(3), 'dev');
+    assert.equal(c.ok, true, c.erro);
     return g;
   }
   const doBanco = (g) => prisma.geracaoIaEad.findUnique({ where: { id: g.id } });
@@ -131,5 +132,50 @@ describe('fila da geração com IA', { skip: temBanco ? false : 'sem DATABASE_UR
     await fila.ocioso();
     assert.equal(cli.chamadas.length, 3);
     assert.equal((await doBanco(g)).status, 'CONCLUIDA');
+  });
+
+  test('[revisão C1] serviço morreu no meio (marca vencida, módulo "gerando"): a varredura periódica destrava', async () => {
+    const g = await confirmada();
+    const d0 = await doBanco(g);
+    await prisma.geracaoIaEad.update({ where: { id: g.id }, data: { modulos: d0.modulos.map((m) => (m.ordem === 0 ? { ...m, status: 'gerando' } : m)) } });
+    await prisma.configuracao.create({ data: { chave: `ead-ia:ocupado:${g.id}`, valor: `${Date.now() - 4 * 60e3}:morto` } });
+    const cli = clienteFalso([responde()]);
+    await fila.varrer({ cliente: cli });
+    await fila.ocioso();
+    assert.equal((await doBanco(g)).status, 'CONCLUIDA');
+    assert.equal(cli.chamadas.length, 3);
+    const server = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'server.js'), 'utf8');
+    assert.match(server, /ead-ia-fila'\)\.agendar\(/, 'o servidor agenda a varredura');
+  });
+
+  test('[revisão I2] a marca é renovada durante a chamada à IA e só a própria é apagada', async () => {
+    const g = await confirmada();
+    fila.configurar({ renovarMs: 40 });
+    const vistos = new Set();
+    let roubar = false;
+    const cli = clienteFalso([async (params) => {
+      for (let i = 0; i < 6; i++) {
+        await new Promise((r) => setTimeout(r, 30));
+        const m = await prisma.configuracao.findUnique({ where: { chave: `ead-ia:ocupado:${g.id}` } });
+        if (m) vistos.add(m.valor);
+      }
+      if (roubar) await prisma.configuracao.update({ where: { chave: `ead-ia:ocupado:${g.id}` }, data: { valor: `${Date.now()}:outro-servico` } });
+      return responde()(params);
+    }]);
+    try {
+      await IA.gerarModulo(g.id, 0, { cliente: clienteFalso([responde()]) }); // só para ter um pronto
+      roubar = false;
+      fila.acordar({ cliente: cli });
+      while (cli.chamadas.length < 1) await new Promise((r) => setTimeout(r, 10));
+      roubar = true; // no fim da chamada, outro serviço passa a ter a marca
+      await fila.ocioso();
+    } finally {
+      fila.configurar({ renovarMs: 60000 });
+    }
+    assert.ok(vistos.size >= 2, `a marca mudou durante a chamada (${vistos.size} valores)`);
+    const m = await prisma.configuracao.findUnique({ where: { chave: `ead-ia:ocupado:${g.id}` } });
+    assert.ok(m && m.valor.endsWith(':outro-servico'), 'a marca do outro serviço não foi apagada');
+    await prisma.configuracao.delete({ where: { chave: `ead-ia:ocupado:${g.id}` } });
+    await IA.cancelar(g.id, 'dev');
   });
 });

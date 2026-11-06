@@ -318,8 +318,13 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     return { pedido: { destino, tema, publico, nModulos, observacoes }, texto };
   }
 
+  // As telas nunca leem o material (PDFs em base64 e o texto podem ter dezenas de MB; a página consulta a cada 5 s).
+  const COLUNAS_GERACAO = {
+    id: true, criadoPor: true, status: true, pedido: true, roteiro: true, cursoOnlineId: true, modulos: true,
+    tokensEntrada: true, tokensSaida: true, tokensCache: true, custoUsd: true, erro: true, criadoEm: true, atualizadoEm: true,
+  };
   router.get('/ead/ia', async (req, res) => {
-    const lista = await prisma.geracaoIaEad.findMany({ orderBy: { criadoEm: 'desc' }, take: 50 });
+    const lista = await prisma.geracaoIaEad.findMany({ orderBy: { criadoEm: 'desc' }, take: 50, select: COLUNAS_GERACAO });
     const nomes = new Map((await prisma.usuario.findMany({ where: { id: { in: [...new Set(lista.map((g) => g.criadoPor))].filter(edb.ehId) } }, select: { id: true, nome: true } })).map((u) => [u.id, u.nome]));
     const cos = new Map((await prisma.cursoOnline.findMany({ where: { id: { in: lista.map((g) => g.cursoOnlineId || (g.pedido.destino && g.pedido.destino.cursoOnlineId)).filter(Boolean) } }, select: { id: true, curso: { select: { nome: true } } } })).map((c) => [c.id, c.curso.nome]));
     res.render('admin/ead/ia-lista', {
@@ -353,7 +358,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     res.redirect(`/ead/ia/${g.id}`);
   });
 
-  const acharGeracao = (id) => (edb.ehId(id) ? prisma.geracaoIaEad.findUnique({ where: { id } }) : null);
+  const acharGeracao = (id) => (edb.ehId(id) ? prisma.geracaoIaEad.findUnique({ where: { id }, select: COLUNAS_GERACAO }) : null);
   async function paginaGeracao(res, g, { erro = null, ok = null, roteiro = null, status = 200 } = {}) {
     const co = g.cursoOnlineId ? await prisma.cursoOnline.findUnique({ where: { id: g.cursoOnlineId }, select: { id: true, curso: { select: { nome: true } } } }) : null;
     const coDestino = !co && g.pedido.destino && g.pedido.destino.cursoOnlineId ? await prisma.cursoOnline.findUnique({ where: { id: g.pedido.destino.cursoOnlineId }, select: { curso: { select: { nome: true } } } }) : null;

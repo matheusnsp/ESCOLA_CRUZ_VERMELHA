@@ -122,3 +122,7 @@
 .ia-roteiro .ia-topicos { margin: 10px 0 8px; padding-left: 12px; border-left: 3px solid #f1d4d4; }
 .ia-roteiro [data-mais-topico] { margin: 0 0 10px; }
 html[data-tema="escuro"] .ia-roteiro .ia-modulo { border-color: #3a4149; }
+
+.ia-roteiro .ia-bloco-cenarios { display: none; }
+.ia-roteiro .ia-final .ia-bloco-cenarios { display: block; }
+.ia-roteiro .ia-final .ia-bloco-topicos { display: none; }
