@@ -102,4 +102,9 @@ const urlCurso = (curso) => '/cursos/' + slugCurso(curso && curso.nome);
 // (routes/ead-teste.js redireciona para este).
 const urlOnline = (curso) => '/online/' + slugCurso(curso && curso.nome);
 
-module.exports = { CATEGORIAS, icone, reais, dataTurma, quando, agenda, ordenar, larguras, categoriasEmUso, slugCurso, urlCurso, urlOnline };
+// Selo de requisito do curso no site. Curso que exige comprovante da área da saúde (extra exigeComprovanteSaude,
+// lib/comprovante-saude.js) é para profissionais e estudantes da saúde, não para uma escolaridade.
+const PUBLICO_SAUDE = 'Profissionais e estudantes da saúde';
+const requisitoCurso = (curso) => (!curso ? null : curso.exigeComprovanteSaude ? PUBLICO_SAUDE : curso.escolaridadeMinima || null);
+
+module.exports = { CATEGORIAS, icone, reais, dataTurma, quando, agenda, ordenar, larguras, categoriasEmUso, slugCurso, urlCurso, urlOnline, requisitoCurso };

@@ -21,7 +21,7 @@
     <p><%= curso.descricao || 'Curso presencial da Escola de Educação e Saúde da Cruz Vermelha.' %></p>
     <div class="v-meta">
       <span><%= curso.cargaHoraria %> horas</span>
-      <% if (curso.escolaridadeMinima) { %><span><%= curso.escolaridadeMinima %></span><% } %>
+      <% if (vitrine.requisitoCurso(curso)) { %><span><%= vitrine.requisitoCurso(curso) %></span><% } %>
       <% if (_largo) { %><span>Presencial</span><% } %>
       <% if (_turma) { %><span>Início <%= vitrine.dataTurma(_turma.inicioPrevisto).curta %></span><% } %>
     </div>
