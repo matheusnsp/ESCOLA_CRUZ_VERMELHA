@@ -205,8 +205,10 @@ async function aplicarStatus(pagamento, { status, payload, tx, origem = 'webhook
       });
       console.log(`[${quem.log}] ✅ TAXA confirmada. Matrícula ${pagamento.matriculaId} liberada pra etapa 3.`);
     } else {
-      const m = await prisma.matricula.findUnique({ where: { id: pagamento.matriculaId } });
+      const m = await prisma.matricula.findUnique({ where: { id: pagamento.matriculaId }, include: { turma: { select: { status: true } } } });
       const novoStatusMatricula = m?.plano === 'PARCELADO' ? 'PARCELADO' : 'PAGO';
+      // Curso online (etapa 7): não tem taxa separada, nem no parcelado. A "taxa" (zero) vem junto com o curso.
+      const semTaxaSeparada = m?.plano === 'A_VISTA' || (m?.plano === 'PARCELADO' && m?.turma?.status === 'ONLINE');
 
       const dadosMatricula = {
         statusPagamento: novoStatusMatricula,
@@ -217,7 +219,7 @@ async function aplicarStatus(pagamento, { status, payload, tx, origem = 'webhook
       // À VISTA: curso + taxa vêm na MESMA transação (não há Pagamento tipo
       // TAXA separado nesse fluxo). Confirma a taxa aqui também — senão a
       // matrícula fica PAGA mas com "taxa aguardando confirmação" pra sempre.
-      if (m?.plano === 'A_VISTA' && !m?.taxaConfirmada) {
+      if (semTaxaSeparada && !m?.taxaConfirmada) {
         dadosMatricula.taxaConfirmada = true;
         dadosMatricula.taxaConfirmadaPor = quem.taxaAVista;
         dadosMatricula.taxaConfirmadaEm = new Date();
@@ -260,14 +262,14 @@ async function aplicarStatus(pagamento, { status, payload, tx, origem = 'webhook
     }
   } else if (novoStatus === 'ESTORNADO') {
     if (pagamento.tipo === 'CURSO') {
-      const m = await prisma.matricula.findUnique({ where: { id: pagamento.matriculaId } });
+      const m = await prisma.matricula.findUnique({ where: { id: pagamento.matriculaId }, include: { turma: { select: { status: true } } } });
 
       const dadosEstorno = { statusPagamento: 'ESTORNADO' };
 
       // À VISTA: o estorno devolve curso + taxa (tudo veio numa transação só),
       // então a taxa deixa de estar confirmada. No PARCELADO a taxa é uma
       // transação separada que continua paga — não se mexe nela aqui.
-      if (m?.plano === 'A_VISTA') {
+      if (m?.plano === 'A_VISTA' || (m?.plano === 'PARCELADO' && m?.turma?.status === 'ONLINE')) {
         dadosEstorno.taxaConfirmada = false;
         dadosEstorno.taxaConfirmadaPor = null;
         dadosEstorno.taxaConfirmadaEm = null;

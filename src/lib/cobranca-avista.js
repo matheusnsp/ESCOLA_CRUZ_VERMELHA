@@ -86,11 +86,33 @@ async function iniciarCobrancaAVista({ matricula, nomeCurso, total, forma, aluno
   }
 }
 
-// Cartão da turma ONLINE: o valor é o da matrícula (preço do curso online, sem taxa), numa vez só. As
-// contas do presencial (calcularValores) usariam o preço do curso presencial.
-function cobrancaCartaoOnline(matricula) {
+// Cartão da turma ONLINE: o valor é o da matrícula (preço do curso online, já com o cupom, sem taxa). As contas
+// do presencial (calcularValores) usariam o preço do curso presencial. Parcelado (etapa 7): o gateway recebe o
+// valor BASE e aplica os juros; a opção do Únicopag (installment_amount/total_amount, em centavos) só serve para
+// exibir a parcela e o total.
+function cobrancaCartaoOnline(matricula, parcelas = 1, opcao = null) {
   const v = Number(matricula.valorCurso);
-  return { valorCobranca: v, valorBase: v, numParcelas: 1, valorParcela: null, tipo: 'CURSO' };
+  const n = Number(parcelas) || 1;
+  if (n > 1 && opcao) {
+    return { valorCobranca: opcao.total_amount / 100, valorBase: v, numParcelas: n, valorParcela: opcao.installment_amount / 100, tipo: 'CURSO' };
+  }
+  return { valorCobranca: v, valorBase: v, numParcelas: n, valorParcela: n > 1 ? Math.round((v / n) * 100) / 100 : null, tipo: 'CURSO' };
+}
+
+const buscarParcelamentoPadrao = (centavos, n) => require('./unicopag').obterOpcaoParcelamento(centavos, n);
+
+// As opções do seletor de parcelas do curso online: 1x sempre (sem juros); de 2 até max, a tabela do Únicopag
+// (com o cache de 10 min de lib/simular-valores.js). Consulta que falha fica de fora.
+async function opcoesParcelasOnline(valor, max, buscar = buscarParcelamentoPadrao) {
+  const { opcaoComCache } = require('./simular-valores');
+  const v = Number(valor);
+  const opcoes = [{ n: 1, valorParcela: v, total: v }];
+  const centavos = Math.round(v * 100);
+  for (let n = 2; n <= Math.min(Number(max) || 1, 12); n++) {
+    const o = await opcaoComCache(centavos, n, buscar);
+    if (o) opcoes.push({ n, valorParcela: o.installment_amount / 100, total: o.total_amount / 100 });
+  }
+  return opcoes;
 }
 
 // Para onde a tela de retorno leva quando o pagamento confirma.
@@ -98,4 +120,4 @@ const destinoAposPagamento = (matricula) => (matricula && matricula.turma && mat
   ? `/online/${matricula.turma.cursoId}`
   : '/minha-conta?inscrito=1');
 
-module.exports = { iniciarCobrancaAVista, urlRetorno, JANELA_PIX_MS, cobrancaCartaoOnline, destinoAposPagamento };
+module.exports = { iniciarCobrancaAVista, urlRetorno, JANELA_PIX_MS, cobrancaCartaoOnline, opcoesParcelasOnline, destinoAposPagamento };

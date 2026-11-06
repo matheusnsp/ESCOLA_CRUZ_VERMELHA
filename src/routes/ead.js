@@ -427,6 +427,17 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     voltar(res, `/ead/curso/${co.id}`, 'ok', 'Preço salvo.');
   });
 
+  // Etapa 7: máximo de parcelas no cartão (1 = só à vista). Os juros do Únicopag ficam com o aluno.
+  router.post('/ead/curso/:id/parcelas', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co) return naoAchou(res);
+    const n = Number(String(req.body.maxParcelas || '').trim());
+    if (!Number.isInteger(n) || n < 1 || n > 12) return voltar(res, `/ead/curso/${co.id}`, 'erro', 'Parcelas: de 1 a 12.');
+    await prisma.cursoOnline.update({ where: { id: co.id }, data: { maxParcelas: n } });
+    await auditar(req, 'EAD_PARCELAS', 'CursoOnline', co.id, { de: co.maxParcelas, para: n });
+    voltar(res, `/ead/curso/${co.id}`, 'ok', n === 1 ? 'Parcelamento desligado: só à vista.' : `Parcelamento em até ${n}x salvo.`);
+  });
+
   // "Publicar no site": ligar só sem pendências; desligar tira do catálogo, mas quem já pagou continua.
   router.post('/ead/curso/:id/publicar', async (req, res) => {
     const co = await acharCursoOnline(req.params.id);

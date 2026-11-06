@@ -40,6 +40,14 @@
       <p class="adm-mut">Cobrança única, por PIX ou cartão, sem taxa de inscrição.</p>
       <button type="submit" class="adm-btn adm-btn-out">Salvar preço</button>
     </form>
+    <form method="POST" action="/ead/curso/<%= co.id %>/parcelas" class="adm-form c1 ead-venda-preco">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Parcelas no cartão (máx.)
+        <input type="number" name="maxParcelas" min="1" max="12" step="1" required value="<%= co.maxParcelas || 1 %>">
+      </label>
+      <p class="adm-mut">1 = só à vista. Acima disso, o aluno escolhe no cartão e paga os juros do Únicopag, como no presencial.</p>
+      <button type="submit" class="adm-btn adm-btn-out">Salvar parcelas</button>
+    </form>
     <div>
       <p class="ead-venda-estado">
         <span class="ead-selo <%= co.publicado ? 'validado' : 'rascunho' %>"><%= co.publicado ? 'No site' : 'Fora do site' %></span>

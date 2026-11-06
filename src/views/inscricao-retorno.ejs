@@ -48,6 +48,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 const _parcelas = typeof numParcelas !== 'undefined' && numParcelas ? Number(numParcelas) : 1;
+// Curso online (etapa 7): [{ n, valorParcela, total }] de 1x até o máximo do curso; o aluno escolhe.
+const _opcoes = typeof opcoesParcelas !== 'undefined' && opcoesParcelas ? opcoesParcelas : [];
 const _rotuloValor = etapa === 'taxa' ? 'Taxa de inscrição'
                    : _parcelas > 1    ? 'Matrícula parcelada'
                    : 'Total';
@@ -122,15 +124,28 @@ const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
       <div class="cc-valor">
         <span><%= _rotuloValor %></span>
         <div>
-          <strong><%= formatBRL(valorCobranca) %></strong>
+          <strong id="ccTotal"><%= formatBRL(valorCobranca) %></strong>
           <% if (_parcelas > 1) { %>
           <em><%= _parcelas %>× de <%= formatBRL(valorParcela) %></em>
+          <% } else if (_opcoes.length > 1) { %>
+          <em id="ccParcelaTexto">à vista</em>
           <% } %>
         </div>
       </div>
 
       <form id="ccForm" novalidate>
         <input type="hidden" name="_csrf" id="ccCsrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+
+        <% if (_opcoes.length > 1) { %>
+        <div class="cc-campo" id="campoParcelas">
+          <label class="cc-rot" for="ccParcelas">Parcelas</label>
+          <select id="ccParcelas" name="parcelas" class="cc-in">
+            <% _opcoes.forEach(function (o) { %>
+            <option value="<%= o.n %>" data-total="<%= formatBRL(o.total) %>" data-texto="<%= o.n === 1 ? 'à vista' : o.n + '× de ' + formatBRL(o.valorParcela) %>"><%= o.n === 1 ? '1x de ' + formatBRL(o.total) + ' (sem juros)' : o.n + 'x de ' + formatBRL(o.valorParcela) + ' · total ' + formatBRL(o.total) %></option>
+            <% }) %>
+          </select>
+        </div>
+        <% } %>
 
         <div class="cc-campo" id="campoNumero">
           <label class="cc-rot" for="ccNumero">Número do cartão</label>
@@ -258,6 +273,15 @@ const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
   var TURMA_ID     = '<%= turma.id %>';
   var ETAPA        = '<%= etapa %>';
   var PARCELAS     = <%= _parcelas %>;
+  // Curso online: o seletor de parcelas manda a escolha e atualiza o total mostrado.
+  var selParcelas  = document.getElementById('ccParcelas');
+  if (selParcelas) {
+    selParcelas.addEventListener('change', function () {
+      var op = selParcelas.options[selParcelas.selectedIndex];
+      document.getElementById('ccTotal').textContent = op.getAttribute('data-total');
+      document.getElementById('ccParcelaTexto').textContent = op.getAttribute('data-texto');
+    });
+  }
   var REF          = '<%= _ref %>';
 
   var card   = document.getElementById('ccCard');
@@ -491,7 +515,7 @@ const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
       titular:  inTitular.value.trim().toUpperCase(),
       validade: inValidade.value,
       cvv:      soDigitos(inCvv.value),
-      parcelas: PARCELAS,
+      parcelas: selParcelas ? Number(selParcelas.value) : PARCELAS,
       etapa:    ETAPA,
       ref:      REF
     };

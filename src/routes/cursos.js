@@ -10,7 +10,7 @@ const {
   taxaExibicao,
 } = require('../lib/matricula');
 const { criarTransacao, obterOpcaoParcelamento } = require('../lib/unicopag');
-const { iniciarCobrancaAVista, urlRetorno, cobrancaCartaoOnline, destinoAposPagamento } = require('../lib/cobranca-avista');
+const { iniciarCobrancaAVista, urlRetorno, cobrancaCartaoOnline, opcoesParcelasOnline, destinoAposPagamento } = require('../lib/cobranca-avista');
 const { lerOrigem } = require('../lib/origem-da-visita');
 const { anexarOnline } = require('../lib/ead-publicacao');
 const cursoSoOnline = require('../lib/ead-curso-online');
@@ -1132,6 +1132,10 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
 
   const { valorCobranca, numParcelas, valorParcela } =
     await calcularCobrancaCartao(matricula, etapaAtual, req.session.usuarioId);
+  // Curso online (etapa 7): o aluno escolhe de 1x até o máximo do curso, com os juros do Únicopag.
+  const opcoesParcelas = ehOnline(matricula.turma)
+    ? await opcoesParcelasOnline(Number(matricula.valorCurso), await maxParcelasOnline(matricula.turma))
+    : null;
 
     res.render('inscricao-retorno', {
       matricula,
@@ -1143,10 +1147,17 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
       valorCobranca,
       numParcelas,
       valorParcela,
+      opcoesParcelas,
       transacaoRef: String(t || matricula.id),
       destinoFinal: destinoAposPagamento(matricula),
     });
 });
+
+// Máximo de parcelas do curso online desta turma (1 a 12; sem cadastro, 1).
+async function maxParcelasOnline(turma) {
+  const co = await prisma.cursoOnline.findUnique({ where: { cursoId: turma.cursoId }, select: { maxParcelas: true } });
+  return Math.min(Math.max(Number(co && co.maxParcelas) || 1, 1), 12);
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Quanto cobrar no cartão, por etapa. É a fonte da verdade — o front nunca
@@ -1155,10 +1166,10 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
 //   curso + plano PARCELADO → curso em N parcelas (juros do gateway)
 //   curso + plano A_VISTA   → curso + taxa, 1x
 // ─────────────────────────────────────────────────────────────────────────
-async function calcularCobrancaCartao(matricula, etapa, alunoId) {
+async function calcularCobrancaCartao(matricula, etapa, alunoId, parcelasOnline = 1) {
   const curso = matricula.turma.curso;
-  // Curso online: o valor é o da matrícula (preço do online, sem taxa), não o do presencial.
-  if (ehOnline(matricula.turma)) return cobrancaCartaoOnline(matricula);
+  // Curso online: o valor é o da matrícula (preço do online, com o cupom, sem taxa), não o do presencial.
+  if (ehOnline(matricula.turma)) return cobrancaCartaoOnline(matricula, parcelasOnline);
 
   if (etapa === 'taxa') {
     const valores = await calcularValores(
@@ -1218,8 +1229,18 @@ router.post('/inscricao/cartao/:matriculaId', requireLogin, async (req, res) => 
     return res.json({ ok: true, status: 'PAGO' });
   if (etapa === 'curso' && ['PAGO', 'PARCELADO'].includes(matricula.statusPagamento))
     return res.json({ ok: true, status: 'PAGO' });
-  if (etapa === 'curso' && !matricula.taxaConfirmada && matricula.plano === 'PARCELADO')
+  // Presencial parcelado: a taxa vem antes, em outra cobrança. O curso online não tem taxa (etapa 7).
+  if (etapa === 'curso' && !matricula.taxaConfirmada && matricula.plano === 'PARCELADO' && !ehOnline(matricula.turma))
     return res.status(400).json({ ok: false, mensagem: 'A taxa de inscrição ainda não foi confirmada.' });
+
+  // Curso online: o número de parcelas vem do formulário, de 1 até o máximo do curso.
+  let parcelasOnline = 1;
+  if (ehOnline(matricula.turma)) {
+    const max = await maxParcelasOnline(matricula.turma);
+    parcelasOnline = Number(req.body.parcelas || 1);
+    if (!Number.isInteger(parcelasOnline) || parcelasOnline < 1 || parcelasOnline > max)
+      return res.status(400).json({ ok: false, mensagem: `Escolha de 1 a ${max} parcelas.` });
+  }
 
   // ── 💡 NOVO — Trava contra cobrança duplicada ──────────────────────────
   //
@@ -1262,7 +1283,16 @@ router.post('/inscricao/cartao/:matriculaId', requireLogin, async (req, res) => 
     });
   }
 
-  const cobranca = await calcularCobrancaCartao(matricula, etapa, req.session.usuarioId);
+  // Curso online: o plano acompanha a escolha (2x ou mais ⇒ PARCELADO; a confirmação lê o plano).
+  if (ehOnline(matricula.turma)) {
+    const plano = parcelasOnline > 1 ? 'PARCELADO' : 'A_VISTA';
+    if (matricula.plano !== plano) {
+      await prisma.matricula.update({ where: { id: matricula.id }, data: { plano } });
+      matricula.plano = plano;
+    }
+  }
+
+  const cobranca = await calcularCobrancaCartao(matricula, etapa, req.session.usuarioId, parcelasOnline);
 
   // Validação dos dados do cartão — mesmos schemas de sempre, só que agora o
   // plano/forma/parcelas vêm do servidor, não do body.
