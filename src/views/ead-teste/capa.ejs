@@ -41,23 +41,47 @@
           <p>O pagamento foi cancelado ou devolvido, então o curso e o certificado ficam fechados. Para voltar a estudar, faça uma nova compra.</p>
         <% } else { %>
           <p class="ea-kicker">Curso online</p>
+          <% if (compra.cupom) { %>
+          <h2><s><%= brl(compra.cupom.precoCheio) %></s> <%= brl(compra.cupom.precoFinal) %><span style="color:var(--r)">.</span></h2>
+          <% } else { %>
           <h2><%= compra.preco !== null ? brl(compra.preco) : 'Em breve' %><span style="color:var(--r)">.</span></h2>
+          <% } %>
+          <% if (compra.maxParcelas > 1 && !compra.gratis) { %><p class="ea-obs">À vista no PIX ou em até <%= compra.maxParcelas %>x no cartão.</p><% } %>
           <p>Pagamento único, por PIX ou cartão. Acesso pelo celular, no seu ritmo, com certificado ao concluir. Capacitação teórica, sem prática em manequim.</p>
         <% } %>
         <% if (compra.erro) { %><p class="ea-obs" role="alert"><b><%= compra.erro %></b></p><% } %>
         <% if (compra.preco !== null && (co.publicado || compra.situacao === 'pendente')) { %>
+          <%# Etapa 7: cupom. GET na própria capa (?cupom=), o mesmo link serve para campanhas. %>
+          <% if (compra.cupom) { %>
+          <p class="ea-obs ea-cupom-ok">Cupom <%= compra.cupom.codigo %> aplicado: <%= brl(compra.cupom.desconto) %> de desconto. <a href="<%= base %>?cupom=">tirar</a></p>
+          <% } else { %>
+          <form method="GET" action="<%= base %>" class="ea-cupom">
+            <label class="ea-obs" for="eaCupom">Tem cupom?</label>
+            <span class="ea-cupom-linha">
+              <input id="eaCupom" type="text" name="cupom" maxlength="40" autocomplete="off" autocapitalize="characters" placeholder="CÓDIGO">
+              <button type="submit" class="ea-pilula ea-pilula-clara">Aplicar</button>
+            </span>
+            <% if (compra.erroCupom) { %><p class="ea-obs" role="alert"><b><%= compra.erroCupom %></b></p><% } %>
+          </form>
+          <% } %>
           <% if (compra.logado) { %>
           <form method="POST" action="<%= compra.comprarUrl %>" class="ea-compra">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <% if (compra.cupom) { %><input type="hidden" name="cupom" value="<%= compra.cupom.codigo %>"><% } %>
+            <% if (compra.gratis) { %>
+            <input type="hidden" name="forma" value="CUPOM">
+            <button type="submit" class="ea-pilula ea-pilula-red">Liberar curso</button>
+            <% } else { %>
             <fieldset class="ea-compra-formas">
               <legend class="ea-obs"><%= compra.situacao === 'pendente' ? 'Pagar de outro jeito' : 'Forma de pagamento' %></legend>
               <label><input type="radio" name="forma" value="PIX" checked> PIX</label>
               <label><input type="radio" name="forma" value="CREDITO"> Cartão de crédito</label>
             </fieldset>
-            <button type="submit" class="ea-pilula <%= compra.situacao === 'pendente' ? 'ea-pilula-clara' : 'ea-pilula-red' %>">Comprar · <%= brl(compra.preco) %></button>
+            <button type="submit" class="ea-pilula <%= compra.situacao === 'pendente' ? 'ea-pilula-clara' : 'ea-pilula-red' %>">Comprar · <%= brl(compra.cupom ? compra.cupom.precoFinal : compra.preco) %></button>
+            <% } %>
           </form>
           <% } else { %>
-          <a class="ea-pilula ea-pilula-red" href="<%= base %>/criar-conta">Comprar · <%= brl(compra.preco) %></a>
+          <a class="ea-pilula ea-pilula-red" href="<%= base %>/criar-conta">Comprar · <%= brl(compra.cupom ? compra.cupom.precoFinal : compra.preco) %></a>
           <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/continuar">Já tenho conta</a>
           <% } %>
         <% } %>

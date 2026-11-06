@@ -30,6 +30,7 @@ async function iniciarCobrancaAVista({ matricula, nomeCurso, total, forma, aluno
       tipo: 'CURSO',
       status: 'PENDENTE',
       metodo: 'PIX',
+      valor: total, // QR de outro valor (cupom aplicado ou tirado, preço mudado) não serve: gera outro
       pixQrCode: { not: null },
       criadoEm: { gt: new Date(Date.now() - JANELA_PIX_MS) },
     },

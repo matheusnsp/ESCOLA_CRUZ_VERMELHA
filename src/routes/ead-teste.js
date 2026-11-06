@@ -26,6 +26,7 @@ const { gerarCartao } = require('../lib/ead-cartao');
 const { cursoOnlineDoEndereco, acessoPago } = require('../lib/ead-acesso');
 const { urlRetorno } = require('../lib/cobranca-avista');
 const duv = require('../lib/ead-duvidas');
+const cupons = require('../lib/ead-cupom');
 
 // Etapa 3: ao concluir o curso, emite o certificado (número, Redação, e-mail) SEM esperar.
 // O link do e-mail é o do modo em que a pessoa concluiu.
@@ -134,9 +135,28 @@ const comCurso = (fn, { livre = false } = {}) => asyncHandler(async (req, res, n
 const P = (sufixo = '') => [`/ead-teste/:codigo${sufixo}`, `/online/:cursoId${sufixo}`];
 
 // Cartão de compra da capa (modo pago, sem acesso liberado).
-function compraDaCapa(req, co, base) {
+// O cupom da capa: o do link/formulário (?cupom=); senão o que a pessoa trouxe antes nesta sessão (chegou pelo
+// link, criou a conta e voltou); senão o da matrícula pendente ("Pagar de outro jeito" continua com ele).
+// Válido ⇒ preço riscado e final; inválido ⇒ a mensagem, com o preço cheio. "tirar" (?cupom=) esquece o da sessão.
+async function cupomDaCapa(req, co, m) {
+  const daSessao = req.session && req.session.cupomEad && req.session.cupomEad.co === co.id ? req.session.cupomEad.codigo : '';
+  const pediu = req.query.cupom !== undefined;
+  let codigo = pediu ? cupons.normalizarCodigo(req.query.cupom) : daSessao;
+  if (req.session && pediu) req.session.cupomEad = codigo ? { co: co.id, codigo } : undefined;
+  if (!codigo && !pediu && m && m.statusPagamento === 'PENDENTE') {
+    const cm = await prisma.cupomMatriculaEad.findUnique({ where: { matriculaId: m.id }, include: { cupom: { select: { codigo: true } } } });
+    codigo = cm ? cm.cupom.codigo : '';
+  }
+  if (!codigo || co.precoOnline === null || co.precoOnline === undefined) return { cupom: null, erroCupom: null };
+  const v = await cupons.validarCupom(codigo, co);
+  if (v.erro) return { cupom: null, erroCupom: v.erro };
+  return { cupom: { codigo: v.cupom.codigo, precoCheio: v.precoCheio, desconto: v.desconto, precoFinal: v.precoFinal }, erroCupom: null };
+}
+
+async function compraDaCapa(req, co, base) {
   const a = req.ead.acesso;
   const m = a.matricula;
+  const { cupom, erroCupom } = await cupomDaCapa(req, co, m);
   return {
     situacao: a.situacao,
     preco: co.precoOnline === null || co.precoOnline === undefined ? null : Number(co.precoOnline),
@@ -144,6 +164,10 @@ function compraDaCapa(req, co, base) {
     retornoUrl: m && a.situacao === 'pendente' ? urlRetorno(m.id, { pix: m.forma === 'PIX', etapa: 'curso' }) : null,
     logado: !!alunoDaSessao(req),
     erro: ({ cpf: 'Complete o CPF no seu cadastro para pagar.', forma: 'Escolha PIX ou cartão.', pagamento: 'Houve um problema ao processar o pagamento. Tente novamente.' })[req.query.erro] || null,
+    cupom,
+    erroCupom,
+    gratis: !!cupom && cupom.precoFinal === 0,
+    maxParcelas: Number(co.maxParcelas) || 1,
   };
 }
 
@@ -157,7 +181,7 @@ router.get(P(), comCurso(async (req, res, co, base, curso) => {
   if (indexavel) res.removeHeader('X-Robots-Tag');
   res.locals.indexavel = indexavel;
   res.render('ead-teste/capa', {
-    co, base, ctx, modo: req.ead.modo, compra: pagoSemAcesso ? compraDaCapa(req, co, base) : null,
+    co, base, ctx, modo: req.ead.modo, compra: pagoSemAcesso ? await compraDaCapa(req, co, base) : null,
     continuarUrl: ctx ? urlDoPasso(co, base, ctx.estado.proximo) : null,
   });
 }, { livre: true }));
