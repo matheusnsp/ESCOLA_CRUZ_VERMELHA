@@ -1,0 +1,26 @@
+<% var curso = lote.cursoOnline.curso; %>
+<%- include('../ead-teste/_topo', { titulo: lote.escola.nome, base: base }) %>
+<main class="ea-wrap ea-secao esc-convite-pg">
+  <div class="ea-cartao">
+    <p class="ea-kicker">Convite da escola</p>
+    <h2><%= curso.nome %><span style="color:var(--r)">.</span></h2>
+    <% if (erro) { %><p class="ea-duvidas-msg erro" role="alert"><%= erro %></p><% } %>
+    <% if (situacao.vencido) { %>
+      <p>O prazo para usar as vagas da escola <%= lote.escola.nome %> terminou. Fale com a escola.</p>
+    <% } else if (!situacao.livres) { %>
+      <p>As vagas da escola <%= lote.escola.nome %> acabaram. Fale com a escola.</p>
+    <% } else if (!logado) { %>
+      <p>Entre ou crie sua conta para usar a vaga da escola <%= lote.escola.nome %>.</p>
+      <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= base %>/criar-conta">Criar minha conta</a>
+      <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/entrar">Já tenho conta</a>
+    <% } else { %>
+      <p>A escola <%= lote.escola.nome %> liberou o curso online para a equipe. Pelo celular, no seu ritmo, com certificado ao concluir.</p>
+      <form method="POST" action="<%= base %>">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="ea-pilula ea-pilula-red">Usar uma vaga da escola <%= lote.escola.nome %></button>
+      </form>
+    <% } %>
+    <p class="ea-obs">Capacitação teórica, sem prática em manequim.</p>
+  </div>
+</main>
+<%- include('../ead-teste/_fim') %>

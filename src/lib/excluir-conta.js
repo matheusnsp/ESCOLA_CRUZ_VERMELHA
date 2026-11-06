@@ -69,6 +69,8 @@ async function excluir(usuario) {
     prisma.pagamento.deleteMany({ where: { matriculaId: { in: descartar } } }),
     prisma.matricula.deleteMany({ where: { id: { in: descartar } } }),
     prisma.tokenAuth.deleteMany({ where: { usuarioId: usuario.id } }),
+    // Progresso do curso online: sai junto também quando a conta é só anonimizada.
+    prisma.alunoCursoEad.deleteMany({ where: { usuarioId: usuario.id } }),
   ];
 
   if (!guardar.length) {

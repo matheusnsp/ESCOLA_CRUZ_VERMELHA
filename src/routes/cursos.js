@@ -10,7 +10,10 @@ const {
   taxaExibicao,
 } = require('../lib/matricula');
 const { criarTransacao, obterOpcaoParcelamento } = require('../lib/unicopag');
+const { iniciarCobrancaAVista, urlRetorno, cobrancaCartaoOnline, opcoesParcelasOnline, destinoAposPagamento } = require('../lib/cobranca-avista');
 const { lerOrigem } = require('../lib/origem-da-visita');
+const { anexarOnline } = require('../lib/ead-publicacao');
+const cursoSoOnline = require('../lib/ead-curso-online');
 const cacheRapido = require('../lib/cache-rapido');
 const extras = require('../lib/extras');
 const vitrine = require('../lib/vitrine');
@@ -139,10 +142,7 @@ const SELECT_ALUNO_CHECKOUT = {
 // tela zerar quando uma transação nova começa e continuar de onde parou num
 // simples reload. Não precisa de campo no Prisma.
 // ─────────────────────────────────────────────────────────────────────────
-function urlRetorno(matriculaId, { pix = false, etapa = 'curso' } = {}) {
-  return `/inscricao/retorno?matriculaId=${matriculaId}`
-       + `&pix=${pix ? '1' : '0'}&etapa=${etapa}&t=${Date.now()}`;
-}
+// urlRetorno mora em lib/cobranca-avista.js (a compra do curso online também usa).
 
 // ─────────────────────────────────────────────────────────────────────────
 // Monta o objeto parceladoComJuros PARA A ETAPA 1 (tela de escolha de plano).
@@ -194,7 +194,16 @@ async function carregarVitrine(filtro, { agenda = false } = {}) {
     },
   });
   await extras.anexar('curso', cursos);
-  return vitrine.ordenar(cursos);
+  await anexarOnline(cursos); // curso.online = { preco } quando o curso online está publicado
+  // O curso só online nunca entra como presencial (nem para o DEV, que vê os inativos).
+  return vitrine.ordenar(await cursoSoOnline.semSoOnline(cursos));
+}
+
+// Catálogo /cursos: o presencial e, no fim, os cursos só online publicados (card com link para /online).
+async function carregarCatalogo(filtro) {
+  const [presencial, soOnline] = await Promise.all([carregarVitrine(filtro, { agenda: true }), cursoSoOnline.cursosSoOnlinePublicados()]);
+  await extras.anexar('curso', soOnline);
+  return [...presencial, ...soOnline];
 }
 
 // A home mostra só alguns cursos em destaque; a lista completa fica em /cursos.
@@ -223,7 +232,7 @@ router.get('/duvidas', (req, res) => res.redirect(302, '/#duvidas'));
 router.get('/cursos', async (req, res) => {
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
   const [cursos, cfgMap] = await Promise.all([
-    catalogo(res, 'cursos', () => carregarVitrine(filtro, { agenda: true })),
+    catalogo(res, 'cursos', () => carregarCatalogo(filtro)),
     lerConfigMatricula(),
   ]);
   res.render('cursos', { cursos, cfgMap, formatBRL, totalExibicao, taxaExibicao, vitrine });
@@ -278,6 +287,12 @@ const turmaCongelada = (turma) => !!turma && turma.status === 'CONGELADA';
 const MSG_TURMA_EM_ESPERA = 'Sua matrícula está na lista de espera: o pagamento volta a ficar disponível quando a turma for definida.';
 const turmaEmEspera = (turma) => !!turma && turma.status === 'EM_ESPERA';
 
+// Turma ONLINE (curso online, EAD): a cobrança é única e acontece pela página do curso online; as
+// telas de taxa/curso do presencial não servem para ela. O retorno do pagamento e o cartão (POST)
+// continuam abertos, porque a compra online passa por eles.
+const { ehOnline } = require('../lib/turma-online');
+const MSG_TURMA_ONLINE = 'Esta é uma matrícula de curso online: o pagamento e o acesso ficam na página do curso, em "Minha conta".';
+
 async function turmaDoQr(req) {
   const id = String(req.params.turmaId || '');
   if (!/^[\w-]{1,64}$/.test(id) || !pesquisa.tokenTurmaValido(id, req.params.token)) return null;
@@ -322,6 +337,7 @@ router.get('/turmas/:turmaId/agenda.ics', (req, res, next) => (async () => {
   if (!turma || turma.status === 'CANCELADA') return res.status(404).render('erro', { mensagem: 'Turma não encontrada.' });
   if (turmaCongelada(turma)) return res.status(409).render('erro', { mensagem: MSG_TURMA_CONGELADA });
   if (turmaEmEspera(turma)) return res.status(409).render('erro', { mensagem: MSG_TURMA_EM_ESPERA });
+  if (ehOnline(turma)) return res.status(404).render('erro', { mensagem: 'Turma não encontrada.' }); // curso online não tem agenda
   const nome = vitrine.slugCurso(turma.curso.nome);
   res.set('Content-Type', 'text/calendar; charset=utf-8');
   res.set('Content-Disposition', `attachment; filename="aulas-${nome}.ics"`);
@@ -331,9 +347,12 @@ router.get('/turmas/:turmaId/agenda.ics', (req, res, next) => (async () => {
 
 // Lista de páginas públicas para o Google (o robots.txt, em server.js, aponta para cá).
 router.get('/sitemap.xml', (req, res, next) => (async () => {
-  const cursos = await catalogo(res, 'sitemap', () => prisma.curso.findMany({ where: { ativo: true }, select: { nome: true }, orderBy: { nome: 'asc' } }));
+  const { cursos, soOnline } = await catalogo(res, 'sitemap', async () => ({
+    cursos: await prisma.curso.findMany({ where: { ativo: true }, select: { nome: true }, orderBy: { nome: 'asc' } }),
+    soOnline: await cursoSoOnline.cursosSoOnlinePublicados(), // curso só online publicado: /online/<id>
+  }));
   const base = res.locals.urlSite;
-  const urls = ['/', '/cursos', '/privacidade'].concat(cursos.map(vitrine.urlCurso));
+  const urls = ['/', '/cursos', '/privacidade'].concat(cursos.map(vitrine.urlCurso), soOnline.map((c) => vitrine.urlOnline(c)));
   const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   res.set('Content-Type', 'application/xml; charset=utf-8');
   res.set('Cache-Control', 'public, max-age=3600');
@@ -400,8 +419,14 @@ async function resolverEndereco(req, res, next) {
   return next();
 }
 
-router.get('/cursos/:cursoId', async (req, res) => {
+router.get('/cursos/:cursoId', async (req, res, next) => {
   const cursoId = res.locals.cursoId;
+  // Curso só online: a página dele é a do curso online (publicado); sem publicar, não existe no site.
+  const idsSoOnline = new Set(await catalogo(res, 'so-online', async () => [...await cursoSoOnline.idsSoOnline()]));
+  if (idsSoOnline.has(cursoId)) {
+    const publicado = (await cursoSoOnline.cursosSoOnlinePublicados()).find((c) => c.id === cursoId);
+    return publicado ? res.redirect(302, vitrine.urlOnline(publicado)) : next();
+  }
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
   // As três consultas saem juntas: "outros cursos" não depende do curso carregado.
   const [curso, cfgMap, outros] = await Promise.all([
@@ -418,6 +443,7 @@ router.get('/cursos/:cursoId', async (req, res) => {
         },
       });
       if (c) await extras.anexar('curso', [c]);
+      if (c) await anexarOnline([c]);
       return c;
     }),
     lerConfigMatricula(),
@@ -431,7 +457,7 @@ router.get('/cursos/:cursoId', async (req, res) => {
         },
       });
       await extras.anexar('curso', lista);
-      return vitrine.ordenar(lista).slice(0, 3);
+      return vitrine.ordenar(await cursoSoOnline.semSoOnline(lista)).slice(0, 3);
     }),
   ]);
 
@@ -697,96 +723,12 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       return reRenderErro('Não foi possível concluir a inscrição.');
     }
 
-    // 💡 v3 — CRÉDITO: nenhuma transação é criada aqui. O aluno preenche o
-    // cartão na tela de retorno e ela chama POST /inscricao/cartao/:id.
-    if (forma === 'CREDITO') {
-      return res.redirect(urlRetorno(matricula.id, { pix: false, etapa: 'curso' }));
-    }
-
-    // ----- PIX: transação criada agora, QR Code na tela de retorno -----
-    //
-    // 💡 NOVO — Mesma proteção da taxa: reaproveita o QR recente em vez de
-    // gerar outro. Ver a explicação completa em /pagar-taxa, mais abaixo.
-    // Cada clique gerava uma cobrança nova, e cada cobrança é pagável.
-    const JANELA_PIX_MS = 30 * 60 * 1000;
-    const pixRecente = await prisma.pagamento.findFirst({
-      where: {
-        matriculaId: matricula.id,
-        tipo: 'CURSO',
-        status: 'PENDENTE',
-        metodo: 'PIX',
-        pixQrCode: { not: null },
-        criadoEm: { gt: new Date(Date.now() - JANELA_PIX_MS) },
-      },
-      orderBy: { criadoEm: 'desc' },
+    // Cobrança à vista (crédito: cartão na tela de retorno; PIX: QR reaproveitado ou criado agora).
+    const cobranca = await iniciarCobrancaAVista({
+      matricula, nomeCurso: turma.curso.nome, total, forma, aluno, origem: lerOrigem(req), criarTransacao,
     });
-
-    if (pixRecente) {
-      console.log(`[PIX] Reaproveitando QR existente (${pixRecente.id}) da matrícula ${matricula.id}.`);
-      return res.redirect(urlRetorno(matricula.id, { pix: true, etapa: 'curso' }));
-    }
-
-    const pagamentoPendente = await prisma.pagamento.create({
-      data: {
-        matriculaId: matricula.id,
-        tipo: 'CURSO',
-        gateway: 'unicopag',
-        metodo: 'PIX',
-        valor: total,
-        status: 'PENDENTE',
-      },
-    });
-
-    try {
-      const resultadoGateway = await criarTransacao({
-        matriculaId: matricula.id,
-        nomeCurso: turma.curso.nome,
-        valorTotal: total,
-        forma: 'PIX',
-        aluno: { ...aluno, cidade: aluno.cidade || 'Rio de Janeiro' },
-        dadosCartao: null,
-        tipoPagamento: 'CURSO',
-        origem: lerOrigem(req),
-      });
-
-      const gatewayRef = String(resultadoGateway.gatewayRef || resultadoGateway.id || resultadoGateway.hash || matricula.id);
-
-      await prisma.pagamento.update({
-        where: { id: pagamentoPendente.id },
-        data: {
-          gatewayRef,
-          gatewayHash: resultadoGateway.hash || null,
-          gatewayStatus: resultadoGateway.paymentStatus || null,
-          gatewayResponse: resultadoGateway,
-          pixQrCode: resultadoGateway.pixQrCode || null,
-          pixUrl: resultadoGateway.pixUrl || null,
-          pixBase64: resultadoGateway.pixBase64 || null,
-        },
-      });
-
-      return res.redirect(urlRetorno(matricula.id, { pix: true, etapa: 'curso' }));
-    } catch (err) {
-      console.error('[UnicopAg] Erro no Gateway (curso à vista):', err.message);
-
-      // O gateway pode demorar e o nosso lado estourar timeout mesmo com a
-      // transação já criada do lado deles. O webhook confirma por fora — damos
-      // uma janela curta de espera antes de desistir e cancelar.
-      let pagamentoAtual = null;
-      for (let tentativa = 0; tentativa < 15; tentativa++) {
-        pagamentoAtual = await prisma.pagamento.findUnique({ where: { id: pagamentoPendente.id } });
-        if (pagamentoAtual?.gatewayRef) break;
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      }
-      if (pagamentoAtual?.gatewayRef) {
-        return res.redirect(urlRetorno(matricula.id, { pix: true, etapa: 'curso' }));
-      }
-
-      await prisma.pagamento.updateMany({
-        where: { id: pagamentoPendente.id, status: 'PENDENTE' },
-        data: { status: 'CANCELADO' },
-      });
-      return reRenderErro('Houve um problema ao processar o pagamento. Tente novamente.');
-    }
+    if (cobranca.erro) return reRenderErro(cobranca.erro);
+    return res.redirect(cobranca.redirect);
   }
 
   // ----- PRESENCIAL: só cria a Matrícula agora. A taxa é paga em
@@ -854,6 +796,8 @@ router.get('/inscrever/:turmaId/pagar-taxa', requireLogin, async (req, res) => {
     return res.status(409).render('erro', { mensagem: MSG_TURMA_CONGELADA });
   if (turmaEmEspera(matricula.turma))
     return res.status(409).render('erro', { mensagem: MSG_TURMA_EM_ESPERA });
+  if (ehOnline(matricula.turma))
+    return res.status(409).render('erro', { mensagem: MSG_TURMA_ONLINE });
 
   if (matricula.taxaConfirmada)
     return res.redirect(`/inscrever/${req.params.turmaId}/pagar-curso`);
@@ -894,6 +838,8 @@ router.post('/inscrever/:turmaId/pagar-taxa', requireLogin, async (req, res) => 
     return res.status(409).render('erro', { mensagem: MSG_TURMA_CONGELADA });
   if (turmaEmEspera(matricula.turma))
     return res.status(409).render('erro', { mensagem: MSG_TURMA_EM_ESPERA });
+  if (ehOnline(matricula.turma))
+    return res.status(409).render('erro', { mensagem: MSG_TURMA_ONLINE });
   if (matricula.taxaConfirmada)
     return res.redirect(`/inscrever/${req.params.turmaId}/pagar-curso`);
 
@@ -1035,6 +981,8 @@ router.get('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) => 
     return res.status(409).render('erro', { mensagem: MSG_TURMA_CONGELADA });
   if (turmaEmEspera(matricula.turma))
     return res.status(409).render('erro', { mensagem: MSG_TURMA_EM_ESPERA });
+  if (ehOnline(matricula.turma))
+    return res.status(409).render('erro', { mensagem: MSG_TURMA_ONLINE });
   if (!matricula.taxaConfirmada)
     return res.redirect(`/inscrever/${req.params.turmaId}/pagar-taxa`);
   if (['PAGO', 'PARCELADO', 'CANCELADO', 'ESTORNADO'].includes(matricula.statusPagamento))
@@ -1093,6 +1041,8 @@ router.post('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) =>
     return res.status(409).render('erro', { mensagem: MSG_TURMA_CONGELADA });
   if (turmaEmEspera(matricula.turma))
     return res.status(409).render('erro', { mensagem: MSG_TURMA_EM_ESPERA });
+  if (ehOnline(matricula.turma))
+    return res.status(409).render('erro', { mensagem: MSG_TURMA_ONLINE });
   if (!matricula.taxaConfirmada)
     return res.redirect(`/inscrever/${req.params.turmaId}/pagar-taxa`);
   if (['PAGO', 'PARCELADO', 'CANCELADO', 'ESTORNADO'].includes(matricula.statusPagamento))
@@ -1154,13 +1104,24 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
 
   // ---------------- PIX: view de sempre ----------------
   if (isPix || !matricula) {
-    const pagamento = matricula?.pagamentos?.[0] || null;
+    let pagamento = matricula?.pagamentos?.[0] || null;
+    // Curso online (etapa 7): com cupom aplicado e tirado, a matrícula pode ter QRs de valores diferentes. Mostra o
+    // PIX do valor atual da matrícula, não o mais recente.
+    if (matricula && ehOnline(matricula.turma)) {
+      pagamento = await prisma.pagamento.findFirst({
+        where: { matriculaId: matricula.id, tipo: 'CURSO', metodo: 'PIX', valor: matricula.valorCurso },
+        orderBy: { criadoEm: 'desc' },
+      }) || pagamento;
+    }
     return res.render('inscricao-retorno', {
       matricula,
       formatBRL,
       isPix,
       etapa: etapaAtual,
       transacaoRef: String(t || matricula?.id || ''),
+      destinoFinal: destinoAposPagamento(matricula),
+      eventosMedicao: await eventosInicioCompra(matricula),
+      jsonSeguro: require('../lib/ead-medicao').jsonSeguro,
       pixQrCode: pagamento?.pixQrCode || null,
       pixUrl: pagamento?.pixUrl || null,
       pixBase64: pagamento?.pixBase64 || null,
@@ -1177,10 +1138,14 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
   if (etapaAtual === 'taxa' && matricula.taxaConfirmada)
     return res.redirect(`/inscrever/${matricula.turmaId}/pagar-curso`);
   if (etapaAtual === 'curso' && ['PAGO', 'PARCELADO'].includes(matricula.statusPagamento))
-    return res.redirect('/minha-conta?inscrito=1');
+    return res.redirect(destinoAposPagamento(matricula));
 
   const { valorCobranca, numParcelas, valorParcela } =
     await calcularCobrancaCartao(matricula, etapaAtual, req.session.usuarioId);
+  // Curso online (etapa 7): o aluno escolhe de 1x até o máximo do curso, com os juros do Únicopag.
+  const opcoesParcelas = ehOnline(matricula.turma)
+    ? await opcoesParcelasOnline(Number(matricula.valorCurso), await maxParcelasOnline(matricula.turma))
+    : null;
 
     res.render('inscricao-retorno', {
       matricula,
@@ -1192,9 +1157,27 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
       valorCobranca,
       numParcelas,
       valorParcela,
+      opcoesParcelas,
       transacaoRef: String(t || matricula.id),
+      destinoFinal: destinoAposPagamento(matricula),
+      eventosMedicao: await eventosInicioCompra(matricula),
+      jsonSeguro: require('../lib/ead-medicao').jsonSeguro,
     });
 });
+
+// Etapa 8: "início da compra" do curso online na tela de retorno (Analytics/Pixel; o rastreamento vem do site-head).
+async function eventosInicioCompra(matricula) {
+  if (!matricula || !ehOnline(matricula.turma)) return [];
+  const medicao = require('../lib/ead-medicao');
+  const cm = await prisma.cupomMatriculaEad.findUnique({ where: { matriculaId: matricula.id }, include: { cupom: { select: { codigo: true } } } }).catch(() => null);
+  return [medicao.eventoInicioCompra(matricula, matricula.turma.curso.nome, cm ? cm.cupom.codigo : null)];
+}
+
+// Máximo de parcelas do curso online desta turma (1 a 12; sem cadastro, 1).
+async function maxParcelasOnline(turma) {
+  const co = await prisma.cursoOnline.findUnique({ where: { cursoId: turma.cursoId }, select: { maxParcelas: true } });
+  return Math.min(Math.max(Number(co && co.maxParcelas) || 1, 1), 12);
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Quanto cobrar no cartão, por etapa. É a fonte da verdade — o front nunca
@@ -1203,8 +1186,10 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
 //   curso + plano PARCELADO → curso em N parcelas (juros do gateway)
 //   curso + plano A_VISTA   → curso + taxa, 1x
 // ─────────────────────────────────────────────────────────────────────────
-async function calcularCobrancaCartao(matricula, etapa, alunoId) {
+async function calcularCobrancaCartao(matricula, etapa, alunoId, parcelasOnline = 1) {
   const curso = matricula.turma.curso;
+  // Curso online: o valor é o da matrícula (preço do online, com o cupom, sem taxa), não o do presencial.
+  if (ehOnline(matricula.turma)) return cobrancaCartaoOnline(matricula, parcelasOnline);
 
   if (etapa === 'taxa') {
     const valores = await calcularValores(
@@ -1264,8 +1249,18 @@ router.post('/inscricao/cartao/:matriculaId', requireLogin, async (req, res) => 
     return res.json({ ok: true, status: 'PAGO' });
   if (etapa === 'curso' && ['PAGO', 'PARCELADO'].includes(matricula.statusPagamento))
     return res.json({ ok: true, status: 'PAGO' });
-  if (etapa === 'curso' && !matricula.taxaConfirmada && matricula.plano === 'PARCELADO')
+  // Presencial parcelado: a taxa vem antes, em outra cobrança. O curso online não tem taxa (etapa 7).
+  if (etapa === 'curso' && !matricula.taxaConfirmada && matricula.plano === 'PARCELADO' && !ehOnline(matricula.turma))
     return res.status(400).json({ ok: false, mensagem: 'A taxa de inscrição ainda não foi confirmada.' });
+
+  // Curso online: o número de parcelas vem do formulário, de 1 até o máximo do curso.
+  let parcelasOnline = 1;
+  if (ehOnline(matricula.turma)) {
+    const max = await maxParcelasOnline(matricula.turma);
+    parcelasOnline = Number(req.body.parcelas || 1);
+    if (!Number.isInteger(parcelasOnline) || parcelasOnline < 1 || parcelasOnline > max)
+      return res.status(400).json({ ok: false, mensagem: `Escolha de 1 a ${max} parcelas.` });
+  }
 
   // ── 💡 NOVO — Trava contra cobrança duplicada ──────────────────────────
   //
@@ -1308,7 +1303,16 @@ router.post('/inscricao/cartao/:matriculaId', requireLogin, async (req, res) => 
     });
   }
 
-  const cobranca = await calcularCobrancaCartao(matricula, etapa, req.session.usuarioId);
+  // Curso online: o plano acompanha a escolha (2x ou mais ⇒ PARCELADO; a confirmação lê o plano).
+  if (ehOnline(matricula.turma)) {
+    const plano = parcelasOnline > 1 ? 'PARCELADO' : 'A_VISTA';
+    if (matricula.plano !== plano) {
+      await prisma.matricula.update({ where: { id: matricula.id }, data: { plano } });
+      matricula.plano = plano;
+    }
+  }
+
+  const cobranca = await calcularCobrancaCartao(matricula, etapa, req.session.usuarioId, parcelasOnline);
 
   // Validação dos dados do cartão — mesmos schemas de sempre, só que agora o
   // plano/forma/parcelas vêm do servidor, não do body.
@@ -1443,3 +1447,4 @@ router.get('/inscricao/status/:matriculaId', requireLogin, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.carregarVitrine = carregarVitrine;

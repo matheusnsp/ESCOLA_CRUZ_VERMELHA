@@ -623,7 +623,98 @@ async function enviarComprovanteRecusado(email, nome, { motivo, link }) {
   await enviar(email, 'Escola CVB-RJ: envie outro comprovante da área da saúde', html, 'Comprovante recusado', link);
 }
 
+// Curso online concluído (EAD, etapa 3): o certificado está pronto (lib/ead-certificado.js).
+async function enviarCertificadoEadPronto(email, nome, { curso, link }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const html = moldura(
+    'Seu certificado está pronto',
+    limpo(nome),
+    `Parabéns por concluir o curso online <strong>${limpo(curso)}</strong>. O seu certificado já está disponível, `
+      + 'com o código de verificação da Cruz Vermelha Brasileira – RJ. No mesmo lugar você baixa o <strong>cartão de bolso</strong> '
+      + 'com os passos do curso, para guardar no celular ou imprimir.'
+      + '<br><br>Lembre: é uma capacitação teórica. O treinamento prático em manequim é oferecido nos cursos presenciais da Escola.',
+    'Ver meu certificado',
+    link,
+    'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.'
+  );
+  await enviar(email, `Seu certificado está pronto: ${limpo(curso)}`, html, `Certificado do curso online pronto (${curso})`, link);
+}
+
+// Etapa 4: compra do curso online confirmada (lib/status-pagamento.js, turma ONLINE).
+async function enviarCursoOnlineLiberado(email, nome, { curso, link }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const html = moldura(
+    'Seu curso online está liberado',
+    limpo(nome),
+    `Recebemos o seu pagamento. O curso online <strong>${limpo(curso)}</strong> já está liberado: entre com o seu login `
+      + 'e estude pelo celular, no seu ritmo. Nos primeiros 7 dias os módulos abrem em sequência; depois, na ordem que você quiser. '
+      + 'Ao concluir, o certificado sai na hora.'
+      + '<br><br>Lembre: é uma capacitação teórica. O treinamento prático em manequim é oferecido nos cursos presenciais da Escola.',
+    'Começar o curso',
+    link,
+    'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.'
+  );
+  await enviar(email, `Seu curso online está liberado: ${limpo(curso)}`, html, `Curso online liberado (${curso})`, link);
+}
+
+// Etapa 5: a Escola respondeu a dúvida que o aluno mandou numa aula do curso online.
+async function enviarDuvidaRespondida(email, nome, { curso, tela, link }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const html = moldura(
+    'Sua dúvida foi respondida',
+    limpo(nome),
+    `A Escola respondeu a dúvida que você mandou na aula <strong>${limpo(tela)}</strong>, do curso online `
+      + `<strong>${limpo(curso)}</strong>. A resposta está na própria aula, logo abaixo do conteúdo.`,
+    'Ver a resposta',
+    link,
+    'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.'
+  );
+  await enviar(email, `Sua dúvida foi respondida: ${limpo(curso)}`, html, `Dúvida respondida (${curso})`, link);
+}
+
+// Etapa 6: a escola liberou uma vaga do curso online para a pessoa.
+async function enviarVagaLiberada(email, nome, { escola, curso, link, senhaInicial }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const senha = senhaInicial
+    ? `<br><br>Sua conta foi criada com o seu e-mail. A senha inicial são os <strong>4 últimos dígitos do seu CPF</strong>; troque-a no primeiro acesso.`
+    : '';
+  const html = moldura(
+    'Sua escola liberou o curso online',
+    limpo(nome),
+    `A <strong>${limpo(escola)}</strong> liberou para você o curso online <strong>${limpo(curso)}</strong>, da Escola de Educação e Saúde `
+      + 'da Cruz Vermelha. Estude pelo celular, no seu ritmo; ao concluir, o certificado sai na hora.' + senha
+      + '<br><br>Lembre: é uma capacitação teórica. O treinamento prático em manequim é oferecido nos cursos presenciais da Escola.',
+    'Começar o curso',
+    link,
+    'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.'
+  );
+  await enviar(email, `Sua escola liberou o curso online: ${limpo(curso)}`, html, `Vaga de lote liberada (${escola})`, link);
+}
+
+// Etapa 6: a pessoa virou gestora da escola (Minha escola: cadastra a equipe e baixa a declaração).
+async function enviarGestorEscola(email, nome, { escola, link, senhaInicial }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const senha = senhaInicial
+    ? `<br><br>Sua conta foi criada com o seu e-mail. A senha inicial são os <strong>4 últimos dígitos do seu CPF</strong>; troque-a no primeiro acesso.`
+    : '';
+  const html = moldura(
+    `Você é gestor da escola ${limpo(escola)}`,
+    limpo(nome),
+    `Em <strong>Minha escola</strong> você cadastra a equipe no curso online, manda o link de convite, acompanha quem concluiu `
+      + 'e baixa a declaração de capacitação (Lei 13.722/2018).' + senha,
+    'Abrir Minha escola',
+    link,
+    'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.'
+  );
+  await enviar(email, `Você é gestor da escola ${limpo(escola)}`, html, `Gestor de escola (${escola})`, link);
+}
+
 module.exports = {
+  enviarVagaLiberada,
+  enviarGestorEscola,
+  enviarDuvidaRespondida,
+  enviarCursoOnlineLiberado,
+  enviarCertificadoEadPronto,
   enviarComprovanteRecusado,
   enviarEncaixeMatriculaRapida,
   enviarMudancaTurmaMatriculaRapida,

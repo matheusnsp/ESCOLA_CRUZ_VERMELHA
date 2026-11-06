@@ -91,6 +91,7 @@ function dataLonga(d) {
           <a class="v-btn v-btn-red v-btn-grande v-btn-bloco" href="<%= whats %>" target="_blank" rel="noopener">Saber a próxima turma</a>
           <a class="v-curso-link" href="/cursos">Ver outros cursos <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
         <% } %>
+        <%- include('partials/caixa-online', { curso: curso, vitrine: vitrine }) %>
       </aside>
     </div>
   </section>

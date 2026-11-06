@@ -1,0 +1,14 @@
+<%# Campos de uma decisão do cenário (pergunta + 3 opções). Locais: dv (valores), prefixo do id. %>
+<% var op = dv.op || []; %>
+<div class="adm-form adm-campos">
+  <label class="full">Pergunta da decisão
+    <input type="text" name="pergunta" maxlength="600" required value="<%= dv.pergunta || '' %>" placeholder="Ex.: O que você faz primeiro?">
+  </label>
+  <% [0, 1, 2].forEach(function (i) { var o = op[i] || {}; %>
+    <div class="ead-opcao full">
+      <label class="check"><input type="radio" name="correta" value="<%= i %>" <%= String(dv.correta) === String(i) ? 'checked' : '' %> required> Opção <%= i + 1 %> é a certa</label>
+      <input type="text" name="op[<%= i %>][texto]" maxlength="300" required value="<%= o.texto || '' %>" placeholder="Texto da opção <%= i + 1 %> (ex.: OLHAR / LIGAR / CUIDAR)" aria-label="Texto da opção <%= i + 1 %>">
+      <textarea name="op[<%= i %>][feedback]" rows="2" maxlength="800" placeholder="Fala do instrutor quando o aluno escolhe esta opção" aria-label="Fala do instrutor da opção <%= i + 1 %>"><%= o.feedback || '' %></textarea>
+    </div>
+  <% }) %>
+</div>

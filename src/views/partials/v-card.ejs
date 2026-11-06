@@ -14,6 +14,7 @@
       <span class="v-card-semfoto"><i class="fa-solid fa-kit-medical" aria-hidden="true"></i></span>
     <% } %>
     <span class="v-status<%= _turma ? ' v-status-aberta' : '' %>"><%= _turma ? 'Inscrições abertas' : 'Turmas em breve' %></span>
+    <% if (curso.online) { %><span class="v-selo-online"><i class="fa-solid fa-laptop" aria-hidden="true"></i> 100% online</span><% } %>
   </div>
   <div class="v-card-corpo">
     <h3><%= curso.nome %></h3>

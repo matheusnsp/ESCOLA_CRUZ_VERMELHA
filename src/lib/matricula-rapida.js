@@ -255,7 +255,8 @@ async function encaixar({ inscricaoId, turmaId, porUsuarioId, appUrl }) {
   }
   const outraTurma = await prisma.matricula.findFirst({
     where: {
-      alunoId: aluno.id, turma: { cursoId: turma.cursoId }, id: existente ? { not: existente.id } : undefined,
+      // O curso online (turma ONLINE) convive com o presencial do mesmo curso: não conta aqui.
+      alunoId: aluno.id, turma: { cursoId: turma.cursoId, status: { not: 'ONLINE' } }, id: existente ? { not: existente.id } : undefined,
       OR: [{ taxaConfirmada: true }, { statusPagamento: { in: ['PAGO', 'PARCELADO'] } }],
       statusPagamento: { notIn: ['CANCELADO', 'ESTORNADO'] },
     },
@@ -409,7 +410,7 @@ async function moverMatricula({ inscricaoId, alvo, destino, porUsuarioId, appUrl
     // Quem saiu da espera não pode ficar com duas matrículas valendo no mesmo curso.
     const outra = await prisma.matricula.findFirst({
       where: {
-        alunoId: m.alunoId, id: { not: m.id }, turma: { cursoId: m.turma.cursoId, status: { not: 'EM_ESPERA' } },
+        alunoId: m.alunoId, id: { not: m.id }, turma: { cursoId: m.turma.cursoId, status: { notIn: ['EM_ESPERA', 'ONLINE'] } },
         OR: [{ taxaConfirmada: true }, { statusPagamento: { in: ['PAGO', 'PARCELADO'] } }],
         statusPagamento: { notIn: ['CANCELADO', 'ESTORNADO'] },
       },

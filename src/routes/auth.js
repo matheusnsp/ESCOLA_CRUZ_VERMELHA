@@ -60,12 +60,8 @@ async function enviarConfirmacao(usuario) {
   await enviarEmailConfirmacao(usuario.email, usuario.nome, link);
 }
 
-function senhaPadraoDoDocumento({ tipoDocumento, cpfCnpjNormalizado, passaporte }) {
-  const base = tipoDocumento === 'PASSAPORTE'
-    ? (passaporte || '').replace(/[^A-Z0-9]/g, '')
-    : (cpfCnpjNormalizado || '');
-  return base.slice(-4);
-}
+// Senha inicial do cadastro: lib/conta-aluno.js (a conta criada pelo gestor da escola usa a mesma regra).
+const { senhaPadraoDoDocumento, voltaDepoisDoCadastro } = require('../lib/conta-aluno');
 
 // ============================================================
 //  CADASTRO
@@ -149,12 +145,15 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
       console.error('[Cadastro] Falha ao enviar e-mail de confirmação:', e.message);
     }
 
+    // Quem veio do link de teste do curso online (/ead-teste/...) volta para o curso; o resto segue
+    // para a Minha conta como sempre. Lido antes do regenerate (a sessão nova não tem o returnTo).
+    const voltaAoCurso = voltaDepoisDoCadastro(req.session.returnTo);
     req.session.regenerate((err) => {
       if (err) { console.error('Erro ao iniciar sessão no cadastro:', err); return res.redirect('/login'); }
       req.session.usuarioId = usuario.id;
       req.session.papel = usuario.papel;
       req.session.nome = usuario.nome;
-      res.redirect('/minha-conta?sec=seguranca');
+      res.redirect(voltaAoCurso || '/minha-conta?sec=seguranca');
     });
   } catch (err) {
     if (err.code === 'P2002') {

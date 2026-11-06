@@ -1,0 +1,60 @@
+<%
+  var nova = !pergunta; var v = valores || {}; var validado = topico.modulo.status === 'VALIDADO';
+  var tipo = v.tipo || 'UNICA';
+  var alt = v.alt || [];
+  function altDe(i) { var a = alt[i] || {}; return { texto: a.texto || '', correta: a.correta === true || a.correta === 'on' }; }
+%>
+<%- include('../head', { titulo: nova ? 'Nova pergunta' : 'Editar pergunta' }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= nova ? 'Nova pergunta' : 'Editar pergunta' %></h1>
+  <a href="/ead/modulo/<%= topico.moduloId %>" class="adm-link">← <%= topico.modulo.titulo %></a>
+</div>
+<p class="adm-mut"><%= topico.modulo.cursoOnline.curso.nome %> · banco do tópico “<%= topico.titulo %>”</p>
+<%- include('_mensagens') %>
+<% if (validado) { %><div class="ead-faixa-validado"><i class="fa-solid fa-triangle-exclamation"></i> Este módulo está validado. Salvar uma mudança o volta para rascunho até ser validado de novo.</div><% } %>
+
+<form method="POST" action="<%= nova ? '/ead/topico/' + topico.id + '/perguntas/nova' : '/ead/pergunta/' + pergunta.id + '/editar' %>"
+      class="adm-box adm-box-pad ead-pergunta-form"
+      <% if (validado) { %>data-confirmar="Este módulo está validado. Salvar uma mudança o volta para rascunho até ser validado de novo." data-botao="Salvar mesmo assim"<% } %>>
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="adm-form adm-campos">
+    <fieldset class="full" style="border:0;padding:0;margin:0">
+      <legend style="font-size:12.5px;font-weight:700;color:var(--tinta-60);margin-bottom:7px">Tipo</legend>
+      <div class="ead-acoes">
+        <label class="check"><input type="radio" name="tipo" id="tipoUNICA" value="UNICA" <%= tipo === 'UNICA' ? 'checked' : '' %>> Resposta única</label>
+        <label class="check"><input type="radio" name="tipo" id="tipoMULTIPLA" value="MULTIPLA" <%= tipo === 'MULTIPLA' ? 'checked' : '' %>> Várias corretas</label>
+        <label class="check"><input type="radio" name="tipo" id="tipoVF" value="VF" <%= tipo === 'VF' ? 'checked' : '' %>> Verdadeiro ou falso</label>
+      </div>
+    </fieldset>
+    <label class="full">Enunciado (de preferência um mini-cenário do dia a dia)
+      <textarea name="enunciado" rows="3" maxlength="600" required placeholder="No recreio, um aluno de 7 anos começa a tossir com força…"><%= v.enunciado || '' %></textarea>
+    </label>
+
+    <div class="full ead-alts ead-alts-normais">
+      <span style="font-size:12.5px;font-weight:700;color:var(--tinta-60)">Alternativas (2 a 5; marque a(s) correta(s). Inclua uma “óbvia e errada”.)</span>
+      <% for (var i = 0; i < 5; i++) { var a = altDe(i); %>
+        <div class="ead-alt">
+          <label class="check" title="Correta"><input type="checkbox" name="alt[<%= i %>][correta]" <%= a.correta ? 'checked' : '' %> aria-label="Alternativa <%= i + 1 %> correta"></label>
+          <input type="text" name="alt[<%= i %>][texto]" maxlength="300" value="<%= a.texto %>" placeholder="Alternativa <%= i + 1 %>" aria-label="Alternativa <%= i + 1 %>">
+        </div>
+      <% } %>
+    </div>
+    <div class="full ead-alts ead-vf-campos">
+      <span style="font-size:12.5px;font-weight:700;color:var(--tinta-60)">A afirmação do enunciado é…</span>
+      <label class="check"><input type="radio" name="vf" value="0" <%= v.vf === '0' ? 'checked' : '' %>> Verdadeira</label>
+      <label class="check"><input type="radio" name="vf" value="1" <%= v.vf === '1' ? 'checked' : '' %>> Falsa</label>
+    </div>
+
+    <label class="full">Feedback: o porquê (aparece depois da resposta; é o que ensina)
+      <textarea name="feedback" rows="3" maxlength="800" placeholder="Correto. Tosse forte e voz = via aérea só parcialmente obstruída…"><%= v.feedback || '' %></textarea>
+    </label>
+  </div>
+  <div class="ead-acoes">
+    <button type="submit" class="adm-btn" name="depois" value="voltar"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+    <% if (nova) { %><button type="submit" class="adm-btn adm-btn-out" name="depois" value="outra"><i class="fa-solid fa-plus"></i> Salvar e escrever outra</button><% } %>
+  </div>
+</form>
+
+<%- include('../foot') %>

@@ -12,15 +12,15 @@ datasource db {
 }
 
 model Usuario {
-  id                   String         @id @default(uuid())
+  id                   String            @id @default(uuid())
   nome                 String
-  email                String         @unique
+  email                String            @unique
   tipoDocumento        TipoDocumento?
-  cpfCnpj              String?        @unique
-  passaporte           String?        @unique
+  cpfCnpj              String?           @unique
+  passaporte           String?           @unique
   paisOrigem           String?
   senhaHash            String?
-  papel                Papel          @default(ALUNO)
+  papel                Papel             @default(ALUNO)
   escolaridade         String?
   escolaridadeSituacao String?
   genero               String?
@@ -31,43 +31,49 @@ model Usuario {
   bairro               String?
   cidade               String?
   uf                   String?
-  emailVerificado      Boolean        @default(false)
-  loginFalhas          Int            @default(0)
+  emailVerificado      Boolean           @default(false)
+  loginFalhas          Int               @default(0)
   bloqueadoAte         DateTime?
-  loginStrikes         Int            @default(0)
-  bloqueioTotal        Boolean        @default(false)
+  loginStrikes         Int               @default(0)
+  bloqueioTotal        Boolean           @default(false)
   avatarUrl            String?
   consentimentoLgpdEm  DateTime?
   consentimentoVersao  String?
-  criadoEm             DateTime       @default(now())
-  atualizadoEm         DateTime       @updatedAt
+  criadoEm             DateTime          @default(now())
+  atualizadoEm         DateTime          @updatedAt
   celular              String?
   rg                   String?
   ultimoLogin          DateTime?
   ultimaAtividade      DateTime?
   matriculas           Matricula[]
+  cursosEad            AlunoCursoEad[]
+  // EAD, etapa 6: gestor de escola e vagas de lote (só relações; nenhuma coluna nova em Usuario)
+  gestorEscolas        GestorEscolaEad[]
+  vagasLote            VagaLoteEad[]
 
   @@index([papel])
   @@index([ultimaAtividade])
 }
 
 model Curso {
-  id                 String     @id @default(uuid())
+  id                 String       @id @default(uuid())
   nome               String
   descricao          String?
   cargaHoraria       Int
   escolaridadeMinima String?
   imagemUrl          String?
-  precoAvista        Decimal    @db.Decimal(10, 2)
-  precoCheio         Decimal    @db.Decimal(10, 2)
-  parcelas           Int        @default(1)
-  valorParcela       Decimal    @db.Decimal(10, 2)
-  taxaMatricula      Decimal?   @db.Decimal(10, 2)
-  ativo              Boolean    @default(true)
-  criadoEm          DateTime   @default(now())
+  precoAvista        Decimal      @db.Decimal(10, 2)
+  precoCheio         Decimal      @db.Decimal(10, 2)
+  parcelas           Int          @default(1)
+  valorParcela       Decimal      @db.Decimal(10, 2)
+  taxaMatricula      Decimal?     @db.Decimal(10, 2)
+  ativo              Boolean      @default(true)
+  criadoEm           DateTime     @default(now())
   descricaoLonga     String?
   faqs               FaqCurso[]
   turmas             Turma[]
+  // EAD: só a relação do Prisma; não gera coluna em "Curso" (a FK fica em "CursoOnline").
+  online             CursoOnline?
 }
 
 model FaqCurso {
@@ -85,7 +91,7 @@ model FaqCurso {
 model Turma {
   id             String      @id @default(uuid())
   cursoId        String
-  inicioPrevisto DateTime @default(now())
+  inicioPrevisto DateTime    @default(now())
   vagas          Int         @default(30)
   minimoAlunos   Int         @default(15)
   status         StatusTurma @default(ABERTA)
@@ -107,51 +113,53 @@ model AulaData {
 }
 
 model Matricula {
-  id                  String             @id @default(uuid())
-  alunoId             String
-  turmaId             String
-  plano               PlanoPagamento
-  forma               FormaPagamento
-  valorCurso          Decimal            @db.Decimal(10, 2)
-  valorTaxaMatricula  Decimal            @default(0) @db.Decimal(10, 2)
-  alimentoEntregue    Boolean            @default(false)
-  alimentoEntreguePor String?
-  alimentoEntregueEm  DateTime?
-  taxaConfirmada      Boolean            @default(false)
-  taxaConfirmadaPor   String?
-  taxaConfirmadaEm    DateTime?
-  statusPagamento     StatusPagamento    @default(PENDENTE)
+  id                     String             @id @default(uuid())
+  alunoId                String
+  turmaId                String
+  plano                  PlanoPagamento
+  forma                  FormaPagamento
+  valorCurso             Decimal            @db.Decimal(10, 2)
+  valorTaxaMatricula     Decimal            @default(0) @db.Decimal(10, 2)
+  alimentoEntregue       Boolean            @default(false)
+  alimentoEntreguePor    String?
+  alimentoEntregueEm     DateTime?
+  taxaConfirmada         Boolean            @default(false)
+  taxaConfirmadaPor      String?
+  taxaConfirmadaEm       DateTime?
+  statusPagamento        StatusPagamento    @default(PENDENTE)
   // avisoPagamentoEm    DateTime?
   // avisoPagamentoPor   String?
   // Prazo pra pagar o curso (3 dias antes do início da turma), calculado
   // no momento em que a taxa é confirmada. Null enquanto a taxa não foi
   // paga, ou se o plano não for PARCELADO (único que separa taxa/curso).
-  prazoPagamentoCurso DateTime?
-  lembreteImediatoEm  DateTime?
-  lembreteVesperaEm   DateTime?
-  nota                Float?
-  situacao            SituacaoAcademica?
-  confirmadaPor       String?
-  confirmadaEm        DateTime?
-  criadoEm            DateTime           @default(now())
-  atualizadoEm        DateTime           @updatedAt
-  avaliacoes          Avaliacao[]
-  aluno               Usuario            @relation(fields: [alunoId], references: [id])
-  turma               Turma              @relation(fields: [turmaId], references: [id])
-  pagamentos          Pagamento[]
+  prazoPagamentoCurso    DateTime?
+  lembreteImediatoEm     DateTime?
+  lembreteVesperaEm      DateTime?
+  nota                   Float?
+  situacao               SituacaoAcademica?
+  confirmadaPor          String?
+  confirmadaEm           DateTime?
+  criadoEm               DateTime           @default(now())
+  atualizadoEm           DateTime           @updatedAt
+  avaliacoes             Avaliacao[]
+  aluno                  Usuario            @relation(fields: [alunoId], references: [id])
+  turma                  Turma              @relation(fields: [turmaId], references: [id])
+  pagamentos             Pagamento[]
+  // EAD etapa 7: só a relação do Prisma (a FK fica em "CupomMatriculaEad").
+  cupomEad               CupomMatriculaEad?
   diferencaTransferencia Decimal?
 
   @@unique([alunoId, turmaId])
 }
 
 model Pagamento {
-  id              String          @id @default(uuid())
-  matriculaId     String
+  id          String @id @default(uuid())
+  matriculaId String
 
   // NOVO: distingue se este Pagamento é a taxa de inscrição ou o valor do
   // curso. O webhook usa este campo para saber se deve atualizar
   // Matricula.taxaConfirmada ou Matricula.statusPagamento quando confirma.
-  tipo            TipoPagamento   @default(CURSO)
+  tipo TipoPagamento @default(CURSO)
 
   gateway         String?
   gatewayRef      String?
@@ -247,6 +255,7 @@ enum StatusTurma {
   ENCERRADA
   CONGELADA
   EM_ESPERA
+  ONLINE
 }
 
 enum PlanoPagamento {
@@ -279,4 +288,406 @@ enum TipoPagamento {
 enum SituacaoAcademica {
   APROVADO
   REPROVADO
+}
+
+// ─── EAD (curso 100% online) ───────────────────────────────────────────────────────────────────
+// Só tabelas novas: nada aqui acrescenta coluna em tabela que já existe (ver lib/extras.js, 30/09).
+// Árvore: CursoOnline → ModuloEad → TopicoEad → (TelaEad, PerguntaEad → AlternativaEad)
+//                               └→ CenarioEad → DecisaoCenario → OpcaoDecisao  (só no módulo final)
+
+enum StatusModuloEad {
+  RASCUNHO
+  VALIDADO
+}
+
+enum TipoPerguntaEad {
+  UNICA
+  MULTIPLA
+  VF
+}
+
+model CursoOnline {
+  id             String          @id @default(uuid())
+  cursoId        String          @unique
+  notaMinimaQuiz Int             @default(80)
+  // Etapa 4: preço próprio do online (o Curso pode ser presencial também) e o interruptor do site.
+  precoOnline    Decimal?        @db.Decimal(10, 2)
+  publicado      Boolean         @default(false)
+  // Etapa 5: curso que só existe online (o Curso fica ativo false e fora do presencial).
+  somenteOnline  Boolean         @default(false)
+  // Etapa 7: parcelas no cartão (1 = só à vista), juros do Únicopag com o aluno.
+  maxParcelas    Int             @default(1)
+  criadoEm       DateTime        @default(now())
+  atualizadoEm   DateTime        @updatedAt
+  // Restrict: apagar o curso não leva o conteúdo junto por acidente (POST /cursos/:id/excluir avisa).
+  curso          Curso           @relation(fields: [cursoId], references: [id], onDelete: Restrict)
+  modulos        ModuloEad[]
+  lotes          LoteEad[]
+  cupons         CupomEad[]
+  alunos         AlunoCursoEad[]
+}
+
+model ModuloEad {
+  id               String          @id @default(uuid())
+  cursoOnlineId    String
+  ordem            Int             @default(0)
+  titulo           String
+  minutosEstimados Int             @default(0)
+  introducao       String?
+  fotoIntroUrl     String?
+  final            Boolean         @default(false)
+  status           StatusModuloEad @default(RASCUNHO)
+  // Etapa 9: módulo escrito pela IA (selo "Gerado por IA" no painel; histórico, fica depois de validar).
+  geradoPorIa      Boolean         @default(false)
+  validadoPor      String?
+  validadoEm       DateTime?
+  criadoEm         DateTime        @default(now())
+  atualizadoEm     DateTime        @updatedAt
+  cursoOnline      CursoOnline     @relation(fields: [cursoOnlineId], references: [id], onDelete: Cascade)
+  topicos          TopicoEad[]
+  cenarios         CenarioEad[]
+  tentativas       TentativaEad[]
+
+  @@index([cursoOnlineId])
+}
+
+model TopicoEad {
+  id           String         @id @default(uuid())
+  moduloId     String
+  ordem        Int            @default(0)
+  titulo       String
+  criadoEm     DateTime       @default(now())
+  atualizadoEm DateTime       @updatedAt
+  modulo       ModuloEad      @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+  telas        TelaEad[]
+  perguntas    PerguntaEad[]
+  tentativas   TentativaEad[]
+
+  @@index([moduloId])
+}
+
+model TelaEad {
+  id               String         @id @default(uuid())
+  topicoId         String
+  ordem            Int            @default(0)
+  titulo           String
+  ancora           String?
+  fotoUrl          String?
+  videoUrl         String?
+  videoTitulo      String?
+  videoDuracaoSeg  Int?
+  revisaoTitulo    String?
+  revisaoItens     String[]
+  alerta           String?
+  dicaProfissional String?
+  criadoEm         DateTime       @default(now())
+  atualizadoEm     DateTime       @updatedAt
+  topico           TopicoEad      @relation(fields: [topicoId], references: [id], onDelete: Cascade)
+  vistas           TelaVistaEad[]
+  duvidas          DuvidaEad[]
+
+  @@index([topicoId])
+}
+
+model PerguntaEad {
+  id           String           @id @default(uuid())
+  topicoId     String
+  tipo         TipoPerguntaEad  @default(UNICA)
+  enunciado    String
+  feedback     String?
+  ativa        Boolean          @default(true)
+  criadoEm     DateTime         @default(now())
+  atualizadoEm DateTime         @updatedAt
+  topico       TopicoEad        @relation(fields: [topicoId], references: [id], onDelete: Cascade)
+  alternativas AlternativaEad[]
+
+  @@index([topicoId])
+}
+
+model AlternativaEad {
+  id         String      @id @default(uuid())
+  perguntaId String
+  ordem      Int         @default(0)
+  texto      String
+  correta    Boolean     @default(false)
+  criadoEm   DateTime    @default(now())
+  pergunta   PerguntaEad @relation(fields: [perguntaId], references: [id], onDelete: Cascade)
+
+  @@index([perguntaId])
+}
+
+model CenarioEad {
+  id               String            @id @default(uuid())
+  moduloId         String
+  ordem            Int               @default(0)
+  titulo           String
+  cena             String?
+  fotoUrl          String?
+  videoUrl         String?
+  tempoSugeridoSeg Int               @default(240)
+  criadoEm         DateTime          @default(now())
+  atualizadoEm     DateTime          @updatedAt
+  modulo           ModuloEad         @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+  decisoes         DecisaoCenario[]
+  feitos           CenarioFeitoEad[]
+
+  @@index([moduloId])
+}
+
+model DecisaoCenario {
+  id           String         @id @default(uuid())
+  cenarioId    String
+  ordem        Int            @default(0)
+  pergunta     String
+  criadoEm     DateTime       @default(now())
+  atualizadoEm DateTime       @updatedAt
+  cenario      CenarioEad     @relation(fields: [cenarioId], references: [id], onDelete: Cascade)
+  opcoes       OpcaoDecisao[]
+
+  @@index([cenarioId])
+}
+
+model OpcaoDecisao {
+  id        String         @id @default(uuid())
+  decisaoId String
+  ordem     Int            @default(0)
+  texto     String
+  correta   Boolean        @default(false)
+  feedback  String?
+  criadoEm  DateTime       @default(now())
+  decisao   DecisaoCenario @relation(fields: [decisaoId], references: [id], onDelete: Cascade)
+
+  @@index([decisaoId])
+}
+
+// ─── EAD: progresso do aluno (etapa 2) ─────────────────────────────────────────────────────────
+// Só tabelas novas. "Concluído/bloqueado" não é gravado: lib/ead-progresso.js calcula a partir daqui.
+
+enum TipoTentativaEad {
+  QUIZ
+  PRE_TESTE
+}
+
+model AlunoCursoEad {
+  id            String            @id @default(uuid())
+  usuarioId     String
+  cursoOnlineId String
+  iniciadoEm    DateTime          @default(now())
+  concluidoEm   DateTime?
+  criadoEm      DateTime          @default(now())
+  atualizadoEm  DateTime          @updatedAt
+  // Cascade: a exclusão de conta (lib/excluir-conta.js) apaga o Usuario.
+  usuario       Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  cursoOnline   CursoOnline       @relation(fields: [cursoOnlineId], references: [id], onDelete: Cascade)
+  telasVistas   TelaVistaEad[]
+  tentativas    TentativaEad[]
+  cenarios      CenarioFeitoEad[]
+  duvidas       DuvidaEad[]
+
+  @@unique([usuarioId, cursoOnlineId])
+  @@index([cursoOnlineId])
+}
+
+model TelaVistaEad {
+  id           String        @id @default(uuid())
+  alunoCursoId String
+  telaId       String
+  vistaEm      DateTime      @default(now())
+  alunoCurso   AlunoCursoEad @relation(fields: [alunoCursoId], references: [id], onDelete: Cascade)
+  tela         TelaEad       @relation(fields: [telaId], references: [id], onDelete: Cascade)
+
+  @@unique([alunoCursoId, telaId])
+  @@index([telaId])
+}
+
+model TentativaEad {
+  id           String           @id @default(uuid())
+  alunoCursoId String
+  tipo         TipoTentativaEad
+  moduloId     String
+  topicoId     String?
+  perguntaIds  String[]
+  respostas    Json             @default("[]")
+  acertos      Int              @default(0)
+  total        Int
+  aprovado     Boolean?
+  concluidaEm  DateTime?
+  criadoEm     DateTime         @default(now())
+  atualizadoEm DateTime         @updatedAt
+  alunoCurso   AlunoCursoEad    @relation(fields: [alunoCursoId], references: [id], onDelete: Cascade)
+  modulo       ModuloEad        @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+  topico       TopicoEad?       @relation(fields: [topicoId], references: [id], onDelete: Cascade)
+
+  @@index([alunoCursoId])
+  @@index([moduloId])
+  @@index([topicoId])
+}
+
+model CenarioFeitoEad {
+  id           String        @id @default(uuid())
+  alunoCursoId String
+  cenarioId    String
+  iniciadoEm   DateTime      @default(now())
+  decisaoAtual Int           @default(0)
+  erros        Int           @default(0)
+  tempoSeg     Int?
+  concluidoEm  DateTime?
+  criadoEm     DateTime      @default(now())
+  atualizadoEm DateTime      @updatedAt
+  alunoCurso   AlunoCursoEad @relation(fields: [alunoCursoId], references: [id], onDelete: Cascade)
+  cenario      CenarioEad    @relation(fields: [cenarioId], references: [id], onDelete: Cascade)
+
+  @@unique([alunoCursoId, cenarioId])
+  @@index([cenarioId])
+}
+
+// ─── EAD, etapa 5: dúvidas por aula ───────────────────────────────────────────────────────────
+// Pública (para os outros alunos) só RESPONDIDA. AGUARDANDO e DESCARTADA o autor vê; OCULTA ninguém.
+enum StatusDuvidaEad {
+  AGUARDANDO
+  RESPONDIDA
+  DESCARTADA
+  OCULTA
+}
+
+model DuvidaEad {
+  id             String          @id @default(uuid())
+  alunoCursoId   String
+  telaId         String
+  texto          String
+  status         StatusDuvidaEad @default(AGUARDANDO)
+  resposta       String?
+  respondidaPor  String?
+  respondidaEm   DateTime?
+  motivoDescarte String?
+  lidaEm         DateTime?
+  criadoEm       DateTime        @default(now())
+  atualizadoEm   DateTime        @updatedAt
+  alunoCurso     AlunoCursoEad   @relation(fields: [alunoCursoId], references: [id], onDelete: Cascade)
+  tela           TelaEad         @relation(fields: [telaId], references: [id], onDelete: Cascade)
+
+  @@index([telaId, status])
+  @@index([alunoCursoId])
+  @@index([status, criadoEm])
+}
+
+// ─── EAD, etapa 6: venda em lote para escolas e empresas ──────────────────────────────────────
+model EscolaEad {
+  id           String            @id @default(uuid())
+  nome         String
+  cnpj         String?           @unique
+  criadoEm     DateTime          @default(now())
+  atualizadoEm DateTime          @updatedAt
+  gestores     GestorEscolaEad[]
+  lotes        LoteEad[]
+}
+
+model GestorEscolaEad {
+  id        String    @id @default(uuid())
+  escolaId  String
+  usuarioId String
+  criadoEm  DateTime  @default(now())
+  escola    EscolaEad @relation(fields: [escolaId], references: [id], onDelete: Cascade)
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([escolaId, usuarioId])
+  @@index([usuarioId])
+}
+
+// Vagas do curso online compradas pela escola. forma: PIX, BOLETO, TRANSFERENCIA, EMPENHO, OUTRO.
+// recebidoEm: quando o dinheiro caiu (entra no Financeiro nessa data). convite: código do link (null = desligado).
+model LoteEad {
+  id            String        @id @default(uuid())
+  escolaId      String
+  cursoOnlineId String
+  vagas         Int
+  validoAte     DateTime
+  valor         Decimal       @db.Decimal(10, 2)
+  forma         String
+  recebidoEm    DateTime?
+  observacao    String?
+  convite       String?       @unique
+  criadoPor     String
+  criadoEm      DateTime      @default(now())
+  atualizadoEm  DateTime      @updatedAt
+  escola        EscolaEad     @relation(fields: [escolaId], references: [id], onDelete: Restrict)
+  cursoOnline   CursoOnline   @relation(fields: [cursoOnlineId], references: [id], onDelete: Restrict)
+  vagasUsadas   VagaLoteEad[]
+
+  @@index([escolaId])
+  @@index([cursoOnlineId])
+}
+
+// Uma pessoa no lote. origem: GESTOR ou CONVITE. removidaEm: tirada antes de começar (a vaga volta).
+model VagaLoteEad {
+  id         String    @id @default(uuid())
+  loteId     String
+  usuarioId  String
+  origem     String
+  criadoEm   DateTime  @default(now())
+  removidaEm DateTime?
+  lote       LoteEad   @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  usuario    Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([loteId])
+  @@index([usuarioId])
+}
+
+// ─── Etapa 7: cupom de desconto do curso online ───────────────────────────────────────────────
+// tipo: PERCENTUAL | VALOR (texto, como LoteEad.forma). cursoOnlineId null = todos os cursos online.
+model CupomEad {
+  id            String              @id @default(uuid())
+  codigo        String              @unique
+  tipo          String
+  valor         Decimal             @db.Decimal(10, 2)
+  cursoOnlineId String?
+  validoAte     DateTime?
+  limiteUsos    Int?
+  ativo         Boolean             @default(true)
+  observacao    String?
+  criadoPor     String
+  criadoEm      DateTime            @default(now())
+  atualizadoEm  DateTime            @updatedAt
+  cursoOnline   CursoOnline?        @relation(fields: [cursoOnlineId], references: [id], onDelete: Restrict)
+  compras       CupomMatriculaEad[]
+}
+
+// O cupom usado numa compra (uma por matrícula). Fica fora de Matricula: a migração só acrescenta.
+model CupomMatriculaEad {
+  id          String    @id @default(uuid())
+  matriculaId String    @unique
+  cupomId     String
+  precoCheio  Decimal   @db.Decimal(10, 2)
+  desconto    Decimal   @db.Decimal(10, 2)
+  precoFinal  Decimal   @db.Decimal(10, 2)
+  criadoEm    DateTime  @default(now())
+  matricula   Matricula @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
+  cupom       CupomEad  @relation(fields: [cupomId], references: [id], onDelete: Restrict)
+
+  @@index([cupomId])
+}
+
+// ─── Etapa 9: criar curso com IA ──────────────────────────────────────────────────────────────
+// status: ROTEIRO_GERANDO → ROTEIRO_PRONTO → MODULOS_GERANDO → CONCLUIDA; ERRO_ROTEIRO; CANCELADA.
+// modulos: [{ ordem, titulo, status: pendente|gerando|pronto|erro, moduloId?, erro? }].
+model GeracaoIaEad {
+  id            String   @id @default(uuid())
+  criadoPor     String
+  status        String
+  pedido        Json
+  materialTexto String?
+  materialPdfs  Json?
+  roteiro       Json?
+  cursoOnlineId String?
+  modulos       Json?
+  tokensEntrada Int      @default(0)
+  tokensSaida   Int      @default(0)
+  tokensCache   Int      @default(0)
+  custoUsd      Decimal  @default(0) @db.Decimal(10, 4)
+  erro          String?
+  criadoEm      DateTime @default(now())
+  atualizadoEm  DateTime @updatedAt
+
+  @@index([status])
+  @@index([criadoEm])
 }

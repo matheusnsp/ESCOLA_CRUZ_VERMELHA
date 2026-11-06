@@ -146,6 +146,8 @@
               <small class="adm-mut">
                 <% if (m.turma.status === 'EM_ESPERA') { %>
                   Em espera · sem data
+                <% } else if (m.turma.status === 'ONLINE') { %>
+                  Curso online
                 <% } else { %>
                   <%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %>
                 <% } %>

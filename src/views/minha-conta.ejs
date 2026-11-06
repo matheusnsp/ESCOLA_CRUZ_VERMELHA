@@ -66,6 +66,19 @@
           <a href="/minha-conta?sec=inscricoes" class="<%= sec === 'inscricoes' ? 'ativo' : '' %>">
             <i class="fa-solid fa-graduation-cap"></i> Inscrições
           </a>
+          <% var _cursosOnline = typeof cursosOnline !== 'undefined' && cursosOnline ? cursosOnline : []; %>
+          <% if (_cursosOnline.length) { %>
+            <%# Etapa 7: cursos online comprados, de cortesia ou liberados pela escola (lib/ead-meus-cursos.js). %>
+            <a href="/minha-conta?sec=online" class="<%= sec === 'online' ? 'ativo' : '' %>">
+              <i class="fa-solid fa-laptop"></i> Cursos online
+            </a>
+          <% } %>
+          <% if (typeof ehGestorEscola !== 'undefined' && ehGestorEscola) { %>
+            <%# Etapa 6: gestor de escola (routes/ead-escola.js marca ehGestorEscola nesta página). %>
+            <a href="/minha-escola">
+              <i class="fa-solid fa-school"></i> Minha escola
+            </a>
+          <% } %>
           <a href="/minha-conta?sec=dados" class="<%= sec === 'dados' ? 'ativo' : '' %>">
             <i class="fa-solid fa-id-card"></i> Meus dados
           </a>
@@ -130,7 +143,11 @@
           </section>
           <% } %>
 
-          <% if (!matriculas.length) { %>
+          <% if (_cursosOnline.length) { %>
+            <p class="ct-online-aviso"><i class="fa-solid fa-laptop" aria-hidden="true"></i> Seus cursos online ficam na aba <a href="/minha-conta?sec=online">Cursos online</a>.</p>
+          <% } %>
+
+          <% if (!matriculas.length && !_cursosOnline.length) { %>
 
             <div class="ct-vazio">
               <i class="fa-regular fa-folder-open"></i>
@@ -139,7 +156,7 @@
               <a href="/cursos">Ver cursos disponíveis <i class="fa-solid fa-arrow-right"></i></a>
             </div>
 
-          <% } else { %>
+          <% } else if (matriculas.length) { %>
 
             <div class="ct-lista">
               <% matriculas.forEach(function (m) { %>
@@ -160,6 +177,9 @@
 
                 // Turma de espera (status EM_ESPERA): paga e garantida, mas sem data nem aulas ainda.
                 var emEspera = m.turma.status === 'EM_ESPERA' && !devolvido;
+
+                // Curso online (turma ONLINE, EAD): sem data, sem taxa; pago, o botão Acessar leva ao curso.
+                var online = m.turma.status === 'ONLINE';
 
                 var labelPlano = m.plano === 'A_VISTA'   ? 'À vista'
                                : m.plano === 'PRESENCIAL' ? 'Presencial'
@@ -194,6 +214,8 @@
                       <b>Aguardando encaixe</b> · data ainda não definida
                     <% } else if (m.turma.status === 'EM_ESPERA') { %>
                       data não definida
+                    <% } else if (online) { %>
+                      <b>Curso online</b>
                     <% } else { %>
                       <% if (m.turma.aulas && m.turma.aulas.length) { %><%= m.turma.aulas[0].horario %> · <% } %>
                       <% if (congelada) { %>novas datas a confirmar<% } else { %>início em <b><%= new Date(m.turma.inicioPrevisto).toLocaleDateString('pt-BR') %></b><% } %>
@@ -202,7 +224,8 @@
                   </p>
 
                   <div class="ct-pills">
-                    <% if (taxaOk) { %>
+                    <% if (online) { %>
+                    <% } else if (taxaOk) { %>
                       <span class="ct-pill ct-pill-ok">
                         <i class="fa-solid fa-circle-check"></i> Taxa de inscrição confirmada
                       </span>
@@ -263,6 +286,12 @@
                   </div>
                   <% } %>
 
+                  <% if (online && pago && !devolvido) { %>
+                  <a class="ct-agenda" href="<%= urlOnline(m.turma.curso) %>">
+                    <i class="fa-solid fa-laptop" aria-hidden="true"></i> Curso online · Acessar
+                  </a>
+                  <% } %>
+
                   <% if (!devolvido && ['ABERTA', 'CONFIRMADA'].indexOf(m.turma.status) !== -1) { %>
                   <%# Arquivo .ics com as aulas (routes/cursos.js): abre no Google Agenda, iPhone e Outlook. %>
                   <a class="ct-agenda" href="/turmas/<%= m.turmaId %>/agenda.ics">
@@ -295,6 +324,65 @@
               <% }) %>
             </div>
 
+          <% } %>
+
+        <!-- ── Cursos online (etapa 7) ───────────────────────────────────── -->
+        <% } else if (sec === 'online') { %>
+
+          <div class="ct-head">
+            <h2>Cursos online</h2>
+          </div>
+
+          <% if (!_cursosOnline.length) { %>
+            <div class="ct-vazio">
+              <i class="fa-solid fa-laptop"></i>
+              <p>Você ainda não tem cursos online.</p>
+              <a href="/cursos">Ver cursos disponíveis <i class="fa-solid fa-arrow-right"></i></a>
+            </div>
+          <% } else { %>
+            <div class="ct-lista">
+              <% _cursosOnline.forEach(function (c) { %>
+                <%
+                  var origem = c.origem === 'escola' ? 'Liberado pela ' + c.escola
+                             : c.origem === 'cortesia' ? 'Cortesia (cupom)'
+                             : 'Comprado';
+                  var selo = c.situacao === 'concluido' ? ['pago', 'CONCLUÍDO']
+                           : c.situacao === 'pendente' ? ['pendente', 'PAGAMENTO PENDENTE']
+                           : c.situacao === 'cancelado' ? ['cancelado', 'CANCELADO']
+                           : ['pago', c.situacao === 'andamento' ? 'EM ANDAMENTO' : 'LIBERADO'];
+                %>
+                <article class="ct-insc">
+                  <a class="card-link-overlay" href="<%= c.link %>" aria-label="Abrir <%= c.curso %>"></a>
+                  <div class="ct-insc-capa">
+                    <% if (c.imagemUrl) { %><img src="<%= c.imagemUrl %>" alt="<%= c.curso %>" loading="lazy"><% } else { %><div class="ct-insc-semfoto"><i class="fa-solid fa-laptop"></i></div><% } %>
+                  </div>
+                  <div class="ct-insc-corpo">
+                    <div class="ct-insc-topo"><h3><%= c.curso %></h3><span class="ct-selo ct-selo-<%= selo[0] %>"><%= selo[1] %></span></div>
+                    <p class="ct-insc-sub"><b>Curso online</b> · <%= origem %></p>
+                    <% if (c.situacao === 'cancelado') { %>
+                      <p class="ct-insc-sub">Pagamento cancelado ou devolvido: o curso fica fechado.</p>
+                      <a class="ct-btn-retomar" href="<%= c.link %>">Ver o curso <i class="fa-solid fa-arrow-right"></i></a>
+                    <% } else if (c.situacao === 'pendente') { %>
+                      <p class="ct-insc-sub">Pagamento pendente. Assim que o banco confirmar, o curso abre.</p>
+                      <a class="ct-btn-retomar" href="<%= c.link %>">Ver o pagamento <i class="fa-solid fa-arrow-right"></i></a>
+                    <% } else { %>
+                      <div class="ct-online-progresso">
+                        <span class="ct-online-trilho"><span style="width: <%= c.percentual %>%"></span></span>
+                        <span class="num"><%= c.percentual %>% concluído</span>
+                      </div>
+                      <% if (c.situacao === 'concluido') { %>
+                        <p class="ct-insc-sub">Concluído em <%= new Date(c.concluidoEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) %>.</p>
+                        <a class="ct-agenda" href="<%= c.endereco %>/certificado"><i class="fa-solid fa-award" aria-hidden="true"></i> Certificado</a>
+                        <a class="ct-agenda" href="<%= c.endereco %>/cartao-de-bolso.pdf"><i class="fa-solid fa-id-card" aria-hidden="true"></i> Cartão de bolso (PDF)</a>
+                      <% } else { %>
+                        <% if (c.ultimoAcesso) { %><p class="ct-insc-sub">Último acesso em <%= new Date(c.ultimoAcesso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) %>.</p><% } %>
+                        <a class="ct-btn-retomar" href="<%= c.link %>"><%= c.situacao === 'andamento' ? 'Continuar' : 'Começar' %> <i class="fa-solid fa-arrow-right"></i></a>
+                      <% } %>
+                    <% } %>
+                  </div>
+                </article>
+              <% }) %>
+            </div>
           <% } %>
 
         <!-- ── Meus dados ────────────────────────────────────────────────── -->

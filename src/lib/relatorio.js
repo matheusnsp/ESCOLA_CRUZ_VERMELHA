@@ -52,9 +52,9 @@ async function coletarDadosRelatorio(prisma) {
     prisma.matricula.findMany({ where: { taxaConfirmada: true }, orderBy: { taxaConfirmadaEm: 'desc' }, include: incAluno }),
     // PAGO e PARCELADO (cartão parcelado aprovado), como a tela do Financeiro.
     prisma.matricula.findMany({ where: { statusPagamento: { in: ['PAGO', 'PARCELADO'] } }, orderBy: { confirmadaEm: 'desc' }, include: incAluno }),
-    // Turma congelada (pausada) ou em espera (sem data) fica fora das pendências, como no Painel e em Pendentes.
-    prisma.matricula.findMany({ where: { taxaConfirmada: false, turma: { status: { notIn: ['CONGELADA', 'EM_ESPERA'] } } }, orderBy: { criadoEm: 'desc' }, include: incAluno }),
-    prisma.matricula.findMany({ where: { taxaConfirmada: true, statusPagamento: 'PENDENTE', turma: { status: { notIn: ['CONGELADA', 'EM_ESPERA'] } } }, orderBy: { criadoEm: 'desc' }, include: { ...incAluno, pagamentos: { select: { tipo: true, status: true } } } }),
+    // Turma congelada (pausada), em espera (sem data) ou online (cobrança única) fica fora das pendências, como no Painel e em Pendentes.
+    prisma.matricula.findMany({ where: { taxaConfirmada: false, turma: { status: { notIn: ['CONGELADA', 'EM_ESPERA', 'ONLINE'] } } }, orderBy: { criadoEm: 'desc' }, include: incAluno }),
+    prisma.matricula.findMany({ where: { taxaConfirmada: true, statusPagamento: 'PENDENTE', turma: { status: { notIn: ['CONGELADA', 'EM_ESPERA', 'ONLINE'] } } }, orderBy: { criadoEm: 'desc' }, include: { ...incAluno, pagamentos: { select: { tipo: true, status: true } } } }),
     prisma.matricula.findMany({ where: { statusPagamento: 'ESTORNADO' }, orderBy: { atualizadoEm: 'desc' }, include: incAluno }),
     prisma.matricula.findMany({ where: { diferencaTransferencia: { lt: 0 } }, orderBy: { atualizadoEm: 'desc' }, include: incAluno }),
     prisma.logAuditoria.findMany({ orderBy: { criadoEm: 'desc' }, take: LIMITE_AUDITORIA }),
@@ -129,8 +129,11 @@ async function coletarDadosRelatorio(prisma) {
   const totalTaxaSemMatricula = taxaPagaLista
     .filter((m) => !['PAGO', 'PARCELADO'].includes(m.statusPagamento))
     .reduce((s, m) => s + (Number(m.valorTaxaMatricula) || 0), 0);
-  const totalRecebido = matriculaGeradaLista.reduce((s, m) => s + Number(m.valorCurso), 0) + totalTaxaSemMatricula;
-  const totalPendente = pendentesLista.reduce((s, p) => s + p.valor, 0);
+  // Etapa 6: lotes de escolas (curso online) recebidos e a receber.
+  const lotes = await require('./ead-lote').somasDosLotes();
+  const totalLotes = lotes.recebidoTotal;
+  const totalRecebido = matriculaGeradaLista.reduce((s, m) => s + Number(m.valorCurso), 0) + totalTaxaSemMatricula + totalLotes;
+  const totalPendente = pendentesLista.reduce((s, p) => s + p.valor, 0) + lotes.aReceberTotal;
   const totalEstornado = estornos.reduce((s, m) => s + Number(m.valorCurso), 0);
   const totalAReembolsar = reembolsosPendentesLista.reduce((s, m) => s + Math.abs(Number(m.diferencaTransferencia)), 0);
 
@@ -151,8 +154,9 @@ async function coletarDadosRelatorio(prisma) {
         pendentesCount: pendentesLista.length,
         estornosCount: estornos.length,
         reembolsosCount: reembolsosPendentesLista.length,
-        totalRecebido, totalPendente, totalEstornado, totalAReembolsar,
+        totalRecebido, totalPendente, totalEstornado, totalAReembolsar, totalLotes,
       },
+      lotes: lotes.linhas,
       matriculaGeradaLista,
       pendentesLista,
       estornos,
@@ -225,6 +229,7 @@ async function gerarExcel(dados) {
     ['Matrícula paga (alunos)', t.matriculaGeradaCount],
     ['Pendentes', t.pendentesCount],
     ['Total recebido', t.totalRecebido],
+    ['   dos quais: lotes de escolas (curso online)', t.totalLotes || 0],
     ['Total pendente a receber', t.totalPendente],
     ['Estornos (qtd.)', t.estornosCount],
     ['Total estornado', t.totalEstornado],
@@ -284,6 +289,12 @@ async function gerarExcel(dados) {
     ]));
 
   // ---- Aba 3: Reembolsos (trilha detalhada — quem fez, aluno afetado) ----
+  // Etapa 6: lotes de escolas (curso online).
+  const wsL = wb.addWorksheet('Lotes de escolas');
+  wsL.columns = [{ header: 'Lote', width: 60 }, { header: 'Situação', width: 14 }, { header: 'Data', width: 12, style: { numFmt: 'dd/mm/yyyy' } }, { header: 'Valor', width: 14, style: { numFmt: '"R$" #,##0.00' } }];
+  wsL.getRow(1).font = { bold: true };
+  (dados.financeiro.lotes || []).forEach((x) => wsL.addRow([x.rotulo, x.tipo === 'lote' ? 'Recebido' : 'A receber', x.data ? new Date(x.data) : null, x.valor]));
+
   const wsR = wb.addWorksheet('Reembolsos');
   wsR.columns = [
     { header: 'Data/hora', key: 'quando', width: 20 },
@@ -403,6 +414,7 @@ function gerarPdf(dados, stream) {
       ['Matrícula paga (alunos)', String(t.matriculaGeradaCount)],
       ['Pendentes', String(t.pendentesCount)],
       ['Total recebido', formatBRL(t.totalRecebido)],
+      ['   dos quais: lotes de escolas', formatBRL(t.totalLotes || 0)],
       ['Total pendente a receber', formatBRL(t.totalPendente)],
       ['Estornos (qtd.)', String(t.estornosCount)],
       ['Total estornado', formatBRL(t.totalEstornado)],
@@ -410,6 +422,15 @@ function gerarPdf(dados, stream) {
       ['Total a reembolsar', formatBRL(t.totalAReembolsar)],
     ]
   );
+
+  // ---- Etapa 6: lotes de escolas (curso online) ----
+  if ((dados.financeiro.lotes || []).length) {
+    titulo('Lotes de escolas');
+    tabela(
+      [{ label: 'Lote', width: 55 }, { label: 'Situação', width: 15 }, { label: 'Data', width: 15 }, { label: 'Valor', width: 15, align: 'right' }],
+      dados.financeiro.lotes.map((x) => [x.rotulo, x.tipo === 'lote' ? 'Recebido' : 'A receber', x.data ? new Date(x.data).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—', formatBRL(x.valor)])
+    );
+  }
 
   // ---- Seção 2: Estornos e pendências ----
   titulo('Estornos');
@@ -559,7 +580,7 @@ async function coletarLancamentosOfx(prisma, opts = {}) {
     },
   });
 
-  return pagamentos.map((p) => {
+  const lancamentos = pagamentos.map((p) => {
     const ehEstorno = p.status === 'ESTORNADO';
     const aluno = p.matricula?.aluno?.nome || 'Aluno nao identificado';
     const curso = p.matricula?.turma?.curso?.nome || 'Curso nao identificado';
@@ -582,8 +603,23 @@ async function coletarLancamentosOfx(prisma, opts = {}) {
       name: asciiOfx(aluno).slice(0, 32),
     };
   });
-}
 
+  // Etapa 8: lotes de escolas (curso online) recebidos no período, como crédito na data do recebimento.
+  const de = opts.de ? new Date(opts.de) : undefined;
+  const ate = opts.ate ? new Date(new Date(opts.ate).getTime() + 1) : undefined; // o OFX inclui o dia "até"
+  const lotes = await require('./ead-lote').lotesRecebidos({ de, ate });
+  for (const x of lotes) {
+    lancamentos.push({
+      fitid: `LOTE${String(x.lote.id).replace(/-/g, '')}`.slice(0, 32).toUpperCase(),
+      data: x.recebidoEm,
+      valor: Number(x.valor || 0),
+      tipoTrn: 'CREDIT',
+      memo: asciiOfx(`Lote: ${x.escola} - ${x.curso}`).slice(0, 255),
+      name: asciiOfx(x.escola).slice(0, 32),
+    });
+  }
+  return lancamentos.sort((p, q) => new Date(p.data) - new Date(q.data));
+}
 /**
  * Monta o arquivo OFX como string.
  * @returns {string} conteúdo pronto pra escrever no response

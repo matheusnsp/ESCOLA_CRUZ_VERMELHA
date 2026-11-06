@@ -12,6 +12,17 @@
 </head>
 <body>
   <%# Layout do modelo em Word da escola (IMPRIMIR_PULSÃO.docx): A4 deitado, frente e verso. %>
+<% if (typeof barraAluno !== 'undefined' && barraAluno) { -%>
+  <%# Aluno do curso online (link de teste, etapa 3 do EAD): baixar o PDF, o cartão e voltar. %>
+  <header class="cert-barra cert-barra-aluno">
+    <div>
+      <b>Seu certificado</b>
+      <small>Para baixar em PDF: clique em "Baixar PDF" e escolha "Salvar como PDF". Use papel A4 deitado.</small>
+      <a href="<%= barraAluno.cartaoUrl %>">Baixar cartão de bolso</a> · <a href="<%= barraAluno.voltarUrl %>">Voltar ao curso</a>
+    </div>
+    <button type="button" id="certImprimir">Baixar PDF / imprimir</button>
+  </header>
+<% } else { -%>
   <header class="cert-barra">
     <div>
       <b><%= lista.length %> <%= lista.length === 1 ? 'certificado' : 'certificados' %></b> · <%= lista.length * 2 %> páginas (frente e verso)
@@ -24,6 +35,7 @@
     </div>
     <button type="button" id="certImprimir">Imprimir</button>
   </header>
+<% } -%>
 
   <% lista.forEach(function (c) { %>
     <section class="cert-pagina cert-frente">
@@ -32,14 +44,20 @@
         <img src="/img/certificado/cruz.jpg" alt="">
         <img src="/img/certificado/cruz-vermelha-rj.jpg" alt="Cruz Vermelha Brasileira — Rio de Janeiro">
       </div>
-      <h1 class="cert-titulo">Certificado</h1>
+<% if (c.online) { %>      <p class="cert-selo-online">CURSO ONLINE</p>
+<% } %>      <h1 class="cert-titulo">Certificado</h1>
       <p class="cert-nome"><%= c.nome %></p>
       <p class="cert-texto">
         <%= c.portador %> do <b><%= c.documento ? c.documento.tipo + ' ' + c.documento.numero : 'documento ____________' %></b>, concluiu o
-        <b>Curso Livre de <%= c.curso.toUpperCase() %></b>, ministrado pela Cruz Vermelha Brasileira – Filial Rio de Janeiro com
+<% if (c.online) { %>        <b>Curso Livre de <%= c.curso.toUpperCase() %></b>, na <b>modalidade a distância (100% online)</b>, ministrado pela
+        Cruz Vermelha Brasileira – Filial Rio de Janeiro, com carga horária de <%= c.cargaHoraria %>, <b><%= c.periodo.frase %></b>.
+<% } else { %>        <b>Curso Livre de <%= c.curso.toUpperCase() %></b>, ministrado pela Cruz Vermelha Brasileira – Filial Rio de Janeiro com
         carga horária de <%= c.cargaHoraria %> <%= c.periodo.frase %>.
+<% } -%>
       </p>
       <p class="cert-local"><%= c.emitidoEm %></p>
+<% if (c.online) { %>      <p class="cert-ressalva">Capacitação teórica. Não inclui treinamento prático em manequim, oferecido nos cursos presenciais da Escola.</p>
+<% } -%>
       <div class="cert-assinaturas n<%= c.assinaturas.length %>">
         <% c.assinaturas.forEach(function (a) { %>
           <div>
@@ -77,7 +95,11 @@
           <p>Ministrado pela Cruz Vermelha Brasileira<br>Filial Rio de Janeiro</p>
           <p>Data: <%= c.periodo.curta %><br>Carga Horária: <%= c.cargaHoraria %></p>
           <p><b>Aluno</b><br><%= c.nome %><% if (c.documento) { %><br><%= c.documento.tipo %> <%= c.documento.numero %><% } %></p>
+<% if (c.online) { -%>
+          <p><b>Modalidade</b><br>A distância (100% online)</p>
+<% } else { -%>
           <p><b>Instrutor</b><br><%= c.instrutorNome || '—' %></p>
+<% } -%>
           <p>Certificado Registrado no<br><b>Livro</b> Nº <%= c.livro %><br><b>Registro:</b> Nº <%= c.registro %></p>
           <% if (c.validade) { %><p><b><%= c.validade %></b></p><% } %>
           <% if (c.verificacao) { %><p>Código de verificação<br><b><%= c.verificacao.codigo %></b></p><% } %>

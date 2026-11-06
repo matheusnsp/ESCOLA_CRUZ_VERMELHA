@@ -12,6 +12,12 @@ const visitasSite = require('../lib/visitas');
 const financeiroContas = require('../lib/financeiro-contas');
 const { contaDoGateway: unicopagContaDoGateway } = require('../lib/unicopag');
 const pesquisa = require('../lib/pesquisa');
+const { FORA_DO_PRESENCIAL } = require('../lib/turma-online');
+// Curso só online (etapa 5): fora das listas do presencial e sem turma presencial.
+const { semSoOnline, ehSoOnline } = require('../lib/ead-curso-online');
+// Lotes de escolas (etapa 6): dinheiro no Financeiro, no Painel e no relatório.
+const { somasDosLotes } = require('../lib/ead-lote');
+const MSG_SO_ONLINE = 'Este curso existe só online: não tem turma presencial.';
 const comprovanteSaude = require('../lib/comprovante-saude');
 const prisma = require('../db');
 const { verificarSenha, hashSenha } = require('../lib/password');
@@ -24,6 +30,7 @@ const { simularValores } = require('../lib/simular-valores');
 const { estornarTransacao } = require('../lib/unicopag'); // 💡 A3 — refund real no gateway
 const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarTextoWhats, montarLinkProspeccao } = require('../lib/lembretes');
 const { coletarDadosRelatorio, gerarExcel, gerarPdf, coletarLancamentosOfx, gerarOfx } = require('../lib/relatorio'); // relatórios Excel/PDF
+const { estornosExtras, totalEstornado: somarEstornos, lotesDaTabela } = require('../lib/financeiro-estornos');
 const { concluirTurmasPassadas } = require('../lib/concluir-turmas');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 const permissoes = require('../lib/permissoes');
@@ -606,6 +613,20 @@ router.use((req, res, next) => {
 // ---------- Contas a pagar (routes/contas.js) ----------
 router.use(require('./contas')({ requirePermissao, auditar, ADMIN_URL }));
 
+// Modo do painel (só DEV): Presencial = o menu de sempre; Online = o EAD. Guardado na sessão.
+router.use((req, res, next) => {
+  res.locals.modoPainel = req.session.papel === 'DEV' && req.session.modoPainel === 'online' ? 'online' : 'presencial';
+  next();
+});
+router.post('/modo', requireDev, (req, res) => {
+  const modo = req.body.modo;
+  if (modo !== 'presencial' && modo !== 'online') return res.redirect('/');
+  req.session.modoPainel = modo;
+  res.redirect(modo === 'online' ? '/ead' : '/');
+});
+// EAD (curso 100% online): só DEV. Spec docs/superpowers/specs/2026-11-05-ead-estrutura-conteudo.md
+router.use(require('./ead')({ requireDev, auditar, ADMIN_URL }));
+
 // ---------- Dashboard ----------
 
 // 💡 NOVO — Mesmo filtro de "matrícula fantasma" usado em conta.js (tela do
@@ -689,6 +710,7 @@ router.get('/', async (req, res) => {
       where: {
         statusPagamento: 'PENDENTE',
         ...FILTRO_MATRICULA_FANTASMA,
+        turma: { status: { not: 'ONLINE' } }, // PIX online abandonado não é pagamento pendente
       },
     }),
 
@@ -809,7 +831,8 @@ router.get('/', async (req, res) => {
   ]);
   const pagProximas = await pagamentosPorTurma(proximasTurmas.map((t) => t.id));
   proximasTurmas.forEach((t) => { t.pag = pagProximas[t.id]; });
-  const recebidoMes = cursoPagoMes.reduce((t, m) => t + Number(m.valorCurso), 0)
+  const lotesMes = await somasDosLotes({ inicioMes });
+  const recebidoMes = lotesMes.recebidoMes + cursoPagoMes.reduce((t, m) => t + Number(m.valorCurso), 0)
     + taxaSoMes.reduce((t, m) => t + (Number(m.valorTaxaMatricula) || 100), 0)
     + (mr.ok ? mr.recebidoMes : 0);
 
@@ -898,7 +921,7 @@ router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), as
     };
   }
 
-  const [cursos, total] = await Promise.all([
+  const [cursos, totalComOnline] = await Promise.all([
 
     prisma.curso.findMany({
       where,
@@ -926,6 +949,11 @@ router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), as
     prisma.curso.count(),
 
   ]);
+
+  // O curso só online (etapa 5) não aparece no presencial (nem na contagem).
+  const visiveis = await semSoOnline(cursos);
+  cursos.splice(0, cursos.length, ...visiveis);
+  const total = totalComOnline - (await require('../lib/ead-curso-online').idsSoOnline()).size;
 
   // O que o aluno paga de verdade (à vista e parcelado com os juros do cartão), igual ao checkout.
   const cfgMatricula = await lerConfigMatricula();
@@ -1078,6 +1106,11 @@ router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, asy
   const { dados, erro } = lerCursoDoForm(req.body);
   if (erro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro });
   if (!req.body.valorParcela) delete dados.valorParcela; // não está mais no formulário: na edição, mantém o gravado
+  // EAD (etapa 8): o curso com versão online não pode ficar com o endereço de outro curso online.
+  const eadAcesso = require('../lib/ead-acesso');
+  if (dados.nome && await eadAcesso.enderecoOnlineEmUso(dados.nome, req.params.id) && await prisma.cursoOnline.count({ where: { cursoId: req.params.id } })) {
+    return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro: 'Já existe um curso online com o mesmo endereço no site (nome igual ou parecido). Escolha outro nome.' });
+  }
   if (req.file) {
     dados.imagemUrl = await salvarFotoCurso(req.file);
     await removerFotoCurso(existe.imagemUrl); 
@@ -1088,6 +1121,7 @@ router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, asy
     dados.imagemUrl = existe.imagemUrl; 
   }
   await prisma.curso.update({ where: { id: req.params.id }, data: dados });
+  if (dados.nome) await eadAcesso.guardarEnderecoAntigo(req.params.id, existe.nome, dados.nome); // links antigos do curso online
   await extras.salvarExtra('curso', req.params.id, extrasCursoDoForm(req.body));
   await salvarAssinaturasDoCurso(req.params.id, req.body, req);
   await auditar(req, 'EDITOU_CURSO', 'Curso', req.params.id, { nome: dados.nome });
@@ -1104,6 +1138,10 @@ router.post('/cursos/:id/excluir', requirePermissao('cursos:gerenciar'), async (
 
   if (turmas.length > 0 || matriculas > 0) {
     return res.redirect(backCursos(req, 'Nao e possivel excluir: o curso tem turmas e/ou inscrições. Use "desativar" para tira-lo do site preservando o historico.', 'erro'));
+  }
+  // Curso com EAD: o banco recusaria (CursoOnline com onDelete Restrict); aqui sai a mensagem certa.
+  if (await prisma.cursoOnline.count({ where: { cursoId: curso.id } })) {
+    return res.redirect(backCursos(req, 'Não é possível excluir: o curso tem conteúdo EAD. Desative o EAD em EAD → curso antes.', 'erro'));
   }
 
   await prisma.curso.delete({ where: { id: curso.id } });
@@ -1127,7 +1165,7 @@ router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), as
   await concluirTurmasPassadas(); // a lista já abre com as turmas de ontem como CONCLUÍDA
   const turmas = await prisma.turma.findMany({
     // A turma de espera (EM_ESPERA) não é turma de verdade: fica fora das abas e da lista.
-    where: { status: { not: 'EM_ESPERA' } },
+    where: { status: { notIn: FORA_DO_PRESENCIAL } },
     orderBy: { inicioPrevisto: 'asc' },
     include: {
       curso: true,
@@ -1153,10 +1191,10 @@ router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), as
 });
 
 router.get('/turmas/nova', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  const cursos = await prisma.curso.findMany({
+  const cursos = await semSoOnline(await prisma.curso.findMany({
     where: req.session.papel === 'DEV' ? {} : { ativo: true },
     orderBy: { nome: 'asc' },
-  });
+  }));
   // ?curso=ID (vindo da lista de cursos) já deixa o curso escolhido.
   const cursoId = cursos.some((c) => c.id === req.query.curso) ? req.query.curso : undefined;
   res.render('admin/turma-form', { turma: cursoId ? { cursoId } : null, aulas: [], cursos, statusTurma: STATUS_TURMA, erro: null });
@@ -1208,14 +1246,15 @@ router.post('/turmas', requirePermissao('turmas:gerenciar'), async (req, res) =>
   const { dados, aulas, erro } = lerTurmaDoForm(req.body);
 
   const reRenderErro = async (msg) => {
-    const cursos = await prisma.curso.findMany({
+    const cursos = await semSoOnline(await prisma.curso.findMany({
       where: req.session.papel === 'DEV' ? {} : { ativo: true },
       orderBy: { nome: 'asc' },
-    });
+    }));
     return res.status(400).render('admin/turma-form', { turma: req.body, aulas: [], cursos, statusTurma: STATUS_TURMA, erro: msg });
   };
 
   if (erro) return reRenderErro(erro);
+  if (await ehSoOnline(dados.cursoId)) return reRenderErro(MSG_SO_ONLINE);
 
   if (req.session.papel !== 'DEV') {
     const curso = await prisma.curso.findUnique({ where: { id: dados.cursoId } });
@@ -1234,10 +1273,11 @@ router.post('/turmas', requirePermissao('turmas:gerenciar'), async (req, res) =>
 router.get('/turmas/:id/editar', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const [turma, cursos] = await Promise.all([
     prisma.turma.findUnique({ where: { id: req.params.id }, include: { aulas: { orderBy: { data: 'asc' } } } }),
-    prisma.curso.findMany({ orderBy: { nome: 'asc' } }),
+    prisma.curso.findMany({ orderBy: { nome: 'asc' } }).then((l) => semSoOnline(l)),
   ]);
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
   if (turma.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não pode ser editada.'));
+  if (turma.status === 'ONLINE') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma do curso online não é editada aqui: use o modo Online do painel.'));
   await extras.anexar('turma', [turma]);
   res.render('admin/turma-form', { turma, aulas: turma.aulas, cursos, statusTurma: STATUS_TURMA, erro: null });
 });
@@ -1247,9 +1287,11 @@ router.post('/turmas/:id', requirePermissao('turmas:gerenciar'), async (req, res
   if (!existe) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
   // A turma de espera (lib/turma-espera.js) é do sistema: data, vagas e status não se editam à mão.
   if (existe.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não pode ser editada.'));
-  const { dados, aulas, erro } = lerTurmaDoForm(req.body);
+  if (existe.status === 'ONLINE') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma do curso online não é editada aqui: use o modo Online do painel.'));
+  const { dados, aulas, erro: erroForm } = lerTurmaDoForm(req.body);
+  const erro = erroForm || (dados && await ehSoOnline(dados.cursoId) ? MSG_SO_ONLINE : null);
   if (erro) {
-    const cursos = await prisma.curso.findMany({ orderBy: { nome: 'asc' } });
+    const cursos = await semSoOnline(await prisma.curso.findMany({ orderBy: { nome: 'asc' } }));
     return res.status(400).render('admin/turma-form', { turma: { ...req.body, id: req.params.id }, aulas: [], cursos, statusTurma: STATUS_TURMA, erro });
   }
   await prisma.aulaData.deleteMany({ where: { turmaId: req.params.id } });
@@ -1297,6 +1339,7 @@ router.post('/turmas/:id/notas', requirePermissao('turmas:gerenciar'), async (re
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
   // Nota na espera travaria Mover / Voltar para a espera: a nota é da turma de verdade.
   if (turma.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não tem notas.'));
+  if (turma.status === 'ONLINE') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma do curso online não tem notas: o certificado sai pelo curso online.'));
 
   const nome = String(req.body.nome || '').trim();
   const peso = Number(String(req.body.peso || '1').replace(',', '.'));
@@ -1324,6 +1367,7 @@ router.post('/turmas/:id/excluir', requirePermissao('turmas:gerenciar'), async (
   const turma = await prisma.turma.findUnique({ where: { id: req.params.id }, include: { curso: true } });
   if (!turma) return res.status(404).render('admin/erro', { mensagem: 'Turma nao encontrada.' });
   if (turma.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não pode ser excluída.'));
+  if (turma.status === 'ONLINE') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma do curso online não pode ser excluída.'));
 
   const matriculas = await prisma.matricula.count({ where: { turmaId: turma.id } });
   if (matriculas > 0) {
@@ -1514,6 +1558,7 @@ router.use(['/turmas/:id/boas-vindas', '/turmas/:id/certificados'], async (req, 
   try {
     const t = await prisma.turma.findUnique({ where: { id: req.params.id }, select: { status: true } });
     if (t && t.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não tem boas-vindas nem certificados.'));
+    if (t && t.status === 'ONLINE') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma do curso online não tem boas-vindas nem certificados por aqui.'));
     next();
   } catch (err) { next(err); }
 });
@@ -1838,7 +1883,7 @@ router.get('/inscricoes', requirePermissao(
 
     // Filtro de turma: a turma de espera não entra (aparece como "Em espera" na própria linha).
     prisma.turma.findMany({
-      where: { status: { not: 'EM_ESPERA' } },
+      where: { status: { notIn: FORA_DO_PRESENCIAL } },
       orderBy: { criadoEm: 'desc' },
       include: { curso: true },
     }),
@@ -1968,7 +2013,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     }),
 
     prisma.matricula.findMany({
-      where: { taxaConfirmada: false, statusPagamento: { notIn: ['ESTORNADO', 'CANCELADO'] } },
+      where: { taxaConfirmada: false, statusPagamento: { notIn: ['ESTORNADO', 'CANCELADO'] }, turma: { status: { not: 'ONLINE' } } },
       orderBy: { criadoEm: 'desc' },
       include: { aluno: true, turma: { include: { curso: true } } },
     }),
@@ -2076,6 +2121,11 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
       }
     }
   } catch (e) { /* sem a matrícula rápida, os cartões mostram só o da escola */ }
+  // Etapa 6: lotes de escolas do curso online (recebidos na conta "manual", na data do recebimento).
+  const lotesFin = await somasDosLotes({ inicioMes: inicioMesFin });
+  recebidoPorConta.manual += lotesFin.recebidoTotal;
+  mesPorConta.manual += lotesFin.recebidoMes;
+  qtdPorConta.manual += lotesFin.linhas.filter((x) => x.tipo === 'lote').length;
   for (const k of Object.keys(recebidoPorConta)) {
     recebidoPorConta[k] = Math.round(recebidoPorConta[k] * 100) / 100;
     mesPorConta[k] = Math.round(mesPorConta[k] * 100) / 100;
@@ -2131,16 +2181,24 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     0
   );
 
+  // Lotes de escolas entram quando a lista é de todas as contas ou da conta "manual".
+  const comLotes = contaFiltro === 'todas' || contaFiltro === 'manual';
+  // Etapa 8: na tabela de pagamentos, só o lote recebido; o "a receber" fica no total e na lista própria.
+  const lotesLinhas = comLotes ? lotesDaTabela(lotesFin.linhas) : [];
   const totalRecebido =
     matriculaGeradaLista.reduce((s, m) => s + Number(m.valorCurso), 0) +
-    totalTaxaSemMatricula;
+    totalTaxaSemMatricula + (comLotes ? lotesFin.recebidoTotal : 0);
 
-  const totalPendente = cursoPendenteLista.reduce((s, m) => s + valorEmAberto(m), 0);
+  const totalPendente = cursoPendenteLista.reduce((s, m) => s + valorEmAberto(m), 0) + (comLotes ? lotesFin.aReceberTotal : 0);
 
-  const totalEstornado = estornos.reduce(
-    (s, m) => s + Number(m.valorCurso),
-    0
-  );
+  // Etapa 8: os estornos que a linha da matrícula não mostra (comprou de novo depois do estorno; ou o estorno
+  // antigo de quem foi estornado duas vezes). Com uma conta escolhida, só os pagamentos daquela conta.
+  let extrasEstorno = await estornosExtras(prisma);
+  if (contaFiltro !== 'todas') {
+    const contaDoPagamento = (pg) => (!pg.gateway || pg.gateway === 'manual' || String(pg.gatewayStatus || '').startsWith('manual:') ? 'manual' : unicopagContaDoGateway(pg.gateway));
+    extrasEstorno = extrasEstorno.filter((x) => contaDoPagamento(x.pagamento) === contaFiltro);
+  }
+  const totalEstornado = somarEstornos(estornos, extrasEstorno);
 
   // Uma linha por matrícula que já teve dinheiro entrando (taxa, curso ou os dois), em vez de
   // listar a mesma pessoa em "Inscrição paga" e de novo em "Matrículas pagas". Estornadas entram
@@ -2155,7 +2213,8 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
       return { m, tipo: 'curso', valor: Number(m.valorCurso), data: m.confirmadaEm || m.taxaConfirmadaEm };
     }
     return { m, tipo: 'taxa', valor: Number(m.valorTaxaMatricula) || TAXA_MATRICULA_PADRAO, data: m.taxaConfirmadaEm };
-  }).sort((x, y) => new Date(y.data || 0) - new Date(x.data || 0));
+  }).concat(extrasEstorno.map((x) => ({ m: x.m, tipo: 'estornado', valor: x.valor, data: x.data, extra: true })))
+    .sort((x, y) => new Date(y.data || 0) - new Date(x.data || 0));
 
   res.render('admin/financeiro', {
     contaFiltro,
@@ -2168,6 +2227,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     codigoMatricula,
     motivos,
     pagamentos,
+    lotesLinhas,
     aReceberCount: cursoPendenteLista.length,
     flash: req.query.ok || null,
     erro: req.query.erro || null,
@@ -2180,7 +2240,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
       totalPendente,
       totalTaxasPagas,
       totalCursosPagos,
-      estornosCount: estornos.length,
+      estornosCount: estornos.length + extrasEstorno.length,
       totalEstornado,
 
       reembolsosCount: reembolsosPendentesLista.length,
@@ -2557,7 +2617,7 @@ router.get('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), 
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
   const turmas = await prisma.turma.findMany({
     // A turma de espera não é destino de transferência (voltar para a espera é na Matrícula rápida).
-    where: { id: { not: m.turmaId }, status: { not: 'EM_ESPERA' } },
+    where: { id: { not: m.turmaId }, status: { notIn: FORA_DO_PRESENCIAL } },
     orderBy: { criadoEm: 'desc' },
     include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
   });
@@ -2585,7 +2645,7 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
 
   const reRenderErro = async (erro) => {
     const turmas = await prisma.turma.findMany({
-      where: { id: { not: m.turmaId }, status: { not: 'EM_ESPERA' } },
+      where: { id: { not: m.turmaId }, status: { notIn: FORA_DO_PRESENCIAL } },
       orderBy: { criadoEm: 'desc' },
       include: {
         curso: true,
@@ -2621,7 +2681,7 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
     include: { curso: true },
   });
 
-  if (!destino || destino.status === 'EM_ESPERA') {
+  if (!destino || FORA_DO_PRESENCIAL.includes(destino.status)) {
     return reRenderErro('Turma de destino nao encontrada.');
   }
 
@@ -2701,7 +2761,7 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), asy
         }
       }),
       prisma.usuario.count({ where }),
-      prisma.turma.findMany({ where: { status: { not: 'EM_ESPERA' } }, orderBy: { criadoEm: 'desc' }, include: { curso: true } }),
+      prisma.turma.findMany({ where: { status: { notIn: FORA_DO_PRESENCIAL } }, orderBy: { criadoEm: 'desc' }, include: { curso: true } }),
 
       // 💡 NOVO — Turmas realmente abertas e que ainda não começaram. É o que
       // o texto de prospecção vai oferecer, puxado na hora pra nunca citar
@@ -3024,7 +3084,7 @@ router.get('/pendentes', requirePermissao('pendentes:gerenciar'), async (req, re
         statusPagamento: 'PENDENTE',
         // Turma congelada (pausada) não é "fora de prazo": fica fora de Pendentes até ser retomada.
         // Turma em espera (sem data) também não: não há prazo a vencer.
-        turma: { status: { notIn: ['CONGELADA', 'EM_ESPERA'] } },
+        turma: { status: { notIn: ['CONGELADA', ...FORA_DO_PRESENCIAL] } }, // online: cobrança única, fora de Pendentes
         OR: [
           { turma: { status: { notIn: STATUS_TURMA_ATIVA } } },
           { turma: { inicioPrevisto: { lte: agora } } },

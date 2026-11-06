@@ -1,0 +1,129 @@
+<%
+  var dataBR = function (d) { return d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'; };
+  var dataISO = function (d) { return new Date(d).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }); };
+  var brl = function (n) { return Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); };
+  var ORIGEM = { GESTOR: 'Escola', CONVITE: 'Convite' };
+%>
+<%- include('../head', { titulo: 'Lote · ' + lote.escola.nome }) %>
+<%- include('../header', { ativo: 'escolas' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= lote.escola.nome %></h1>
+  <a href="/ead/escolas" class="adm-link">← Escolas</a>
+</div>
+<p class="adm-mut"><%= lote.cursoOnline.curso.nome %><%= lote.escola.cnpj ? ' · CNPJ ' + formatar(lote.escola.cnpj) : '' %><%= lote.observacao ? ' · ' + lote.observacao : '' %></p>
+<%- include('_mensagens') %>
+
+<div class="adm-box adm-box-pad adm-espaco ead-resumo">
+  <div><small>Vagas</small><b><%= situacao.usadas %> / <%= lote.vagas %></b></div>
+  <div><small><%= situacao.vencido ? 'Prazo encerrado' : 'Cadastro até' %></small><b><%= dataBR(lote.validoAte) %></b></div>
+  <div><small>Valor</small><b><%= brl(lote.valor) %></b></div>
+  <div><small>Forma</small><b><%= lote.forma %></b></div>
+  <div><small>Pagamento</small><b><%= Number(lote.valor) === 0 ? '—' : (lote.recebidoEm ? 'Recebido ' + dataBR(lote.recebidoEm) : 'A receber') %></b></div>
+</div>
+
+<div class="ead-venda-grade">
+  <div class="adm-box adm-box-pad">
+    <h2 class="adm-h2 adm-form-h">Lote</h2>
+    <form method="POST" action="/ead/escolas/lote/<%= lote.id %>/alterar" class="adm-form c1 ead-venda-preco">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Vagas<input type="number" name="vagas" min="1" max="5000" required value="<%= lote.vagas %>"></label>
+      <label>Cadastro até<input type="date" name="validoAte" required value="<%= dataISO(lote.validoAte) %>"></label>
+      <label>Observação<input type="text" name="observacao" maxlength="300" value="<%= lote.observacao || '' %>"></label>
+      <button type="submit" class="adm-btn adm-btn-out">Salvar</button>
+    </form>
+    <% if (Number(lote.valor) > 0) { %>
+      <hr class="ead-sep">
+      <% if (lote.recebidoEm) { %>
+        <form method="POST" action="/ead/escolas/lote/<%= lote.id %>/desfazer-recebido" data-confirmar="Desfazer o recebimento? O valor sai do Financeiro e volta para A receber." data-botao="Desfazer">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="adm-btn adm-btn-out"><i class="fa-solid fa-rotate-left"></i> Desfazer recebido</button>
+        </form>
+      <% } else { %>
+        <form method="POST" action="/ead/escolas/lote/<%= lote.id %>/recebido" class="adm-form c1 ead-venda-preco">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <label>Recebido em<input type="date" name="recebidoEm" required value="<%= dataISO(new Date()) %>"></label>
+          <button class="adm-btn"><i class="fa-solid fa-check"></i> Marcar recebido</button>
+        </form>
+      <% } %>
+    <% } %>
+  </div>
+
+  <div class="adm-box adm-box-pad">
+    <h2 class="adm-h2 adm-form-h">Gestores</h2>
+    <ul class="ead-pendencias ead-gestores">
+      <% lote.escola.gestores.forEach(function (g) { %>
+        <li><%= g.usuario.nome %> <span class="adm-mut"><%= g.usuario.email %></span>
+          <form method="POST" action="/ead/escolas/lote/<%= lote.id %>/gestor/<%= g.usuario.id %>/remover" data-confirmar="Tirar <%= g.usuario.nome %> da gestão da escola?" data-botao="Tirar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="adm-mini" title="Tirar"><i class="fa-solid fa-xmark"></i></button></form>
+        </li>
+      <% }) %>
+    </ul>
+    <details><summary class="ead-sumario">Adicionar gestor</summary>
+      <form method="POST" action="/ead/escolas/lote/<%= lote.id %>/gestor" class="adm-form c1 ead-venda-preco">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label>Nome<input type="text" name="nome" required maxlength="120"></label>
+        <label>E-mail<input type="email" name="email" required maxlength="160"></label>
+        <label>Celular<input type="tel" name="celular" maxlength="20"></label>
+        <label>CPF<input type="text" name="cpf" required maxlength="14" inputmode="numeric"></label>
+        <button class="adm-btn adm-btn-out">Adicionar</button>
+      </form>
+    </details>
+    <hr class="ead-sep">
+    <h2 class="adm-h2 adm-form-h">Link de convite</h2>
+    <% if (conviteUrl) { %>
+      <div class="ead-link-teste"><input type="text" readonly value="<%= conviteUrl %>" aria-label="Link de convite"></div>
+    <% } else { %><p class="adm-mut">Desligado.</p><% } %>
+    <div class="ead-acoes">
+      <form method="POST" action="/ead/escolas/lote/<%= lote.id %>/convite/trocar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="adm-btn adm-btn-out"><i class="fa-solid fa-rotate"></i> <%= conviteUrl ? 'Trocar' : 'Criar link' %></button></form>
+      <% if (conviteUrl) { %><form method="POST" action="/ead/escolas/lote/<%= lote.id %>/convite/desligar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="adm-btn adm-btn-out"><i class="fa-solid fa-link-slash"></i> Desligar</button></form><% } %>
+    </div>
+  </div>
+</div>
+
+<div class="adm-box adm-espaco">
+  <div class="ead-topico-cab"><h3>Equipe</h3>
+    <span>
+      <a class="adm-btn adm-btn-out" href="/ead/escolas/lote/<%= lote.id %>/declaracao.pdf"><i class="fa-solid fa-file-pdf"></i> Declaração</a>
+      <a class="adm-btn adm-btn-out" href="/ead/escolas/lote/<%= lote.id %>/planilha.xlsx"><i class="fa-solid fa-file-excel"></i> Excel</a>
+    </span>
+  </div>
+  <% if (!funcionarios.length) { %><p class="ead-vazio">Ninguém cadastrado ainda.</p><% } else { %>
+  <div class="ead-tabela-rolagem"><table class="adm-table">
+    <thead><tr><th>Nome</th><th>CPF</th><th>Entrou</th><th class="centro">Concluído</th><th>Concluiu em</th><th>Livro/Reg.</th><th></th></tr></thead>
+    <tbody>
+      <% funcionarios.forEach(function (f) { var rem = !!f.vaga.removidaEm; %>
+        <tr class="<%= rem ? 'ead-removido' : '' %>">
+          <td><strong><%= f.usuario.nome %></strong><br><small class="adm-mut"><%= f.usuario.email %></small></td>
+          <td><%= f.usuario.cpfCnpj ? formatar(f.usuario.cpfCnpj) : '—' %></td>
+          <td><%= dataBR(f.vaga.criadoEm) %> · <%= ORIGEM[f.vaga.origem] || f.vaga.origem %></td>
+          <td class="centro"><%= rem ? 'retirado' : f.percentual + '%' %></td>
+          <td><%= dataBR(f.concluidoEm) %></td>
+          <td><%= f.livro ? f.livro + ' / ' + f.registro : '—' %></td>
+          <td><% if (!rem && !f.comecou) { %><form method="POST" action="/ead/escolas/lote/<%= lote.id %>/remover/<%= f.vaga.id %>" data-confirmar="Tirar <%= f.usuario.nome %> do lote? A vaga volta." data-botao="Tirar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="adm-mini" title="Tirar"><i class="fa-solid fa-user-minus"></i></button></form><% } %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+  <% if (!situacao.vencido && situacao.livres) { %>
+  <details class="adm-box-pad"><summary class="ead-sumario">Cadastrar funcionário</summary>
+    <form method="POST" action="/ead/escolas/lote/<%= lote.id %>/funcionario" class="adm-form adm-campos">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Nome<input type="text" name="nome" required maxlength="120"></label>
+      <label>E-mail<input type="email" name="email" required maxlength="160"></label>
+      <label>Celular<input type="tel" name="celular" maxlength="20"></label>
+      <label>CPF<input type="text" name="cpf" required maxlength="14" inputmode="numeric"></label>
+      <button class="adm-btn">Cadastrar</button>
+    </form>
+  </details>
+  <% } %>
+</div>
+
+<% if (!funcionarios.length) { %>
+<form method="POST" action="/ead/escolas/lote/<%= lote.id %>/apagar" class="adm-box adm-box-pad" data-confirmar="Apagar este lote? Só é possível porque ninguém foi cadastrado." data-botao="Apagar">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <button class="adm-btn adm-btn-perigo"><i class="fa-solid fa-trash"></i> Apagar lote</button>
+</form>
+<% } %>
+
+<%- include('../foot') %>

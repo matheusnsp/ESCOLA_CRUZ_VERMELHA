@@ -30,8 +30,9 @@ async function obterTaxaMatricula(curso, alunoId) {
     // 💡 CORRIGIDO (A7): antes bastava existir QUALQUER matrícula com taxa > 0
     // (mesmo abandonada/cancelada e nunca paga) pra isentar a próxima — perda
     // silenciosa de receita. Agora só isenta se a taxa foi de fato CONFIRMADA.
+    // O curso online não tem taxa de inscrição: tê-lo comprado não isenta a taxa do presencial.
     const jaPagou = await prisma.matricula.findFirst({
-      where: { alunoId, taxaConfirmada: true },
+      where: { alunoId, taxaConfirmada: true, turma: { status: { not: 'ONLINE' } } },
     });
     return jaPagou ? ZERO : base;
   }

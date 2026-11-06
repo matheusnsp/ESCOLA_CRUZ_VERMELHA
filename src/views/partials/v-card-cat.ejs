@@ -6,26 +6,36 @@
   var _taxa = Number(taxaExibicao(curso, cfgMap));
   var _icone = vitrine.icone(curso.categoria);
   var _texto = [curso.nome, curso.descricao, curso.categoria].filter(Boolean).join(' ');
+  // Curso que só existe online (etapa 5): leva à página do curso online, sem turma nem taxa.
+  var _soOnline = !!(curso.online && curso.online.somenteOnline);
 %>
-<article class="v-cc" data-cat="<%= curso.categoria || '' %>" data-aberta="<%= _t ? '1' : '0' %>" data-texto="<%= _texto %>">
-  <a class="v-cc-link" href="<%= urlCurso(curso) %>" aria-label="<%= curso.nome %>: ver turmas e valores"></a>
+<article class="v-cc" data-cat="<%= curso.categoria || '' %>" data-aberta="<%= _t || _soOnline ? '1' : '0' %>" data-texto="<%= _texto %>">
+  <a class="v-cc-link" href="<%= _soOnline ? vitrine.urlOnline(curso) : urlCurso(curso) %>" aria-label="<%= curso.nome %>: <%= _soOnline ? 'curso online' : 'ver turmas e valores' %>"></a>
   <div class="v-cc-img">
     <% if (curso.imagemUrl) { %>
       <img src="<%= curso.imagemUrl %>" alt="" loading="lazy">
     <% } else { %>
       <span class="v-cc-semfoto"><i class="fa-solid <%= _icone %>" aria-hidden="true"></i></span>
     <% } %>
+    <% if (_soOnline) { %><span class="v-status v-status-aberta">Comece hoje</span><% } else { %>
     <span class="v-status<%= _t ? ' v-status-aberta' : '' %>"><%= _t ? 'Inscrições abertas' : 'Turmas em breve' %></span>
+    <% } %>
+    <% if (curso.online) { %><span class="v-selo-online"><i class="fa-solid fa-laptop" aria-hidden="true"></i> 100% online</span><% } %>
   </div>
   <div class="v-cc-corpo">
-    <p class="v-cc-area"><i class="fa-solid <%= _icone %>" aria-hidden="true"></i> <%= curso.categoria || 'Curso presencial' %></p>
+    <p class="v-cc-area"><i class="fa-solid <%= _icone %>" aria-hidden="true"></i> <%= curso.categoria || (_soOnline ? 'Curso online' : 'Curso presencial') %></p>
     <h3><%= curso.nome %></h3>
     <p class="v-cc-desc"><%= curso.descricao || 'Curso presencial da Escola de Educação e Saúde da Cruz Vermelha.' %></p>
     <ul class="v-cc-info">
       <li><i class="fa-regular fa-clock" aria-hidden="true"></i> <%= curso.cargaHoraria %> horas</li>
       <% if (curso.escolaridadeMinima) { %><li><i class="fa-solid fa-user-graduate" aria-hidden="true"></i> <%= curso.escolaridadeMinima %></li><% } %>
     </ul>
-    <% if (_t) { var _d = vitrine.dataTurma(_t.inicioPrevisto); var _h = _t.aulas && _t.aulas[0] && _t.aulas[0].horario; %>
+    <% if (_soOnline) { %>
+      <div class="v-cc-turma v-cc-turma-aberta">
+        <i class="fa-solid fa-laptop" aria-hidden="true"></i>
+        <span><b>100% online, no seu ritmo.</b> Pelo celular, com certificado ao concluir.</span>
+      </div>
+    <% } else if (_t) { var _d = vitrine.dataTurma(_t.inicioPrevisto); var _h = _t.aulas && _t.aulas[0] && _t.aulas[0].horario; %>
       <div class="v-cc-turma v-cc-turma-aberta">
         <i class="fa-regular fa-calendar-check" aria-hidden="true"></i>
         <span><b>Próxima turma: <%= _d.dia %> de <%= _d.mes %></b><% if (_h) { %> · <span class="v-sem-quebra"><%= _h %></span><% } %><% if (_turmas.length > 1) { %><br><%= _turmas.length %> turmas com inscrições abertas<% } %></span>
@@ -38,9 +48,15 @@
     <% } %>
     <div class="v-cc-pe">
       <div class="v-preco">
-        <small>Matrícula à vista</small>
-        <b><%= vitrine.reais(curso.precoAvista) %></b>
-        <% if (_taxa > 0) { %><em>+ <%= vitrine.reais(_taxa) %> de taxa de inscrição</em><% } %>
+        <% if (_soOnline) { %>
+          <small>Curso online</small>
+          <b><%= vitrine.reais(curso.online.preco) %></b>
+          <em>Pagamento único, PIX ou cartão</em>
+        <% } else { %>
+          <small>Matrícula à vista</small>
+          <b><%= vitrine.reais(curso.precoAvista) %></b>
+          <% if (_taxa > 0) { %><em>+ <%= vitrine.reais(_taxa) %> de taxa de inscrição</em><% } %>
+        <% } %>
       </div>
       <span class="v-cc-ver" aria-hidden="true">Ver curso <i class="fa-solid fa-arrow-right"></i></span>
     </div>

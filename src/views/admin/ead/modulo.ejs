@@ -1,0 +1,161 @@
+<%
+  var validado = modulo.status === 'VALIDADO';
+  // Em módulo validado, todo form que muda algo pede confirmação (o POST invalida de qualquer jeito).
+  var aviso = 'Este módulo está validado. Salvar uma mudança o volta para rascunho até ser validado de novo.';
+  function conf(extra) {
+    var msg = extra ? (validado ? extra + ' ' + aviso : extra) : (validado ? aviso : '');
+    return msg ? 'data-confirmar="' + msg.replace(/"/g, '&quot;') + '"' : '';
+  }
+  function curto(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+  var tipos = { UNICA: 'Única', MULTIPLA: 'Múltipla', VF: 'V ou F' };
+%>
+<%- include('../head', { titulo: modulo.titulo + ' · EAD' }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= modulo.titulo %></h1>
+  <a href="/ead/curso/<%= modulo.cursoOnlineId %>" class="adm-link">← <%= modulo.cursoOnline.curso.nome %></a>
+</div>
+<%- include('_mensagens') %>
+
+<div class="adm-box adm-box-pad adm-espaco">
+  <div class="ead-acoes" style="justify-content: space-between">
+    <div class="ead-acoes">
+      <span class="ead-selo <%= validado ? 'validado' : 'rascunho' %>"><i class="fa-solid <%= validado ? 'fa-circle-check' : 'fa-pen' %>"></i> <%= validado ? 'Validado' : 'Rascunho' %></span>
+      <% if (modulo.final) { %><span class="ead-selo final">Módulo final · cenários</span><% } %>
+      <% if (modulo.geradoPorIa) { %><span class="ead-selo final">Gerado por IA — revise antes de validar</span><% } %>
+      <span class="adm-mut"><%= modulo.minutosEstimados %> min</span>
+      <% if (validado) { %><span class="adm-mut">por <%= validadoPorNome || '—' %> em <%= new Date(modulo.validadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) %></span><% } %>
+    </div>
+    <div class="ead-acoes">
+      <a class="adm-btn adm-btn-out" href="/ead/modulo/<%= modulo.id %>/editar"><i class="fa-solid fa-pen"></i> Editar módulo</a>
+      <% if (validado) { %>
+        <form method="POST" action="/ead/modulo/<%= modulo.id %>/reabrir" data-confirmar="Voltar o módulo para rascunho?">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="adm-btn adm-btn-out"><i class="fa-solid fa-rotate-left"></i> Reabrir</button>
+        </form>
+      <% } else { %>
+        <form method="POST" action="/ead/modulo/<%= modulo.id %>/validar" data-confirmar="Confirmar que a área técnica aprovou o conteúdo clínico deste módulo?" data-botao="Validar">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="adm-btn adm-btn-ok" <%= pendencias.length ? 'disabled' : '' %> title="<%= pendencias.length ? 'Resolva as pendências antes' : '' %>"><i class="fa-solid fa-circle-check"></i> Validar módulo</button>
+        </form>
+        <form method="POST" action="/ead/modulo/<%= modulo.id %>/excluir" data-confirmar="Apagar o módulo “<%= modulo.titulo %>” e tudo dentro dele (tópicos, telas, perguntas, cenários)?" data-botao="Apagar">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="adm-btn adm-btn-perigo"><i class="fa-solid fa-trash"></i></button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<% if (pendencias.length) { %>
+  <div class="ead-caixa pend"><h3><i class="fa-solid fa-list-check"></i> Falta para validar (<%= pendencias.length %>)</h3>
+    <ul><% pendencias.forEach(function (p) { %><li><%= p %></li><% }) %></ul></div>
+<% } else if (!validado) { %>
+  <div class="ead-caixa ok"><i class="fa-solid fa-circle-check"></i> Nenhuma pendência: o módulo pode ser validado.</div>
+<% } %>
+<% if (avisos.length) { %>
+  <div class="ead-caixa aviso"><h3><i class="fa-solid fa-lightbulb"></i> Recomendações (não impedem validar)</h3>
+    <ul><% avisos.forEach(function (p) { %><li><%= p %></li><% }) %></ul></div>
+<% } %>
+
+<% if (modulo.introducao) { %>
+  <details class="adm-box adm-box-pad adm-espaco"><summary><strong>Introdução do módulo</strong></summary>
+    <p style="white-space: pre-line"><%= modulo.introducao %></p></details>
+<% } %>
+
+<% if (!modulo.final) { %>
+  <% modulo.topicos.forEach(function (t, ti) { var at = t.perguntas.filter(function (q) { return q.ativa; }).length; %>
+    <section class="adm-box ead-topico">
+      <div class="ead-topico-cab">
+        <h3>Tópico <%= ti + 1 %> · <%= t.titulo %></h3>
+        <div class="ead-acoes">
+          <% ['subir', 'descer'].forEach(function (d) { %>
+            <form method="POST" action="/ead/topico/<%= t.id %>/<%= d %>" <%- conf() %>><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="adm-mini" title="<%= d %>"><i class="fa-solid fa-arrow-<%= d === 'subir' ? 'up' : 'down' %>"></i></button></form>
+          <% }) %>
+          <form method="POST" action="/ead/topico/<%= t.id %>/excluir" <%- conf('Apagar o tópico “' + t.titulo + '” e as ' + t.telas.length + ' telas e ' + t.perguntas.length + ' perguntas dele?') %>>
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="adm-mini danger" title="Apagar tópico"><i class="fa-solid fa-trash"></i></button></form>
+        </div>
+      </div>
+      <form method="POST" action="/ead/topico/<%= t.id %>" class="ead-inline" <%- conf() %>>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="text" name="titulo" value="<%= t.titulo %>" maxlength="120" required aria-label="Título do tópico">
+        <button class="adm-btn adm-btn-out">Renomear</button>
+      </form>
+
+      <div class="ead-sub"><span>Telas (<%= t.telas.length %>)</span><a class="adm-link" href="/ead/topico/<%= t.id %>/telas/nova">+ Nova tela</a></div>
+      <% if (!t.telas.length) { %><p class="ead-vazio">Nenhuma tela.</p><% } else { %>
+        <ul class="ead-lista">
+          <% t.telas.forEach(function (tela, i) { %>
+            <li>
+              <span class="ead-num" style="font-size:15px"><%= ti + 1 %>.<%= i + 1 %></span>
+              <div class="ead-tit"><a href="/ead/tela/<%= tela.id %>/editar"><%= tela.titulo %></a>
+                <small><%= tela.videoUrl ? 'vídeo' + (tela.videoDuracaoSeg ? ' ' + mmSs(tela.videoDuracaoSeg) : '') : 'sem vídeo' %> · <%= tela.revisaoItens.length %> cartão(ões) de revisão<%= tela.alerta ? ' · alerta' : '' %></small></div>
+              <div class="ead-acoes">
+                <a class="adm-mini" href="/ead/tela/<%= tela.id %>/ver" title="Ver como o aluno"><i class="fa-solid fa-eye"></i></a>
+                <% ['subir', 'descer'].forEach(function (d) { %>
+                  <form method="POST" action="/ead/tela/<%= tela.id %>/<%= d %>" <%- conf() %>><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button class="adm-mini" title="<%= d %>"><i class="fa-solid fa-arrow-<%= d === 'subir' ? 'up' : 'down' %>"></i></button></form>
+                <% }) %>
+                <form method="POST" action="/ead/tela/<%= tela.id %>/excluir" <%- conf('Apagar a tela “' + tela.titulo + '”?') %>><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="adm-mini danger" title="Apagar"><i class="fa-solid fa-trash"></i></button></form>
+              </div>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
+
+      <div class="ead-sub">
+        <span>Banco de perguntas · <span class="<%= at < 3 ? 'falta' : (at < 10 ? 'meta' : 'bom') %>"><%= at %> ativa(s) (mínimo 3 · meta 10)</span></span>
+        <a class="adm-link" href="/ead/topico/<%= t.id %>/perguntas/nova">+ Nova pergunta</a>
+      </div>
+      <% if (!t.perguntas.length) { %><p class="ead-vazio">Nenhuma pergunta.</p><% } else { %>
+        <ul class="ead-lista">
+          <% t.perguntas.forEach(function (q) { %>
+            <li class="<%= q.ativa ? '' : 'ead-inativa' %>">
+              <div class="ead-tit"><a href="/ead/pergunta/<%= q.id %>/editar"><%= curto(q.enunciado, 110) %></a>
+                <small><%= tipos[q.tipo] %> · <%= q.alternativas.length %> alternativa(s)<%= q.ativa ? '' : ' · inativa (fora do sorteio)' %></small></div>
+              <div class="ead-acoes">
+                <form method="POST" action="/ead/pergunta/<%= q.id %>/ativar" <%- conf() %>><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="adm-mini" title="<%= q.ativa ? 'Desativar' : 'Ativar' %>"><i class="fa-solid <%= q.ativa ? 'fa-toggle-on' : 'fa-toggle-off' %>"></i></button></form>
+                <form method="POST" action="/ead/pergunta/<%= q.id %>/excluir" <%- conf('Apagar esta pergunta?') %>><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="adm-mini danger" title="Apagar"><i class="fa-solid fa-trash"></i></button></form>
+              </div>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    </section>
+  <% }) %>
+
+  <form method="POST" action="/ead/modulo/<%= modulo.id %>/topicos" class="adm-box ead-inline" <%- conf() %>>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="text" name="titulo" maxlength="120" required placeholder="Título do novo tópico (ex.: Reconhecer o engasgo)" aria-label="Título do novo tópico">
+    <button class="adm-btn"><i class="fa-solid fa-plus"></i> Novo tópico</button>
+  </form>
+<% } else { %>
+  <section class="adm-box ead-topico">
+    <div class="ead-topico-cab"><h3>Cenários (<%= modulo.cenarios.length %>)</h3>
+      <a class="adm-btn" href="/ead/modulo/<%= modulo.id %>/cenarios/novo"><i class="fa-solid fa-plus"></i> Novo cenário</a></div>
+    <% if (!modulo.cenarios.length) { %><p class="ead-vazio">Nenhum cenário.</p><% } else { %>
+      <ul class="ead-lista">
+        <% modulo.cenarios.forEach(function (c, i) { %>
+          <li>
+            <span class="ead-num"><%= i + 1 %></span>
+            <div class="ead-tit"><a href="/ead/cenario/<%= c.id %>/editar"><%= c.titulo %></a>
+              <small>tempo sugerido <%= mmSs(c.tempoSugeridoSeg) %> · <%= c.decisoes.length %> decisão(ões)</small></div>
+            <div class="ead-acoes">
+              <% ['subir', 'descer'].forEach(function (d) { %>
+                <form method="POST" action="/ead/cenario/<%= c.id %>/<%= d %>" <%- conf() %>><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="adm-mini" title="<%= d %>"><i class="fa-solid fa-arrow-<%= d === 'subir' ? 'up' : 'down' %>"></i></button></form>
+              <% }) %>
+              <form method="POST" action="/ead/cenario/<%= c.id %>/excluir" <%- conf('Apagar o cenário “' + c.titulo + '” e as ' + c.decisoes.length + ' decisões dele?') %>><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="adm-mini danger" title="Apagar"><i class="fa-solid fa-trash"></i></button></form>
+            </div>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </section>
+<% } %>
+
+<%- include('../foot') %>

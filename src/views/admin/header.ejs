@@ -1,12 +1,28 @@
 <header class="adm-top">
   <% var secaoAtiva = (typeof ativo !== 'undefined') ? ativo : ''; %>
+  <% // Modo do painel (só DEV): Presencial (o menu de sempre) ou Online (o EAD). As rotas /ead forçam 'online'. %>
+  <% var modo = (typeof modoPainel !== 'undefined' && modoPainel === 'online') ? 'online' : 'presencial'; %>
 
-  <a href="/" class="adm-brand">
+  <a href="<%= modo === 'online' ? '/ead' : '/' %>" class="adm-brand">
     <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — RJ" class="adm-logo">
     <span class="adm-brand-txt">Secretaria <small>Escola de Educação e<br>Saúde CVB-RJ</small></span>
   </a>
 
+  <% if (admPapel === 'DEV') { %>
+    <form method="POST" action="/modo" class="adm-modo" aria-label="Modo do painel">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" name="modo" value="presencial" class="<%= modo === 'presencial' ? 'on' : '' %>" aria-pressed="<%= modo === 'presencial' %>"><i class="fa-solid fa-school"></i> Presencial</button>
+      <button type="submit" name="modo" value="online" class="<%= modo === 'online' ? 'on' : '' %>" aria-pressed="<%= modo === 'online' %>"><i class="fa-solid fa-laptop-medical"></i> Online</button>
+    </form>
+  <% } %>
+
   <nav class="adm-nav">
+  <% if (modo === 'online') { %>
+    <a href="/ead" class="<%= secaoAtiva === 'ead' ? 'on' : '' %>"><i class="fa-solid fa-laptop-medical"></i> Cursos online</a>
+    <a href="/ead/escolas" class="<%= secaoAtiva === 'escolas' ? 'on' : '' %>"><i class="fa-solid fa-school"></i> Escolas</a>
+    <a href="/ead/cupons" class="<%= secaoAtiva === 'cupons' ? 'on' : '' %>"><i class="fa-solid fa-ticket"></i> Cupons</a>
+    <a href="/ead/duvidas" class="<%= secaoAtiva === 'duvidas' ? 'on' : '' %>"><i class="fa-solid fa-comments"></i> Dúvidas<% if (typeof duvidasAguardando === 'number' && duvidasAguardando > 0) { %> <span class="adm-badge" title="Aguardando resposta"><%= duvidasAguardando %></span><% } %></a>
+  <% } else { %>
     <a href="/" class="<%= secaoAtiva === 'home' ? 'on' : '' %>"><i class="fa-solid fa-gauge"></i> Painel</a>
     <a href="/cursos" class="<%= secaoAtiva === 'cursos' ? 'on' : '' %>"><i class="fa-solid fa-book"></i> Cursos</a>
     <a href="/turmas" class="<%= secaoAtiva === 'turmas' ? 'on' : '' %>"><i class="fa-solid fa-calendar-days"></i> Turmas</a>
@@ -42,6 +58,7 @@
     <% if (pode('integracao:gerenciar')) { %>
       <a href="/integracao" class="<%= secaoAtiva === 'integracao' ? 'on' : '' %>"><i class="fa-solid fa-plug"></i> Integração</a>
     <% } %>
+  <% } %>
     <% if (admPapel === 'DEV') { %>
       <%# Admin e Ban viraram abas de Configurações (abas-config.ejs) %>
       <a href="/dev/usuarios" class="<%= ['dev-usuarios', 'banimentos'].includes(secaoAtiva) ? 'on' : '' %>"><i class="fa-solid fa-gear"></i> Configurações</a>

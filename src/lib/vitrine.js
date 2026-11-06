@@ -98,5 +98,8 @@ function slugCurso(nome) {
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'curso';
 }
 const urlCurso = (curso) => '/cursos/' + slugCurso(curso && curso.nome);
+// Curso online (etapa 8): o mesmo endereço pelo nome, /online/<nome>. O endereço com o id continua valendo
+// (routes/ead-teste.js redireciona para este).
+const urlOnline = (curso) => '/online/' + slugCurso(curso && curso.nome);
 
-module.exports = { CATEGORIAS, icone, reais, dataTurma, quando, agenda, ordenar, larguras, categoriasEmUso, slugCurso, urlCurso };
+module.exports = { CATEGORIAS, icone, reais, dataTurma, quando, agenda, ordenar, larguras, categoriasEmUso, slugCurso, urlCurso, urlOnline };

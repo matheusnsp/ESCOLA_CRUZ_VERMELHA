@@ -111,7 +111,8 @@ app.use(
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
         imgSrc: ["'self'", 'data:', 'https:'],
         // Mapa da sede na home (Google Maps incorporado, sem chave).
-        frameSrc: ["'self'", 'https://www.google.com'],
+        // + players do EAD (vídeo por link: YouTube sem cookie e Vimeo; lib/ead.js normalizarVideo).
+        frameSrc: ["'self'", 'https://www.google.com', 'https://www.youtube-nocookie.com', 'https://player.vimeo.com'],
         // 💡 CORRIGIDO: Libera a execução do script que mostra/esconde os inputs do cartão na tela inscrever.ejs
         // googletagmanager (GA4) e connect.facebook.net (Meta Pixel): sem eles o CSP barrava
         // os dois scripts e nada era medido.
@@ -317,11 +318,17 @@ const visitas = require('./lib/visitas');
 visitas.iniciar();
 // Antes de contar visita: o Excel atualizando a planilha não é visitante.
 siteAluno.use(require('./routes/integracao'));
+// EAD: o link secreto de teste e o curso online pago (/online/<curso>), antes da contagem de visitas
+// (o endereço do teste é o segredo; as telas do curso não são visitas do site). A compra vem primeiro.
+siteAluno.use(require('./routes/ead-online'));
+// Etapa 6: Minha escola (gestor) e o convite do lote; também marca o atalho na Minha conta.
+siteAluno.use(require('./routes/ead-escola'));
+siteAluno.use(require('./routes/ead-teste'));
 siteAluno.use(visitas.registrar);
 // Buscadores: só as páginas públicas; o painel da secretaria fica fora de tudo.
 siteAluno.get('/robots.txt', (req, res) => res.type('text/plain').send(
   'User-agent: *\nDisallow: /minha-conta\nDisallow: /inscrever/\nDisallow: /inscricao/\nDisallow: /completar-dados\n'
-  + 'Disallow: /turmas/\nDisallow: /compartilhar/\nDisallow: /integracao/\n\nSitemap: ' + res.locals.urlSite + '/sitemap.xml\n'));
+  + 'Disallow: /turmas/\nDisallow: /compartilhar/\nDisallow: /integracao/\nDisallow: /ead-teste/\n\nSitemap: ' + res.locals.urlSite + '/sitemap.xml\n'));
 siteAluno.use(authRoutes);
 siteAluno.use(cursosRoutes);
 siteAluno.use(painelRoutes);
@@ -373,6 +380,11 @@ setInterval(() => require('./lib/pesquisa').enviarPendentes(), 15 * 60 * 1000).u
 // Reconciliação com a Únicopag (lib/reconciliacao.js): a cada 15 min, pergunta a situação dos
 // pagamentos pendentes cujo aviso se perdeu. Só um dos serviços faz cada passada.
 require('./lib/reconciliacao').agendar();
+
+// Criar curso com IA (etapa 9): ao subir, retoma a geração que ficou no meio (lib/ead-ia-fila.js). Só com a chave
+// da API configurada; a marca em Configuracao evita dois serviços no mesmo passo.
+// A varredura periódica destrava a geração de um serviço que morreu no meio de um passo.
+if (require('./lib/ead-ia').ehChaveConfigurada()) require('./lib/ead-ia-fila').agendar();
 
 const port = process.env.PORT || 3000;
 

@@ -101,7 +101,7 @@ async function chaveValida(chave) {
 const ROTULO_PLANO = { A_VISTA: 'À vista', PARCELADO: 'Parcelado', PRESENCIAL: 'Presencial' };
 const ROTULO_FORMA = { PIX: 'PIX', DEBITO: 'Débito', CREDITO: 'Crédito', DINHEIRO: 'Dinheiro' };
 // No banco a turma concluída fica ENCERRADA; na tela aparece CONCLUÍDA (server.js rotuloTurma).
-const ROTULO_TURMA = { ABERTA: 'Aberta', CONFIRMADA: 'Confirmada', CANCELADA: 'Cancelada', ENCERRADA: 'Concluída', CONGELADA: 'Congelada', EM_ESPERA: 'Em espera' };
+const ROTULO_TURMA = { ABERTA: 'Aberta', CONFIRMADA: 'Confirmada', CANCELADA: 'Cancelada', ENCERRADA: 'Concluída', CONGELADA: 'Congelada', EM_ESPERA: 'Em espera', ONLINE: 'Curso online' };
 const ROTULO_SITUACAO = { APROVADO: 'Aprovado', REPROVADO: 'Reprovado' };
 
 // Situação do pagamento como na legenda do painel (legenda-status.ejs): o cartão parcelado
@@ -143,9 +143,10 @@ const codigoTurma = (id) => `TUR-${String(id).slice(0, 8).toUpperCase()}`;
 // Nome da turma para a pessoa escolher numa lista: "Curso — dd/mm/aaaa".
 const dataBR = (d, tz) => data(d, tz).split('-').reverse().join('/');
 // A turma de espera (EM_ESPERA) tem data fictícia (2099): no lugar dela, "Em espera".
-const nomeTurma = (t) => `${t?.curso?.nome || '—'} — ${t?.status === 'EM_ESPERA' ? 'Em espera' : dataBR(t?.inicioPrevisto, 'UTC')}`;
+// A turma ONLINE (curso online, também com data 2099) aparece como "Curso online".
+const nomeTurma = (t) => `${t?.curso?.nome || '—'} — ${t?.status === 'EM_ESPERA' ? 'Em espera' : t?.status === 'ONLINE' ? 'Curso online' : dataBR(t?.inicioPrevisto, 'UTC')}`;
 // Data de início da turma para as planilhas: a turma de espera não tem data (a de 2099 é fictícia), fica em branco.
-const inicioTurma = (t) => (t?.status === 'EM_ESPERA' ? '' : data(t?.inicioPrevisto, 'UTC'));
+const inicioTurma = (t) => (t?.status === 'EM_ESPERA' || t?.status === 'ONLINE' ? '' : data(t?.inicioPrevisto, 'UTC'));
 // CPF com pontos: só dígitos, o Excel leria como número e comeria o zero da frente.
 const documento = (u) => (u?.cpfCnpj ? formatar(u.cpfCnpj) : u?.passaporte || '');
 
@@ -274,7 +275,7 @@ async function tabelaCursos() {
     linhas: cursos.map((c) => {
       const mats = c.turmas.flatMap((t) => t.matriculas);
       // Quem está na lista de espera tem a inscrição paga, mas ainda não ocupa vaga em turma nenhuma.
-      const matsComVaga = c.turmas.filter((t) => t.status !== 'EM_ESPERA').flatMap((t) => t.matriculas);
+      const matsComVaga = c.turmas.filter((t) => t.status !== 'EM_ESPERA' && t.status !== 'ONLINE').flatMap((t) => t.matriculas);
       const abertas = c.turmas.filter((t) => turmaAtiva(statusTurma(t, ultimaAula)));
       const proxima = abertas.map((t) => t.inicioPrevisto).sort((a, b) => a - b)[0];
       return [
@@ -286,7 +287,7 @@ async function tabelaCursos() {
         c.parcelas,
         num(c.valorParcela),
         c.taxaMatricula == null ? '' : num(c.taxaMatricula),
-        c.turmas.filter((t) => t.status !== 'EM_ESPERA').length, // a turma de espera não conta
+        c.turmas.filter((t) => t.status !== 'EM_ESPERA' && t.status !== 'ONLINE').length, // a turma de espera e a online não contam
         abertas.length,
         data(proxima, 'UTC'),
         matsComVaga.filter(ocupaVaga).length,
@@ -318,7 +319,7 @@ async function tabelaTurmas() {
     ],
     linhas: turmas.map((t) => {
       // Turma de espera: ninguém ocupa vaga nela (a matrícula só ganha vaga ao ser encaixada).
-      const espera = t.status === 'EM_ESPERA';
+      const espera = t.status === 'EM_ESPERA' || t.status === 'ONLINE'; // a online também não tem vaga
       const comVaga = espera ? 0 : t.matriculas.filter(ocupaVaga).length;
       return [
         nomeTurma(t),
@@ -384,4 +385,4 @@ async function gerarCsv(tabela) {
   return paraCsv(await GERADORES[tabela]());
 }
 
-module.exports = { TABELAS, COMPARTILHADA, gerarChave, desligar, ligada, listarChaves, chaveValida, gerarCsv, gerarTabelas };
+module.exports = { TABELAS, COMPARTILHADA, gerarChave, desligar, ligada, listarChaves, chaveValida, gerarCsv, gerarTabelas, _nomeTurma: nomeTurma, _inicioTurma: inicioTurma };

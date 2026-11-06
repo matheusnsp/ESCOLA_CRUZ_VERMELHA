@@ -1,0 +1,34 @@
+<% var dataBR = function (d) { return d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'; }; %>
+<%- include('../head', { titulo: 'Concluintes · ' + co.curso.nome }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= co.curso.nome %></h1>
+  <a href="/ead" class="adm-link">← Cursos online</a>
+</div>
+<%- include('_abas-curso', { co: co, aba: 'concluintes' }) %>
+
+<div class="adm-box adm-espaco">
+  <% if (!lista.length) { %>
+    <p class="ead-vazio">Ninguém concluiu ainda.</p>
+  <% } else { %>
+    <div class="ead-tabela-rolagem">
+    <table class="adm-table">
+      <thead><tr><th>Aluno</th><th>Concluiu em</th><th class="centro">Livro / Registro</th><th>Código da Redação</th><th></th></tr></thead>
+      <tbody>
+        <% lista.forEach(function (c) { %>
+          <tr>
+            <td><a href="/ead/curso/<%= co.id %>/alunos/<%= c.alunoCursoId %>"><strong><%= c.nome %></strong></a><br><small class="adm-mut"><%= c.email %></small></td>
+            <td><%= dataBR(c.concluidoEm) %></td>
+            <td class="centro"><%= c.livro ? c.livro + ' / ' + c.registro : '—' %></td>
+            <td><%= c.codigoRedacao || 'sem código (sai ao abrir o certificado)' %></td>
+            <td><a class="adm-btn adm-btn-out" href="/ead/curso/<%= co.id %>/concluintes/<%= c.alunoCursoId %>/certificado" target="_blank" rel="noopener"><i class="fa-solid fa-award"></i> Abrir certificado</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    </div>
+  <% } %>
+</div>
+
+<%- include('../foot') %>

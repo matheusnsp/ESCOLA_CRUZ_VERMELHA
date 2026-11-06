@@ -1,0 +1,25 @@
+<% var dataBR = function (d) { return new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }); }; %>
+<%- include('../ead-teste/_topo', { titulo: 'Minha escola', base: '/minha-escola' }) %>
+<main class="ea-wrap ea-secao">
+  <p class="ea-kicker">Minha escola</p>
+  <h1 class="ea-secao-h">Capacitação da equipe<span>.</span></h1>
+  <p class="ea-obs">Cadastre os funcionários no curso online, acompanhe quem concluiu e baixe a declaração de capacitação (Lei 13.722/2018). <a href="/minha-conta">← Minha conta</a></p>
+  <% escolas.forEach(function (e) { %>
+    <section class="esc-bloco">
+      <h2><%= e.escola.nome %></h2>
+      <% if (!e.lotes.length) { %><p class="ea-obs">Nenhum lote de vagas ainda. Fale com a Escola.</p><% } %>
+      <ul class="esc-lotes">
+        <% e.lotes.forEach(function (l) { %>
+          <li>
+            <a class="esc-lote" href="/minha-escola/lote/<%= l.id %>">
+              <strong><%= l.curso.nome %></strong>
+              <span><%= l.situacao.usadas %> de <%= l.vagas %> vagas usadas · <%= l.situacao.vencido ? 'prazo encerrado em ' : 'cadastro até ' %><%= dataBR(l.validoAte) %></span>
+              <em>Abrir →</em>
+            </a>
+          </li>
+        <% }) %>
+      </ul>
+    </section>
+  <% }) %>
+</main>
+<%- include('../ead-teste/_fim') %>

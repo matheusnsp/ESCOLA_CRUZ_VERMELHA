@@ -1,0 +1,47 @@
+<% var v = valores || {}; %>
+<%- include('../head', { titulo: 'Criar curso com IA' }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Criar curso com IA</h1>
+  <a href="/ead/ia" class="adm-link">← Gerações</a>
+</div>
+<%- include('_mensagens', { ok: null }) %>
+<% if (!chave) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= msgChave %></div><% } %>
+
+<form method="POST" action="/ead/ia/novo?_csrf=<%= csrfToken %>" enctype="multipart/form-data" class="adm-box adm-box-pad">
+  <h2 class="adm-h2 adm-form-h">Onde vai o conteúdo</h2>
+  <div class="adm-form adm-campos">
+    <label class="full"><input type="radio" name="destino" value="novo" <%= v.destino !== 'existente' ? 'checked' : '' %>> Curso novo (só online)</label>
+    <label>Nome do curso<input type="text" name="nome" maxlength="120" value="<%= v.nome || '' %>"></label>
+    <label>Carga horária (horas)<input type="number" name="cargaHoraria" min="1" max="999" value="<%= v.cargaHoraria || '' %>"></label>
+    <label class="full">Descrição<input type="text" name="descricao" maxlength="1000" value="<%= v.descricao || '' %>"></label>
+    <label>Preço (R$, opcional)<input type="text" name="precoOnline" inputmode="decimal" placeholder="49,90" value="<%= v.precoOnline || '' %>"></label>
+    <label>Parcelas no cartão (máx.)<input type="number" name="maxParcelas" min="1" max="12" value="<%= v.maxParcelas || 1 %>"></label>
+    <label class="full"><input type="radio" name="destino" value="existente" <%= v.destino === 'existente' ? 'checked' : '' %>> Acrescentar módulos a um curso online existente</label>
+    <label class="full">Curso online
+      <select name="cursoOnlineId">
+        <option value="">— escolha —</option>
+        <% cursos.forEach(function (c) { %><option value="<%= c.id %>" <%= v.cursoOnlineId === c.id ? 'selected' : '' %>><%= c.curso.nome %></option><% }) %>
+      </select>
+    </label>
+  </div>
+
+  <h2 class="adm-h2 adm-form-h">O que a IA deve escrever</h2>
+  <div class="adm-form adm-campos">
+    <label class="full">Tema<input type="text" name="tema" maxlength="300" required value="<%= v.tema || '' %>" placeholder="Primeiros socorros na escola (Lei Lucas)"></label>
+    <label>Público<input type="text" name="publico" maxlength="200" value="<%= v.publico || '' %>" placeholder="professores e funcionários de escola"></label>
+    <label>Número de módulos<input type="number" name="nModulos" min="2" max="12" value="<%= v.nModulos || 6 %>"></label>
+    <label class="full">Observações<textarea name="observacoes" maxlength="2000" rows="3"><%= v.observacoes || '' %></textarea></label>
+  </div>
+
+  <h2 class="adm-h2 adm-form-h">Material de base (opcional)</h2>
+  <p class="adm-mut">A IA segue o material e não inventa dados técnicos. Até 3 arquivos PDF ou Word (.docx), 20 MB no total.</p>
+  <div class="adm-form adm-campos">
+    <label class="full">Arquivos<input type="file" name="material" accept=".pdf,.docx" multiple></label>
+    <label class="full">Texto colado<textarea name="texto" rows="5" maxlength="100000"><%= v.texto || '' %></textarea></label>
+  </div>
+  <p class="adm-mut">Cada geração custa cerca de US$ 1 a 3 (mais com material grande) e conta no teto mensal.</p>
+  <button type="submit" class="adm-btn" <%= chave ? '' : 'disabled' %>><i class="fa-solid fa-wand-magic-sparkles"></i> Pedir o roteiro</button>
+</form>
+<%- include('../foot') %>

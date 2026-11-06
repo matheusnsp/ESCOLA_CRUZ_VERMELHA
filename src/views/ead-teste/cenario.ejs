@@ -1,0 +1,109 @@
+<%
+  // Estados: início (sem feito), andamento (decisão atual), escolha (fala do instrutor), fim (concluído).
+  var mmss = function (seg) { seg = Math.max(0, Math.round(seg)); return Math.floor(seg / 60) + ':' + String(seg % 60).padStart(2, '0'); };
+  var sug = cenario.tempoSugeridoSeg;
+  // emAndamento: nunca concluído ou recomeçado ("refazer"); preparacao: cenário sem decisões (rascunho).
+  var estado = escolha ? 'escolha' : (total === 0 ? 'preparacao' : (!feito ? 'inicio' : (emAndamento ? (decisao ? 'andamento' : 'inicio') : 'fim')));
+  var decorrido = feito ? (!emAndamento && feito.tempoSeg !== null && feito.tempoSeg !== undefined ? feito.tempoSeg : (agora - new Date(feito.iniciadoEm)) / 1000) : 0;
+  var nDecisao = feito ? (estado === 'escolha' && escolha.certa ? feito.decisaoAtual : feito.decisaoAtual + 1) : 1;
+%>
+<%- include('_topo', { titulo: cenario.titulo, voltarMenu: true }) %>
+<main class="ea-wrap ea-main">
+  <div class="ea ea-quiz ea-cenario">
+    <div class="ea-aulabar">
+      <div class="ea-aulabar-mod">
+        <span class="ea-aulabar-num"><%= String(numero).padStart(2, '0') %></span>
+        <span><small>Cenário · Módulo <%= numero %></small><strong><%= cenario.titulo %></strong></span>
+      </div>
+      <% if (estado === 'andamento' || estado === 'escolha') { %>
+        <div class="ea-crono" data-inicio="<%= new Date(feito.iniciadoEm).toISOString() %>" data-sugerido="<%= sug %>" data-parado="<%= escolha && escolha.fechou ? '1' : '' %>">
+          <span>Decorrido <b class="ea-crono-valor"><%= mmss(decorrido) %></b></span>
+          <span>Sugerido <%= mmss(sug) %></span>
+        </div>
+      <% } %>
+    </div>
+
+    <section class="ea-pergunta">
+      <% if (estado === 'inicio' || estado === 'andamento') { %>
+        <div class="ea-cena">
+          <p class="ea-kicker">A cena</p>
+          <% if (cenario.fotoUrl) { %><img src="<%= cenario.fotoUrl %>" alt="" loading="lazy"><% } %>
+          <p><%= cenario.cena %></p>
+          <% if (cenario.videoUrl && estado === 'inicio') { %><div class="ea-video-quadro"><iframe src="<%= cenario.videoUrl %>" title="Vídeo da cena" allow="fullscreen; picture-in-picture; encrypted-media" allowfullscreen loading="lazy"></iframe></div><% } %>
+        </div>
+      <% } %>
+
+      <% if (estado === 'preparacao') { %>
+        <h1 class="ea-enunciado">Em preparação<span style="color:var(--r)">.</span></h1>
+        <p class="ea-obs">Este cenário ainda não tem decisões. Volte mais tarde.</p>
+        <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>">Voltar ao menu do curso</a>
+
+      <% } else if (estado === 'inicio') { %>
+        <p class="ea-obs">Tempo sugerido: <b><%= mmss(sug) %></b>. Passar do tempo não reprova: o que importa é decidir. São <%= total %> decisão(ões).</p>
+        <form method="POST" action="<%= base %>/cenario/<%= cenario.id %>/comecar">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="ea-pilula ea-pilula-red ea-pilula-bloco">Começar ▶</button>
+        </form>
+
+      <% } else if (estado === 'andamento') { %>
+        <p class="ea-kicker">Decisão <%= nDecisao %> de <%= total %></p>
+        <h1 class="ea-enunciado"><%= decisao.pergunta %></h1>
+        <form method="POST" action="<%= base %>/cenario/<%= cenario.id %>/escolher" class="ea-opcoes">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="hidden" name="decisaoId" value="<%= decisao.id %>">
+          <input type="hidden" name="jogada" value="<%= jogada %>">
+          <% decisao.opcoes.forEach(function (o) { %>
+            <button type="submit" name="opcaoId" value="<%= o.id %>" class="ea-opcao"><%= o.texto %></button>
+          <% }) %>
+        </form>
+
+      <% } else if (estado === 'escolha') { %>
+        <p class="ea-kicker">Decisão <%= nDecisao %> de <%= total %></p>
+        <h1 class="ea-enunciado"><%= decisao.pergunta %></h1>
+        <div class="ea-opcoes">
+          <% decisao.opcoes.forEach(function (o) { var esta = o.id === escolha.opcao.id; %>
+            <span class="ea-opcao <%= esta ? (escolha.certa ? 'certa' : 'errada') : 'apagada' %>"><%= o.texto %></span>
+          <% }) %>
+        </div>
+        <div class="ea-instrutor <%= escolha.certa ? 'ok' : 'nao' %>" role="status">
+          <strong>Instrutor:</strong>
+          <p><%= escolha.opcao.feedback %></p>
+        </div>
+        <% if (escolha.certa && escolha.fechou) { %>
+          <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= base %>/cenario/<%= cenario.id %>">Ver resultado →</a>
+        <% } else if (escolha.certa) { %>
+          <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= base %>/cenario/<%= cenario.id %>">Próxima decisão →</a>
+        <% } else { %>
+          <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= base %>/cenario/<%= cenario.id %>">Tentar de novo</a>
+        <% } %>
+
+      <% } else { %>
+        <div class="ea-resultado ok" style="padding:0">
+          <span class="ea-resultado-icone" aria-hidden="true">✓</span>
+          <p class="ea-kicker">Cenário concluído</p>
+          <h1 class="ea-titulo"><%= cenario.titulo %><span>.</span></h1>
+          <div class="ea-placar">
+            <div><small>Seu tempo</small><b class="<%= feito.tempoSeg > sug ? 'passou' : '' %>"><%= mmss(feito.tempoSeg) %></b><span>sugerido <%= mmss(sug) %></span></div>
+            <div><small>Escolhas erradas</small><b><%= feito.erros %></b><span>de <%= total %> decisão(ões)</span></div>
+          </div>
+          <p><%= feito.tempoSeg > sug ? 'Passou do tempo sugerido: isso não reprova. Na vida real, cada segundo conta; vale refazer para ganhar agilidade.' : 'Dentro do tempo sugerido. Muito bem.' %></p>
+          <% if (ctx.estado.concluido) { %>
+            <p>Você concluiu o curso. Seu certificado e o cartão de bolso estão prontos.</p>
+            <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= base %>/certificado">Ver meu certificado →</a>
+            <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/cartao-de-bolso.pdf">Baixar cartão de bolso (PDF)</a>
+          <% } else if (proximoCenario) { %>
+            <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= base %>/cenario/<%= proximoCenario.id %>">Próximo cenário: <%= proximoCenario.titulo %> →</a>
+          <% } else { %>
+            <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= base %>">Voltar ao menu do curso →</a>
+          <% } %>
+          <form method="POST" action="<%= base %>/cenario/<%= cenario.id %>/comecar">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit" class="ea-pilula ea-pilula-clara ea-pilula-bloco">Refazer este cenário</button>
+          </form>
+        </div>
+      <% } %>
+    </section>
+  </div>
+</main>
+<script src="<%= asset('/js/ead-cronometro.js') %>" defer></script>
+<%- include('_fim') %>

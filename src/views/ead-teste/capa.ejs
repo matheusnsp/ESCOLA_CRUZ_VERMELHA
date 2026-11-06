@@ -1,0 +1,139 @@
+<%
+  var totalMin = co.modulos.reduce(function (s, m) { return s + m.minutosEstimados; }, 0);
+  var horas = totalMin >= 60 ? Math.floor(totalMin / 60) + 'h' + (totalMin % 60 ? String(totalMin % 60).padStart(2, '0') : '') : totalMin + ' min';
+  var primeiro = co.modulos[0];
+  var pago = typeof modo !== 'undefined' && modo === 'pago';
+  var compra = typeof compra !== 'undefined' ? compra : null;
+  var brl = function (v) { return 'R$ ' + Number(v).toFixed(2).replace('.', ','); };
+%>
+<%- include('_topo', { titulo: co.curso.nome }) %>
+<%- include('_avisos') %>
+<% if (ctx && ctx.duvidasRespondidas && ctx.duvidasRespondidas.length) { var _dr = ctx.duvidasRespondidas; %>
+  <div class="ea-avisos ea-wrap">
+    <a class="ea-aviso ea-aviso-ok" href="<%= base %>/tela/<%= _dr[0].telaId %>#duvidas"><b><%= _dr.length === 1 ? 'Sua dúvida foi respondida' : _dr.length + ' dúvidas suas foram respondidas' %></b> pela Escola. <span>Ver a resposta →</span></a>
+  </div>
+<% } %>
+<section class="ea-heroi">
+  <% if (co.curso.imagemUrl) { %><img src="<%= co.curso.imagemUrl %>" alt=""><% } %>
+  <div class="ea-wrap ea-heroi-grid">
+    <div>
+      <p class="ea-kicker">Curso 100% online</p>
+      <h1><%= co.curso.nome %><span>.</span></h1>
+      <p class="ea-heroi-lead"><%= co.curso.descricao || 'No seu ritmo, pelo celular, com certificado da Cruz Vermelha ao concluir.' %></p>
+      <div class="ea-chips">
+        <span class="ea-chip">⏱ <%= horas %> no total</span>
+        <span class="ea-chip">▦ <%= co.modulos.length %> módulos</span>
+        <span class="ea-chip">📱 No celular, no seu ritmo</span>
+        <span class="ea-chip">✚ Certificado</span>
+      </div>
+    </div>
+    <div class="ea-cartao">
+      <% if (compra) { %>
+        <%# Modo pago sem acesso liberado: compra, pagamento em andamento ou inscrição cancelada. %>
+        <% if (compra.situacao === 'pendente') { %>
+          <p class="ea-kicker">Pagamento em andamento</p>
+          <h2>Falta só confirmar o pagamento<span style="color:var(--r)">.</span></h2>
+          <p>Assim que o banco confirmar, o curso abre aqui e você recebe um e-mail. O PIX costuma confirmar em segundos.</p>
+          <% if (compra.retornoUrl) { %><a class="ea-pilula ea-pilula-red" href="<%= compra.retornoUrl %>">Ver o pagamento →</a><% } %>
+        <% } else if (compra.situacao === 'cancelado') { %>
+          <p class="ea-kicker">Inscrição cancelada</p>
+          <h2>Sua inscrição foi cancelada<span style="color:var(--r)">.</span></h2>
+          <p>O pagamento foi cancelado ou devolvido, então o curso e o certificado ficam fechados. Para voltar a estudar, faça uma nova compra.</p>
+        <% } else { %>
+          <p class="ea-kicker">Curso online</p>
+          <% if (compra.cupom) { %>
+          <h2><s><%= brl(compra.cupom.precoCheio) %></s> <%= compra.gratis ? 'Grátis' : brl(compra.cupom.precoFinal) %><span style="color:var(--r)">.</span></h2>
+          <% } else { %>
+          <h2><%= compra.preco !== null ? brl(compra.preco) : 'Em breve' %><span style="color:var(--r)">.</span></h2>
+          <% } %>
+          <% if (compra.gratis) { %>
+          <p>Cortesia com o cupom. Acesso pelo celular, no seu ritmo, com certificado ao concluir. Capacitação teórica, sem prática em manequim.</p>
+          <% } else if (compra.maxParcelas > 1) { %>
+          <p class="ea-obs">À vista no PIX ou em até <%= compra.maxParcelas %>x no cartão.</p>
+          <p>Acesso pelo celular, no seu ritmo, com certificado ao concluir. Capacitação teórica, sem prática em manequim.</p>
+          <% } else { %>
+          <p>Pagamento único, por PIX ou cartão. Acesso pelo celular, no seu ritmo, com certificado ao concluir. Capacitação teórica, sem prática em manequim.</p>
+          <% } %>
+        <% } %>
+        <% if (compra.erro) { %><p class="ea-obs" role="alert"><b><%= compra.erro %></b></p><% } %>
+        <% if (compra.preco !== null && (co.publicado || compra.situacao === 'pendente')) { %>
+          <%# Etapa 7: cupom. GET na própria capa (?cupom=), o mesmo link serve para campanhas. %>
+          <% if (compra.cupom) { %>
+          <p class="ea-obs ea-cupom-ok">Cupom <%= compra.cupom.codigo %> aplicado: <%= brl(compra.cupom.desconto) %> de desconto. <a href="<%= base %>?cupom=">tirar</a></p>
+          <% } else { %>
+          <form method="GET" action="<%= base %>" class="ea-cupom">
+            <label class="ea-obs" for="eaCupom">Tem cupom?</label>
+            <span class="ea-cupom-linha">
+              <input id="eaCupom" type="text" name="cupom" maxlength="40" autocomplete="off" autocapitalize="characters" placeholder="CÓDIGO">
+              <button type="submit" class="ea-pilula ea-pilula-clara">Aplicar</button>
+            </span>
+            <% if (compra.erroCupom) { %><p class="ea-obs" role="alert"><b><%= compra.erroCupom %></b> <a href="<%= base %>?cupom=">tirar</a></p><% } %>
+          </form>
+          <% } %>
+          <% if (compra.logado) { %>
+          <form method="POST" action="<%= compra.comprarUrl %>" class="ea-compra">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <% if (compra.cupom) { %><input type="hidden" name="cupom" value="<%= compra.cupom.codigo %>"><% } %>
+            <% if (compra.gratis) { %>
+            <input type="hidden" name="forma" value="CUPOM">
+            <button type="submit" class="ea-pilula ea-pilula-red">Liberar curso</button>
+            <% } else { %>
+            <fieldset class="ea-compra-formas">
+              <legend class="ea-obs"><%= compra.situacao === 'pendente' ? 'Pagar de outro jeito' : 'Forma de pagamento' %></legend>
+              <label><input type="radio" name="forma" value="PIX" checked> PIX</label>
+              <label><input type="radio" name="forma" value="CREDITO"> Cartão de crédito</label>
+            </fieldset>
+            <button type="submit" class="ea-pilula <%= compra.situacao === 'pendente' ? 'ea-pilula-clara' : 'ea-pilula-red' %>">Comprar · <%= brl(compra.cupom ? compra.cupom.precoFinal : compra.preco) %></button>
+            <% } %>
+          </form>
+          <% } else { %>
+          <a class="ea-pilula ea-pilula-red" href="<%= base %>/criar-conta"><%= compra.gratis ? 'Criar conta e liberar' : 'Comprar · ' + brl(compra.cupom ? compra.cupom.precoFinal : compra.preco) %></a>
+          <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/continuar">Já tenho conta</a>
+          <% } %>
+        <% } %>
+      <% } else if (ctx) { %>
+        <p class="ea-kicker"><%= ctx.estado.concluido ? 'Curso concluído' : 'Seu progresso' %></p>
+        <h2><%= ctx.estado.percentual %>% concluído<span style="color:var(--r)">.</span></h2>
+        <span class="ea-progresso-trilho ea-progresso-grande"><span style="width: <%= ctx.estado.percentual %>%"></span></span>
+        <p><%= ctx.estado.concluido ? 'Você terminou todos os módulos. Seu certificado e o cartão de bolso estão prontos.' : (ctx.estado.sequencial ? 'Nos primeiros 7 dias os módulos abrem em sequência. Depois, na ordem que você quiser.' : 'Os módulos estão liberados na ordem que você quiser; o final abre quando os outros terminarem.') %></p>
+        <% if (!ctx.estado.concluido) { %><a class="ea-pilula ea-pilula-red" href="<%= continuarUrl %>">Continuar de onde parou →</a><% } %>
+        <% if (ctx.certificadoLiberado) { %>
+        <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= base %>/certificado">Ver meu certificado →</a>
+        <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/cartao-de-bolso.pdf">Baixar cartão de bolso (PDF)</a>
+        <% } %>
+      <% } else { %>
+        <p class="ea-kicker">Comece agora</p>
+        <h2><%= primeiro ? 'Módulo 1: ' + primeiro.titulo : 'Em preparação' %></h2>
+        <p>Telas curtas com vídeo de até 3 minutos, revisão rápida e um alerta. Você para quando quiser e continua de onde parou.</p>
+        <a class="ea-pilula ea-pilula-red" href="<%= base %>/criar-conta">Criar conta e começar →</a>
+        <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/continuar">Já tenho conta</a>
+      <% } %>
+    </div>
+  </div>
+</section>
+
+<main class="ea-wrap ea-secao">
+  <p class="ea-kicker">Conteúdo</p>
+  <h2 class="ea-secao-h">Módulos do curso<span>.</span></h2>
+  <% if (!co.modulos.length) { %><p class="ea-obs">Este curso ainda não tem módulos.</p><% } %>
+  <ol class="ea-modulos">
+    <% co.modulos.forEach(function (m, i) { var telas = m.topicos.reduce(function (s, t) { return s + t.telas.length; }, 0); var em = ctx ? ctx.estado.modulos[i] : null; %>
+      <li>
+        <%# Modo pago sem acesso: a lista mostra o conteúdo, mas não abre o módulo. O selo é só do teste. %>
+        <<%= compra ? 'div' : 'a' %> class="ea-mod <%= m.final ? 'final' : '' %> <%= em ? 'est-' + em.estado : '' %>"<% if (!compra) { %> href="<%= base %>/modulo/<%= m.id %>"<% } %>>
+          <span class="ea-mod-topo"><span class="ea-mod-num"><%= String(i + 1).padStart(2, '0') %></span><% if (!pago) { %><span class="ea-selo <%= m.status === 'VALIDADO' ? 'ok' : '' %>"><%= m.status === 'VALIDADO' ? 'Validado' : 'Rascunho' %></span><% } %></span>
+          <h3><%= m.titulo %></h3>
+          <span class="ea-mod-meta"><%= m.minutosEstimados %> min · <%= m.final ? m.cenarios.length + ' cenário(s) para decidir' : m.topicos.length + ' tópico(s) · ' + telas + ' tela(s)' %></span>
+          <% if (em && em.estado === 'bloqueado') { %>
+            <span class="ea-mod-pe ea-mod-bloq"><span>🔒 <%= em.motivo %></span></span>
+          <% } else if (em && em.estado === 'concluido') { %>
+            <span class="ea-mod-pe ea-mod-ok"><span>✓ Concluído</span><span>Rever →</span></span>
+          <% } else { %>
+            <span class="ea-mod-pe"><span><%= m.final ? 'Juntando tudo' : 'Módulo ' + (i + 1) %></span><% if (!compra) { %><span>Abrir →</span><% } %></span>
+          <% } %>
+        </<%= compra ? 'div' : 'a' %>>
+      </li>
+    <% }) %>
+  </ol>
+</main>
+<%- include('_fim') %>

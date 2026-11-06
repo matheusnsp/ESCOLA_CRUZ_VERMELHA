@@ -1,0 +1,57 @@
+<%
+  var dataBR = function (d) { return d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'; };
+  var quando = function (d) { return d ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'; };
+  var ROT_PAG = { PAGO: 'Pago', PARCELADO: 'Pago', PENDENTE: 'Aguardando', CANCELADO: 'Cancelado', ESTORNADO: 'Estornado' };
+  var FILTROS = [['todos', 'Todos'], ['andamento', 'Em andamento'], ['concluidos', 'Concluídos'], ['cancelados', 'Cancelados']];
+%>
+<%- include('../head', { titulo: 'Alunos · ' + co.curso.nome }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= co.curso.nome %></h1>
+  <a href="/ead" class="adm-link">← Cursos online</a>
+</div>
+<%- include('_abas-curso', { co: co, aba: 'alunos' }) %>
+
+<nav class="ead-filtros" aria-label="Filtrar alunos">
+  <% FILTROS.forEach(function (f) { %>
+    <a href="?filtro=<%= f[0] %>" class="<%= filtro === f[0] ? 'on' : '' %>"><%= f[1] %></a>
+  <% }) %>
+</nav>
+
+<div class="adm-box adm-espaco">
+  <% if (!lista.length) { %>
+    <p class="ead-vazio">Ninguém aqui ainda.</p>
+  <% } else { %>
+    <div class="ead-tabela-rolagem">
+    <table class="adm-table">
+      <thead><tr>
+        <th>Aluno</th><th>Origem</th><th>Inscrição</th><th>Pagamento</th><th class="centro">Concluído</th><th>Último acesso</th><th>Fase</th><th>Concluiu em</th>
+      </tr></thead>
+      <tbody>
+        <% lista.forEach(function (l) { %>
+          <tr>
+            <td>
+              <% if (l.alunoCursoId) { %><a href="/ead/curso/<%= co.id %>/alunos/<%= l.alunoCursoId %>"><strong><%= l.usuario.nome %></strong></a><% } else { %><strong><%= l.usuario.nome %></strong><% } %>
+              <br><small class="adm-mut"><%= l.usuario.email %></small>
+            </td>
+            <td><span class="ead-selo <%= l.origem === 'Pago' ? 'validado' : 'final' %>"><%= l.origem %></span><% if (l.cupom) { %><br><small class="adm-mut">Cupom <%= l.cupom %></small><% } %></td>
+            <td><%= dataBR(l.inscricaoEm) %></td>
+            <td><%= l.pagamento ? ROT_PAG[l.pagamento] || l.pagamento : '—' %></td>
+            <td class="centro">
+              <span class="ead-barra" aria-hidden="true"><span style="width: <%= l.percentual %>%"></span></span>
+              <b><%= l.percentual %>%</b>
+            </td>
+            <td><%= quando(l.ultimoAcesso) %></td>
+            <td><%= l.fase || '—' %></td>
+            <td><%= dataBR(l.concluidoEm) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    </div>
+  <% } %>
+</div>
+<p class="adm-nota"><i class="fa-solid fa-circle-info"></i> "Pago": matrícula da turma online (o pagamento é o de hoje). "Teste": entrou pelo link de teste. A fase "Nos 7 dias" conta do pagamento confirmado; nela os módulos abrem em sequência.</p>
+
+<%- include('../foot') %>

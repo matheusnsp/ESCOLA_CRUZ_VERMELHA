@@ -1,0 +1,54 @@
+<% var v = valores || {}; %>
+<%- include('../head', { titulo: 'Novo lote' }) %>
+<%- include('../header', { ativo: 'escolas' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Novo lote de vagas</h1>
+  <a href="/ead/escolas" class="adm-link">← Escolas</a>
+</div>
+<%- include('_mensagens', { ok: null }) %>
+
+<form method="POST" action="/ead/escolas/lote/novo" class="adm-box adm-box-pad">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <h2 class="adm-h2 adm-form-h">Escola ou empresa</h2>
+  <div class="adm-form adm-campos">
+    <label class="full">Escola já cadastrada
+      <select name="escolaId">
+        <option value="">— nova escola (preencha abaixo) —</option>
+        <% escolas.forEach(function (e) { %><option value="<%= e.id %>" <%= v.escolaId === e.id ? 'selected' : '' %>><%= e.nome %></option><% }) %>
+      </select>
+    </label>
+    <label>Nome da escola nova<input type="text" name="escolaNome" maxlength="160" value="<%= v.escolaNome || '' %>"></label>
+    <label>CNPJ (opcional)<input type="text" name="escolaCnpj" maxlength="18" inputmode="numeric" value="<%= v.escolaCnpj || '' %>" placeholder="00.000.000/0000-00"></label>
+  </div>
+
+  <h2 class="adm-h2 adm-form-h">Vagas e pagamento</h2>
+  <div class="adm-form adm-campos">
+    <label class="full">Curso online
+      <select name="cursoOnlineId" required>
+        <option value="">— escolha —</option>
+        <% cursos.forEach(function (c) { %><option value="<%= c.id %>" <%= v.cursoOnlineId === c.id ? 'selected' : '' %>><%= c.curso.nome %></option><% }) %>
+      </select>
+    </label>
+    <label>Vagas<input type="number" name="vagas" min="1" max="5000" required value="<%= v.vagas || '' %>"></label>
+    <label>Cadastro até<input type="date" name="validoAte" required value="<%= v.validoAte || '' %>"></label>
+    <label>Valor total (R$)<input type="text" name="valor" inputmode="decimal" required value="<%= v.valor || '' %>" placeholder="1.200,00"></label>
+    <label>Forma
+      <select name="forma"><% formas.forEach(function (f) { %><option value="<%= f %>" <%= v.forma === f ? 'selected' : '' %>><%= { PIX: 'PIX', BOLETO: 'Boleto', TRANSFERENCIA: 'Transferência', EMPENHO: 'Empenho', OUTRO: 'Outro' }[f] %></option><% }) %></select>
+    </label>
+    <label>Já recebido em (opcional)<input type="date" name="recebidoEm" value="<%= v.recebidoEm || '' %>"></label>
+    <label class="full">Observação (nº do empenho, nota…)<input type="text" name="observacao" maxlength="300" value="<%= v.observacao || '' %>"></label>
+  </div>
+
+  <h2 class="adm-h2 adm-form-h">Gestor da escola</h2>
+  <p class="adm-mut">Quem cadastra a equipe em "Minha escola". Se ainda não tem conta, ela é criada (senha inicial: 4 últimos dígitos do CPF) e a pessoa recebe um e-mail. Para escola já cadastrada, pode ser um dos gestores atuais.</p>
+  <div class="adm-form adm-campos">
+    <label>Nome<input type="text" name="gestorNome" maxlength="120" required value="<%= v.gestorNome || '' %>"></label>
+    <label>E-mail<input type="email" name="gestorEmail" maxlength="160" required value="<%= v.gestorEmail || '' %>"></label>
+    <label>Celular<input type="tel" name="gestorCelular" maxlength="20" value="<%= v.gestorCelular || '' %>"></label>
+    <label>CPF<input type="text" name="gestorCpf" maxlength="14" inputmode="numeric" required value="<%= v.gestorCpf || '' %>"></label>
+  </div>
+  <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> Criar lote</button>
+</form>
+
+<%- include('../foot') %>

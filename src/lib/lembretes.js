@@ -375,6 +375,9 @@ async function enviarLembreteAvulso(matriculaId) {
     return { ok: false, motivo: 'A turma está congelada: sem lembretes até ela ser retomada.' };
   }
   // Turma em espera (sem data): sem lembrete até o aluno ser encaixado numa turma.
+  if (m.turma && m.turma.status === 'ONLINE') {
+    return { ok: false, motivo: 'Matrícula de curso online: a cobrança é única, sem lembretes do presencial.' };
+  }
   if (m.turma && m.turma.status === 'EM_ESPERA') {
     return { ok: false, motivo: 'O aluno está na lista de espera: sem lembretes até ser encaixado numa turma.' };
   }

@@ -1,0 +1,109 @@
+<%#
+  Uma tela do curso online como o aluno vê. Identidade do site da escola (vitrine.css): Inter, vermelho
+  #d9081f, cartões brancos de 24px, botões em pílula, sobretítulo vermelho, título com ponto vermelho.
+  Estilos em public/ead.css (classes ea-*). Usada pela pré-visualização do painel e pelo link de teste.
+  Locais: cursoNome, moduloNumero, modulo, topicos, tela, topicoIndex, urlTela(id), anterior (url|null),
+          proxima ({ titulo, url } | null), posicao, total, fimUrl/fimTitulo (opcionais), menuUrl (opcional),
+          quizForm ({ url, titulo }, opcional: troca o "Continuar" pelo teste rápido do tópico).
+%>
+<%
+  var dur = tela.videoDuracaoSeg ? Math.floor(tela.videoDuracaoSeg / 60) + ':' + String(tela.videoDuracaoSeg % 60).padStart(2, '0') : '';
+  var seguinte = proxima || (typeof fimUrl !== 'undefined' && fimUrl ? { titulo: (typeof fimTitulo !== 'undefined' && fimTitulo) || 'Fim do módulo', url: fimUrl } : null);
+  var pct = total ? Math.round(posicao / total * 100) : 0;
+  var n = 0; // posição de cada tela no índice (para marcar as já vistas)
+%>
+<div class="ea">
+  <div class="ea-aulabar">
+    <div class="ea-aulabar-mod">
+      <span class="ea-aulabar-num"><%= String(moduloNumero).padStart(2, '0') %></span>
+      <span><small>Módulo <%= moduloNumero %></small><strong><%= modulo.titulo %></strong></span>
+    </div>
+    <div class="ea-progresso" aria-label="Tela <%= posicao %> de <%= total %>">
+      <span>Tela <b><%= posicao %></b> de <%= total %></span>
+      <span class="ea-progresso-trilho"><span style="width: <%= pct %>%"></span></span>
+    </div>
+    <% if (typeof menuUrl !== 'undefined' && menuUrl) { %><a class="ea-pilula ea-pilula-clara ea-aulabar-menu" href="<%= menuUrl %>"><span aria-hidden="true">☰</span> <span class="ea-so-pc">Menu do curso</span><span class="ea-so-cel">Menu</span></a><% } %>
+  </div>
+
+  <div class="ea-aula">
+    <%# Índice do módulo: no computador fica sempre aberto ao lado; no celular, fechado em cima (abre ao tocar). %>
+    <details class="ea-indice ea-indice-cel">
+      <summary><span>Conteúdo do módulo</span><small>Tela <%= posicao %> de <%= total %></small></summary>
+      <ol>
+        <% n = 0; topicos.forEach(function (t, ti) { %>
+          <li class="<%= ti === topicoIndex ? 'atual' : '' %>">
+            <span class="ea-indice-top"><span class="ea-indice-n"><%= ti + 1 %></span><%= t.titulo %></span>
+            <% if (t.telas.length) { %><ul><% t.telas.forEach(function (x) { n++; var est = x.id === tela.id ? 'atual' : (n < posicao ? 'vista' : ''); %>
+              <li class="<%= est %>"><a href="<%= urlTela(x.id) %>"<%- est === 'atual' ? ' aria-current="page"' : '' %>><i aria-hidden="true"></i><%= x.titulo %></a></li>
+            <% }) %></ul><% } %>
+          </li>
+        <% }) %>
+      </ol>
+    </details>
+    <aside class="ea-indice ea-indice-pc" aria-label="Conteúdo do módulo">
+      <p class="ea-indice-tit">Conteúdo do módulo</p>
+      <ol>
+        <% n = 0; topicos.forEach(function (t, ti) { %>
+          <li class="<%= ti === topicoIndex ? 'atual' : '' %>">
+            <span class="ea-indice-top"><span class="ea-indice-n"><%= ti + 1 %></span><%= t.titulo %></span>
+            <% if (t.telas.length) { %><ul><% t.telas.forEach(function (x) { n++; var est = x.id === tela.id ? 'atual' : (n < posicao ? 'vista' : ''); %>
+              <li class="<%= est %>"><a href="<%= urlTela(x.id) %>"<%- est === 'atual' ? ' aria-current="page"' : '' %>><i aria-hidden="true"></i><%= x.titulo %></a></li>
+            <% }) %></ul><% } %>
+          </li>
+        <% }) %>
+      </ol>
+    </aside>
+
+    <article class="ea-tela">
+      <p class="ea-kicker">Tópico <%= topicoIndex + 1 %> · <%= topicos[topicoIndex].titulo %></p>
+      <h1 class="ea-titulo"><%= tela.titulo %><span>.</span></h1>
+
+      <section class="ea-ancora <%= tela.fotoUrl ? '' : 'sem-foto' %>">
+        <% if (tela.fotoUrl) { %><img src="<%= tela.fotoUrl %>" alt="" loading="lazy"><% } %>
+        <% if (tela.ancora) { %><p><%= tela.ancora %></p><% } %>
+      </section>
+
+      <% if (tela.videoUrl) { %>
+        <section class="ea-video">
+          <div class="ea-video-cab">
+            <span class="ea-play" aria-hidden="true">▶</span>
+            <span><small>Assista</small><strong><%= tela.videoTitulo || 'Vídeo da aula' %></strong></span>
+            <% if (dur) { %><span class="ea-chip"><%= dur %></span><% } %>
+          </div>
+          <div class="ea-video-quadro"><iframe src="<%= tela.videoUrl %>" title="<%= tela.videoTitulo || 'Vídeo' %>" allow="fullscreen; picture-in-picture; encrypted-media" allowfullscreen loading="lazy"></iframe></div>
+        </section>
+      <% } %>
+
+      <% if (tela.revisaoItens && tela.revisaoItens.length) { %>
+        <section class="ea-revisao">
+          <p class="ea-kicker">Revisão rápida</p>
+          <% if (tela.revisaoTitulo) { %><h2><%= tela.revisaoTitulo.charAt(0).toUpperCase() + tela.revisaoTitulo.slice(1) %><span>.</span></h2><% } %>
+          <ol><% tela.revisaoItens.forEach(function (it, i) { %><li><span class="ea-revisao-n"><%= String(i + 1).padStart(2, '0') %></span><p><%= it %></p></li><% }) %></ol>
+        </section>
+      <% } %>
+
+      <% if (tela.alerta) { %>
+        <section class="ea-alerta" role="note">
+          <span class="ea-alerta-icone" aria-hidden="true">!</span>
+          <div><strong>Alerta</strong><p><%= tela.alerta %></p></div>
+        </section>
+      <% } %>
+      <% if (tela.dicaProfissional) { %>
+        <section class="ea-dica"><strong>Dica de profissional</strong><p><%= tela.dicaProfissional %></p></section>
+      <% } %>
+
+      <nav class="ea-nav">
+        <% if (anterior) { %><a class="ea-pilula ea-pilula-clara" href="<%= anterior %>">← Voltar</a><% } else { %><span></span><% } %>
+        <% if (typeof quizForm !== 'undefined' && quizForm) { %>
+          <%# Aluno logado, última tela do tópico: o próximo passo é o teste rápido (POST, abre a tentativa). %>
+          <form method="POST" action="<%= quizForm.url %>" class="ea-seguir-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit" class="ea-seguir"><span><small>A seguir</small><strong><%= quizForm.titulo %></strong></span><em>Fazer o teste →</em></button>
+          </form>
+        <% } else if (seguinte) { %>
+          <a class="ea-seguir" href="<%= seguinte.url %>"><span><small>A seguir</small><strong><%= seguinte.titulo %></strong></span><em>Continuar →</em></a>
+        <% } %>
+      </nav>
+    </article>
+  </div>
+</div>

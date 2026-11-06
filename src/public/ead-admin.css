@@ -1,0 +1,128 @@
+/* Painel → EAD (curso online). Só as peças que o admin.css não tem. */
+.ead-selo { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: .02em; }
+.ead-selo.rascunho { background: var(--alerta-bg); color: var(--alerta-tx); }
+.ead-selo.validado { background: var(--ok-bg); color: var(--ok-tx); }
+.ead-selo.final { background: var(--info-bg); color: var(--info-tx); }
+
+.ead-lista { list-style: none; margin: 0; padding: 0; }
+.ead-lista > li { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--linha2); flex-wrap: wrap; }
+.ead-lista > li:first-child { border-top: 0; }
+.ead-lista .ead-num { font: 800 22px var(--fonte-t); color: var(--vermelho-txt); width: 32px; text-align: center; flex: none; }
+.ead-lista .ead-tit { flex: 1; min-width: 180px; }
+.ead-lista .ead-tit a { color: var(--tinta); font-weight: 700; text-decoration: none; }
+.ead-lista .ead-tit a:hover { text-decoration: underline; }
+.ead-lista .ead-tit small { display: block; color: var(--mut); font-size: 12.5px; margin-top: 2px; }
+.ead-acoes { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ead-acoes form { display: inline; margin: 0; }
+
+.ead-caixa { border-radius: var(--r-s); padding: 12px 16px; margin: 0 0 14px; font-size: 14px; }
+.ead-caixa h3 { margin: 0 0 6px; font-size: 14px; }
+.ead-caixa ul { margin: 0; padding-left: 18px; }
+.ead-caixa li { margin: 3px 0; }
+.ead-caixa.pend { background: var(--erro-bg); color: var(--erro-tx); border: 1px solid var(--erro-bd); }
+.ead-caixa.aviso { background: var(--alerta-bg); color: var(--alerta-tx); border: 1px solid var(--alerta-bd); }
+.ead-caixa.ok { background: var(--ok-bg); color: var(--ok-tx); border: 1px solid var(--ok-bd); }
+.ead-faixa-validado { background: var(--alerta-bg); color: var(--alerta-tx); border: 1px solid var(--alerta-bd); border-radius: var(--r-s); padding: 10px 14px; margin: 0 0 14px; font-weight: 600; font-size: 14px; }
+
+.ead-topico { margin-bottom: 16px; }
+.ead-topico-cab { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--linha); flex-wrap: wrap; }
+.ead-topico-cab h3 { margin: 0; flex: 1; font-size: 16px; min-width: 160px; }
+.ead-sub { padding: 8px 16px 2px; font-size: 12px; font-weight: 800; color: var(--mut); text-transform: uppercase; letter-spacing: .05em; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.ead-sub .falta { color: var(--erro-tx); }
+.ead-sub .meta { color: var(--alerta-tx); }
+.ead-sub .bom { color: var(--ok-tx); }
+.ead-vazio { padding: 10px 16px; color: var(--mut); font-size: 14px; }
+.ead-inline { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px dashed var(--linha); flex-wrap: wrap; }
+.ead-inline input[type=text] { flex: 1; min-width: 180px; }
+.ead-inativa { opacity: .55; }
+
+.ead-link-teste { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ead-link-teste input { flex: 1; min-width: 220px; font-family: ui-monospace, monospace; font-size: 12.5px; }
+
+.ead-alts { display: grid; gap: 8px; }
+.ead-alt { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; }
+.ead-alt input[type=text] { width: 100%; }
+.ead-vf-campos { display: none; }
+.ead-pergunta-form:has(#tipoVF:checked) .ead-vf-campos { display: grid; }
+.ead-pergunta-form:has(#tipoVF:checked) .ead-alts-normais { display: none; }
+.ead-opcao { border: 1px solid var(--linha); border-radius: var(--r-s); padding: 12px; display: grid; gap: 8px; }
+
+.adm-btn:disabled, .adm-btn[disabled] { opacity: .45; cursor: not-allowed; filter: grayscale(.4); }
+.ead-inline input[type=text] {
+  border: 1px solid var(--linha); border-radius: var(--r-s);
+  padding: 11px 13px; font: inherit; font-size: 14px; background: var(--campo); color: var(--tinta);
+}
+.ead-inline input[type=text]:focus { outline: none; border-color: var(--vermelho); box-shadow: 0 0 0 3px var(--foco); }
+
+/* Etapa 4: venda no site */
+.ead-venda-grade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.ead-venda-grade .adm-form label { display: grid; gap: 6px; }
+.ead-venda-estado { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 12px; }
+.ead-pendencias { margin: 0; padding-left: 18px; color: var(--alerta-tx); font-size: 14px; line-height: 1.6; }
+@media (max-width: 720px) { .ead-venda-grade { grid-template-columns: 1fr; } }
+.ead-venda-preco { padding: 0; gap: 10px; justify-items: start; }
+.ead-venda-preco label { width: 100%; max-width: 260px; }
+.ead-venda-preco .adm-mut { margin: 0; }
+
+/* .adm-btn (texto branco) + .adm-btn-out (fundo do campo) davam texto branco no branco: nas páginas do
+   EAD o botão de contorno tem texto escuro e borda, e fica vermelho no hover. */
+.adm-btn.adm-btn-out { color: var(--tinta); background: var(--campo); border: 1px solid var(--linha); }
+.adm-btn.adm-btn-out:hover { color: var(--vermelho); border-color: var(--vermelho); background: var(--campo); }
+
+/* Etapa 4: alunos, detalhe e concluintes */
+.ead-filtros { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.ead-filtros a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--linha); color: var(--tinta-60); font-size: 13px; font-weight: 700; text-decoration: none; background: var(--campo); }
+.ead-filtros a.on { background: var(--tinta); border-color: var(--tinta); color: var(--campo); }
+.ead-tabela-rolagem { overflow-x: auto; }
+.ead-barra { display: inline-block; width: 64px; height: 6px; border-radius: 999px; background: var(--linha); overflow: hidden; vertical-align: middle; margin-right: 6px; }
+.ead-barra span { display: block; height: 100%; background: var(--vermelho); }
+.ead-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; }
+.ead-resumo small { display: block; color: var(--tinta-60); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.ead-resumo b { font-size: 18px; }
+.ead-quebra { overflow-wrap: anywhere; font-size: 14px !important; }
+
+/* Etapa 5: central de dúvidas */
+.adm-badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: var(--vermelho); color: #fff; font-size: 11.5px; font-weight: 800; }
+.ead-filtro-curso { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 0 0 16px; }
+.ead-filtro-curso label { display: grid; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--tinta-60); }
+.ead-filtro-curso select { min-width: 260px; padding: 10px 12px; border: 1px solid var(--linha); border-radius: var(--r-s); background: var(--campo); color: var(--tinta); font: inherit; }
+.ead-duvida-cab { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; }
+.ead-duvida-cab > div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.ead-duvida-onde { margin: 8px 0 0; font-size: 13px; color: var(--tinta-60); }
+.ead-duvida-texto { margin: 10px 0 0; white-space: pre-line; overflow-wrap: anywhere; line-height: 1.55; }
+.ead-duvida-resposta { margin-top: 12px; padding: 10px 14px; border-left: 4px solid var(--vermelho); background: var(--bg); border-radius: 0 var(--r-s) var(--r-s) 0; }
+.ead-duvida-resposta small { color: var(--tinta-60); font-weight: 700; }
+.ead-duvida-acoes { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; margin-top: 14px; align-items: end; }
+.ead-duvida-acoes form, .ead-duvida-acoes details form { display: grid; gap: 8px; }
+.ead-duvida-acoes label { display: grid; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--tinta-60); }
+.ead-duvida-acoes textarea, .ead-duvida-acoes input[type=text] { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--linha); border-radius: var(--r-s); background: var(--campo); color: var(--tinta); font: inherit; }
+.ead-duvida-acoes .adm-btn, .ead-duvida-acoes .adm-btn-out { justify-self: start; }
+.ead-duvida-editar summary { cursor: pointer; font-weight: 700; color: var(--vermelho); margin-bottom: 8px; }
+@media (max-width: 720px) { .ead-duvida-acoes { grid-template-columns: 1fr; } .ead-filtro-curso select { min-width: 0; width: 100%; } }
+.adm-aba.on .adm-badge-sutil { color: #fff; background: rgba(255,255,255,.22); }
+.ead-duvida-onde a { color: var(--vermelho); font-weight: 700; text-decoration: none; }
+.ead-duvida-onde a:hover { text-decoration: underline; }
+.ead-dados-grade { display: flex; gap: 16px; align-items: flex-start; }
+.ead-dados-grade img { width: 140px; height: 90px; object-fit: cover; border-radius: 10px; flex: none; }
+.ead-dados-grade p { margin: 0 0 6px; }
+.ead-novo-so-online { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.ead-novo-so-online .adm-mut { margin: 0; }
+.ead-dados-curso .ead-topico-cab { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 0 12px; border-bottom: 1px solid var(--linha2); margin-bottom: 12px; }
+.ead-dados-curso .ead-topico-cab h2 { margin: 0; display: flex; align-items: center; gap: 8px; }
+
+/* Etapa 6: escolas e lotes */
+.ead-sep { border: 0; border-top: 1px solid var(--linha2); margin: 16px 0; }
+.ead-gestores li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--tinta); }
+.ead-gestores form { display: inline; }
+.ead-sumario { cursor: pointer; font-weight: 700; color: var(--vermelho); margin: 8px 0; }
+.ead-removido td { opacity: .55; }
+
+/* Etapa 9: editor do roteiro gerado pela IA */
+.ia-roteiro .ia-modulo { border: 1px solid #e6e2dc; border-radius: 12px; padding: 14px 16px 12px; margin: 0 0 14px; }
+.ia-roteiro .ia-topicos { margin: 10px 0 8px; padding-left: 12px; border-left: 3px solid #f1d4d4; }
+.ia-roteiro [data-mais-topico] { margin: 0 0 10px; }
+html[data-tema="escuro"] .ia-roteiro .ia-modulo { border-color: #3a4149; }
+
+.ia-roteiro .ia-bloco-cenarios { display: none; }
+.ia-roteiro .ia-final .ia-bloco-cenarios { display: block; }
+.ia-roteiro .ia-final .ia-bloco-topicos { display: none; }

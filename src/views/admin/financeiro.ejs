@@ -16,10 +16,13 @@ function dataBR(d) {
 //
 // Uma tabela só de pagamentos (uma linha por matrícula), em vez de "Taxa paga" e "Matrículas
 // geradas" repetindo as mesmas pessoas. O que ainda não foi pago fica na tela Pendentes.
-const ROTULO = { curso: 'Matrícula + inscrição', taxa: 'Só a inscrição', estornado: 'Estornado' };
-const BADGE  = { curso: 'ok', taxa: 'pend', estornado: 'est' };
-const conta  = { curso: 0, taxa: 0, estornado: 0 };
+const ROTULO = { curso: 'Matrícula + inscrição', taxa: 'Só a inscrição', estornado: 'Estornado', lote: 'Lote de escola', lote_a_receber: 'Lote a receber' };
+const BADGE  = { curso: 'ok', taxa: 'pend', estornado: 'est', lote: 'ok', lote_a_receber: 'pend' };
+const conta  = { curso: 0, taxa: 0, estornado: 0, lote: 0 };
 pagamentos.forEach(p => { conta[p.tipo]++; });
+// Etapa 6: lotes de escolas do curso online (recebidos e a receber), na mesma tabela.
+const _lotes = typeof lotesLinhas !== 'undefined' ? lotesLinhas : [];
+conta.lote = _lotes.length;
 %>
 
 <div class="adm-h1-row">
@@ -149,13 +152,14 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
   </div>
 
   <div class="adm-abas adm-fin-abas" role="tablist">
-    <button type="button" class="adm-aba on" data-filtro="todos">Todos <span class="adm-aba-num"><%= pagamentos.length %></span></button>
+    <button type="button" class="adm-aba on" data-filtro="todos">Todos <span class="adm-aba-num"><%= pagamentos.length + _lotes.length %></span></button>
     <button type="button" class="adm-aba" data-filtro="curso">Matrícula paga <span class="adm-aba-num"><%= conta.curso %></span></button>
     <button type="button" class="adm-aba" data-filtro="taxa">Só a inscrição <span class="adm-aba-num"><%= conta.taxa %></span></button>
     <button type="button" class="adm-aba" data-filtro="estornado">Estornados <span class="adm-aba-num"><%= conta.estornado %></span></button>
+    <% if (conta.lote) { %><button type="button" class="adm-aba" data-filtro="lote">Lotes de escolas <span class="adm-aba-num"><%= conta.lote %></span></button><% } %>
   </div>
 
-  <% if (!pagamentos.length) { %>
+  <% if (!pagamentos.length && !_lotes.length) { %>
     <p class="adm-vazio">Nenhum pagamento recebido ainda.</p>
   <% } else { %>
     <table class="adm-table adm-table-cards">
@@ -201,6 +205,16 @@ pagamentos.forEach(p => { conta[p.tipo]++; });
               <span class="adm-mut">—</span>
             <% } %>
           </td>
+        </tr>
+        <% }) %>
+        <% _lotes.forEach((x) => { %>
+        <tr data-tipo="lote" data-busca="<%= (x.escola + ' ' + x.curso + ' lote').toLowerCase() %>">
+          <td><strong><%= x.escola %></strong><br><span class="badge mut">Escola / empresa</span></td>
+          <td><%= x.curso %> <small class="adm-mut">(curso online)</small></td>
+          <td><span class="badge <%= BADGE[x.tipo] %>"><%= ROTULO[x.tipo] %></span><br><small class="adm-mut"><%= x.rotulo %></small></td>
+          <td><%= dataBR(x.data) %></td>
+          <td><strong><%= formatBRL(x.valor) %></strong></td>
+          <td><% if (typeof admPapel !== 'undefined' && admPapel === 'DEV') { %><a class="adm-link" href="/ead/escolas/lote/<%= x.loteId %>">Ver lote</a><% } else { %><span class="adm-mut">—</span><% } %></td>
         </tr>
         <% }) %>
       </tbody>

@@ -1,0 +1,82 @@
+<% var tempo = function (s) { if (s === null || s === undefined) return '—'; return Math.floor(s / 60) + 'min' + String(s % 60).padStart(2, '0') + 's'; }; %>
+<%- include('../head', { titulo: 'Desempenho · ' + co.curso.nome }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= co.curso.nome %></h1>
+  <a href="/ead" class="adm-link">← Cursos online</a>
+</div>
+<%- include('_abas-curso', { co: co, aba: 'desempenho' }) %>
+
+<div class="adm-box adm-espaco">
+  <div class="ead-topico-cab"><h3>Perguntas que mais erram</h3></div>
+  <% if (!d.perguntas.length) { %>
+    <p class="ead-vazio">Ainda não há pergunta com 5 respostas ou mais (testes rápidos e pré-testes).</p>
+  <% } else { %>
+    <div class="ead-tabela-rolagem"><table class="adm-table">
+      <thead><tr><th>Pergunta</th><th>Tópico</th><th class="centro">Respostas</th><th class="centro">% de erro</th><th></th></tr></thead>
+      <tbody>
+        <% d.perguntas.forEach(function (p) { %>
+          <tr>
+            <td><%= p.enunciado %></td>
+            <td><%= p.topico %></td>
+            <td class="centro"><%= p.respostas %></td>
+            <td class="centro"><span class="ead-barra" aria-hidden="true"><span style="width: <%= p.pctErro %>%"></span></span><b><%= p.pctErro %>%</b></td>
+            <td><a class="adm-btn adm-btn-out" href="/ead/pergunta/<%= p.id %>/editar"><i class="fa-solid fa-pen"></i> Editar</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table></div>
+  <% } %>
+</div>
+
+<div class="adm-box adm-espaco">
+  <div class="ead-topico-cab"><h3>Cenários</h3></div>
+  <% if (!d.cenarios.length) { %><p class="ead-vazio">Este curso não tem cenários.</p><% } else { %>
+  <div class="ead-tabela-rolagem"><table class="adm-table">
+    <thead><tr><th>Cenário</th><th class="centro">Concluídos</th><th class="centro">Tempo médio</th><th class="centro">Sugerido</th><th class="centro">Acima do tempo</th><th class="centro">Erros por jogada</th></tr></thead>
+    <tbody>
+      <% d.cenarios.forEach(function (c) { %>
+        <tr>
+          <td><%= c.titulo %></td>
+          <td class="centro"><%= c.feitos %></td>
+          <td class="centro"><%= tempo(c.tempoMedioSeg) %></td>
+          <td class="centro"><%= tempo(c.tempoSugeridoSeg) %></td>
+          <td class="centro"><%= c.feitos ? c.pctEstourou + '%' : '—' %></td>
+          <td class="centro"><%= c.errosMedios === null ? '—' : String(c.errosMedios).replace('.', ',') %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+
+<div class="adm-box adm-espaco">
+  <div class="ead-topico-cab"><h3>Pré-teste por módulo</h3></div>
+  <% if (!d.preTestes.length) { %><p class="ead-vazio">Ninguém fez pré-teste ainda.</p><% } else { %>
+  <div class="ead-tabela-rolagem"><table class="adm-table">
+    <thead><tr><th>Módulo</th><th class="centro">Tentativas</th><th class="centro">Aprovação</th></tr></thead>
+    <tbody>
+      <% d.preTestes.forEach(function (p) { %>
+        <tr><td><%= p.titulo %></td><td class="centro"><%= p.tentativas %></td><td class="centro"><%= p.pctAprovacao %>%</td></tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+<div class="adm-box adm-espaco">
+  <div class="ead-topico-cab"><h3>Telas com mais dúvidas</h3><a class="adm-link" href="/ead/duvidas?curso=<%= co.id %>">Abrir a central de dúvidas →</a></div>
+  <% if (!d.duvidasPorTela.length) { %><p class="ead-vazio">Nenhuma dúvida mandada ainda.</p><% } else { %>
+  <div class="ead-tabela-rolagem"><table class="adm-table">
+    <thead><tr><th>Tela</th><th>Módulo</th><th class="centro">Dúvidas</th><th></th></tr></thead>
+    <tbody>
+      <% d.duvidasPorTela.forEach(function (t) { %>
+        <tr><td><%= t.titulo %></td><td><%= t.modulo %></td><td class="centro"><%= t.total %></td><td><a class="adm-btn adm-btn-out" href="/ead/tela/<%= t.telaId %>/ver">Ver a tela</a></td></tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+<p class="adm-nota"><i class="fa-solid fa-circle-info"></i> O % de erro soma testes rápidos e pré-testes. Cenários: só as jogadas concluídas; "erros por jogada" é a média de escolhas erradas até acertar tudo.</p>
+
+<%- include('../foot') %>

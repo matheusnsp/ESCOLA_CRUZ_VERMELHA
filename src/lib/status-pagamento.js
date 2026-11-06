@@ -57,6 +57,16 @@ async function avisarMatriculaConfirmada(matriculaId) {
 
     const base = process.env.APP_URL || 'https://escola-cruz-vermelha.onrender.com';
 
+    // Curso online (turma ONLINE): no lugar do e-mail da turma presencial, o de curso liberado, com o
+    // link do curso. (Lido na hora do envio: os testes trocam a função por um espião.)
+    if (m.turma.status === 'ONLINE') {
+      await require('./email').enviarCursoOnlineLiberado(m.aluno.email, String(m.aluno.nome).split(' ')[0], {
+        curso: m.turma.curso.nome,
+        link: `${base.replace(/\/+$/, '')}${require('./vitrine').urlOnline(m.turma.curso)}`,
+      });
+      return;
+    }
+
     // ── Duas formatações de data, e a diferença importa ──────────────────
     //
     // Turma.inicioPrevisto é um TIMESTAMP (gravado ao meio-dia). Representa
@@ -195,11 +205,18 @@ async function aplicarStatus(pagamento, { status, payload, tx, origem = 'webhook
       });
       console.log(`[${quem.log}] ✅ TAXA confirmada. Matrícula ${pagamento.matriculaId} liberada pra etapa 3.`);
     } else {
-      const m = await prisma.matricula.findUnique({ where: { id: pagamento.matriculaId } });
+      const m = await prisma.matricula.findUnique({ where: { id: pagamento.matriculaId }, include: { turma: { select: { status: true } } } });
+      const online = m?.turma?.status === 'ONLINE';
+      // Curso online (etapa 7): quem decide é o pagamento confirmado, não o plano gravado. Uma tentativa de cartão
+      // parcelado recusada deixa o plano PARCELADO; se depois o PIX já gerado é pago, é à vista no PIX.
+      if (online && pagamento.metodo === 'PIX' && m.plano !== 'A_VISTA') m.plano = 'A_VISTA';
       const novoStatusMatricula = m?.plano === 'PARCELADO' ? 'PARCELADO' : 'PAGO';
+      // Curso online: não tem taxa separada, nem no parcelado. A "taxa" (zero) vem junto com o curso.
+      const semTaxaSeparada = m?.plano === 'A_VISTA' || (m?.plano === 'PARCELADO' && online);
 
       const dadosMatricula = {
         statusPagamento: novoStatusMatricula,
+        ...(online ? { plano: m.plano, forma: pagamento.metodo === 'PIX' ? 'PIX' : 'CREDITO' } : {}),
         confirmadaEm: new Date(),
         confirmadaPor: quem.curso,
       };
@@ -207,7 +224,7 @@ async function aplicarStatus(pagamento, { status, payload, tx, origem = 'webhook
       // À VISTA: curso + taxa vêm na MESMA transação (não há Pagamento tipo
       // TAXA separado nesse fluxo). Confirma a taxa aqui também — senão a
       // matrícula fica PAGA mas com "taxa aguardando confirmação" pra sempre.
-      if (m?.plano === 'A_VISTA' && !m?.taxaConfirmada) {
+      if (semTaxaSeparada && !m?.taxaConfirmada) {
         dadosMatricula.taxaConfirmada = true;
         dadosMatricula.taxaConfirmadaPor = quem.taxaAVista;
         dadosMatricula.taxaConfirmadaEm = new Date();
@@ -226,6 +243,13 @@ async function aplicarStatus(pagamento, { status, payload, tx, origem = 'webhook
       //
       // amount_total do postback já vem com juros; se não vier, cai no valor
       // base + taxa, que é o pior caso aceitável (nunca infla).
+      // Curso online à vista: o valor da matrícula é o que foi pago. Com cupom aplicado e tirado, um QR de outro valor
+      // pode ser o pago; o cupom só fica registrado se o valor pago é o do cupom.
+      if (online && m.plano === 'A_VISTA') {
+        dadosMatricula.valorCurso = Number(pagamento.valor);
+        await prisma.cupomMatriculaEad.deleteMany({ where: { matriculaId: m.id, NOT: { precoFinal: pagamento.valor } } });
+      }
+
       if (m?.plano === 'PARCELADO') {
         const totalComJuros = Number(tx.amount_total ?? payload.amount_total ?? 0) / 100;
         const base = Number(pagamento.valor || 0);
@@ -250,14 +274,14 @@ async function aplicarStatus(pagamento, { status, payload, tx, origem = 'webhook
     }
   } else if (novoStatus === 'ESTORNADO') {
     if (pagamento.tipo === 'CURSO') {
-      const m = await prisma.matricula.findUnique({ where: { id: pagamento.matriculaId } });
+      const m = await prisma.matricula.findUnique({ where: { id: pagamento.matriculaId }, include: { turma: { select: { status: true } } } });
 
       const dadosEstorno = { statusPagamento: 'ESTORNADO' };
 
       // À VISTA: o estorno devolve curso + taxa (tudo veio numa transação só),
       // então a taxa deixa de estar confirmada. No PARCELADO a taxa é uma
       // transação separada que continua paga — não se mexe nela aqui.
-      if (m?.plano === 'A_VISTA') {
+      if (m?.plano === 'A_VISTA' || (m?.plano === 'PARCELADO' && m?.turma?.status === 'ONLINE')) {
         dadosEstorno.taxaConfirmada = false;
         dadosEstorno.taxaConfirmadaPor = null;
         dadosEstorno.taxaConfirmadaEm = null;

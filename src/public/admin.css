@@ -1899,3 +1899,17 @@ a.mr-num:hover { border-color: var(--linha); }
 .pl-avancado { display: grid; gap: 10px; }
 .pl-sub { font-size: 15px; margin: 6px 0 0; }
 .pl-lista td form { margin: 0; }
+
+/* ── Modo do painel: Presencial | Online (só DEV; routes/admin.js POST /modo) ── */
+.adm-modo {
+  display: flex; gap: 2px; padding: 3px; margin: 4px 0 10px;
+  border: 1px solid var(--linha); border-radius: 999px; background: var(--bg);
+}
+.adm-modo button {
+  flex: 1; border: 0; border-radius: 999px; padding: 7px 10px; cursor: pointer;
+  background: none; color: var(--mut); font: 700 12.5px var(--fonte);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
+}
+.adm-modo button:hover { color: var(--tinta); }
+.adm-modo button.on { background: var(--card); color: var(--vermelho-txt); box-shadow: var(--sombra); }
+@media (max-width: 900px) { .adm-modo { margin: 0; flex: none; } }

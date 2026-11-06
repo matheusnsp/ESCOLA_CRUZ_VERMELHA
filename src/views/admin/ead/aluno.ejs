@@ -1,0 +1,85 @@
+<%
+  var dataBR = function (d) { return d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'; };
+  var quando = function (d) { return d ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; };
+  var tempo = function (s) { if (s === null || s === undefined) return '—'; return Math.floor(s / 60) + 'min' + String(s % 60).padStart(2, '0') + 's'; };
+  var ROT_EST = { concluido: 'Concluído', disponivel: 'Liberado', bloqueado: 'Bloqueado' };
+%>
+<%- include('../head', { titulo: d.usuario.nome + ' · ' + d.co.curso.nome }) %>
+<%- include('../header', { ativo: 'ead' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= d.usuario.nome %></h1>
+  <a href="/ead/curso/<%= d.co.id %>/alunos" class="adm-link">← Alunos de <%= d.co.curso.nome %></a>
+</div>
+
+<div class="adm-box adm-box-pad adm-espaco ead-resumo">
+  <div><small>Concluído</small><b><%= d.estado.percentual %>%</b></div>
+  <div><small>Origem</small><b><%= d.origem %></b></div>
+  <div><small>Fase</small><b><%= d.fase || '—' %></b></div>
+  <div><small>Começou</small><b><%= dataBR(d.alunoCurso.iniciadoEm) %></b></div>
+  <div><small>Concluiu</small><b><%= dataBR(d.alunoCurso.concluidoEm) %></b></div>
+  <div><small>E-mail</small><b class="ead-quebra"><%= d.usuario.email %></b></div>
+</div>
+
+<div class="adm-box adm-espaco">
+  <div class="ead-topico-cab"><h3>Progresso por módulo</h3></div>
+  <ul class="ead-lista">
+    <% d.estado.modulos.forEach(function (m, i) { var mod = d.co.modulos[i]; %>
+      <li>
+        <span class="ead-num"><%= m.final ? '★' : m.numero %></span>
+        <div class="ead-tit">
+          <b><%= mod.titulo %></b>
+          <small>
+            <% if (m.final) { %>Cenários<% } else { %>
+              <% m.topicos.forEach(function (t, ti) { %><%= ti ? ' · ' : '' %><%= mod.topicos[ti].titulo %>: <%= t.telasVistas %>/<%= t.telas %> tela(s)<%= t.quizAprovado ? ', teste ✓' : '' %><% }) %>
+            <% } %>
+            <% if (m.preTeste && m.preTeste !== 'indisponivel') { %> · pré-teste: <%= m.preTeste %><% } %>
+          </small>
+        </div>
+        <span class="ead-selo <%= m.estado === 'concluido' ? 'validado' : 'rascunho' %>"><%= ROT_EST[m.estado] || m.estado %></span>
+      </li>
+    <% }) %>
+  </ul>
+</div>
+
+<div class="adm-box adm-espaco">
+  <div class="ead-topico-cab"><h3>Tentativas</h3></div>
+  <% if (!d.tentativas.length) { %><p class="ead-vazio">Nenhum teste feito ainda.</p><% } else { %>
+  <div class="ead-tabela-rolagem"><table class="adm-table">
+    <thead><tr><th>Quando</th><th>Tipo</th><th>Módulo / tópico</th><th class="centro">Acertos</th><th>Resultado</th></tr></thead>
+    <tbody>
+      <% d.tentativas.forEach(function (t) { %>
+        <tr>
+          <td><%= quando(t.criadoEm) %></td>
+          <td><%= t.tipo === 'PRE_TESTE' ? 'Pré-teste' : 'Teste rápido' %></td>
+          <td><%= t.modulo ? 'Módulo ' + t.modulo.numero + ': ' + t.modulo.titulo : '—' %><%= t.topico ? ' · ' + t.topico : '' %></td>
+          <td class="centro"><%= t.acertos %>/<%= t.total %></td>
+          <td><%= !t.concluidaEm ? 'Em andamento' : (t.aprovado ? 'Aprovado' : 'Não aprovado') %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+
+<div class="adm-box adm-espaco">
+  <div class="ead-topico-cab"><h3>Cenários</h3></div>
+  <% if (!d.cenarios.length) { %><p class="ead-vazio">Nenhum cenário começado.</p><% } else { %>
+  <div class="ead-tabela-rolagem"><table class="adm-table">
+    <thead><tr><th>Cenário</th><th class="centro">Tempo</th><th class="centro">Sugerido</th><th class="centro">Erros</th><th>Situação</th></tr></thead>
+    <tbody>
+      <% d.cenarios.forEach(function (c) { %>
+        <tr>
+          <td><%= c.titulo %></td>
+          <td class="centro"><%= tempo(c.tempoSeg) %></td>
+          <td class="centro"><%= tempo(c.tempoSugeridoSeg) %></td>
+          <td class="centro"><%= c.erros %></td>
+          <td><%= c.concluidoEm ? 'Concluído em ' + dataBR(c.concluidoEm) : 'Em andamento' %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+
+<%- include('../foot') %>

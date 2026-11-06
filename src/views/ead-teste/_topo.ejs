@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<% if (typeof indexavel === 'undefined' || !indexavel) { %><meta name="robots" content="noindex, nofollow"><% } %>
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title><%= titulo %> · Escola de Educação e Saúde CVB-RJ</title>
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<% if (typeof canonicalOnline !== 'undefined' && canonicalOnline) { %><link rel="canonical" href="<%= (typeof urlSite !== 'undefined' && urlSite ? urlSite.replace(/\/+$/, '') : '') + canonicalOnline %>"><% } %>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="<%= asset('/ead.css') %>">
+<%# Medição só no curso pago (etapa 8). No link de teste, nunca: Analytics/Pixel gravariam o endereço, que tem o código secreto. %>
+<% if (typeof medir !== 'undefined' && medir) { %>
+<%- include('../partials/rastreamento') %>
+<% (typeof eventosMedicao !== 'undefined' ? eventosMedicao : []).forEach(function (ev) { %>
+<script>gtag('event', <%- jsonSeguro(ev.ga[0]) %>, <%- jsonSeguro(ev.ga[1]) %>);fbq('track', <%- ev.meta.map(jsonSeguro).join(', ') %>);</script>
+<% }) %>
+<% } %>
+<% if (typeof jsonLd !== 'undefined' && jsonLd) { %><script type="application/ld+json"><%- jsonSeguro(jsonLd) %></script><% } %>
+</head>
+<body class="ea-pagina">
+<div class="ea-topbar"><div class="ea-wrap"><span>Cruz Vermelha Brasileira · Rio de Janeiro</span><span>Curso 100% online</span></div></div>
+<header class="ea-header">
+  <div class="ea-wrap">
+    <a class="ea-logo" href="<%= base %>">
+      <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro">
+      <span><b>ESCOLA DE EDUCAÇÃO</b><small>E SAÚDE CVB-RJ</small></span>
+    </a>
+    <% if (typeof voltarMenu !== 'undefined' && voltarMenu) { %><a class="ea-pilula ea-pilula-clara" href="<%= base %>">☰ <span class="ea-so-pc">Menu do curso</span><span class="ea-so-cel">Menu</span></a><% } %>
+  </div>
+</header>
+<% if (typeof eadModo === 'undefined' || eadModo !== 'pago') { %><div class="ea-teste">Versão de teste · só quem tem este link consegue abrir · não divulgue</div><% } %>

@@ -57,4 +57,4 @@ async function simularValores(curso, cfgMap, buscar) {
   return { aVista, parcelado };
 }
 
-module.exports = { simularValores, _limparCache: () => cache.clear() };
+module.exports = { simularValores, opcaoComCache, _limparCache: () => cache.clear() };
