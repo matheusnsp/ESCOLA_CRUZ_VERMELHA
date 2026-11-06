@@ -54,6 +54,11 @@ async function ligarGestor(escola, pessoa) {
   return { ok: true, usuario: c.usuario };
 }
 
+// "Futuro" = depois do fim de hoje no Rio (a data do formulário é gravada ao meio-dia; hoje vale).
+const fimDeHojeRio = () => new Date(`${new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' })}T23:59:59.999-03:00`);
+const MSG_RECEBIDO_FUTURO = 'A data de recebimento não pode ser no futuro.';
+const recebidoNoFuturo = (d) => !!d && new Date(d) > fimDeHojeRio();
+
 function validarDados({ vagas, validoAte, valor, forma }) {
   const v = Number(vagas);
   if (!Number.isInteger(v) || v < 1 || v > MAX_VAGAS) return `Vagas: um número inteiro de 1 a ${MAX_VAGAS}.`;
@@ -68,6 +73,8 @@ function validarDados({ vagas, validoAte, valor, forma }) {
 async function criarLote({ escola, cursoOnlineId, vagas, validoAte, valor, forma, recebidoEm = null, observacao = null, gestor, atorId }) {
   const erro = validarDados({ vagas, validoAte, valor, forma });
   if (erro) return { ok: false, erro };
+  if (new Date(validoAte) <= new Date()) return { ok: false, erro: 'O prazo precisa ser uma data futura.' };
+  if (recebidoNoFuturo(recebidoEm)) return { ok: false, erro: MSG_RECEBIDO_FUTURO };
   if (!ehId(cursoOnlineId) || !(await prisma.cursoOnline.findUnique({ where: { id: cursoOnlineId } }))) return { ok: false, erro: 'Escolha o curso online.' };
   let esc;
   if (escola && escola.id) {
@@ -87,15 +94,27 @@ async function criarLote({ escola, cursoOnlineId, vagas, validoAte, valor, forma
   // Gestor primeiro (pode recusar: CPF inválido, contas diferentes); a escola nova só nasce se ele for válido.
   const c = await contaParaPessoa(gestor || {});
   if (!c.ok) return { ok: false, erro: `Gestor: ${c.erro}` };
-  if (!esc.id) esc = await prisma.escolaEad.create({ data: esc });
-  const lote = await prisma.loteEad.create({
-    data: {
-      escolaId: esc.id, cursoOnlineId, vagas: Number(vagas), validoAte: new Date(validoAte), valor: Number(valor), forma,
-      recebidoEm: recebidoEm ? new Date(recebidoEm) : null, observacao: String(observacao || '').trim() || null,
-      convite: novoConvite(), criadoPor: atorId || 'SISTEMA',
-    },
-  });
-  await prisma.gestorEscolaEad.upsert({ where: { escolaId_usuarioId: { escolaId: esc.id, usuarioId: c.usuario.id } }, update: {}, create: { escolaId: esc.id, usuarioId: c.usuario.id } });
+  // Escola, lote e gestor numa transação só (etapa 8): se algo falhar, nada fica pela metade, e a conta nova do
+  // gestor (criada antes, fora da transação) é apagada, como no cadastro de funcionário.
+  let lote;
+  try {
+    ({ lote, esc } = await transacao(async (tx) => {
+      const e = esc.id ? esc : await tx.escolaEad.create({ data: esc });
+      const l = await tx.loteEad.create({
+        data: {
+          escolaId: e.id, cursoOnlineId, vagas: Number(vagas), validoAte: new Date(validoAte), valor: Number(valor), forma,
+          recebidoEm: recebidoEm ? new Date(recebidoEm) : null, observacao: String(observacao || '').trim() || null,
+          convite: novoConvite(), criadoPor: atorId || 'SISTEMA',
+        },
+      });
+      await tx.gestorEscolaEad.upsert({ where: { escolaId_usuarioId: { escolaId: e.id, usuarioId: c.usuario.id } }, update: {}, create: { escolaId: e.id, usuarioId: c.usuario.id } });
+      return { lote: l, esc: e };
+    }));
+  } catch (e) {
+    if (c.nova) await prisma.usuario.delete({ where: { id: c.usuario.id } }).catch(() => {});
+    console.error('[EAD] criar lote:', e.message);
+    return { ok: false, erro: 'Não foi possível criar o lote. Confira os dados (valor, vagas) e tente de novo.' };
+  }
   await avisarGestor(c.usuario, esc, c.nova ? c.senhaInicial : undefined);
   await auditar(atorId, 'EAD_LOTE_CRIOU', lote.id, { escola: esc.nome, vagas: lote.vagas, valor: Number(valor), forma });
   return { ok: true, lote, escola: esc };
@@ -197,9 +216,15 @@ async function adicionarGestor(escolaId, pessoa, atorId) {
   return r;
 }
 async function removerGestor(escolaId, usuarioId, atorId) {
-  const n = await prisma.gestorEscolaEad.count({ where: { escolaId } });
-  if (n <= 1) return { ok: false, erro: 'A escola precisa de pelo menos um gestor.' };
-  await prisma.gestorEscolaEad.deleteMany({ where: { escolaId, usuarioId } });
+  // Sob a trava da escola: dois "tirar" ao mesmo tempo não deixam a escola sem gestor.
+  const r = await transacao(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'escola:' + escolaId}))`;
+    const n = await tx.gestorEscolaEad.count({ where: { escolaId } });
+    if (n <= 1) return { ok: false, erro: 'A escola precisa de pelo menos um gestor.' };
+    await tx.gestorEscolaEad.deleteMany({ where: { escolaId, usuarioId } });
+    return { ok: true };
+  });
+  if (!r.ok) return r;
   const l = await prisma.loteEad.findFirst({ where: { escolaId }, select: { id: true } });
   await auditar(atorId, 'EAD_LOTE_GESTOR_REMOVE', l?.id || null, { escolaId, usuarioId });
   return { ok: true };
@@ -209,10 +234,10 @@ async function alterarLote(loteId, campos, atorId) {
   const lote = ehId(loteId) ? await prisma.loteEad.findUnique({ where: { id: loteId } }) : null;
   if (!lote) return { ok: false, erro: 'nao_achou' };
   const dados = {};
+  if (campos.recebidoEm !== undefined && recebidoNoFuturo(campos.recebidoEm)) return { ok: false, erro: MSG_RECEBIDO_FUTURO };
   if (campos.vagas !== undefined) {
     const v = Number(campos.vagas);
     if (!Number.isInteger(v) || v < 1 || v > MAX_VAGAS) return { ok: false, erro: 'vagas_invalidas' };
-    if (v < await prisma.vagaLoteEad.count({ where: { loteId, removidaEm: null } })) return { ok: false, erro: 'vagas' };
     dados.vagas = v;
   }
   if (campos.validoAte !== undefined) {
@@ -222,7 +247,15 @@ async function alterarLote(loteId, campos, atorId) {
   }
   if (campos.observacao !== undefined) dados.observacao = String(campos.observacao || '').trim() || null;
   if (campos.recebidoEm !== undefined) dados.recebidoEm = campos.recebidoEm ? new Date(campos.recebidoEm) : null;
-  await prisma.loteEad.update({ where: { id: loteId }, data: dados });
+  // Sob a trava do lote (a mesma de ocupar): reduzir vagas e um cadastro ao mesmo tempo não deixam o lote com
+  // menos vagas do que as usadas.
+  const r = await transacao(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'lote:' + loteId}))`;
+    if (dados.vagas !== undefined && dados.vagas < await tx.vagaLoteEad.count({ where: { loteId, removidaEm: null } })) return { ok: false, erro: 'vagas' };
+    await tx.loteEad.update({ where: { id: loteId }, data: dados });
+    return { ok: true };
+  });
+  if (!r.ok) return r;
   if (campos.recebidoEm !== undefined) await auditar(atorId, 'EAD_LOTE_RECEBIDO', loteId, { recebidoEm: dados.recebidoEm });
   else await auditar(atorId, 'EAD_LOTE_ALTEROU', loteId, { ...dados });
   return { ok: true };

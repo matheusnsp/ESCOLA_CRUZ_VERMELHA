@@ -32,20 +32,20 @@ const SELECT_ALUNO_CHECKOUT = {
 // uma tentativa abandonada como qualquer outra (FILTRO_MATRICULA_FANTASMA).
 async function matriculaDaCompra(alunoId, turmaId, forma, valor) {
   const dados = { plano: 'A_VISTA', forma, valorCurso: valor, valorTaxaMatricula: 0, taxaConfirmada: false, taxaConfirmadaEm: null, taxaConfirmadaPor: null };
-  const existente = await prisma.matricula.findUnique({ where: { alunoId_turmaId: { alunoId, turmaId } } });
-  if (existente) {
-    if (['PAGO', 'PARCELADO'].includes(existente.statusPagamento)) return existente;
-    return prisma.matricula.update({
-      where: { id: existente.id },
-      data: { ...dados, statusPagamento: 'PENDENTE', confirmadaEm: null, confirmadaPor: null },
-    });
-  }
-  try {
-    return await prisma.matricula.create({ data: { ...dados, alunoId, turmaId, statusPagamento: 'PENDENTE' } });
-  } catch (e) {
-    if (e.code !== 'P2002') throw e;
-    return prisma.matricula.findUnique({ where: { alunoId_turmaId: { alunoId, turmaId } } });
-  }
+  // Etapa 8: a mesma trava do "Liberar curso" (liberarPorCupom): duas abas ao mesmo tempo não voltam uma
+  // matrícula já paga para PENDENTE.
+  return transacao(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`compra:${alunoId}:${turmaId}`}))`;
+    const existente = await tx.matricula.findUnique({ where: { alunoId_turmaId: { alunoId, turmaId } } });
+    if (existente) {
+      if (['PAGO', 'PARCELADO'].includes(existente.statusPagamento)) return existente;
+      return tx.matricula.update({
+        where: { id: existente.id },
+        data: { ...dados, statusPagamento: 'PENDENTE', confirmadaEm: null, confirmadaPor: null },
+      });
+    }
+    return tx.matricula.create({ data: { ...dados, alunoId, turmaId, statusPagamento: 'PENDENTE' } });
+  });
 }
 
 // Cupom da compra (etapa 7): grava, troca ou apaga o CupomMatriculaEad da matrícula.
