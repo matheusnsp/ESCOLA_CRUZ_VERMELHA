@@ -390,7 +390,8 @@ async function estornarTransacao(ref, contaId) {
     console.error(`[REFUND] ❌ Estorno recusado. HTTP ${response.status} | payment_status: ${statusPagamento || 'N/A'} | msg: ${body?.message || textBody.slice(0, 200)}`);
   }
 
-  return { success: ok, body };
+  // `http` e `mensagem` vão para a tela da secretaria quando o estorno é recusado (routes/admin.js).
+  return { success: ok, body, http: response.status, mensagem: body?.message || '' };
 }
 
 // ── Consultas (mesma API e mesma autenticação por api_token das cobranças) ───────────────────
