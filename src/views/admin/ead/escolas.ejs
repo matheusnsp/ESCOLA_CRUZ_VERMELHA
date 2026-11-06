@@ -1,0 +1,47 @@
+<%
+  var dataBR = function (d) { return d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'; };
+  var brl = function (v) { return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); };
+%>
+<%- include('../head', { titulo: 'Escolas' }) %>
+<%- include('../header', { ativo: 'escolas' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Escolas e empresas</h1>
+  <a class="adm-btn" href="/ead/escolas/lote/novo"><i class="fa-solid fa-plus"></i> Novo lote</a>
+</div>
+<%- include('_mensagens') %>
+<p class="adm-mut">Vagas do curso online vendidas direto para escolas e empresas (Lei Lucas). O gestor da escola cadastra a equipe em "Minha escola", no site.</p>
+
+<nav class="ead-filtros" aria-label="Filtro">
+  <a href="/ead/escolas" class="<%= filtro === 'todos' ? 'on' : '' %>">Todas</a>
+  <a href="/ead/escolas?filtro=areceber" class="<%= filtro === 'areceber' ? 'on' : '' %>">A receber</a>
+</nav>
+
+<% if (!lista.length) { %>
+  <div class="adm-box adm-box-pad"><p class="ead-vazio"><%= filtro === 'areceber' ? 'Nenhum lote a receber.' : 'Nenhuma escola ainda. Crie o primeiro lote.' %></p></div>
+<% } %>
+<% lista.forEach(function (e) { %>
+  <div class="adm-box adm-espaco">
+    <div class="ead-topico-cab">
+      <h3><%= e.nome %><% if (e.cnpj) { %> <small class="adm-mut">CNPJ <%= e.cnpj %></small><% } %></h3>
+      <a class="adm-btn adm-btn-out" href="/ead/escolas/lote/novo?escola=<%= e.id %>"><i class="fa-solid fa-plus"></i> Outro lote</a>
+    </div>
+    <p class="adm-mut" style="margin: 0 16px 8px">Gestor(es): <%= e.gestores.map(function (g) { return g.usuario.nome; }).join(', ') || '—' %></p>
+    <ul class="ead-lista">
+      <% e.lotes.forEach(function (l) { %>
+        <li>
+          <span class="ead-num"><i class="fa-solid fa-users"></i></span>
+          <div class="ead-tit">
+            <a href="/ead/escolas/lote/<%= l.id %>"><%= l.cursoOnline.curso.nome %></a>
+            <small><%= l.situacao.usadas %>/<%= l.vagas %> vagas · <%= l.situacao.vencido ? 'prazo encerrado em ' : 'até ' %><%= dataBR(l.validoAte) %> · <%= brl(l.valor) %> (<%= l.forma %>)</small>
+          </div>
+          <% if (Number(l.valor) > 0) { %>
+            <span class="ead-selo <%= l.recebidoEm ? 'validado' : 'rascunho' %>"><%= l.recebidoEm ? 'Recebido ' + dataBR(l.recebidoEm) : 'A receber' %></span>
+          <% } %>
+        </li>
+      <% }) %>
+    </ul>
+  </div>
+<% }) %>
+
+<%- include('../foot') %>

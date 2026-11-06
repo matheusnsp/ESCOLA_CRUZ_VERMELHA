@@ -17,6 +17,7 @@ const publicacao = require('../lib/ead-publicacao');
 const relatorios = require('../lib/ead-relatorios');
 const duv = require('../lib/ead-duvidas');
 const cursoSoOnline = require('../lib/ead-curso-online');
+const lotes = require('../lib/ead-lote');
 const { emitirCertificadoEad } = require('../lib/ead-certificado');
 const { gerarCartao } = require('../lib/ead-cartao');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
@@ -263,6 +264,119 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (imagemUrl !== undefined && atual.imagemUrl) await removerFotoCurso(atual.imagemUrl);
     await auditar(req, 'EAD_EDITOU_CURSO_ONLINE', 'CursoOnline', co.id, { cursoId: co.cursoId });
     voltar(res, `/ead/curso/${co.id}`, 'ok', 'Dados do curso salvos.');
+  });
+
+  // ─── Escolas e lotes (etapa 6) ────────────────────────────────────────────────────────────────
+  // Data do formulário (AAAA-MM-DD): prazo = fim do dia no Rio; recebido = meio-dia no Rio (cai no dia certo).
+  const fimDoDia = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) ? new Date(`${d}T23:59:59-03:00`) : null);
+  const meioDia = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) ? new Date(`${d}T12:00:00-03:00`) : null);
+  const lerValor = (t) => { const v = String(t || '').trim(); if (!v || /^0+([.,]0+)?$/.test(v)) return 0; return publicacao.lerPreco(v); };
+  const pessoaDoForm = (b, prefixo = '') => ({ nome: b[`${prefixo}nome`] ?? b[`${prefixo}Nome`], email: b[`${prefixo}email`] ?? b[`${prefixo}Email`], celular: b[`${prefixo}celular`] ?? b[`${prefixo}Celular`], cpf: b[`${prefixo}cpf`] ?? b[`${prefixo}Cpf`] });
+  const ERRO_LOTE = {
+    esgotado: 'Não há mais vagas neste lote.', vencido: 'O prazo para usar as vagas terminou.', ja_tem_acesso: 'Esta pessoa já tem acesso ao curso: nenhuma vaga foi usada.',
+    comecou: 'Esta pessoa já começou o curso: a vaga não pode voltar.', vagas: 'O lote não pode ter menos vagas do que as já usadas.', vagas_invalidas: 'Vagas: um número inteiro de 1 a 5000.',
+    prazo: 'Prazo inválido.', nao_achou: 'Não encontrado.',
+  };
+  const urlLote = (id) => `/ead/escolas/lote/${id}`;
+
+  router.get('/ead/escolas', async (req, res) => {
+    const filtro = req.query.filtro === 'areceber' ? 'areceber' : 'todos';
+    const escolas = await prisma.escolaEad.findMany({
+      orderBy: { nome: 'asc' },
+      include: { lotes: { orderBy: { criadoEm: 'desc' }, include: { cursoOnline: { select: { curso: { select: { nome: true } } } }, vagasUsadas: { select: { removidaEm: true } } } }, gestores: { include: { usuario: { select: { nome: true } } } } },
+    });
+    const lista = escolas.map((e) => ({ ...e, lotes: e.lotes.map((l) => ({ ...l, situacao: lotes.situacaoDoLote(l) })) }))
+      .map((e) => (filtro === 'areceber' ? { ...e, lotes: e.lotes.filter((l) => !l.recebidoEm && Number(l.valor) > 0) } : e))
+      .filter((e) => filtro === 'todos' || e.lotes.length);
+    res.render('admin/ead/escolas', { lista, filtro, ...flash(req) });
+  });
+
+  async function formLote(res, valores, erro, status = 200) {
+    const [escolas, cursos] = await Promise.all([
+      prisma.escolaEad.findMany({ select: { id: true, nome: true }, orderBy: { nome: 'asc' } }),
+      prisma.cursoOnline.findMany({ select: { id: true, curso: { select: { nome: true } } }, orderBy: { criadoEm: 'asc' } }),
+    ]);
+    const padrao = new Date(); padrao.setFullYear(padrao.getFullYear() + 1);
+    res.status(status).render('admin/ead/escolas-lote-form', { escolas, cursos, formas: lotes.FORMAS, valores: { validoAte: padrao.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }), forma: 'PIX', ...valores }, erro });
+  }
+  router.get('/ead/escolas/lote/novo', async (req, res) => formLote(res, { escolaId: edb.ehId(req.query.escola) ? req.query.escola : '' }, null));
+  router.post('/ead/escolas/lote/novo', async (req, res) => {
+    const b = req.body;
+    const valor = lerValor(b.valor);
+    if (valor === null) return formLote(res, b, 'Valor: em reais (ex.: 1.200,00), ou 0.', 400);
+    const validoAte = fimDoDia(b.validoAte);
+    if (!validoAte) return formLote(res, b, 'Prazo: escolha a data.', 400);
+    const r = await lotes.criarLote({
+      escola: edb.ehId(b.escolaId) ? { id: b.escolaId } : { nome: b.escolaNome, cnpj: b.escolaCnpj },
+      cursoOnlineId: b.cursoOnlineId, vagas: b.vagas, validoAte, valor, forma: b.forma, recebidoEm: meioDia(b.recebidoEm),
+      observacao: b.observacao, gestor: pessoaDoForm(b, 'gestor'), atorId: ator(req),
+    });
+    if (!r.ok) return formLote(res, b, r.erro, 400);
+    voltar(res, urlLote(r.lote.id), 'ok', 'Lote criado. O gestor recebeu um e-mail com o acesso a Minha escola.');
+  });
+
+  async function acharLote(id) {
+    if (!edb.ehId(id)) return null;
+    return prisma.loteEad.findUnique({ where: { id }, include: { escola: { include: { gestores: { include: { usuario: { select: { id: true, nome: true, email: true } } } } } }, cursoOnline: { include: { curso: { select: { nome: true } } } }, vagasUsadas: { select: { removidaEm: true } } } });
+  }
+  router.get('/ead/escolas/lote/:id', async (req, res) => {
+    const lote = await acharLote(req.params.id);
+    if (!lote) return naoAchou(res);
+    const urlSite = (process.env.APP_URL || 'https://escola.cruzvermelhariodejaneiro.org').replace(/\/+$/, '');
+    res.render('admin/ead/escolas-lote', {
+      lote, situacao: lotes.situacaoDoLote(lote), funcionarios: await lotes.funcionariosDoLote(lote.id),
+      conviteUrl: lote.convite ? `${urlSite}/escola/convite/${lote.convite}` : null, formatar: require('../lib/documento').formatar, ...flash(req),
+    });
+  });
+  router.get('/ead/escolas/lote/:id/:arquivo(declaracao.pdf|planilha.xlsx)', async (req, res) => {
+    const lote = await acharLote(req.params.id);
+    if (!lote) return naoAchou(res);
+    const { gerarDeclaracao, gerarPlanilhaLote } = require('../lib/ead-lote-declaracao');
+    const pdf = req.params.arquivo === 'declaracao.pdf';
+    const { buffer, nomeArquivo } = pdf ? await gerarDeclaracao(lote.id) : await gerarPlanilhaLote(lote.id);
+    res.set('Content-Type', pdf ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.set('Content-Disposition', `attachment; filename="${nomeArquivo}"`);
+    res.send(buffer);
+  });
+
+  router.post('/ead/escolas/lote/:id/:acao(alterar|recebido|desfazer-recebido|gestor|funcionario|apagar)', async (req, res) => {
+    const lote = await acharLote(req.params.id);
+    if (!lote) return naoAchou(res);
+    const b = req.body; const quem = ator(req); const volta = urlLote(lote.id);
+    const r = await ({
+      alterar: () => {
+        const validoAte = fimDoDia(b.validoAte);
+        if (!validoAte) return { ok: false, erro: 'prazo' };
+        return lotes.alterarLote(lote.id, { vagas: b.vagas, validoAte, observacao: b.observacao }, quem);
+      },
+      recebido: () => (meioDia(b.recebidoEm) ? lotes.alterarLote(lote.id, { recebidoEm: meioDia(b.recebidoEm) }, quem) : { ok: false, erro: 'prazo' }),
+      'desfazer-recebido': () => lotes.alterarLote(lote.id, { recebidoEm: null }, quem),
+      gestor: () => lotes.adicionarGestor(lote.escolaId, pessoaDoForm(b), quem),
+      funcionario: () => lotes.cadastrarFuncionario(lote.id, pessoaDoForm(b), { origem: 'GESTOR', atorId: quem }),
+      apagar: () => lotes.apagarLote(lote.id, quem),
+    })[req.params.acao]();
+    const MSG = { alterar: 'Lote atualizado.', recebido: 'Pagamento marcado como recebido.', 'desfazer-recebido': 'Recebimento desfeito.', gestor: 'Gestor adicionado (recebeu um e-mail).', funcionario: 'Funcionário cadastrado (recebeu um e-mail).', apagar: 'Lote apagado.' };
+    if (r.ok) return voltar(res, req.params.acao === 'apagar' ? '/ead/escolas' : volta, 'ok', MSG[req.params.acao]);
+    voltar(res, volta, 'erro', r.erro === 'conta' ? r.mensagem : ERRO_LOTE[r.erro] || r.erro || 'Não foi possível.');
+  });
+  router.post('/ead/escolas/lote/:id/gestor/:usuarioId/remover', async (req, res) => {
+    const lote = await acharLote(req.params.id);
+    if (!lote) return naoAchou(res);
+    const r = await lotes.removerGestor(lote.escolaId, req.params.usuarioId, ator(req));
+    voltar(res, urlLote(lote.id), r.ok ? 'ok' : 'erro', r.ok ? 'Gestor retirado.' : r.erro);
+  });
+  router.post('/ead/escolas/lote/:id/remover/:vagaId', async (req, res) => {
+    const lote = await acharLote(req.params.id);
+    const vaga = lote && edb.ehId(req.params.vagaId) ? await prisma.vagaLoteEad.findFirst({ where: { id: req.params.vagaId, loteId: lote.id } }) : null;
+    if (!vaga) return naoAchou(res);
+    const r = await lotes.removerVaga(vaga.id, ator(req));
+    voltar(res, urlLote(lote.id), r.ok ? 'ok' : 'erro', r.ok ? 'Funcionário retirado; a vaga voltou.' : ERRO_LOTE[r.erro]);
+  });
+  router.post('/ead/escolas/lote/:id/convite/:acao(trocar|desligar)', async (req, res) => {
+    const lote = await acharLote(req.params.id);
+    if (!lote) return naoAchou(res);
+    if (req.params.acao === 'trocar') await lotes.trocarConvite(lote.id, ator(req)); else await lotes.desligarConvite(lote.id, ator(req));
+    voltar(res, urlLote(lote.id), 'ok', req.params.acao === 'trocar' ? 'Link de convite novo.' : 'Link de convite desligado.');
   });
 
   // ─── Central de dúvidas (etapa 5) ─────────────────────────────────────────────────────────────

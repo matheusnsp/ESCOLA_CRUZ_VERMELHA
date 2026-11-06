@@ -109,3 +109,10 @@
 .ead-novo-so-online .adm-mut { margin: 0; }
 .ead-dados-curso .ead-topico-cab { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 0 12px; border-bottom: 1px solid var(--linha2); margin-bottom: 12px; }
 .ead-dados-curso .ead-topico-cab h2 { margin: 0; display: flex; align-items: center; gap: 8px; }
+
+/* Etapa 6: escolas e lotes */
+.ead-sep { border: 0; border-top: 1px solid var(--linha2); margin: 16px 0; }
+.ead-gestores li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--tinta); }
+.ead-gestores form { display: inline; }
+.ead-sumario { cursor: pointer; font-weight: 700; color: var(--vermelho); margin: 8px 0; }
+.ead-removido td { opacity: .55; }
