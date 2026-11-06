@@ -2,6 +2,7 @@
 require('dotenv').config();
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const { urlOnline } = require('../src/lib/vitrine');
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
@@ -108,7 +109,7 @@ describe('Minha escola e convite', { skip: temBanco ? false : 'sem DATABASE_URL 
     const codigo = (await prisma.loteEad.findUnique({ where: { id: lote.id } })).convite;
     assert.match(await (await req(`/escola/convite/${codigo}`, aluno)).text(), new RegExp(`Usar uma vaga da escola Escola Rotas ${sufixo}`));
     const r = await post(`/escola/convite/${codigo}`, aluno);
-    assert.equal(r.status, 302); assert.equal(loc(r), `/online/${curso.id}/continuar`);
+    assert.equal(r.status, 302); assert.equal(loc(r), `${urlOnline(curso)}/continuar`);
     assert.equal((await prisma.vagaLoteEad.findFirst({ where: { usuarioId: aluno.id } })).origem, 'CONVITE');
     await post(`/minha-escola/lote/${lote.id}/convite/desligar`, gestor);
     const x = await prisma.usuario.create({ data: { nome: 'Tarde Demais', email: `td-esc-${sufixo}@teste.local`, papel: 'ALUNO' } });

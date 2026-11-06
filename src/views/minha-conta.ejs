@@ -287,7 +287,7 @@
                   <% } %>
 
                   <% if (online && pago && !devolvido) { %>
-                  <a class="ct-agenda" href="/online/<%= m.turma.cursoId %>">
+                  <a class="ct-agenda" href="<%= urlOnline(m.turma.curso) %>">
                     <i class="fa-solid fa-laptop" aria-hidden="true"></i> Curso online · Acessar
                   </a>
                   <% } %>
@@ -372,8 +372,8 @@
                       </div>
                       <% if (c.situacao === 'concluido') { %>
                         <p class="ct-insc-sub">Concluído em <%= new Date(c.concluidoEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) %>.</p>
-                        <a class="ct-agenda" href="/online/<%= c.cursoId %>/certificado"><i class="fa-solid fa-award" aria-hidden="true"></i> Certificado</a>
-                        <a class="ct-agenda" href="/online/<%= c.cursoId %>/cartao-de-bolso.pdf"><i class="fa-solid fa-id-card" aria-hidden="true"></i> Cartão de bolso (PDF)</a>
+                        <a class="ct-agenda" href="<%= c.endereco %>/certificado"><i class="fa-solid fa-award" aria-hidden="true"></i> Certificado</a>
+                        <a class="ct-agenda" href="<%= c.endereco %>/cartao-de-bolso.pdf"><i class="fa-solid fa-id-card" aria-hidden="true"></i> Cartão de bolso (PDF)</a>
                       <% } else { %>
                         <% if (c.ultimoAcesso) { %><p class="ct-insc-sub">Último acesso em <%= new Date(c.ultimoAcesso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) %>.</p><% } %>
                         <a class="ct-btn-retomar" href="<%= c.link %>"><%= c.situacao === 'andamento' ? 'Continuar' : 'Começar' %> <i class="fa-solid fa-arrow-right"></i></a>

@@ -7,6 +7,7 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title><%= titulo %> · Escola de Educação e Saúde CVB-RJ</title>
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<% if (typeof canonicalOnline !== 'undefined' && canonicalOnline) { %><link rel="canonical" href="<%= (typeof urlSite !== 'undefined' && urlSite ? urlSite.replace(/\/+$/, '') : '') + canonicalOnline %>"><% } %>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="<%= asset('/ead.css') %>">

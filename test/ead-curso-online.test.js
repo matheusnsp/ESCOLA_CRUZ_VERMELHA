@@ -2,6 +2,7 @@
 require('dotenv').config();
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const { urlOnline } = require('../src/lib/vitrine');
 const fs = require('fs');
 const path = require('path');
 const ejs = require('ejs');
@@ -18,6 +19,7 @@ const temBanco = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');
 describe('curso só online', { skip: temBanco ? false : 'sem DATABASE_URL local' }, () => {
   const prisma = require('../src/db');
   const cso = require('../src/lib/ead-curso-online');
+  const linkOn = async () => urlOnline(await prisma.curso.findUnique({ where: { id: co.cursoId } }));
   const cacheRapido = require('../src/lib/cache-rapido');
   const vitrine = require('../src/lib/vitrine');
   const sufixo = Date.now();
@@ -79,7 +81,7 @@ describe('curso só online', { skip: temBanco ? false : 'sem DATABASE_URL local'
     cacheRapido.limparTudo();
     assert.deepEqual((await cso.cursosSoOnlinePublicados()).filter((c) => c.id === co.cursoId), []);
     assert.equal((await fetch(`${site}${vitrine.urlCurso({ nome })}`, { redirect: 'manual' })).status, 404);
-    assert.doesNotMatch(await (await fetch(`${site}/sitemap.xml`)).text(), new RegExp(`/online/${co.cursoId}`));
+    assert.doesNotMatch(await (await fetch(`${site}/sitemap.xml`)).text(), new RegExp(`${await linkOn()}`));
   });
 
   test('publicado: no catálogo com link /online, endereço redireciona, sitemap traz /online', async () => {
@@ -88,12 +90,12 @@ describe('curso só online', { skip: temBanco ? false : 'sem DATABASE_URL local'
     const [c] = (await cso.cursosSoOnlinePublicados()).filter((x) => x.id === co.cursoId);
     assert.deepEqual(c.online, { preco: 39.9, somenteOnline: true });
     const html = await ejs.renderFile(path.join(__dirname, '..', 'src', 'views', 'partials', 'v-card-cat.ejs'), { curso: { ...c, turmas: [] }, vitrine, taxaExibicao: () => 0, cfgMap: {}, urlCurso: vitrine.urlCurso });
-    assert.match(html, new RegExp(`href="/online/${co.cursoId}"`));
+    assert.match(html, new RegExp(`href="${await linkOn()}"`));
     assert.doesNotMatch(html, /Matrícula à vista/); assert.match(html, /R\$\s?39,90/);
     assert.match(html, /data-aberta="1"/); // [revisão M9] o filtro "inscrições abertas" não esconde o curso online
     const r = await fetch(`${site}${vitrine.urlCurso({ nome })}`, { redirect: 'manual' });
-    assert.equal(r.status, 302); assert.equal(r.headers.get('location'), `/online/${co.cursoId}`);
-    assert.match(await (await fetch(`${site}/sitemap.xml`)).text(), new RegExp(`https://escola.exemplo/online/${co.cursoId}`));
+    assert.equal(r.status, 302); assert.equal(r.headers.get('location'), `${await linkOn()}`);
+    assert.match(await (await fetch(`${site}/sitemap.xml`)).text(), new RegExp(`https://escola.exemplo${await linkOn()}`));
   });
 
   test('[revisão I4] página do curso presencial: a lista de cursos só online vem do cache, não do banco a cada visita', async () => {

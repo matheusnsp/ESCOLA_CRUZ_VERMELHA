@@ -2,6 +2,7 @@
 require('dotenv').config();
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const { urlOnline } = require('../src/lib/vitrine');
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
@@ -104,12 +105,12 @@ describe('Cursos online na Minha conta', { skip: temBanco ? false : 'sem DATABAS
     assert.deepEqual([de('andamento').origem, de('andamento').situacao], ['comprado', 'andamento']);
     assert.equal(de('andamento').percentual, 0); // a % conta módulos concluídos, como a capa do curso
     assert.ok(de('andamento').ultimoAcesso);
-    assert.equal(de('andamento').link, `/online/${cursos.andamento.curso.id}/continuar`);
+    assert.equal(de('andamento').link, `${urlOnline(cursos.andamento.curso)}/continuar`);
     assert.deepEqual([de('cortesia').origem, de('cortesia').situacao], ['cortesia', 'novo']);
     assert.deepEqual([de('escola').origem, de('escola').situacao, de('escola').escola], ['escola', 'novo', `Escola MC ${s}`]);
     assert.deepEqual([de('concluido').origem, de('concluido').situacao], ['comprado', 'concluido']);
     assert.ok(de('concluido').concluidoEm);
-    assert.deepEqual([de('pendente').situacao, de('pendente').link], ['pendente', `/online/${cursos.pendente.curso.id}`]);
+    assert.deepEqual([de('pendente').situacao, de('pendente').link], ['pendente', `${urlOnline(cursos.pendente.curso)}`]);
     const ordem = meus.map((x) => x.situacao);
     assert.deepEqual(ordem, ['andamento', 'novo', 'novo', 'concluido', 'pendente']);
   });
@@ -117,9 +118,9 @@ describe('Cursos online na Minha conta', { skip: temBanco ? false : 'sem DATABAS
   test('aba Cursos online: continuar, certificado, cartão, pendente, escola e cortesia', async () => {
     const html = await pagina(aluno, '?sec=online');
     assert.match(html, /href="\/minha-conta\?sec=online" class="ativo"/);
-    assert.match(html, new RegExp(`href="/online/${cursos.andamento.curso.id}/continuar"[^>]*>[^<]*Continuar`));
-    assert.match(html, new RegExp(`href="/online/${cursos.concluido.curso.id}/certificado"`));
-    assert.match(html, new RegExp(`href="/online/${cursos.concluido.curso.id}/cartao-de-bolso.pdf"`));
+    assert.match(html, new RegExp(`href="${urlOnline(cursos.andamento.curso)}/continuar"[^>]*>[^<]*Continuar`));
+    assert.match(html, new RegExp(`href="${urlOnline(cursos.concluido.curso)}/certificado"`));
+    assert.match(html, new RegExp(`href="${urlOnline(cursos.concluido.curso)}/cartao-de-bolso.pdf"`));
     assert.match(html, /Cartão de bolso \(PDF\)/);
     assert.match(html, /Pagamento pendente/);
     assert.match(html, new RegExp(`Liberado pela Escola MC ${s}`));

@@ -2,6 +2,7 @@
 require('dotenv').config();
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const { urlOnline } = require('../src/lib/vitrine');
 
 const { nomePublico } = require('../src/lib/ead-duvidas');
 
@@ -161,7 +162,7 @@ describe('dúvidas no banco', { skip: temBanco ? false : 'sem DATABASE_URL local
     const datas = aguardando.map((x) => new Date(x.duvida.criadoEm).getTime());
     assert.deepEqual(datas, [...datas].sort((a, b) => a - b));
     const daAna = aguardando.find((x) => x.aluno.email === ana.email);
-    assert.equal(daAna.origem, 'Pago'); assert.equal(daAna.linkBase, `/online/${curso.id}`);
+    assert.equal(daAna.origem, 'Pago'); assert.equal(daAna.linkBase, `${urlOnline(curso)}`);
     assert.equal(daAna.curso, curso.nome); assert.equal(daAna.modulo, 'Módulo A'); assert.ok(daAna.tela.titulo);
     const respondidas = await d.listarCentral({ status: 'RESPONDIDA', cursoOnlineId: co.id });
     const daBia = respondidas.find((x) => x.aluno.email === bia.email);

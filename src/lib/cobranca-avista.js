@@ -128,7 +128,7 @@ async function opcoesParcelasOnline(valor, max, buscarTabela = buscarTabelaPadra
 
 // Para onde a tela de retorno leva quando o pagamento confirma.
 const destinoAposPagamento = (matricula) => (matricula && matricula.turma && matricula.turma.status === 'ONLINE'
-  ? `/online/${matricula.turma.cursoId}`
+  ? require('./vitrine').urlOnline(matricula.turma.curso)
   : '/minha-conta?inscrito=1');
 
 module.exports = { iniciarCobrancaAVista, urlRetorno, JANELA_PIX_MS, cobrancaCartaoOnline, opcoesParcelasOnline, destinoAposPagamento };

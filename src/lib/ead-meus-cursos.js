@@ -11,6 +11,7 @@ const { estadoDoCurso } = require('./ead-progresso');
 const { carregarCursoParaAluno } = require('./ead-progresso-db');
 const { INCLUDE_PROGRESSO, progressoDe, ultimoAcessoDe } = require('./ead-relatorios');
 const { vagasDoAluno } = require('./ead-lote');
+const { urlOnline } = require('./vitrine');
 
 const PAGOS = ['PAGO', 'PARCELADO'];
 const ORDEM = { andamento: 0, novo: 1, concluido: 2, pendente: 3, cancelado: 4 };
@@ -56,7 +57,7 @@ async function meusCursosOnline(usuarioId, agora = new Date()) {
     const base = porCurso.get(co.cursoId);
     const item = {
       cursoId: co.cursoId, curso: co.curso.nome, imagemUrl: co.curso.imagemUrl, origem: base.origem, escola: base.escola || null,
-      situacao: 'pendente', percentual: 0, ultimoAcesso: null, concluidoEm: null, link: `/online/${co.cursoId}`,
+      situacao: 'pendente', percentual: 0, ultimoAcesso: null, concluidoEm: null, endereco: urlOnline(co.curso), link: urlOnline(co.curso),
     };
     if (base.cancelado) item.situacao = 'cancelado';
     else if (!base.pendente) {
@@ -67,9 +68,9 @@ async function meusCursosOnline(usuarioId, agora = new Date()) {
         const r = await carregarCursoParaAluno(co.id);
         const estado = estadoDoCurso(r.curso, progressoDe(ac, base.inicio), agora);
         const ultimo = ultimoAcessoDe(ac);
-        Object.assign(item, { situacao: ultimo ? 'andamento' : 'novo', percentual: estado.percentual, ultimoAcesso: ultimo, link: `/online/${co.cursoId}/continuar` });
+        Object.assign(item, { situacao: ultimo ? 'andamento' : 'novo', percentual: estado.percentual, ultimoAcesso: ultimo, link: `${urlOnline(co.curso)}/continuar` });
       } else {
-        Object.assign(item, { situacao: 'novo', link: `/online/${co.cursoId}/continuar` });
+        Object.assign(item, { situacao: 'novo', link: `${urlOnline(co.curso)}/continuar` });
       }
     }
     itens.push(item);

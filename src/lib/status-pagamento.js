@@ -62,7 +62,7 @@ async function avisarMatriculaConfirmada(matriculaId) {
     if (m.turma.status === 'ONLINE') {
       await require('./email').enviarCursoOnlineLiberado(m.aluno.email, String(m.aluno.nome).split(' ')[0], {
         curso: m.turma.curso.nome,
-        link: `${base.replace(/\/+$/, '')}/online/${m.turma.cursoId}`,
+        link: `${base.replace(/\/+$/, '')}${require('./vitrine').urlOnline(m.turma.curso)}`,
       });
       return;
     }

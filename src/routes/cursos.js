@@ -352,7 +352,7 @@ router.get('/sitemap.xml', (req, res, next) => (async () => {
     soOnline: await cursoSoOnline.cursosSoOnlinePublicados(), // curso só online publicado: /online/<id>
   }));
   const base = res.locals.urlSite;
-  const urls = ['/', '/cursos', '/privacidade'].concat(cursos.map(vitrine.urlCurso), soOnline.map((c) => `/online/${c.id}`));
+  const urls = ['/', '/cursos', '/privacidade'].concat(cursos.map(vitrine.urlCurso), soOnline.map((c) => vitrine.urlOnline(c)));
   const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   res.set('Content-Type', 'application/xml; charset=utf-8');
   res.set('Cache-Control', 'public, max-age=3600');
@@ -424,8 +424,8 @@ router.get('/cursos/:cursoId', async (req, res, next) => {
   // Curso só online: a página dele é a do curso online (publicado); sem publicar, não existe no site.
   const idsSoOnline = new Set(await catalogo(res, 'so-online', async () => [...await cursoSoOnline.idsSoOnline()]));
   if (idsSoOnline.has(cursoId)) {
-    const publicado = (await cursoSoOnline.cursosSoOnlinePublicados()).some((c) => c.id === cursoId);
-    return publicado ? res.redirect(302, `/online/${cursoId}`) : next();
+    const publicado = (await cursoSoOnline.cursosSoOnlinePublicados()).find((c) => c.id === cursoId);
+    return publicado ? res.redirect(302, vitrine.urlOnline(publicado)) : next();
   }
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
   // As três consultas saem juntas: "outros cursos" não depende do curso carregado.

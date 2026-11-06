@@ -2,6 +2,7 @@
 require('dotenv').config();
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const { urlOnline } = require('../src/lib/vitrine');
 const cpf = require('./helpers/cpf');
 
 const temBanco = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');
@@ -81,7 +82,7 @@ describe('lote de escola', { skip: temBanco ? false : 'sem DATABASE_URL local' }
     const p1 = pessoa(1);
     const r1 = await L.cadastrarFuncionario(lote.id, p1, { origem: 'GESTOR', atorId: 'dev' });
     assert.equal(r1.ok, true, r1.erro); assert.equal(r1.nova, true);
-    assert.equal(vagasEmail.at(-1).senhaInicial, p1.cpf.slice(-4)); assert.match(vagasEmail.at(-1).link, new RegExp(`/online/${curso.id}$`));
+    assert.equal(vagasEmail.at(-1).senhaInicial, p1.cpf.slice(-4)); assert.match(vagasEmail.at(-1).link, new RegExp(`${urlOnline(curso)}$`));
     // quem já comprou o curso não gasta vaga
     const pComprou = pessoa('comprou');
     const comprou = await conta.contaParaPessoa(pComprou);

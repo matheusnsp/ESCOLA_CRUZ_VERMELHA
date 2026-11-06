@@ -3,6 +3,7 @@
 require('dotenv').config();
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const { urlOnline } = require('../src/lib/vitrine');
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
@@ -123,7 +124,7 @@ describe('/online: compra e acesso pago', { skip: temBanco ? false : 'sem DATABA
     assert.equal(depois.statusPagamento, 'PAGO'); assert.ok(depois.confirmadaEm); assert.equal(depois.taxaConfirmada, true);
     assert.equal(liberados.length, 1);
     assert.equal(liberados[0].para, ana.email);
-    assert.match(liberados[0].link, new RegExp(`/online/${curso.id}$`));
+    assert.match(liberados[0].link, new RegExp(`${urlOnline(curso)}$`));
     const r = await req(`${base}/continuar`, ana);
     assert.equal(r.status, 302);
     assert.match(r.headers.get('location'), new RegExp(`^/online/${curso.id}/tela/`));
@@ -181,7 +182,7 @@ describe('cobrança online: valor do cartão e destino depois de pagar', () => {
     assert.deepEqual(cobrancaCartaoOnline({ valorCurso: '49.90' }), { valorCobranca: 49.9, valorBase: 49.9, numParcelas: 1, valorParcela: null, tipo: 'CURSO' });
   });
   test('destino: online vai para o curso; presencial para a Minha conta', () => {
-    assert.equal(destinoAposPagamento({ turma: { status: 'ONLINE', cursoId: 'c1' } }), '/online/c1');
+    assert.equal(destinoAposPagamento({ turma: { status: 'ONLINE', cursoId: 'c1', curso: { nome: 'Curso Um' } } }), '/online/curso-um');
     assert.equal(destinoAposPagamento({ turma: { status: 'ABERTA', cursoId: 'c1' } }), '/minha-conta?inscrito=1');
   });
 });

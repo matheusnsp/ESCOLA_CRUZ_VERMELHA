@@ -3,6 +3,7 @@
 require('dotenv').config();
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const { urlOnline } = require('../src/lib/vitrine');
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
@@ -101,7 +102,7 @@ describe('pendências do aluno', { skip: temBanco ? false : 'sem DATABASE_URL lo
 
   test('estornada e cancelada aparecem como "cancelado", no fim, com o texto', async () => {
     const [e] = await meusCursosOnline(us.Est.id);
-    assert.deepEqual([e.situacao, e.link], ['cancelado', `/online/${curso.id}`]);
+    assert.deepEqual([e.situacao, e.link], ['cancelado', urlOnline(curso)]);
     assert.equal((await meusCursosOnline(us.Can.id))[0].situacao, 'cancelado');
     const html = await (await pagina('/minha-conta?sec=online', us.Est)).text();
     assert.match(html, /Pagamento cancelado ou devolvido: o curso fica fechado\./);

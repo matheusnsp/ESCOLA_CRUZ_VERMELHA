@@ -5,6 +5,6 @@
 <div class="v-online-caixa">
   <span class="v-online-selo"><i class="fa-solid fa-laptop" aria-hidden="true"></i> Também 100% online</span>
   <p>Estude pelo celular, no seu ritmo, com certificado ao concluir. Capacitação teórica, sem prática em manequim.</p>
-  <a class="v-btn v-btn-bloco v-online-btn" href="/online/<%= curso.id %>"><%= vitrine.reais(curso.online.preco) %> · Começar agora <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+  <a class="v-btn v-btn-bloco v-online-btn" href="<%= vitrine.urlOnline(curso) %>"><%= vitrine.reais(curso.online.preco) %> · Começar agora <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
 </div>
 <% } %>

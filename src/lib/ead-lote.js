@@ -139,7 +139,7 @@ async function avisarVaga(usuario, lote, senhaInicial) {
   const l = await prisma.loteEad.findUnique({ where: { id: lote.id }, include: { escola: true, cursoOnline: { include: { curso: { select: { nome: true } } } } } });
   try {
     await require('./email').enviarVagaLiberada(usuario.email, String(usuario.nome).trim().split(/\s+/)[0], {
-      escola: l.escola.nome, curso: l.cursoOnline.curso.nome, link: `${site()}/online/${l.cursoOnline.cursoId}`, senhaInicial,
+      escola: l.escola.nome, curso: l.cursoOnline.curso.nome, link: `${site()}${require('./vitrine').urlOnline(l.cursoOnline.curso)}`, senhaInicial,
     });
   } catch (e) {
     console.error('[EAD] e-mail da vaga:', e.message);

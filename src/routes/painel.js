@@ -165,6 +165,7 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
     sec,
     // O curso online (turma ONLINE) tem a aba própria "Cursos online" (etapa 7); as inscrições ficam só com o presencial.
     matriculas: matriculasComRetomada.filter((m) => m.turma.status !== 'ONLINE'),
+    urlOnline: require('../lib/vitrine').urlOnline,
     cursosOnline: await require('../lib/ead-meus-cursos').meusCursosOnline(usuario.id).catch((e) => { console.error('[Minha conta] cursos online:', e.message); return []; }),
     saude: await saudeDaConta(usuario.id, matriculas, req.query),
     avisosTurma: await avisosDeBoasVindas(matriculas),

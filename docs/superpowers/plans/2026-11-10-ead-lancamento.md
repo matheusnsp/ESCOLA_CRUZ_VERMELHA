@@ -184,3 +184,24 @@
 - [ ] **Step 3:** Escrever os dois guias com os passos do spec §6 e §7. O deploy lista as migrações pelo nome real (`ls prisma/migrations | grep ead`).
 - [ ] **Step 4:** `node --test test/ead-docs.test.js` → PASS.
 - [ ] **Step 5: Commit** `docs(ead): guia de publicação e roteiro de deploy`.
+
+### Task 6: Links do curso online pelo nome (pedido do Matheus durante a execução)
+
+**Files:**
+- Modify: `src/lib/vitrine.js` (`urlOnline(curso) → '/online/' + slugCurso(curso.nome)`) e todos os pontos que montavam `/online/<id>`:
+  - views: catálogo, caixa do presencial e Minha conta;
+  - e-mails: curso liberado, vaga da escola e dúvida respondida;
+  - destino depois do pagamento, painel ("Abrir a página do curso"), sitemap, `/cursos/<nome>` do curso só online, convite da escola, JSON-LD.
+- Modify: `src/routes/ead-teste.js` e `_topo.ejs`: o endereço com o id continua abrindo; a página leva `<link rel="canonical">` para o endereço com o nome.
+- Test: `test/ead-links-nome.test.js`, mais os testes antigos que conferiam o link com o id.
+
+- [ ] **Step 1:** Testes:
+  - `urlOnline` monta o endereço com o nome;
+  - nenhum arquivo monta `/online/<id>`;
+  - o endereço com o nome abre;
+  - o endereço com o id abre e tem o canonical;
+  - Minha conta e o retorno levam ao nome.
+- [ ] **Step 2:** `node --test test/ead-links-nome.test.js` → FAIL.
+- [ ] **Step 3:** Implementar.
+- [ ] **Step 4:** `npm test` → todos passam.
+- [ ] **Step 5: Commit** `feat(ead): links do curso online pelo nome do curso`.

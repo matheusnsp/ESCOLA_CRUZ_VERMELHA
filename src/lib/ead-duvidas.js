@@ -168,7 +168,7 @@ async function listarCentral({ status = 'AGUARDANDO', cursoOnlineId = null } = {
       respondidaPorNome: duvida.respondidaPor ? nomes.get(duvida.respondidaPor) || (duvida.respondidaPor === 'SISTEMA' ? 'Sistema' : 'Dev') : null,
       cursoOnlineId: alunoCurso.cursoOnlineId, curso: alunoCurso.cursoOnline.curso.nome,
       modulo: tela.topico.modulo.titulo, moduloId: tela.topico.modulo.id, topico: tela.topico.titulo, tela,
-      linkBase: pago ? `/online/${alunoCurso.cursoOnline.cursoId}` : codigo ? `/ead-teste/${codigo}` : null,
+      linkBase: pago ? require('./vitrine').urlOnline(alunoCurso.cursoOnline.curso) : codigo ? `/ead-teste/${codigo}` : null,
     };
   });
 }

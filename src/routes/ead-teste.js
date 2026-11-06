@@ -28,6 +28,7 @@ const { urlRetorno } = require('../lib/cobranca-avista');
 const duv = require('../lib/ead-duvidas');
 const cupons = require('../lib/ead-cupom');
 const medicao = require('../lib/ead-medicao');
+const { urlOnline } = require('../lib/vitrine');
 const { limiteCupom, MSG_TENTATIVAS } = require('../lib/limite-cupom');
 
 // Etapa 3: ao concluir o curso, emite o certificado (número, Redação, e-mail) SEM esperar.
@@ -129,6 +130,9 @@ async function resolverCurso(req) {
 const comCurso = (fn, { livre = false } = {}) => asyncHandler(async (req, res, next) => {
   const r = await resolverCurso(req);
   if (!r) return req.params.codigo !== undefined ? naoAchou(res) : next();
+  // Etapa 8: o endereço do curso pago é o nome (/online/<nome>, como o presencial). O antigo, com o id, continua
+  // abrindo; a página diz ao Google qual é o oficial (canonical).
+  if (r.modo === 'pago') res.locals.canonicalOnline = urlOnline(r.co.curso) + req.path.slice(`/online/${req.params.cursoId}`.length);
   req.ead = { base: r.base, modo: r.modo, acesso: r.acesso };
   res.locals.eadModo = r.modo;
   if (r.modo === 'pago' && !r.acesso.liberado && !livre) return res.redirect(r.base);

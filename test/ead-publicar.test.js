@@ -3,6 +3,7 @@
 require('dotenv').config();
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const { urlOnline } = require('../src/lib/vitrine');
 const path = require('path');
 const ejs = require('ejs');
 const express = require('express');
@@ -101,7 +102,7 @@ describe('painel: publicar e site', { skip: temBanco ? false : 'sem DATABASE_URL
     assert.doesNotMatch(await card(null), /100% online/);
     const caixa = (online) => ejs.renderFile(path.join(__dirname, '..', 'src', 'views', 'partials', 'caixa-online.ejs'), { vitrine, curso: { ...curso, online } });
     const html = await caixa({ preco: 49.9 });
-    assert.match(html, /Também 100% online/); assert.match(html, /R\$\s?49,90/); assert.match(html, new RegExp(`href="/online/${curso.id}"`));
+    assert.match(html, /Também 100% online/); assert.match(html, /R\$\s?49,90/); assert.match(html, new RegExp(`href="${urlOnline(curso)}"`));
     assert.equal((await caixa(null)).trim(), '');
   });
 

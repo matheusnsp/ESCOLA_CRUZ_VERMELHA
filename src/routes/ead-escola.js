@@ -116,8 +116,8 @@ router.post('/escola/convite/:codigo', requireLogin, comConvite(async (req, res,
   const u = alunoDaSessao(req);
   if (!u) return res.redirect(urlConvite(lote));
   const r = await L.entrarPorConvite(lote.convite, u);
-  if (r.ok) return res.redirect(`/online/${lote.cursoOnline.cursoId}/continuar`);
-  if (r.erro === 'ja_tem_acesso') return res.redirect(`/online/${lote.cursoOnline.cursoId}/continuar`);
+  const continuar = `${require('../lib/vitrine').urlOnline(lote.cursoOnline.curso)}/continuar`;
+  if (r.ok || r.erro === 'ja_tem_acesso') return res.redirect(continuar);
   res.status(409).render('escola/convite', { lote, situacao: L.situacaoDoLote(lote), logado: true, base: urlConvite(lote), erro: MSG_ERRO[r.erro] || 'Não foi possível usar a vaga.', titulo: lote.escola.nome });
 }));
 

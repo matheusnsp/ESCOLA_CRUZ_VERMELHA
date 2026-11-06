@@ -116,7 +116,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const venda = {
       pendencias: publicacao.podePublicar({ ...co, modulos }),
       aviso: publicacao.avisoPublicado({ ...co, modulos }),
-      urlCurso: `${urlSite}/online/${co.cursoId}`,
+      urlCurso: `${urlSite}${require('../lib/vitrine').urlOnline(co.curso)}`,
     };
     res.render('admin/ead/curso', { co, modulos, venda, dadosCurso, linkTeste: codigo ? `${urlSite}/ead-teste/${codigo}` : null, erroForm: null, ...flash(req) });
   });
