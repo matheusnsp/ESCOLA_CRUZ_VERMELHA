@@ -138,7 +138,7 @@ router.post('/conta/comprovante-saude', requireLogin, comprovanteSaude.receber('
 
 // Área do aluno — painel único com seções (inscricoes | dados | seguranca | excluir).
 router.get('/minha-conta', requireLogin, async (req, res) => {
-  const secValidas = ['inscricoes', 'dados', 'seguranca', 'excluir'];
+  const secValidas = ['inscricoes', 'online', 'dados', 'seguranca', 'excluir'];
   const sec = secValidas.includes(req.query.sec) ? req.query.sec : 'inscricoes';
 
   const usuario = await prisma.usuario.findUnique({ where: { id: req.session.usuarioId } });
@@ -163,9 +163,9 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
   res.render('minha-conta', {
     usuario,
     sec,
-    matriculas: matriculasComRetomada,
-    // Etapa 6: cursos online liberados pela escola (vaga de lote, sem matrícula).
-    cursosDaEscola: await require('../lib/ead-lote').vagasDoAluno(usuario.id),
+    // O curso online (turma ONLINE) tem a aba própria "Cursos online" (etapa 7); as inscrições ficam só com o presencial.
+    matriculas: matriculasComRetomada.filter((m) => m.turma.status !== 'ONLINE'),
+    cursosOnline: await require('../lib/ead-meus-cursos').meusCursosOnline(usuario.id).catch((e) => { console.error('[Minha conta] cursos online:', e.message); return []; }),
     saude: await saudeDaConta(usuario.id, matriculas, req.query),
     avisosTurma: await avisosDeBoasVindas(matriculas),
     matriculasAtivas,

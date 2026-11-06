@@ -2312,3 +2312,11 @@ body > section { flex: 1 0 auto; }
 }
 .ct-agenda i { color: #d9081f; }
 .ct-agenda:hover { border-color: #d9081f; }
+
+/* Minha conta → Cursos online (etapa 7): barra de progresso e o aviso na aba Inscrições */
+.ct-online-progresso { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; font-size: 13px; color: #555; }
+.ct-online-trilho { flex: 1; max-width: 240px; height: 6px; border-radius: 999px; background: #eee; overflow: hidden; }
+.ct-online-trilho > span { display: block; height: 100%; background: #d9081f; border-radius: 999px; }
+.ct-online-aviso { margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--borda-2, #e2e2e2); border-radius: 12px; font-size: 14px; background: #fff; }
+.ct-online-aviso i { color: #d9081f; margin-right: 6px; }
+.ct-online-aviso a { color: #d9081f; font-weight: 600; }
