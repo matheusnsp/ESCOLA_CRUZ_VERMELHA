@@ -180,7 +180,7 @@ async function cupomDaCapa(req, co, m) {
   if (req.cupomBloqueado) return { cupom: null, erroCupom: MSG_TENTATIVAS };
   const v = await cupons.validarCupom(codigo, co);
   // Só o código errado digitado/trazido agora conta para o limite (a compra com cupom inválido volta para cá).
-  if (v.erro) { if (pediu) registrarFalhaCupom(req); return { cupom: null, erroCupom: v.erro }; }
+  if (v.erro) { if (pediu && req.query.ja !== '1') registrarFalhaCupom(req); return { cupom: null, erroCupom: v.erro }; }
   if (req.session && pediu) req.session.cupomEad = { co: co.id, codigo: v.cupom.codigo };
   return { cupom: { codigo: v.cupom.codigo, precoCheio: v.precoCheio, desconto: v.desconto, precoFinal: v.precoFinal }, erroCupom: null };
 }

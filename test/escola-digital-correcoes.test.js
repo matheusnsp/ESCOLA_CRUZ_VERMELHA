@@ -89,6 +89,31 @@ describe('correções da vistoria (estorno, desativar, painel, certificado de te
     assert.equal((await acessoPago(u.id, co)).liberado, false);
   });
 
+  test('[revisão final] linhas marcadas à mão (confirmação manual) não contam como "outro pagamento"', async () => {
+    const { co, u, m, pix } = await compraComDoisPagamentos();
+    // /inscricoes/:id/confirmar marca TODAS as linhas do curso como PAGO (gatewayStatus manual:pago)
+    await prisma.pagamento.updateMany({ where: { matriculaId: m.id, tipo: 'CURSO' }, data: { status: 'PAGO', gatewayStatus: 'manual:pago' } });
+    await prisma.matricula.update({ where: { id: m.id }, data: { statusPagamento: 'PAGO', confirmadaEm: new Date(), taxaConfirmada: true } });
+    await aplicarStatus(await prisma.pagamento.findUnique({ where: { id: pix.id } }), { status: 'refunded', payload: {}, origem: 'webhook' });
+    assert.equal((await acessoPago(u.id, co)).liberado, false, 'o dinheiro voltou: a matrícula fecha');
+  });
+
+  test('[revisão final] outroPagamentoCursoPago (usado também pelo botão "Estornar" do painel)', async () => {
+    const { outroPagamentoCursoPago } = require('../src/lib/status-pagamento');
+    const { m, pix, cc } = await compraComDoisPagamentos();
+    await prisma.pagamento.update({ where: { id: cc.id }, data: { status: 'PAGO', gatewayStatus: 'paid' } });
+    await prisma.pagamento.update({ where: { id: pix.id }, data: { status: 'PAGO', gatewayStatus: 'paid' } });
+    assert.equal(await outroPagamentoCursoPago(m.id, pix.id), true);
+    await prisma.pagamento.update({ where: { id: cc.id }, data: { status: 'ESTORNADO' } });
+    assert.equal(await outroPagamentoCursoPago(m.id, pix.id), false);
+  });
+
+  test('[revisão final] botão "Estornar" do painel usa a mesma regra do pagamento duplicado', () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'routes', 'admin.js'), 'utf8');
+    const rota = src.slice(src.indexOf("router.post('/inscricoes/:id/estornar'"), src.indexOf("router.post('/inscricoes/:id/alimento'"));
+    assert.match(rota, /outroPagamentoCursoPago\(/);
+  });
+
   test('desativar EAD de curso com cupom mostra mensagem (sem erro 500)', async () => {
     const co = await novoCurso('Curso Desativar Cupom');
     await prisma.cupomEad.create({ data: { codigo: `DESAT${s}`, tipo: 'VALOR', valor: 5, cursoOnlineId: co.id, criadoPor: 'teste' } });

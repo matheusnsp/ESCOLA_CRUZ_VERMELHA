@@ -15,7 +15,7 @@ const { iniciarCobrancaAVista } = require('../lib/cobranca-avista');
 const { lerOrigem } = require('../lib/origem-da-visita');
 const { transacao } = require('../lib/transacao');
 const cupons = require('../lib/ead-cupom');
-const { limiteCupom } = require('../lib/limite-cupom');
+const { limiteCupom, registrarFalhaCupom } = require('../lib/limite-cupom');
 const { URL_ESCOLA_DIGITAL } = require('../lib/vitrine');
 const escolaDigital = require('../lib/escola-digital');
 
@@ -104,7 +104,9 @@ router.post(['/online/:cursoId/comprar', '/escola-digital/:cursoId/comprar'], re
   if (codigo) {
     if (req.cupomBloqueado) return voltaCupom(); // a capa mostra o aviso de tentativas
     v = await cupons.validarCupom(codigo, co);
-    if (v.erro) return voltaCupom();
+    // Revisão final (I-1): o código errado conta aqui também (quem não segue o redirecionamento escapava do
+    // limite); a capa recebe ?ja=1 para não contar duas vezes.
+    if (v.erro) { registrarFalhaCupom(req); return res.redirect(`${base}?cupom=${encodeURIComponent(codigo)}&ja=1`); }
   }
   const valor = v ? v.precoFinal : preco;
   if (forma === 'CUPOM' && valor !== 0) return v ? voltaCupom() : res.redirect(base);

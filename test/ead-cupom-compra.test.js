@@ -137,7 +137,7 @@ describe('/online: compra com cupom', { skip: temBanco ? false : 'sem DATABASE_U
     await C.ativarCupom(c.id, false, 'dev');
     const r = await post(`${base}/comprar`, bia, { forma: 'PIX', cupom: c.codigo });
     assert.equal(r.status, 302);
-    assert.equal(r.headers.get('location'), `/escola-digital/${curso.id}?cupom=${encodeURIComponent(c.codigo)}`);
+    assert.equal(r.headers.get('location'), `/escola-digital/${curso.id}?cupom=${encodeURIComponent(c.codigo)}&ja=1`); // erro já contado na compra
     assert.equal(await matriculaDe(bia), null);
   });
 

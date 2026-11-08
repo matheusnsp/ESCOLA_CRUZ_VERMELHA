@@ -131,6 +131,19 @@ const QUEM = {
  * @param {boolean} [o.gravarPendente=true]  registrar a resposta mesmo quando ainda está pendente
  * @returns {Promise<{info?: string, novoStatus?: string}>}
  */
+// Escola Digital (2026-11, vistoria B4 + revisão final): sobrou outro pagamento do curso PAGO pelo gateway nesta
+// matrícula (pagou duas vezes)? As linhas marcadas à mão (confirmação manual marca TODAS como PAGO, com
+// gatewayStatus "manual:pago") não contam: seriam tentativas antigas, não dinheiro recebido.
+async function outroPagamentoCursoPago(matriculaId, excetoPagamentoId) {
+  const n = await prisma.pagamento.count({
+    where: {
+      matriculaId, tipo: 'CURSO', status: 'PAGO', id: { not: excetoPagamentoId },
+      gateway: { not: 'manual' }, NOT: { gatewayStatus: { startsWith: 'manual:' } },
+    },
+  });
+  return n > 0;
+}
+
 async function aplicarStatus(pagamento, { status, payload, tx, origem = 'webhook', gravarPendente = true }) {
   const quem = QUEM[origem] || QUEM.webhook;
   tx = tx || payload || {};
@@ -275,9 +288,7 @@ async function aplicarStatus(pagamento, { status, payload, tx, origem = 'webhook
   } else if (novoStatus === 'ESTORNADO') {
     // Escola Digital (2026-11, vistoria B4): pagou duas vezes (PIX e cartão) e um foi estornado: a matrícula
     // continua paga pelo outro. Só fecha quando não sobra pagamento do curso PAGO.
-    const outroPago = pagamento.tipo === 'CURSO'
-      ? await prisma.pagamento.count({ where: { matriculaId: pagamento.matriculaId, tipo: 'CURSO', status: 'PAGO', id: { not: pagamento.id } } })
-      : 0;
+    const outroPago = pagamento.tipo === 'CURSO' ? await outroPagamentoCursoPago(pagamento.matriculaId, pagamento.id) : false;
     if (pagamento.tipo === 'CURSO' && outroPago) {
       console.log(`[${quem.log}] 💸 CURSO estornado, mas a matrícula ${pagamento.matriculaId} tem outro pagamento PAGO: continua paga.`);
     } else if (pagamento.tipo === 'CURSO') {
@@ -314,4 +325,4 @@ async function aplicarStatus(pagamento, { status, payload, tx, origem = 'webhook
   return { novoStatus };
 }
 
-module.exports = { classificarStatus, aplicarStatus, avisarMatriculaConfirmada };
+module.exports = { classificarStatus, aplicarStatus, avisarMatriculaConfirmada, outroPagamentoCursoPago };
