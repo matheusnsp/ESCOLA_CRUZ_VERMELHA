@@ -284,7 +284,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
       next();
     });
   }
-  const cursosOnlineParaIa = () => prisma.cursoOnline.findMany({ select: { id: true, curso: { select: { nome: true } } }, orderBy: { criadoEm: 'asc' } });
+  const cursosOnlineParaIa = () => prisma.cursoOnline.findMany({ select: { id: true, publicado: true, curso: { select: { nome: true } } }, orderBy: { criadoEm: 'asc' } });
 
   // Confere o formulário; devolve { pedido } ou { erro }.
   async function lerPedidoIa(b, arquivos) {

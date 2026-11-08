@@ -17,6 +17,7 @@
   <a href="/ead/curso/<%= modulo.cursoOnlineId %>" class="adm-link">← <%= modulo.cursoOnline.curso.nome %></a>
 </div>
 <%- include('_mensagens') %>
+<%- include('_aviso-publicado', { publicado: modulo.cursoOnline && modulo.cursoOnline.publicado }) %>
 
 <div class="adm-box adm-box-pad adm-espaco">
   <div class="ead-acoes" style="justify-content: space-between">

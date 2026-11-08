@@ -126,3 +126,7 @@ html[data-tema="escuro"] .ia-roteiro .ia-modulo { border-color: #3a4149; }
 .ia-roteiro .ia-bloco-cenarios { display: none; }
 .ia-roteiro .ia-final .ia-bloco-cenarios { display: block; }
 .ia-roteiro .ia-final .ia-bloco-topicos { display: none; }
+
+/* Escola Digital (2026-11, B5): aviso de curso publicado no painel. */
+.adm-aviso-publicado { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; background: #fff7e6; border: 1px solid #f3c66b; color: #6b4a00; font-size: 14px; }
+.adm-aviso-publicado i { margin-top: 2px; }

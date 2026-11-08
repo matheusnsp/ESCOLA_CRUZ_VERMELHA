@@ -16,7 +16,7 @@ async function carregarModulo(id) {
   return prisma.moduloEad.findUnique({
     where: { id },
     include: {
-      cursoOnline: { include: { curso: { select: { id: true, nome: true } } } },
+      cursoOnline: { include: { curso: { select: { id: true, nome: true } } } }, // inclui publicado (aviso no painel)
       topicos: {
         orderBy: POR_ORDEM,
         include: {

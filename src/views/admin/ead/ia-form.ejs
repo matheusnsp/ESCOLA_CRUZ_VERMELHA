@@ -22,9 +22,10 @@
     <label class="full">Curso online
       <select name="cursoOnlineId">
         <option value="">— escolha —</option>
-        <% cursos.forEach(function (c) { %><option value="<%= c.id %>" <%= v.cursoOnlineId === c.id ? 'selected' : '' %>><%= c.curso.nome %></option><% }) %>
+        <% cursos.forEach(function (c) { %><option value="<%= c.id %>" <%= v.cursoOnlineId === c.id ? 'selected' : '' %>><%= c.curso.nome %><%= c.publicado ? ' (publicado)' : '' %></option><% }) %>
       </select>
     </label>
+    <% if (cursos.some(function (c) { return c.publicado; })) { %><p class="full adm-mut">Curso marcado como "(publicado)": os módulos que a IA escrever aparecem para os alunos na hora, ainda em rascunho. Prefira revisar antes, num curso não publicado.</p><% } %>
   </div>
 
   <h2 class="adm-h2 adm-form-h">O que a IA deve escrever</h2>

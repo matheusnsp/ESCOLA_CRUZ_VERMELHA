@@ -7,6 +7,7 @@
 </div>
 <%- include('_abas-curso', { co: co, aba: 'conteudo' }) %>
 <%- include('_mensagens') %>
+<%- include('_aviso-publicado', { publicado: co.publicado }) %>
 
 <% if (typeof dadosCurso !== 'undefined' && dadosCurso) { %>
 <%# Etapa 5: curso que só existe online — os dados do curso são editados aqui, não no presencial. %>
