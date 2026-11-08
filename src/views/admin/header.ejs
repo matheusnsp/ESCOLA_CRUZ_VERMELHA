@@ -170,7 +170,12 @@
         var c = campo(f, 'apenasContabil');
         if (contabil.checked) c.value = 'on'; else c.parentNode.removeChild(c);
       }
-      if (botaoClicado && botaoClicado.name) campo(f, botaoClicado.name).value = botaoClicado.value;
+      if (botaoClicado && botaoClicado.name) {
+        // Campo escondido próprio: o form.submit() não envia botões, então mudar o value do botão não adianta.
+        var oculto = f.querySelector('input[type="hidden"][data-botao-clicado]');
+        if (!oculto) { oculto = document.createElement('input'); oculto.type = 'hidden'; oculto.setAttribute('data-botao-clicado', ''); f.appendChild(oculto); }
+        oculto.name = botaoClicado.name; oculto.value = botaoClicado.value;
+      }
       fechar();
       f.submit(); // submit() não dispara o evento de novo
     });

@@ -11,6 +11,8 @@ const ler = (p) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
 test('o aviso de confirmação envia o botão clicado e usa a cor da ação', () => {
   const h = ler('src/views/admin/header.ejs');
   assert.match(h, /e\.submitter/);
+  // o valor do botão vai num campo escondido próprio (achar o botão pelo nome e mudar o value não envia nada)
+  assert.match(h, /botaoClicado\.name[\s\S]{0,400}type = 'hidden'/);
   assert.match(h, /confirmarTipo/);
 });
 

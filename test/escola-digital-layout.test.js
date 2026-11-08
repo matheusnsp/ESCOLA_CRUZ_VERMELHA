@@ -56,7 +56,7 @@ test('menu de conta do site tem "Cursos online" e "Minha escola" para quem tem',
 
 test('cupom: o botão "Aplicar" não estica (o campo fica com a largura)', () => {
   assert.match(ler('src/public/ead.css'), /\.ea-cupom-linha \.ea-pilula\s*\{[^}]*width:\s*auto[^}]*flex:\s*none/);
-  assert.match(ler('src/public/ead.css'), /\.ea-heroi-grid\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(ler('src/public/ead.css'), /@media \(max-width: 819px\) \{ \.ea-heroi-grid\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/, 'só no celular: no computador são duas colunas');
 });
 
 test('pagamento em andamento com cupom mostra o preço riscado', () => {

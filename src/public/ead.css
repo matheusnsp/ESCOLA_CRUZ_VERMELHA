@@ -353,7 +353,7 @@ div.ea-mod { cursor: default; }
 .ea-cupom-linha .ea-pilula { width: auto; flex: none; padding: 10px 16px; }
 .ea-cupom-linha input { min-height: 44px; }
 /* B2: no celular a grade do topo crescia além da tela e o overflow cortava título e botões. */
-.ea-heroi-grid { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 819px) { .ea-heroi-grid { grid-template-columns: minmax(0, 1fr); } }
 .ea-heroi-grid > * { min-width: 0; }
 /* H5: rodapé no pé da tela em páginas curtas. */
 body.ea-pagina { min-height: 100vh; display: flex; flex-direction: column; }
@@ -388,3 +388,7 @@ details.ea-indice > summary, .ea-indice summary { padding: 12px 0; }
 .esc-convite-linha { display: flex; gap: 8px; align-items: stretch; }
 .esc-convite-linha .esc-convite { flex: 1; min-width: 0; }
 .esc-convite-linha .ea-pilula { width: auto; flex: none; }
+/* B1 (2ª parte): a linha do cupom não pode ser mais larga que o cartão (o campo tinha largura mínima própria). */
+.ea-cupom, .ea-cupom-linha { min-width: 0; max-width: 100%; }
+.ea-cupom-linha { display: flex; width: 100%; }
+.ea-cupom-linha input { width: 0; flex: 1 1 auto; }
