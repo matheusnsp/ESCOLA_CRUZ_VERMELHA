@@ -11,7 +11,7 @@
   <div class="ea-wrap ea-heroi-grid" style="min-height:0">
     <div>
       <a class="ea-pilula ea-pilula-escura ea-voltar" href="<%= base %>">← Todos os módulos</a>
-      <p class="ea-kicker">Módulo <%= numero %> · <%= modulo.minutosEstimados %> min<%= modulo.final ? ' · cenários' : '' %></p>
+      <p class="ea-kicker">Módulo <%= numero %><%= modulo.minutosExibidos ? ' · ' + modulo.minutosExibidos + ' min' : '' %><%= modulo.final ? ' · cenários' : '' %></p>
       <h1><%= modulo.titulo %><span>.</span></h1>
       <% if (em && em.estado === 'concluido') { %><span class="ea-chip ea-chip-ok">✓ Módulo concluído</span><% } %>
     </div>

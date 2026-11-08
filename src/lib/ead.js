@@ -74,66 +74,85 @@ const vazio = (s) => !String(s || '').trim();
 const ativas = (topico) => (topico.perguntas || []).filter((p) => p.ativa);
 
 // O que impede validar o módulo. modulo = árvore carregada (lib/ead-db.js carregarModulo).
-function pendencias(modulo) {
-  const p = [];
-  if (vazio(modulo.titulo)) p.push('Módulo sem título.');
-  if (vazio(modulo.introducao)) p.push('Módulo sem introdução.');
+// Escola Digital (2026-11): a validação pede só o que o aluno precisa para o curso funcionar ("Para validar");
+// o resto vira aviso ("Recomendado"), sem travar. A página do módulo mostra as duas listas desde o começo.
+// Cada item: { texto, ok, detalhe? } (detalhe = onde falta, para a mensagem).
+const MIN_OPCOES = 2;
+const MAX_OPCOES = 4;
+const item = (texto, faltam) => ({ texto, ok: !faltam.length, detalhe: faltam.length ? faltam.slice(0, 5).join(', ') + (faltam.length > 5 ? '…' : '') : null });
+const nomeTela = (t) => `'${t.titulo}'`;
 
+function checklist(modulo) {
+  const titulo = { texto: 'Título', ok: !vazio(modulo.titulo), detalhe: null };
+  const introducao = { texto: 'Introdução do módulo', ok: !vazio(modulo.introducao), detalhe: null };
   if (modulo.final) {
     const cenarios = modulo.cenarios || [];
-    if (!cenarios.length) p.push('O módulo final precisa de pelo menos 1 cenário.');
-    for (const c of cenarios) {
-      if (vazio(c.cena)) p.push(`Cenário '${c.titulo}': sem a cena.`);
-      if (!(c.decisoes || []).length) p.push(`Cenário '${c.titulo}': sem decisões.`);
-      (c.decisoes || []).forEach((d, i) => {
-        const nome = `Cenário '${c.titulo}', decisão ${i + 1}`;
-        const opcoes = d.opcoes || [];
-        if (opcoes.length !== 3) p.push(`${nome}: precisa de exatamente 3 opções (tem ${opcoes.length}).`);
-        if (opcoes.filter((o) => o.correta).length !== 1) p.push(`${nome}: marque exatamente 1 correta.`);
-        if (opcoes.some((o) => vazio(o.feedback))) p.push(`${nome}: toda opção precisa da fala do instrutor.`);
-      });
-    }
-    return p;
+    const decisoes = cenarios.flatMap((c) => (c.decisoes || []).map((d, i) => ({ c, d, nome: `'${c.titulo}', decisão ${i + 1}` })));
+    const opcoesRuins = decisoes.filter(({ d }) => {
+      const o = d.opcoes || [];
+      return o.length < MIN_OPCOES || o.length > MAX_OPCOES || o.filter((x) => x.correta).length !== 1;
+    });
+    return {
+      paraValidar: [
+        titulo,
+        { texto: 'Pelo menos 1 cenário', ok: cenarios.length > 0, detalhe: null },
+        item('Todo cenário tem decisão', cenarios.filter((c) => !(c.decisoes || []).length).map((c) => `'${c.titulo}'`)),
+        item(`Toda decisão tem de ${MIN_OPCOES} a ${MAX_OPCOES} opções e 1 correta`, opcoesRuins.map((x) => x.nome)),
+      ],
+      recomendado: [
+        introducao,
+        item('Cena em todos os cenários', cenarios.filter((c) => vazio(c.cena)).map((c) => `'${c.titulo}'`)),
+        item('Fala do instrutor em todas as opções', decisoes.filter(({ d }) => (d.opcoes || []).some((o) => vazio(o.feedback))).map((x) => x.nome)),
+      ],
+    };
   }
-
-  if (!(modulo.minutosEstimados > 0)) p.push('Módulo sem tempo estimado.');
   const topicos = modulo.topicos || [];
-  if (!topicos.length) p.push('O módulo precisa de pelo menos 1 tópico.');
-  let total = 0;
-  for (const t of topicos) {
-    if (!(t.telas || []).length) p.push(`Tópico '${t.titulo}': sem telas.`);
-    for (const tela of t.telas || []) {
-      if (vazio(tela.titulo)) p.push(`Tópico '${t.titulo}': tela sem título.`);
-      if (vazio(tela.ancora)) p.push(`Tela '${tela.titulo}': sem a âncora.`);
-      if (vazio(tela.videoUrl)) p.push(`Tela '${tela.titulo}': sem vídeo.`);
-    }
-    const at = ativas(t);
-    total += at.length;
-    if (at.length < MINIMO_POR_TOPICO) p.push(`Tópico '${t.titulo}': só ${at.length} perguntas ativas (mínimo ${MINIMO_POR_TOPICO}).`);
-    for (const q of at) {
-      const nome = `Pergunta '${String(q.enunciado).slice(0, 60)}'`;
-      if (vazio(q.feedback)) p.push(`${nome}: sem feedback (o porquê).`);
-      const r = normalizarAlternativas(q.tipo, (q.alternativas || []).map((a) => ({ texto: a.texto, correta: a.correta })));
-      if (r.erro) p.push(`${nome}: ${r.erro}`);
-    }
-  }
-  if (topicos.length && total < MINIMO_POR_MODULO) p.push(`O módulo tem ${total} perguntas ativas (mínimo ${MINIMO_POR_MODULO}, para o pré-teste).`);
-  return p;
+  const telas = topicos.flatMap((t) => t.telas || []);
+  const perguntas = topicos.flatMap((t) => ativas(t));
+  const altRuins = perguntas.filter((q) => normalizarAlternativas(q.tipo, (q.alternativas || []).map((a) => ({ texto: a.texto, correta: a.correta }))).erro);
+  return {
+    paraValidar: [
+      titulo,
+      { texto: 'Pelo menos 1 tópico com 1 tela', ok: topicos.some((t) => (t.telas || []).length), detalhe: null },
+      item('Todo tópico tem pelo menos 1 tela', topicos.filter((t) => !(t.telas || []).length).map((t) => `'${t.titulo}'`)),
+      item('Perguntas com alternativas válidas', altRuins.map((q) => `'${String(q.enunciado).slice(0, 40)}'`)),
+    ],
+    recomendado: [
+      item('Vídeo em todas as telas', telas.filter((t) => vazio(t.videoUrl)).map(nomeTela)),
+      item('Âncora em todas as telas', telas.filter((t) => vazio(t.ancora)).map(nomeTela)),
+      introducao,
+      item(`${MINIMO_POR_TOPICO} perguntas ou mais por tópico (o teste sorteia as que houver)`, topicos.filter((t) => ativas(t).length < MINIMO_POR_TOPICO).map((t) => `'${t.titulo}'`)),
+      { texto: `${MINIMO_POR_MODULO} perguntas ou mais no módulo (libera o pré-teste "Já sei isso?")`, ok: perguntas.length >= MINIMO_POR_MODULO, detalhe: perguntas.length < MINIMO_POR_MODULO ? `tem ${perguntas.length}` : null },
+      item('O porquê em todas as perguntas', perguntas.filter((q) => vazio(q.feedback)).map((q) => `'${String(q.enunciado).slice(0, 40)}'`)),
+    ],
+  };
 }
 
+const textoDe = (i) => (i.detalhe ? `${i.texto}: ${i.detalhe}` : i.texto);
+// O que impede validar (lista vazia = pode validar).
+const pendencias = (modulo) => checklist(modulo).paraValidar.filter((i) => !i.ok).map(textoDe);
 // O que não impede validar, mas convém melhorar.
-function avisos(modulo) {
-  if (modulo.final) return [];
-  return (modulo.topicos || [])
-    .filter((t) => ativas(t).length < META_POR_TOPICO)
-    .map((t) => `Tópico '${t.titulo}': ${ativas(t).length} perguntas ativas (meta do documento: ${META_POR_TOPICO}; com poucas, o quiz repete as mesmas perguntas a cada tentativa).`);
+const avisos = (modulo) => checklist(modulo).recomendado.filter((i) => !i.ok).map(textoDe);
+
+// Tempo do módulo: o digitado; vazio (0), 3 min por tela, 1 por pergunta ativa e 3 por cenário.
+function minutosDoModulo(modulo) {
+  if (modulo.minutosEstimados > 0) return modulo.minutosEstimados;
+  // Aceita a árvore completa (painel), a do aluno (perguntas já ativas, só o id) e a de contagens (painel).
+  if (modulo.nTelas !== undefined) return 3 * modulo.nTelas + (modulo.nPerguntas || 0) + 3 * (modulo.nCenarios || 0);
+  const topicos = modulo.topicos || [];
+  const telas = topicos.reduce((n, t) => n + (t.telas || []).length, 0);
+  const perguntas = topicos.reduce((n, t) => n + (t.perguntas || []).filter((q) => q.ativa !== false).length, 0);
+  return 3 * telas + perguntas + 3 * (modulo.cenarios || []).length;
 }
+
+// Texto que o aluno vê quando a opção do cenário não tem a fala do instrutor.
+const FALA_PADRAO = { certa: 'Certo!', errada: 'Não é a melhor escolha. Tente de novo.' };
 
 // ─── Esquemas dos formulários ─────────────────────────────────────────────────────────────────────
 const obrig = (max) => z.string().trim().min(1, 'Campo obrigatório.').max(max, `No máximo ${max} caracteres.`);
 const opc = (max) => z.preprocess((v) => (v === undefined || v === null || String(v).trim() === '' ? null : String(v).trim()),
   z.string().max(max, `No máximo ${max} caracteres.`).nullable());
-const inteiro = (min, max) => z.coerce.number().int('Use um número inteiro.').min(min).max(max);
+const inteiro = (min, max) => z.coerce.number({ invalid_type_error: 'Use um número.' }).int('Use um número inteiro.').min(min, `No mínimo ${min}.`).max(max, `No máximo ${max}.`);
 
 const schemaCursoOnline = z.object({ notaMinimaQuiz: inteiro(50, 100) });
 const schemaModulo = z.object({ titulo: obrig(120), minutosEstimados: inteiro(0, 600), introducao: opc(3000), final: z.boolean().default(false) });
@@ -149,7 +168,9 @@ const schemaAlternativaTexto = z.string().trim().max(300, 'Alternativa: no máxi
 const schemaCenario = z.object({ titulo: obrig(120), cena: opc(1000) });
 const schemaDecisao = z.object({
   pergunta: obrig(600),
-  opcoes: z.array(z.object({ texto: obrig(300), feedback: opc(800), correta: z.boolean() })).length(3),
+  // O formulário tem 3 campos; a opção deixada em branco é ignorada (mínimo 2, como a validação do módulo).
+  opcoes: z.preprocess((l) => (Array.isArray(l) ? l.filter((o) => o && String(o.texto || '').trim()) : l),
+    z.array(z.object({ texto: obrig(300), feedback: opc(800), correta: z.boolean() })).min(MIN_OPCOES, `Escreva pelo menos ${MIN_OPCOES} opções.`).max(MAX_OPCOES)),
 });
 
 // Primeira mensagem de erro de um safeParse, para mostrar no formulário.
@@ -157,7 +178,7 @@ const primeiroErro = (r) => (r.success ? null : r.error.issues[0].message);
 
 module.exports = {
   MINIMO_POR_TOPICO, MINIMO_POR_MODULO, META_POR_TOPICO,
-  normalizarVideo, lerMmSs, mmSs, normalizarAlternativas, pendencias, avisos,
+  normalizarVideo, lerMmSs, mmSs, normalizarAlternativas, pendencias, avisos, checklist, minutosDoModulo, FALA_PADRAO, MIN_OPCOES, MAX_OPCOES,
   schemaCursoOnline, schemaModulo, schemaTopico, schemaTela, schemaPergunta, schemaAlternativaTexto,
   schemaCenario, schemaDecisao, primeiroErro,
 };

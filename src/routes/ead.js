@@ -124,7 +124,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
       aviso: publicacao.avisoPublicado({ ...co, modulos }),
       urlCurso: `${urlSite}${require('../lib/vitrine').urlOnline(co.curso)}`,
     };
-    res.render('admin/ead/curso', { co, modulos, venda, dadosCurso, linkTeste: codigo ? `${urlSite}/ead-teste/${codigo}` : null, erroForm: null, ...flash(req) });
+    res.render('admin/ead/curso', { co, modulos, ead, venda, dadosCurso, linkTeste: codigo ? `${urlSite}/ead-teste/${codigo}` : null, erroForm: null, ...flash(req) });
   });
 
   router.post('/ead/curso/:id', async (req, res) => {
@@ -702,6 +702,9 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
       m = await transacao(async (tx) => {
         const novo = await tx.moduloEad.create({ data: { ...dados, cursoOnlineId: co.id, ordem: await edb.proximaOrdem(tx, 'moduloEad', 'cursoOnlineId', co.id) } });
         if (final) { const f = await edb.marcarFinal(tx, novo.id, true, ator(req)); if (f.erro) throw new ErroForm(f.erro); }
+        // Escola Digital (2026-11): os tópicos de uma vez ("um por linha"), no módulo comum.
+        const titulos = final ? [] : String(req.body.topicos || '').split(/\r?\n/).map((t) => t.trim().slice(0, 120)).filter(Boolean).slice(0, 30);
+        for (const [i, titulo] of titulos.entries()) await tx.topicoEad.create({ data: { moduloId: novo.id, titulo, ordem: i } });
         return novo;
       });
     } catch (e) {
@@ -717,7 +720,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const modulo = await edb.carregarModulo(req.params.id);
     if (!modulo) return naoAchou(res);
     res.render('admin/ead/modulo', {
-      modulo, pendencias: ead.pendencias(modulo), avisos: ead.avisos(modulo),
+      modulo, pendencias: ead.pendencias(modulo), avisos: ead.avisos(modulo), lista: ead.checklist(modulo), minutos: ead.minutosDoModulo(modulo),
       validadoPorNome: await nomeDe(modulo.validadoPor), mmSs: ead.mmSs, ...flash(req),
     });
   });
@@ -775,12 +778,10 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const m = edb.ehId(req.params.id) ? await prisma.moduloEad.findUnique({ where: { id: req.params.id } }) : null;
     if (!m) return naoAchou(res);
     await transacao(async (tx) => {
-      const r = await edb.mover(tx, 'moduloEad', m.id, req.params.direcao, 'cursoOnlineId', { final: false });
-      if (!r) return;
-      await edb.invalidarSeValidado(tx, m.id, ator(req), 'ordem dos módulos');
-      await edb.invalidarSeValidado(tx, r.trocadoCom, ator(req), 'ordem dos módulos');
+      // Escola Digital (2026-11, P6): mudar a ordem não mexe no conteúdo; não volta nada para rascunho.
+      await edb.mover(tx, 'moduloEad', m.id, req.params.direcao, 'cursoOnlineId', { final: false });
     });
-    res.redirect(`/ead/curso/${m.cursoOnlineId}`);
+    voltar(res, `/ead/curso/${m.cursoOnlineId}`, 'ok', 'Ordem salva.');
   });
 
   router.post('/ead/modulo/:id/excluir', async (req, res) => {
@@ -888,6 +889,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const tela = await escrever(req, topico.moduloId, `nova tela "${dados.titulo}"`, async (tx) =>
       tx.telaEad.create({ data: { ...dados, topicoId: topico.id, ordem: await edb.proximaOrdem(tx, 'telaEad', 'topicoId', topico.id) } }));
     await auditar(req, 'EAD_CRIOU_TELA', 'TelaEad', tela.id, { moduloId: topico.moduloId, titulo: tela.titulo });
+    if (req.body.depois === 'outra') return voltar(res, `/ead/topico/${topico.id}/telas/nova`, 'ok', `Tela "${tela.titulo}" criada. Escreva a próxima.`);
     voltar(res, urlModulo(topico.moduloId), 'ok', `Tela "${tela.titulo}" criada.`);
   });
 

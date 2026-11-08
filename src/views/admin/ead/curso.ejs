@@ -86,7 +86,7 @@
           <div class="ead-tit">
             <a href="/ead/modulo/<%= m.id %>"><%= m.titulo %></a>
             <small>
-              <%= m.minutosEstimados %> min ·
+              <% var _min = ead.minutosDoModulo(m); if (_min) { %><%= _min %> min ·<% } %>
               <% if (m.final) { %><%= m.nCenarios %> cenário(s)<% } else { %><%= m.topicos.length %> tópico(s) · <%= m.nTelas %> tela(s) · <%= m.nPerguntas %> pergunta(s) ativa(s)<% } %>
             </small>
           </div>

@@ -82,12 +82,8 @@ async function marcarFinal(tx, moduloId, final, atorId) {
   if (!final && m._count.cenarios) return { erro: 'Apague os cenários antes de deixar de ser o módulo final.' };
   if (final) {
     const anteriores = await tx.moduloEad.findMany({ where: { cursoOnlineId: m.cursoOnlineId, final: true, id: { not: moduloId } }, include: { _count: { select: { cenarios: true } } } });
-    const comCenarios = anteriores.find((a) => a._count.cenarios);
-    if (comCenarios) return { erro: `Já existe um módulo final ('${comCenarios.titulo}') com cenários. Apague os cenários dele antes de trocar o módulo final.` };
-    for (const a of anteriores) {
-      await tx.moduloEad.update({ where: { id: a.id }, data: { final: false } });
-      await invalidarSeValidado(tx, a.id, atorId, 'deixou de ser o módulo final');
-    }
+    // Escola Digital (2026-11, vistoria P1): antes tirava o "final" do outro módulo calado; agora recusa.
+    if (anteriores.length) return { erro: `Este curso já tem um módulo final ('${anteriores[0].titulo}'). Desmarque "final" nele antes, ou deixe este como módulo comum.` };
   }
   await tx.moduloEad.update({ where: { id: moduloId }, data: { final } });
   return {};

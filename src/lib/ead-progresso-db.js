@@ -9,6 +9,7 @@ const prisma = require('../db');
 const { POR_ORDEM, ehId } = require('./ead-db');
 const { transacao } = require('./transacao');
 const { sortear, tamanhoPreTeste, corrigir, aprovado, QUIZ_N } = require('./ead-progresso');
+const { minutosDoModulo } = require('./ead');
 
 // Curso com tudo o que as telas do aluno mostram (co) e o mesmo no formato de estadoDoCurso (curso).
 async function carregarCursoParaAluno(cursoOnlineId) {
@@ -28,6 +29,8 @@ async function carregarCursoParaAluno(cursoOnlineId) {
   });
   if (!co) return null;
   co.modulos = [...co.modulos.filter((m) => !m.final), ...co.modulos.filter((m) => m.final)];
+  // Escola Digital (2026-11): tempo para exibir (o digitado ou o calculado); "0 min" não aparece mais.
+  for (const m of co.modulos) m.minutosExibidos = minutosDoModulo(m);
   const curso = {
     modulos: co.modulos.map((m) => {
       const topicos = m.topicos.map((t) => ({ id: t.id, telas: t.telas.map((x) => ({ id: x.id })), nPerguntasAtivas: t.perguntas.length }));

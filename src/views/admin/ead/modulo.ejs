@@ -25,7 +25,7 @@
       <span class="ead-selo <%= validado ? 'validado' : 'rascunho' %>"><i class="fa-solid <%= validado ? 'fa-circle-check' : 'fa-pen' %>"></i> <%= validado ? 'Validado' : 'Rascunho' %></span>
       <% if (modulo.final) { %><span class="ead-selo final">Módulo final · cenários</span><% } %>
       <% if (modulo.geradoPorIa) { %><span class="ead-selo final">Gerado por IA — revise antes de validar</span><% } %>
-      <span class="adm-mut"><%= modulo.minutosEstimados %> min</span>
+      <% if (minutos) { %><span class="adm-mut"><%= minutos %> min<%= modulo.minutosEstimados > 0 ? '' : ' (calculado)' %></span><% } %>
       <% if (validado) { %><span class="adm-mut">por <%= validadoPorNome || '—' %> em <%= new Date(modulo.validadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) %></span><% } %>
     </div>
     <div class="ead-acoes">
@@ -47,16 +47,17 @@
   </div>
 </div>
 
-<% if (pendencias.length) { %>
-  <div class="ead-caixa pend"><h3><i class="fa-solid fa-list-check"></i> Falta para validar (<%= pendencias.length %>)</h3>
-    <ul><% pendencias.forEach(function (p) { %><li><%= p %></li><% }) %></ul></div>
-<% } else if (!validado) { %>
-  <div class="ead-caixa ok"><i class="fa-solid fa-circle-check"></i> Nenhuma pendência: o módulo pode ser validado.</div>
-<% } %>
-<% if (avisos.length) { %>
-  <div class="ead-caixa aviso"><h3><i class="fa-solid fa-lightbulb"></i> Recomendações (não impedem validar)</h3>
-    <ul><% avisos.forEach(function (p) { %><li><%= p %></li><% }) %></ul></div>
-<% } %>
+<%# Escola Digital (2026-11): as duas listas desde o começo; só "Para validar" trava. %>
+<div class="ead-checklist">
+  <div class="ead-caixa <%= pendencias.length ? 'pend' : 'ok' %>"><h3><i class="fa-solid fa-list-check"></i> Para validar <%= pendencias.length ? '(' + pendencias.length + ' faltando)' : '— tudo certo' %></h3>
+    <ul class="ead-lista-check"><% lista.paraValidar.forEach(function (i) { %><li class="<%= i.ok ? 'ok' : 'falta' %>"><span aria-hidden="true"><%= i.ok ? '✓' : '○' %></span> <%= i.texto %><% if (!i.ok && i.detalhe) { %> <small>(<%= i.detalhe %>)</small><% } %></li><% }) %></ul>
+    <% if (!pendencias.length && !validado) { %><p class="adm-mut">O módulo pode ser validado.</p><% } %>
+  </div>
+  <div class="ead-caixa aviso"><h3><i class="fa-solid fa-lightbulb"></i> Recomendado (não impede validar)</h3>
+    <ul class="ead-lista-check"><% lista.recomendado.forEach(function (i) { %><li class="<%= i.ok ? 'ok' : 'falta' %>"><span aria-hidden="true"><%= i.ok ? '✓' : '○' %></span> <%= i.texto %><% if (!i.ok && i.detalhe) { %> <small>(<%= i.detalhe %>)</small><% } %></li><% }) %></ul>
+  </div>
+</div>
+<% if (modulo.final) { %><p class="adm-mut">O módulo final é opcional: um curso pode ter só módulos comuns.</p><% } %>
 
 <% if (modulo.introducao) { %>
   <details class="adm-box adm-box-pad adm-espaco"><summary><strong>Introdução do módulo</strong></summary>
