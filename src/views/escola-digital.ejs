@@ -1,0 +1,50 @@
+<%# Escola Digital CVB-RJ (2026-11): a aba dos cursos online. Espera: cursos (formato do card do catálogo), vitrine. %>
+<%- include('partials/site-head', {
+  titulo: 'Escola Digital',
+  bodyClass: 'v-claro',
+  descricao: 'Escola Digital CVB-RJ: cursos 100% online da Escola de Educação e Saúde da Cruz Vermelha Brasileira no Rio de Janeiro, com certificado.'
+}) %>
+<%- include('partials/site-header', { menuAtivo: 'escola-digital' }) %>
+
+<main>
+  <section class="v-ed-hero">
+    <div class="v-wrap">
+      <nav class="v-trilha" aria-label="Você está em">
+        <a href="/">Início</a>
+        <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+        <span aria-current="page">Escola Digital</span>
+      </nav>
+      <p class="v-ed-kicker">Escola Digital CVB-RJ</p>
+      <h1>Aprenda onde estiver<span>.</span></h1>
+      <p class="v-ed-lead">Cursos 100% online da Escola de Educação e Saúde da Cruz Vermelha. Pelo celular, no seu ritmo, com certificado oficial ao concluir.</p>
+      <ul class="v-ed-selos">
+        <li><i class="fa-solid fa-mobile-screen" aria-hidden="true"></i> No celular ou computador</li>
+        <li><i class="fa-regular fa-clock" aria-hidden="true"></i> No seu ritmo</li>
+        <li><i class="fa-solid fa-award" aria-hidden="true"></i> Certificado da Cruz Vermelha</li>
+        <li><i class="fa-solid fa-school" aria-hidden="true"></i> Turmas para escolas e empresas</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="v-cat-todos" id="cursos">
+    <div class="v-wrap">
+      <div class="v-secao-head">
+        <div>
+          <p class="v-kicker">Cursos online</p>
+          <h2>Comece hoje.</h2>
+        </div>
+      </div>
+      <% if (!cursos.length) { %>
+        <div class="v-vazio"><i class="fa-regular fa-folder-open" aria-hidden="true"></i> Novos cursos online em breve.</div>
+      <% } else { %>
+        <div class="v-grade-cat">
+          <% cursos.forEach(function (curso) { %>
+            <%- include('partials/v-card-cat', { curso: curso, vitrine: vitrine, taxaExibicao: taxaExibicao, cfgMap: cfgMap }) %>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+  </section>
+</main>
+
+<%- include('partials/site-footer') %>

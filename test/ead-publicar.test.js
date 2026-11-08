@@ -30,6 +30,12 @@ describe('painel: publicar e site', { skip: temBanco ? false : 'sem DATABASE_URL
   const auditoria = [];
   let server; let painel; let curso; let co; let mod;
 
+  let restaurarEd; // Escola Digital começa desligada (2026-11): liga para o teste e devolve no fim
+
+  before(async () => { restaurarEd = await require('./helpers/escola-digital').ligarEscolaDigital(); });
+
+  after(async () => { if (restaurarEd) await restaurarEd(); });
+
   before(async () => {
     curso = await prisma.curso.create({ data: { nome: 'TESTE publicar online', cargaHoraria: 2, precoAvista: 200, precoCheio: 200, valorParcela: 200, ativo: true } });
     co = await prisma.cursoOnline.create({ data: { cursoId: curso.id } });
@@ -102,7 +108,8 @@ describe('painel: publicar e site', { skip: temBanco ? false : 'sem DATABASE_URL
     assert.doesNotMatch(await card(null), /100% online/);
     const caixa = (online) => ejs.renderFile(path.join(__dirname, '..', 'src', 'views', 'partials', 'caixa-online.ejs'), { vitrine, curso: { ...curso, online } });
     const html = await caixa({ preco: 49.9 });
-    assert.match(html, /Também 100% online/); assert.match(html, /R\$\s?49,90/); assert.match(html, new RegExp(`href="${urlOnline(curso)}"`));
+    // Escola Digital (2026-11): a caixa virou um aviso pequeno com link para a Escola Digital (sem preço).
+    assert.match(html, /também existe 100% online, na Escola Digital/); assert.match(html, new RegExp(`href="${urlOnline(curso)}"`));
     assert.equal((await caixa(null)).trim(), '');
   });
 

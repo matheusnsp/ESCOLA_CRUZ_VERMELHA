@@ -32,6 +32,12 @@ describe('cupom com login e cadastro de verdade', { skip: temBanco ? false : 'se
     return { ir, post, texto: async (url) => (await ir(url)).text() };
   };
 
+  let restaurarEd; // Escola Digital começa desligada (2026-11): liga para o teste e devolve no fim
+
+  before(async () => { restaurarEd = await require('./helpers/escola-digital').ligarEscolaDigital(); });
+
+  after(async () => { if (restaurarEd) await restaurarEd(); });
+
   before(async () => {
     curso = await prisma.curso.create({ data: { nome: `Curso Cupom Sessao ${s}`, cargaHoraria: 2, precoAvista: 0, precoCheio: 0, valorParcela: 0, ativo: false } });
     co = await prisma.cursoOnline.create({ data: { cursoId: curso.id, precoOnline: 100, publicado: true } });

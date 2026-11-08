@@ -12,7 +12,7 @@ const cpf = require('./helpers/cpf');
 const vitrine = require('../src/lib/vitrine');
 
 test('urlOnline: o nome do curso no endereço', () => {
-  assert.equal(vitrine.urlOnline({ nome: 'Primeiros Socorros na Escola (demonstração)' }), '/online/primeiros-socorros-na-escola-demonstracao');
+  assert.equal(vitrine.urlOnline({ nome: 'Primeiros Socorros na Escola (demonstração)' }), '/escola-digital/primeiros-socorros-na-escola-demonstracao');
 });
 
 test('renomear no presencial e ativar o EAD conferem o endereço do curso online', () => {
@@ -44,6 +44,12 @@ describe('links do curso online pelo nome', { skip: temBanco ? false : 'sem DATA
   const { destinoAposPagamento } = require('../src/lib/cobranca-avista');
   const s = String(Date.now()).slice(-7);
   let server; let site; let curso; let co; let turma; let aluno; let slug;
+
+  let restaurarEd; // Escola Digital começa desligada (2026-11): liga para o teste e devolve no fim
+
+  before(async () => { restaurarEd = await require('./helpers/escola-digital').ligarEscolaDigital(); });
+
+  after(async () => { if (restaurarEd) await restaurarEd(); });
 
   before(async () => {
     curso = await prisma.curso.create({ data: { nome: `Primeiros Passos Link ${s}`, cargaHoraria: 2, precoAvista: 0, precoCheio: 0, valorParcela: 0, ativo: false } });
@@ -86,16 +92,16 @@ describe('links do curso online pelo nome', { skip: temBanco ? false : 'sem DATA
   test('o endereço com o id continua abrindo e aponta (canonical) para o endereço com o nome', async () => {
     const r = await fetch(`${site}/online/${curso.id}`, { redirect: 'manual' });
     assert.equal(r.status, 200);
-    assert.match(await r.text(), new RegExp(`<link rel="canonical" href="[^"]*/online/${slug}">`));
+    assert.match(await r.text(), new RegExp(`<link rel="canonical" href="[^"]*/escola-digital/${slug}">`));
     const t = await (await fetch(`${site}/online/${slug}`)).text();
-    assert.match(t, new RegExp(`<link rel="canonical" href="[^"]*/online/${slug}">`));
+    assert.match(t, new RegExp(`<link rel="canonical" href="[^"]*/escola-digital/${slug}">`));
   });
 
   test('Minha conta e o retorno do pagamento levam ao endereço com o nome', async () => {
     const [item] = await meusCursosOnline(aluno.id);
-    assert.equal(item.link, `/online/${slug}/continuar`);
-    assert.equal(item.endereco, `/online/${slug}`);
-    assert.equal(destinoAposPagamento({ turma: { status: 'ONLINE', cursoId: curso.id, curso: { nome: curso.nome } } }), `/online/${slug}`);
+    assert.equal(item.link, `/escola-digital/${slug}/continuar`);
+    assert.equal(item.endereco, `/escola-digital/${slug}`);
+    assert.equal(destinoAposPagamento({ turma: { status: 'ONLINE', cursoId: curso.id, curso: { nome: curso.nome } } }), `/escola-digital/${slug}`);
   });
 
   test('[revisão I2] curso renomeado: o endereço antigo continua levando ao curso', async () => {

@@ -923,3 +923,19 @@ html.v-menu-aberto .v-acoes .v-so-pc, html.v-menu-aberto .v-acoes .v-user { disp
 .v-online-caixa p { margin: 8px 0 12px; color: #5f5f5f; font-size: 13.5px; line-height: 1.5; }
 .v-online-btn { background: #fff; color: var(--v-red); border: 1.5px solid var(--v-red); }
 .v-online-btn:hover { background: var(--v-red); color: #fff; }
+
+/* ── Escola Digital CVB-RJ (2026-11): topo com foto e aviso no presencial ─────────────────────────── */
+.v-ed-hero { position: relative; color: #fff; padding: 56px 0 64px; background: linear-gradient(90deg, rgba(10,10,10,.92) 0%, rgba(10,10,10,.75) 45%, rgba(10,10,10,.25) 100%), url(/img/capa.webp) center 35% / cover; }
+.v-ed-hero .v-trilha a, .v-ed-hero .v-trilha span, .v-ed-hero .v-trilha i { color: rgba(255,255,255,.78); }
+.v-ed-kicker { display: inline-flex; align-items: center; gap: 10px; margin: 26px 0 0; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.v-ed-kicker::before { content: ""; width: 34px; height: 2px; background: var(--v-red); }
+.v-ed-hero h1 { color: #fff; font-size: clamp(36px, 6vw, 58px); line-height: 1.02; letter-spacing: -.03em; margin: 12px 0 16px; max-width: 760px; }
+.v-ed-hero h1 span { color: var(--v-red); }
+.v-ed-lead { font-size: clamp(16px, 2vw, 19px); max-width: 620px; color: rgba(255,255,255,.88); margin: 0 0 24px; }
+.v-ed-selos { display: flex; flex-wrap: wrap; gap: 10px; list-style: none; padding: 0; margin: 0; }
+.v-ed-selos li { border: 1px solid rgba(255,255,255,.28); background: rgba(255,255,255,.08); border-radius: 999px; padding: 8px 14px; font-size: 14px; font-weight: 600; }
+.v-ed-selos i { margin-right: 6px; color: #ff5a64; }
+.v-online-aviso p { display: flex; gap: 8px; align-items: baseline; margin: 0 0 8px; color: #5f5f5f; }
+.v-online-aviso p i { color: var(--v-red); }
+.v-online-link { color: var(--v-red); font-weight: 700; text-decoration: none; }
+.v-online-link:hover { text-decoration: underline; }

@@ -38,6 +38,7 @@
 
     <nav class="v-menu" aria-label="Principal">
       <a href="/"<%- _ativo === 'inicio' ? ' aria-current="page"' : '' %>>Início</a>
+      <% if (typeof escolaDigital !== 'undefined' && escolaDigital) { %><a href="/escola-digital"<%- _ativo === 'escola-digital' ? ' aria-current="page"' : '' %>>Escola Digital</a><% } %>
       <a href="/#como">Como funciona</a>
       <a href="/#escola">Quem somos</a>
       <a href="/#duvidas">Dúvidas</a>
@@ -72,10 +73,11 @@
     var _itens = [
       { href: '/', nome: 'Início', ativo: _ativo === 'inicio' },
       { href: '/cursos', nome: 'Cursos', ativo: _ativo === 'cursos' },
+    ].concat(typeof escolaDigital !== 'undefined' && escolaDigital ? [{ href: '/escola-digital', nome: 'Escola Digital', ativo: _ativo === 'escola-digital' }] : []).concat([
       { href: '/#como', nome: 'Como funciona' },
       { href: '/#escola', nome: 'Quem somos' },
       { href: '/#duvidas', nome: 'Dúvidas' }
-    ];
+    ]);
   %>
   <div class="v-gaveta" id="vGaveta" hidden>
     <div class="v-wrap v-gaveta-in">

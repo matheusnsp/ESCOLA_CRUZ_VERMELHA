@@ -26,6 +26,12 @@ describe('acesso pela vaga', { skip: temBanco ? false : 'sem DATABASE_URL local'
   const sufixo = Date.now();
   let server; let base; let curso; let co; let lote; let ana; let bia; let tela;
 
+  let restaurarEd; // Escola Digital começa desligada (2026-11): liga para o teste e devolve no fim
+
+  before(async () => { restaurarEd = await require('./helpers/escola-digital').ligarEscolaDigital(); });
+
+  after(async () => { if (restaurarEd) await restaurarEd(); });
+
   before(async () => {
     curso = await prisma.curso.create({ data: { nome: `TESTE acesso lote ${sufixo}`, cargaHoraria: 2, precoAvista: 0, precoCheio: 0, valorParcela: 0 } });
     co = await prisma.cursoOnline.create({ data: { cursoId: curso.id, precoOnline: 10, publicado: false } });
@@ -67,7 +73,7 @@ describe('acesso pela vaga', { skip: temBanco ? false : 'sem DATABASE_URL local'
 
   test('com vaga: entra no curso mesmo fora do site; sem vaga: 404', async () => {
     const r = await req(`${base}/continuar`, ana);
-    assert.equal(r.status, 302); assert.match(r.headers.get('location'), new RegExp(`/online/${curso.id}/tela/`));
+    assert.equal(r.status, 302); assert.match(r.headers.get('location'), new RegExp(`/escola-digital/${curso.id}/tela/`));
     const outro = await prisma.usuario.create({ data: { nome: 'Sem Vaga', email: `sem-acesso-${sufixo}@teste.local`, papel: 'ALUNO' } });
     assert.equal((await req(base, outro)).status, 404);
   });

@@ -28,7 +28,8 @@ const { urlRetorno } = require('../lib/cobranca-avista');
 const duv = require('../lib/ead-duvidas');
 const cupons = require('../lib/ead-cupom');
 const medicao = require('../lib/ead-medicao');
-const { urlOnline } = require('../lib/vitrine');
+const { urlOnline, URL_ESCOLA_DIGITAL } = require('../lib/vitrine');
+const escolaDigital = require('../lib/escola-digital');
 const { limiteCupom, registrarFalhaCupom, MSG_TENTATIVAS } = require('../lib/limite-cupom');
 
 // Etapa 3: ao concluir o curso, emite o certificado (número, Redação, e-mail) SEM esperar.
@@ -47,7 +48,7 @@ async function concluirCurso(alunoCursoId, req) {
 
 const router = express.Router();
 
-router.use(['/ead-teste', '/online'], (req, res, next) => {
+router.use(['/ead-teste', '/online', '/escola-digital/:curso'], (req, res, next) => {
   res.set('X-Robots-Tag', 'noindex, nofollow');
   res.set('Cache-Control', 'no-store');
   // O padrão do site (same-origin) faz o YouTube recusar o player; assim ele recebe só o domínio,
@@ -123,7 +124,9 @@ async function resolverCurso(req) {
   if (!r) return null;
   const acesso = await acessoPago(alunoDaSessao(req), r.co);
   if (!r.co.publicado && acesso.situacao === 'sem') return null;
-  return { ...r, base: `/online/${req.params.cursoId}`, modo: 'pago', acesso };
+  // Escola Digital desligada: quem não tem o curso vê "não disponível" (quem comprou ou tem vaga continua).
+  const indisponivel = acesso.situacao === 'sem' && !(await escolaDigital.estaLigada());
+  return { ...r, base: `${URL_ESCOLA_DIGITAL}/${req.params.cursoId}`, modo: 'pago', acesso, indisponivel };
 }
 
 // Resolve o curso; sem curso, 404. No modo pago sem acesso liberado, só as páginas `livre` abrem
@@ -133,7 +136,11 @@ const comCurso = (fn, { livre = false } = {}) => asyncHandler(async (req, res, n
   if (!r) return req.params.codigo !== undefined ? naoAchou(res) : next();
   // Etapa 8: o endereço do curso pago é o nome (/online/<nome>, como o presencial). O antigo, com o id, continua
   // abrindo; a página diz ao Google qual é o oficial (canonical).
-  if (r.modo === 'pago') res.locals.canonicalOnline = urlOnline(r.co.curso) + req.path.slice(`/online/${req.params.cursoId}`.length);
+  if (r.modo === 'pago') {
+    const prefixo = (req.path.startsWith('/online/') ? '/online/' : `${URL_ESCOLA_DIGITAL}/`) + req.params.cursoId;
+    res.locals.canonicalOnline = urlOnline(r.co.curso) + req.path.slice(prefixo.length);
+    if (r.indisponivel) return res.status(404).render('ead-teste/indisponivel', { co: r.co, base: r.base });
+  }
   req.ead = { base: r.base, modo: r.modo, acesso: r.acesso };
   res.locals.eadModo = r.modo;
   if (r.modo === 'pago' && !r.acesso.liberado && !livre) return res.redirect(r.base);
@@ -153,7 +160,7 @@ const comCurso = (fn, { livre = false } = {}) => asyncHandler(async (req, res, n
   }
   return fn(req, res, r.co, r.base, r.curso, next);
 });
-const P = (sufixo = '') => [`/ead-teste/:codigo${sufixo}`, `/online/:cursoId${sufixo}`];
+const P = (sufixo = '') => [`/ead-teste/:codigo${sufixo}`, `/online/:cursoId${sufixo}`, `/escola-digital/:cursoId${sufixo}`];
 
 // Cartão de compra da capa (modo pago, sem acesso liberado).
 // O cupom da capa: o do link/formulário (?cupom=); senão o que a pessoa trouxe antes nesta sessão (chegou pelo

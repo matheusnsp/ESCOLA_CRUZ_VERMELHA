@@ -7,6 +7,7 @@
 // Spec: docs/superpowers/specs/2026-11-05-ead-estrutura-conteudo.md
 
 const express = require('express');
+const escolaDigital = require('../lib/escola-digital');
 const prisma = require('../db');
 const asyncHandler = require('../lib/asyncHandler');
 const ead = require('../lib/ead');
@@ -98,7 +99,16 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
       lista.push({ ...co, nModulos: mods.length, nValidados: mods.filter((m) => m.status === 'VALIDADO').length, nPerguntas: mods.reduce((s, m) => s + m.nPerguntas, 0) });
     }
     const semEad = await prisma.curso.findMany({ where: { online: null }, select: { id: true, nome: true, ativo: true }, orderBy: { nome: 'asc' } });
-    res.render('admin/ead/cursos', { lista, semEad, ...flash(req) });
+    res.render('admin/ead/cursos', { lista, semEad, escolaDigitalLigada: await escolaDigital.estaLigada(), algumPublicado: lista.some((c) => c.publicado), ...flash(req) });
+  });
+
+  // Escola Digital (2026-11): liga/desliga a aba dos cursos online no site.
+  router.post('/ead/escola-digital', async (req, res) => {
+    const ligar = req.body.ligada === '1';
+    const r = await escolaDigital.definirLigada(ligar, req);
+    if (r.erro) return voltar(res, '/ead', 'erro', r.erro);
+    require('../lib/cache-rapido').limparTudo();
+    voltar(res, '/ead', 'ok', ligar ? 'Escola Digital ligada: o menu do site já mostra a aba.' : 'Escola Digital desligada: some do site; quem já tem curso continua estudando.');
   });
 
   router.post('/ead/ativar', async (req, res) => {

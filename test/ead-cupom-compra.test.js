@@ -20,6 +20,12 @@ describe('/online: compra com cupom', { skip: temBanco ? false : 'sem DATABASE_U
   const cod = (x) => `C${s}-${x}`;
   let server; let base; let curso; let co; let ana; let bia; let caio; let lei10; let gratis;
 
+  let restaurarEd; // Escola Digital começa desligada (2026-11): liga para o teste e devolve no fim
+
+  before(async () => { restaurarEd = await require('./helpers/escola-digital').ligarEscolaDigital(); });
+
+  after(async () => { if (restaurarEd) await restaurarEd(); });
+
   before(async () => {
     unicopag.criarTransacao = async (d) => { gateway.push(d); return { gatewayRef: `falso-${s}-${gateway.length}`, hash: 'h', paymentStatus: 'waiting_payment', pixQrCode: `QR-${gateway.length}` }; };
     email.enviarCursoOnlineLiberado = async () => {};
@@ -131,7 +137,7 @@ describe('/online: compra com cupom', { skip: temBanco ? false : 'sem DATABASE_U
     await C.ativarCupom(c.id, false, 'dev');
     const r = await post(`${base}/comprar`, bia, { forma: 'PIX', cupom: c.codigo });
     assert.equal(r.status, 302);
-    assert.equal(r.headers.get('location'), `/online/${curso.id}?cupom=${encodeURIComponent(c.codigo)}`);
+    assert.equal(r.headers.get('location'), `/escola-digital/${curso.id}?cupom=${encodeURIComponent(c.codigo)}`);
     assert.equal(await matriculaDe(bia), null);
   });
 
@@ -156,7 +162,7 @@ describe('/online: compra com cupom', { skip: temBanco ? false : 'sem DATABASE_U
     const rs = await Promise.all([1, 2].map(() => post(`${base}/comprar`, caio, { forma: 'CUPOM', cupom: gratis.codigo })));
     for (const r of rs) {
       assert.equal(r.status, 302);
-      assert.equal(r.headers.get('location'), `/online/${curso.id}/continuar`);
+      assert.equal(r.headers.get('location'), `/escola-digital/${curso.id}/continuar`);
     }
     assert.equal(gateway.length, chamadas);
     assert.equal(await prisma.matricula.count({ where: { alunoId: caio.id, turma: { cursoId: curso.id } } }), 1);
@@ -178,7 +184,7 @@ describe('/online: compra com cupom', { skip: temBanco ? false : 'sem DATABASE_U
     try {
       const r = await post(`${base}/comprar`, dani, { forma: 'CUPOM', cupom: cod('LEI10') });
       assert.equal(r.status, 302);
-      assert.equal(r.headers.get('location'), `/online/${curso.id}?cupom=${encodeURIComponent(cod('LEI10'))}`);
+      assert.equal(r.headers.get('location'), `/escola-digital/${curso.id}?cupom=${encodeURIComponent(cod('LEI10'))}`);
       assert.equal(await matriculaDe(dani), null);
     } finally {
       await prisma.usuario.delete({ where: { id: dani.id } });

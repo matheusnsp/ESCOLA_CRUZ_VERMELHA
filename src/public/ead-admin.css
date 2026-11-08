@@ -140,3 +140,5 @@ html[data-tema="escuro"] .ia-roteiro .ia-modulo { border-color: #3a4149; }
 /* Escola Digital (2026-11, P8): no celular, campos e selects não passam da borda. */
 .adm-campos > *, .adm-campos select, .adm-campos input, .adm-campos textarea { min-width: 0; max-width: 100%; }
 .adm-form select { max-width: 100%; }
+.ead-interruptor { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.ead-interruptor > div { flex: 1 1 320px; min-width: 0; }

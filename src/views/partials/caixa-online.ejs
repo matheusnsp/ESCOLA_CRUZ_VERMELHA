@@ -1,10 +1,9 @@
 <%#
-  Caixa "Também 100% online" da página do curso (etapa 4). Espera: curso (com curso.online = { preco }
-  quando o curso online está publicado; null/ausente = nada aparece) e vitrine.
+  Aviso da Escola Digital na página do curso presencial (2026-11). Espera: curso (com curso.online = { preco }
+  quando o curso online está publicado e a Escola Digital está ligada; null/ausente = nada aparece) e vitrine.
 %><% if (curso.online) { %>
-<div class="v-online-caixa">
-  <span class="v-online-selo"><i class="fa-solid fa-laptop" aria-hidden="true"></i> Também 100% online</span>
-  <p>Estude pelo celular, no seu ritmo, com certificado ao concluir. Capacitação teórica, sem prática em manequim.</p>
-  <a class="v-btn v-btn-bloco v-online-btn" href="<%= vitrine.urlOnline(curso) %>"><%= vitrine.reais(curso.online.preco) %> · Começar agora <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+<div class="v-online-caixa v-online-aviso">
+  <p><i class="fa-solid fa-laptop" aria-hidden="true"></i> Este curso também existe 100% online, na Escola Digital.</p>
+  <a class="v-online-link" href="<%= vitrine.urlOnline(curso) %>">Ver na Escola Digital <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
 </div>
 <% } %>

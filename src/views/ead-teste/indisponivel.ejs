@@ -1,0 +1,10 @@
+<%# Escola Digital desligada (2026-11): a página de venda para quem ainda não tem o curso. %>
+<%- include('_topo', { titulo: co.curso.nome, base: '/' }) %>
+<main class="ea-wrap ea-secao">
+  <p class="ea-kicker">Escola Digital</p>
+  <h1 class="ea-secao-h"><%= co.curso.nome %><span>.</span></h1>
+  <p class="ea-obs">Este curso não está disponível no momento.</p>
+  <p><a class="ea-pilula ea-pilula-red" href="/">Ir para o site da Escola →</a></p>
+  <p class="ea-obs">Já comprou ou recebeu o curso pela sua escola? <a href="/login">Entre na sua conta</a> para continuar.</p>
+</main>
+<%- include('_fim') %>

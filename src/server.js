@@ -321,6 +321,8 @@ visitas.iniciar();
 siteAluno.use(require('./routes/integracao'));
 // EAD: o link secreto de teste e o curso online pago (/online/<curso>), antes da contagem de visitas
 // (o endereço do teste é o segredo; as telas do curso não são visitas do site). A compra vem primeiro.
+// Escola Digital (2026-11): o interruptor do painel (menu do site, catálogo, rotas do curso online).
+siteAluno.use((req, res, next) => require('./lib/escola-digital').estaLigada().then((v) => { res.locals.escolaDigital = v; next(); }, next));
 siteAluno.use(require('./routes/ead-online'));
 // Etapa 6: Minha escola (gestor) e o convite do lote; também marca o atalho na Minha conta.
 siteAluno.use(require('./routes/ead-escola'));
