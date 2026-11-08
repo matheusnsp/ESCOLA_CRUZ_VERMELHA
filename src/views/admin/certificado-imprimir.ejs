@@ -44,8 +44,8 @@
         <img src="/img/certificado/cruz.jpg" alt="">
         <img src="/img/certificado/cruz-vermelha-rj.jpg" alt="Cruz Vermelha Brasileira — Rio de Janeiro">
       </div>
-<% if (c.teste) { %>      <p class="cert-teste">TESTE — sem validade</p><% } %>
-<% if (c.online) { %>      <p class="cert-selo-online">CURSO ONLINE</p>
+<% if (c.online) { %><% if (c.teste) { %>      <p class="cert-teste">TESTE — sem validade</p>
+<% } %>      <p class="cert-selo-online">CURSO ONLINE</p>
 <% } %>      <h1 class="cert-titulo">Certificado</h1>
       <p class="cert-nome"><%= c.nome %></p>
       <p class="cert-texto">

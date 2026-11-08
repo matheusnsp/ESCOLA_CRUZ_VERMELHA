@@ -47,7 +47,8 @@ describe('correções da vistoria (estorno, desativar, painel, certificado de te
   });
   after(async () => {
     painel.server.close(); site.server.close();
-    const turmas = await prisma.turma.findMany({ where: { curso: { cursoOnline: { id: { in: cos } } } }, select: { id: true } }).catch(() => []);
+    const cursoIds = (await prisma.cursoOnline.findMany({ where: { id: { in: cos } }, select: { cursoId: true } })).map((c) => c.cursoId);
+    const turmas = await prisma.turma.findMany({ where: { cursoId: { in: cursoIds } }, select: { id: true } });
     const ms = await prisma.matricula.findMany({ where: { alunoId: { in: usuarios } }, select: { id: true } });
     await prisma.pagamento.deleteMany({ where: { matriculaId: { in: ms.map((m) => m.id) } } });
     await prisma.matricula.deleteMany({ where: { id: { in: ms.map((m) => m.id) } } });
