@@ -34,6 +34,7 @@ Roteiro para colocar no ar o curso online. São as etapas 1 a 8, do PR final `ea
    - o site abre;
    - `/cursos` mostra os cursos de sempre;
    - o painel abre e o seletor **Online** aparece para contas DEV;
+   - a Escola Digital começa **desligada** (o menu do site não mostra a aba até alguém ligar em Online → Cursos online). A etapa da Escola Digital (nov/2026) **não tem migração**.
    - o Financeiro abre com os mesmos números de antes.
 7. **Desligue os links de teste** de todo curso que for publicado. O link de teste abre o curso e emite certificado sem pagamento.
 8. **Publique** pelo passo a passo em `docs/ead/como-publicar-um-curso.md`.
