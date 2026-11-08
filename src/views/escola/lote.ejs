@@ -47,10 +47,13 @@
       <h2>Link de convite</h2>
       <% if (conviteUrl) { %>
         <p class="ea-obs">Mande no grupo da escola: quem entrar pelo link cria a conta (ou faz login) e usa uma vaga.</p>
-        <input class="esc-convite" type="text" readonly value="<%= conviteUrl %>" aria-label="Link de convite">
+        <div class="esc-convite-linha">
+          <input class="esc-convite" id="escConvite" type="text" readonly value="<%= conviteUrl %>" aria-label="Link de convite">
+          <button type="button" class="ea-pilula ea-pilula-red" data-copiar="escConvite">Copiar</button>
+        </div>
         <div class="esc-acoes">
-          <form method="POST" action="/minha-escola/lote/<%= lote.id %>/convite/trocar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="ea-pilula ea-pilula-clara">Trocar o link</button></form>
-          <form method="POST" action="/minha-escola/lote/<%= lote.id %>/convite/desligar"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="ea-pilula ea-pilula-clara">Desligar</button></form>
+          <form method="POST" action="/minha-escola/lote/<%= lote.id %>/convite/trocar" data-confirmar="Trocar o link? O link atual para de funcionar para quem ainda não entrou."><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="ea-pilula ea-pilula-clara">Trocar o link</button></form>
+          <form method="POST" action="/minha-escola/lote/<%= lote.id %>/convite/desligar" data-confirmar="Desligar o link de convite? Ninguém mais entra por ele até você criar um novo."><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="ea-pilula ea-pilula-clara">Desligar</button></form>
         </div>
       <% } else { %>
         <p class="ea-obs">O link de convite está desligado.</p>
@@ -88,4 +91,5 @@
     <% } %>
   </section>
 </main>
+<script src="<%= asset('/js/escola-lote.js') %>" defer></script>
 <%- include('../ead-teste/_fim') %>

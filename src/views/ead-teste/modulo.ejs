@@ -48,10 +48,12 @@
     <% } else { %>
       <p class="ea-kicker">Neste módulo</p>
       <h2><%= modulo.topicos.length %> tópico<%= modulo.topicos.length === 1 ? '' : 's' %><span style="color:var(--r)">.</span></h2>
+      <%# Escola Digital (2026-11, vistoria H8): módulo concluído pelo pré-teste não diz "teste pendente". %>
+      <% var peloPre = em && em.estado === 'concluido' && modulo.topicos.some(function (t, ti) { var f = feitoTop(ti); return !(f && f.concluido); }); %>
       <ol class="ea-lista-top">
         <% modulo.topicos.forEach(function (t, ti) { var f = feitoTop(ti); %>
-          <li class="<%= f && f.concluido ? 'ok' : '' %>"><span><%= t.titulo %>
-            <small>· <%= f ? f.telasVistas + ' de ' + f.telas + ' telas' + (t.perguntas.length ? (f.quizAprovado ? ' · teste ✓' : ' · teste pendente') : '') : t.telas.length + ' tela' + (t.telas.length === 1 ? '' : 's') %></small></span></li>
+          <li class="<%= (f && f.concluido) || peloPre ? 'ok' : '' %>"><span><%= t.titulo %>
+            <small>· <%= peloPre && !(f && f.concluido) ? '✓ concluído pelo pré-teste' : f ? f.telasVistas + ' de ' + f.telas + ' telas' + (t.perguntas.length ? (f.quizAprovado ? ' · teste ✓' : ' · teste pendente') : '') : t.telas.length + ' tela' + (t.telas.length === 1 ? '' : 's') %></small></span></li>
         <% }) %>
       </ol>
       <% if (em && em.estado === 'concluido') { %>

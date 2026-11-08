@@ -1,3 +1,24 @@
-<footer class="ea-rodape"><div class="ea-wrap"><span>Escola de Educação e Saúde · Cruz Vermelha Brasileira — Rio de Janeiro</span><span>Praça da Cruz Vermelha, 10 · Centro</span></div></footer>
+<%# Escola Digital (2026-11, vistoria H2): o rodapé tem a mesma faixa legal do site (privacidade, preferências de
+    cookies — exigência da LGPD com o banner de cookies — contato e WhatsApp). %>
+<footer class="ea-rodape">
+  <div class="ea-wrap ea-rodape-in">
+    <div>
+      <b>Escola Digital CVB-RJ</b><br>
+      <span>Escola de Educação e Saúde · Cruz Vermelha Brasileira — Rio de Janeiro</span><br>
+      <span>Praça da Cruz Vermelha, 10 · Centro · Rio de Janeiro</span>
+    </div>
+    <div class="ea-rodape-contato">
+      <a href="https://wa.me/5521999922864" target="_blank" rel="noopener">(21) 99992-2864 · WhatsApp</a>
+      <a href="mailto:contato@cruzvermelhariodejaneiro.org">contato@cruzvermelhariodejaneiro.org</a>
+      <a href="/">Site da escola</a>
+    </div>
+  </div>
+  <div class="ea-wrap ea-rodape-legal">
+    <span>&copy; 2026 Cruz Vermelha Brasileira do Rio de Janeiro</span>
+    <a href="/privacidade">Política de Privacidade</a>
+    <%# Só onde há o aviso de cookies (páginas do curso pago carregam a medição e o consentimento). %>
+    <% if (typeof medir !== 'undefined' && medir) { %><a href="#" data-cvrj-cookies>Preferências de cookies</a><% } %>
+  </div>
+</footer>
 </body>
 </html>

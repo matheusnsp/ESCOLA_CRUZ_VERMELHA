@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     const botao = document.getElementById("btnCopiar");
-    if (!botao) return; // página sem PIX, não faz nada
+    // Página sem PIX, ou com a cópia feita por outro script (sem #chavePix): não faz nada (vistoria H9).
+    if (!botao || !document.getElementById("chavePix")) return;
   
     botao.addEventListener("click", copiarPix);
   });
