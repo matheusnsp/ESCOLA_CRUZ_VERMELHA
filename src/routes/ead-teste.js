@@ -21,7 +21,7 @@ const { estadoDoCurso } = require('../lib/ead-progresso');
 const { cadastroIncompleto } = require('../lib/ead-conta');
 const { precisaTrocarSenha } = require('../lib/seguranca');
 const { requireLogin } = require('../middleware/auth');
-const { emitirCertificadoEad } = require('../lib/ead-certificado');
+const { emitirCertificadoEad, previaCertificadoEad } = require('../lib/ead-certificado');
 const { gerarCartao } = require('../lib/ead-cartao');
 const { cursoOnlineDoEndereco, acessoPago } = require('../lib/ead-acesso');
 const { urlRetorno } = require('../lib/cobranca-avista');
@@ -41,7 +41,8 @@ function dispararEmissao(alunoCursoId, req) {
 }
 async function concluirCurso(alunoCursoId, req) {
   await pdb.marcarCursoConcluido(alunoCursoId);
-  dispararEmissao(alunoCursoId, req);
+  // Link de teste (vistoria T1): conclui, mas não emite (sem número oficial e sem e-mail).
+  if (req.ead && req.ead.modo === 'pago') dispararEmissao(alunoCursoId, req);
 }
 
 const router = express.Router();
@@ -473,7 +474,9 @@ router.get(P('/certificado'), comCurso(async (req, res, co, base, curso) => {
   const ctx = await contexto(req, co, curso);
   if (!ctx) return pedirLogin(req, res, base);
   if (!ctx.certificadoLiberado) return res.redirect(base);
-  const r = await emitirCertificadoEad(ctx.alunoCurso.id, { documentoAluno: req.app.locals.documentoAluno });
+  const r = req.ead.modo === 'teste'
+    ? await previaCertificadoEad(ctx.alunoCurso.id, { documentoAluno: req.app.locals.documentoAluno })
+    : await emitirCertificadoEad(ctx.alunoCurso.id, { documentoAluno: req.app.locals.documentoAluno });
   if (!r) return res.redirect(base);
   if (r.avisoRedacao) console.warn('[EAD] certificado sem QR:', r.avisoRedacao);
   res.render('admin/certificado-imprimir', {

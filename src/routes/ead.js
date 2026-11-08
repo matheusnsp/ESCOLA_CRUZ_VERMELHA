@@ -147,6 +147,13 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (await prisma.moduloEad.count({ where: { cursoOnlineId: co.id, status: 'VALIDADO' } })) {
       return voltar(res, `/ead/curso/${co.id}`, 'erro', 'Há módulos validados. Reabra (volte para rascunho) todos antes de desativar o EAD.');
     }
+    // Escola Digital (2026-11, vistoria B8): cupom e lote de escola prendem o curso online no banco.
+    if (await prisma.cupomEad.count({ where: { cursoOnlineId: co.id } })) {
+      return voltar(res, `/ead/curso/${co.id}`, 'erro', 'Este curso online tem cupom. Apague os cupons dele (Cupons) antes de desativar o EAD.');
+    }
+    if (await prisma.loteEad.count({ where: { cursoOnlineId: co.id } })) {
+      return voltar(res, `/ead/curso/${co.id}`, 'erro', 'Este curso online foi vendido para escola (lote). O conteúdo não pode ser apagado.');
+    }
     const fotos = await fotosDoCursoOnline(co.id);
     if (co.somenteOnline) {
       // Curso só online (etapa 5): o Curso vai junto (não existe no presencial).

@@ -89,13 +89,17 @@ async function detalheDoAluno(cursoOnlineId, alunoCursoId, { agora = new Date() 
   if (!ac) return null;
   const r = await carregarCursoParaAluno(cursoOnlineId);
   const matricula = await prisma.matricula.findFirst({ where: { alunoId: ac.usuarioId, turma: { cursoId: r.co.cursoId, status: 'ONLINE' } } });
-  const inicio = matricula ? matricula.confirmadaEm : ac.iniciadoEm;
+  // Escola Digital (2026-11, vistoria P10): a mesma regra da lista (alunosDoCurso) para quem veio de escola.
+  const vaga = !matricula || !PAGOS.includes(matricula.statusPagamento)
+    ? await prisma.vagaLoteEad.findFirst({ where: { usuarioId: ac.usuarioId, removidaEm: null, lote: { cursoOnlineId } }, include: { lote: { select: { escola: { select: { nome: true } } } } } }).catch(() => null)
+    : null;
+  const inicio = vaga ? vaga.criadoEm : matricula ? matricula.confirmadaEm : ac.iniciadoEm;
   const estado = estadoDoCurso(r.curso, progressoDe(ac, inicio), agora);
   const modulos = new Map(r.co.modulos.map((m, i) => [m.id, { titulo: m.titulo, numero: i + 1 }]));
   const topicos = new Map(r.co.modulos.flatMap((m) => m.topicos).map((t) => [t.id, t.titulo]));
   const cenariosDoCurso = new Map(r.co.modulos.flatMap((m) => m.cenarios).map((c) => [c.id, c]));
   return {
-    usuario: ac.usuario, alunoCurso: ac, matricula, origem: matricula ? 'Pago' : 'Teste', fase: faseDe(inicio, agora), estado,
+    usuario: ac.usuario, alunoCurso: ac, matricula, origem: vaga ? `Escola: ${vaga.lote.escola.nome}` : matricula ? 'Pago' : 'Teste', fase: faseDe(inicio, agora), estado,
     co: r.co,
     tentativas: ac.tentativas
       .slice().sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm))
