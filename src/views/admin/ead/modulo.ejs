@@ -107,7 +107,7 @@
       <% } %>
 
       <div class="ead-sub">
-        <span>Banco de perguntas · <span class="<%= at < 3 ? 'falta' : (at < 10 ? 'meta' : 'bom') %>"><%= at %> ativa(s) (mínimo 3 · meta 10)</span></span>
+        <span>Banco de perguntas · <span class="<%= at < 3 ? 'meta' : 'bom' %>"><%= at %> ativa(s) (opcional; recomendado 3 ou mais)</span></span>
         <a class="adm-link" href="/ead/topico/<%= t.id %>/perguntas/nova">+ Nova pergunta</a>
       </div>
       <% if (!t.perguntas.length) { %><p class="ead-vazio">Nenhuma pergunta.</p><% } else { %>

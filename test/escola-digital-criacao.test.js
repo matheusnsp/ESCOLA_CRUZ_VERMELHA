@@ -114,6 +114,7 @@ describe('painel: criação mais fácil', { skip: temBanco ? false : 'sem DATABA
     assert.match(t, /Para validar/);
     assert.match(t, /Recomendado/);
     assert.match(t, /Vídeo em todas as telas/);
+    assert.doesNotMatch(t, /mínimo 3/, 'perguntas não são mais obrigatórias');
   });
 });
 
