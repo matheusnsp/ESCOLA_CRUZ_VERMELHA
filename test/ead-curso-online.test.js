@@ -26,6 +26,12 @@ describe('curso só online', { skip: temBanco ? false : 'sem DATABASE_URL local'
   const nome = `Curso Só Online Teste ${sufixo}`;
   let co; let presencial; let server; let site; let cursosRouter;
 
+  let restaurarEd; // Escola Digital começa desligada (2026-11): liga para o teste e devolve no fim
+
+  before(async () => { restaurarEd = await require('./helpers/escola-digital').ligarEscolaDigital(); });
+
+  after(async () => { if (restaurarEd) await restaurarEd(); });
+
   before(async () => {
     presencial = await prisma.curso.create({ data: { nome: `Presencial Colisão ${sufixo}`, cargaHoraria: 4, precoAvista: 100, precoCheio: 100, valorParcela: 100, ativo: true } });
     cursosRouter = require('../src/routes/cursos');
@@ -121,6 +127,9 @@ describe('curso só online pelo painel', { skip: temBanco ? false : 'sem DATABAS
   const prisma = require('../src/db');
   let server; let painel; const auditoria = [];
   const nome = `Curso Painel Só Online ${Date.now()}`;
+  let restaurarEd; // Escola Digital começa desligada (2026-11): liga para o teste e devolve no fim
+  before(async () => { restaurarEd = await require('./helpers/escola-digital').ligarEscolaDigital(); });
+  after(async () => { if (restaurarEd) await restaurarEd(); });
   before(async () => {
     const app = express();
     app.set('view engine', 'ejs');

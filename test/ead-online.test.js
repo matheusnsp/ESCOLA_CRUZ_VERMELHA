@@ -26,6 +26,12 @@ describe('/online: compra e acesso pago', { skip: temBanco ? false : 'sem DATABA
     return d.join('');
   };
 
+  let restaurarEd; // Escola Digital começa desligada (2026-11): liga para o teste e devolve no fim
+
+  before(async () => { restaurarEd = await require('./helpers/escola-digital').ligarEscolaDigital(); });
+
+  after(async () => { if (restaurarEd) await restaurarEd(); });
+
   before(async () => {
     unicopag.criarTransacao = async (d) => { gateway.push(d); return { gatewayRef: `falso-${gateway.length}`, hash: 'h', paymentStatus: 'waiting_payment', pixQrCode: 'QR-FALSO' }; };
     email.enviarCursoOnlineLiberado = async (para, nome, dados) => { liberados.push({ para, nome, ...dados }); };
@@ -90,7 +96,7 @@ describe('/online: compra e acesso pago', { skip: temBanco ? false : 'sem DATABA
     assert.match(html, /sem prática em manequim/i);
     assert.doesNotMatch(html, /Versão de teste/);
     // conteúdo pago: módulo e tela sem acesso voltam à capa
-    assert.equal((await req(`${base}/modulo/${m1.id}`, null)).headers.get('location'), `/online/${curso.id}`);
+    assert.equal((await req(`${base}/modulo/${m1.id}`, null)).headers.get('location'), `/escola-digital/${curso.id}`);
   });
 
   test('comprar por PIX: matrícula à vista sem taxa, Pagamento PENDENTE e retorno com pix=1; de novo ⇒ mesma matrícula', async () => {
@@ -127,7 +133,7 @@ describe('/online: compra e acesso pago', { skip: temBanco ? false : 'sem DATABA
     assert.match(liberados[0].link, new RegExp(`${urlOnline(curso)}$`));
     const r = await req(`${base}/continuar`, ana);
     assert.equal(r.status, 302);
-    assert.match(r.headers.get('location'), new RegExp(`^/online/${curso.id}/tela/`));
+    assert.match(r.headers.get('location'), new RegExp(`^/escola-digital/${curso.id}/tela/`));
     // curso despublicado: quem pagou continua entrando
     await prisma.cursoOnline.update({ where: { id: co.id }, data: { publicado: false } });
     assert.equal((await req(base, ana)).status, 200);
@@ -142,9 +148,9 @@ describe('/online: compra e acesso pago', { skip: temBanco ? false : 'sem DATABA
     assert.match(capa, /Sua inscrição foi cancelada/);
     const antes = await prisma.tentativaEad.count({ where: { topicoId: t1.id } });
     const q = await post(`${base}/topico/${t1.id}/quiz`, ana);
-    assert.equal(q.status, 302); assert.equal(q.headers.get('location'), `/online/${curso.id}`);
+    assert.equal(q.status, 302); assert.equal(q.headers.get('location'), `/escola-digital/${curso.id}`);
     assert.equal(await prisma.tentativaEad.count({ where: { topicoId: t1.id } }), antes);
-    assert.equal((await req(`${base}/certificado`, ana)).headers.get('location'), `/online/${curso.id}`);
+    assert.equal((await req(`${base}/certificado`, ana)).headers.get('location'), `/escola-digital/${curso.id}`);
   });
 
   test('compra depois do estorno: mesma matrícula volta a PENDENTE, Pagamento novo e os antigos ficam', async () => {
@@ -182,7 +188,7 @@ describe('cobrança online: valor do cartão e destino depois de pagar', () => {
     assert.deepEqual(cobrancaCartaoOnline({ valorCurso: '49.90' }), { valorCobranca: 49.9, valorBase: 49.9, numParcelas: 1, valorParcela: null, tipo: 'CURSO' });
   });
   test('destino: online vai para o curso; presencial para a Minha conta', () => {
-    assert.equal(destinoAposPagamento({ turma: { status: 'ONLINE', cursoId: 'c1', curso: { nome: 'Curso Um' } } }), '/online/curso-um');
+    assert.equal(destinoAposPagamento({ turma: { status: 'ONLINE', cursoId: 'c1', curso: { nome: 'Curso Um' } } }), '/escola-digital/curso-um');
     assert.equal(destinoAposPagamento({ turma: { status: 'ABERTA', cursoId: 'c1' } }), '/minha-conta?inscrito=1');
   });
 });

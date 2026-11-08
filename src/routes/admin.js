@@ -28,6 +28,7 @@ const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
 const { formatBRL, calcularValores, lerConfigMatricula, faltaReceber, cursoJaPago } = require('../lib/matricula');
 const { simularValores } = require('../lib/simular-valores');
 const { estornarTransacao } = require('../lib/unicopag'); // 💡 A3 — refund real no gateway
+const { outroPagamentoCursoPago } = require('../lib/status-pagamento');
 const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarTextoWhats, montarLinkProspeccao } = require('../lib/lembretes');
 const { coletarDadosRelatorio, gerarExcel, gerarPdf, coletarLancamentosOfx, gerarOfx } = require('../lib/relatorio'); // relatórios Excel/PDF
 const { estornosExtras, totalEstornado: somarEstornos, lotesDaTabela } = require('../lib/financeiro-estornos');
@@ -2504,7 +2505,7 @@ router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:reembolsar'
       where: { id: pago.id },
       data: { status: 'ESTORNADO', gatewayStatus: 'refunded', gatewayResponse: resultado.body },
     });
-    return { ok: true, semRef: false };
+    return { ok: true, semRef: false, pagamentoId: pago.id };
   }
 
   let taxaRevertida = false;
@@ -2521,6 +2522,13 @@ router.post('/inscricoes/:id/estornar', requirePermissao('financeiro:reembolsar'
       return res.status(502).render('admin/erro', {
         mensagem: 'O gateway não confirmou o estorno da matrícula. Nada foi alterado. Verifique no painel da Únicopag e tente novamente.',
       });
+    }
+
+    // Escola Digital (2026-11, revisão final): pagou duas vezes (PIX e cartão) e este estorno devolveu um deles:
+    // a matrícula continua paga pelo outro; a taxa e o status ficam como estão.
+    if (await outroPagamentoCursoPago(m.id, curso.pagamentoId)) {
+      await auditar(req, 'ESTORNOU_PAGAMENTO', 'Matricula', m.id, { motivo, apenasContabil, duplicado: true });
+      return res.redirect(back(req, 'Pagamento em duplicidade estornado no gateway. A matrícula continua paga pelo outro pagamento.'));
     }
 
     const taxa = await estornarPagamento('TAXA');

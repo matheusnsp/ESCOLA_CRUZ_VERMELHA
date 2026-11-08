@@ -40,6 +40,12 @@ describe('pendências do aluno', { skip: temBanco ? false : 'sem DATABASE_URL lo
   const s = String(Date.now()).slice(-7);
   let server; let site; let curso; let co; let turma; let tela; let codigo; let cupom100; let escola; const us = {};
 
+  let restaurarEd; // Escola Digital começa desligada (2026-11): liga para o teste e devolve no fim
+
+  before(async () => { restaurarEd = await require('./helpers/escola-digital').ligarEscolaDigital(); });
+
+  after(async () => { if (restaurarEd) await restaurarEd(); });
+
   before(async () => {
     curso = await prisma.curso.create({ data: { nome: `Curso Pend ${s}`, cargaHoraria: 3, precoAvista: 0, precoCheio: 0, valorParcela: 0, ativo: false } });
     co = await prisma.cursoOnline.create({ data: { cursoId: curso.id, precoOnline: 60, publicado: true, maxParcelas: 6 } });
@@ -120,7 +126,7 @@ describe('pendências do aluno', { skip: temBanco ? false : 'sem DATABASE_URL lo
     const cookie = r.headers.get('set-cookie').split(';')[0];
     const html = await r.text();
     assert.match(html, /Cupom não encontrado\./);
-    assert.match(html, new RegExp(`href="/online/${curso.id}\\?cupom="[^>]*>tirar`));
+    assert.match(html, new RegExp(`href="/escola-digital/${curso.id}\\?cupom="[^>]*>tirar`));
     assert.doesNotMatch(await (await pagina(`/online/${curso.id}`, null, cookie)).text(), /Cupom não encontrado/);
   });
 

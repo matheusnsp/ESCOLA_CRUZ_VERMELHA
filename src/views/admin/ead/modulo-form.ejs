@@ -20,13 +20,18 @@
     <label class="full">Título
       <input type="text" name="titulo" required maxlength="120" value="<%= v.titulo || '' %>" placeholder="Ex.: Engasgo">
     </label>
-    <label>Tempo estimado (minutos)
-      <input type="number" name="minutosEstimados" min="0" max="600" value="<%= v.minutosEstimados || '' %>" placeholder="Ex.: 20">
+    <label>Tempo estimado em minutos (opcional)
+      <input type="number" name="minutosEstimados" min="0" max="600" value="<%= v.minutosEstimados || '' %>" placeholder="Vazio: calculado sozinho">
     </label>
     <label class="check" style="align-self:end"><input type="checkbox" name="final" <%= (v.final === true || v.final === 'on') ? 'checked' : '' %>>
-      É o módulo final (só cenários, abre depois dos outros)
+      É o módulo final (opcional: só cenários, abre depois dos outros)
     </label>
-    <label class="full">Introdução (abertura do módulo, uns 3 parágrafos)
+    <% if (!modulo) { %>
+    <label class="full">Tópicos (opcional, um por linha)
+      <textarea name="topicos" rows="4" maxlength="3000" placeholder="Ex.:&#10;Reconhecer o engasgo&#10;Engasgo no bebê"><%= v.topicos || '' %></textarea>
+    </label>
+    <% } %>
+    <label class="full">Introdução (opcional: abertura do módulo, uns 3 parágrafos)
       <textarea name="introducao" rows="6" maxlength="3000"><%= v.introducao || '' %></textarea>
     </label>
     <label class="full">Foto da introdução (JPG, PNG ou WEBP, até 3 MB)

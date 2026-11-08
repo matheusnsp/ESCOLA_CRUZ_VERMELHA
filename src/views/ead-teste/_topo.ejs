@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <% if (typeof indexavel === 'undefined' || !indexavel) { %><meta name="robots" content="noindex, nofollow"><% } %>
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<title><%= titulo %> · Escola de Educação e Saúde CVB-RJ</title>
+<title><%= titulo %> · Escola Digital CVB-RJ</title>
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 <% if (typeof canonicalOnline !== 'undefined' && canonicalOnline) { %><link rel="canonical" href="<%= (typeof urlSite !== 'undefined' && urlSite ? urlSite.replace(/\/+$/, '') : '') + canonicalOnline %>"><% } %>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,14 +21,38 @@
 <% if (typeof jsonLd !== 'undefined' && jsonLd) { %><script type="application/ld+json"><%- jsonSeguro(jsonLd) %></script><% } %>
 </head>
 <body class="ea-pagina">
-<div class="ea-topbar"><div class="ea-wrap"><span>Cruz Vermelha Brasileira · Rio de Janeiro</span><span>Curso 100% online</span></div></div>
+<%_
+  // Escola Digital (2026-11, vistoria H1): topo igual ao do site em função — caminho de volta, conta e "Sair".
+  var _ed = typeof escolaDigital !== 'undefined' && escolaDigital;
+  var _u = typeof usuario !== 'undefined' && usuario ? usuario : null;
+  var _links = typeof contaLinks !== 'undefined' && contaLinks ? contaLinks : {};
+  var _csrf = typeof csrfToken !== 'undefined' ? csrfToken : '';
+_%>
+<div class="ea-topbar"><div class="ea-wrap"><a href="https://cruzvermelhariodejaneiro.org/" target="_blank" rel="noopener">Cruz Vermelha Brasileira · Rio de Janeiro</a><span>Escola Digital · cursos 100% online</span></div></div>
 <header class="ea-header">
   <div class="ea-wrap">
-    <a class="ea-logo" href="<%= base %>">
+    <a class="ea-logo" href="<%= _ed ? '/escola-digital' : '/' %>">
       <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro">
-      <span><b>ESCOLA DE EDUCAÇÃO</b><small>E SAÚDE CVB-RJ</small></span>
+      <span><b>ESCOLA DIGITAL</b><small>CVB-RJ · CURSOS 100% ONLINE</small></span>
     </a>
-    <% if (typeof voltarMenu !== 'undefined' && voltarMenu) { %><a class="ea-pilula ea-pilula-clara" href="<%= base %>">☰ <span class="ea-so-pc">Menu do curso</span><span class="ea-so-cel">Menu</span></a><% } %>
+    <nav class="ea-nav" aria-label="Escola Digital">
+      <% if (typeof voltarMenu !== 'undefined' && voltarMenu) { %><a class="ea-pilula ea-pilula-clara" href="<%= base %>">☰ <span class="ea-so-pc">Menu do curso</span><span class="ea-so-cel">Menu</span></a><% } %>
+      <a class="ea-nav-link ea-so-pc" href="/">Site da escola</a>
+      <% if (_u) { %>
+        <details class="ea-conta">
+          <summary>Olá, <%= String(_u.nome || '').split(' ')[0] %> <i aria-hidden="true">▾</i></summary>
+          <div class="ea-conta-menu">
+            <a href="/minha-conta">Minha conta</a>
+            <a href="/minha-conta?sec=online">Cursos online</a>
+            <% if (_links.gestor) { %><a href="/minha-escola">Minha escola</a><% } %>
+            <a class="ea-so-cel" href="/">Site da escola</a>
+            <form method="POST" action="/logout"><input type="hidden" name="_csrf" value="<%= _csrf %>"><button type="submit">Sair</button></form>
+          </div>
+        </details>
+      <% } else { %>
+        <a class="ea-pilula ea-pilula-clara" href="/login">Entrar</a>
+      <% } %>
+    </nav>
   </div>
 </header>
 <% if (typeof eadModo === 'undefined' || eadModo !== 'pago') { %><div class="ea-teste">Versão de teste · só quem tem este link consegue abrir · não divulgue</div><% } %>

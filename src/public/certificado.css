@@ -72,3 +72,14 @@ body { background: #e9e6e1; font-family: Arimo, Arial, Helvetica, sans-serif; co
 .cert-ressalva { font: italic 8.5pt 'Arimo', Arial, sans-serif; color: #444; margin: 1mm auto 0; max-width: 200mm; position: relative; z-index: 1; }
 .cert-barra-aluno a { color: #c8102e; font-weight: 700; font-size: 13px; }
 @media (max-width: 700px) { .cert-barra { flex-direction: column; align-items: stretch; } }
+/* Escola Digital (2026-11, vistoria T1): certificado do link de teste. */
+.cert-teste { position: absolute; top: 24mm; left: 32mm; margin: 0; padding: 1.4mm 5mm; background: #fde68a; color: #7a4b00; font: 700 9pt 'Arimo', Arial, sans-serif; letter-spacing: .12em; border-radius: 1mm; z-index: 2; }
+/* Escola Digital (2026-11, vistoria H6): no celular a página A4 deitada (297 mm ≈ 1123 px) virava rolagem de
+   lado. Na tela pequena, reduz para caber; a impressão/PDF continua em 297 mm (o zoom é só de tela). */
+@media screen and (max-width: 1100px) { .cert-pagina { zoom: .85; } }
+@media screen and (max-width: 940px) { .cert-pagina { zoom: .72; } }
+@media screen and (max-width: 800px) { .cert-pagina { zoom: .6; } }
+@media screen and (max-width: 660px) { .cert-pagina { zoom: .48; } }
+@media screen and (max-width: 520px) { .cert-pagina { zoom: .38; } }
+@media screen and (max-width: 420px) { .cert-pagina { zoom: .32; } }
+@media screen and (max-width: 360px) { .cert-pagina { zoom: .28; } }

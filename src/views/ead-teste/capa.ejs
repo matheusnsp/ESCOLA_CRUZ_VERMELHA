@@ -1,5 +1,5 @@
 <%
-  var totalMin = co.modulos.reduce(function (s, m) { return s + m.minutosEstimados; }, 0);
+  var totalMin = co.modulos.reduce(function (s, m) { return s + (m.minutosExibidos || 0); }, 0);
   var horas = totalMin >= 60 ? Math.floor(totalMin / 60) + 'h' + (totalMin % 60 ? String(totalMin % 60).padStart(2, '0') : '') : totalMin + ' min';
   var primeiro = co.modulos[0];
   var pago = typeof modo !== 'undefined' && modo === 'pago';
@@ -34,6 +34,7 @@
           <p class="ea-kicker">Pagamento em andamento</p>
           <h2>Falta só confirmar o pagamento<span style="color:var(--r)">.</span></h2>
           <p>Assim que o banco confirmar, o curso abre aqui e você recebe um e-mail. O PIX costuma confirmar em segundos.</p>
+          <% if (compra.cupom) { %><p class="ea-preco-pendente"><s><%= brl(compra.cupom.precoCheio) %></s> <b><%= compra.gratis ? 'Grátis' : brl(compra.cupom.precoFinal) %></b> com o cupom <%= compra.cupom.codigo %></p><% } %>
           <% if (compra.retornoUrl) { %><a class="ea-pilula ea-pilula-red" href="<%= compra.retornoUrl %>">Ver o pagamento →</a><% } %>
         <% } else if (compra.situacao === 'cancelado') { %>
           <p class="ea-kicker">Inscrição cancelada</p>
@@ -123,7 +124,7 @@
         <<%= compra ? 'div' : 'a' %> class="ea-mod <%= m.final ? 'final' : '' %> <%= em ? 'est-' + em.estado : '' %>"<% if (!compra) { %> href="<%= base %>/modulo/<%= m.id %>"<% } %>>
           <span class="ea-mod-topo"><span class="ea-mod-num"><%= String(i + 1).padStart(2, '0') %></span><% if (!pago) { %><span class="ea-selo <%= m.status === 'VALIDADO' ? 'ok' : '' %>"><%= m.status === 'VALIDADO' ? 'Validado' : 'Rascunho' %></span><% } %></span>
           <h3><%= m.titulo %></h3>
-          <span class="ea-mod-meta"><%= m.minutosEstimados %> min · <%= m.final ? m.cenarios.length + ' cenário(s) para decidir' : m.topicos.length + ' tópico(s) · ' + telas + ' tela(s)' %></span>
+          <span class="ea-mod-meta"><%= m.minutosExibidos ? m.minutosExibidos + ' min · ' : '' %><%= m.final ? m.cenarios.length + ' cenário(s) para decidir' : m.topicos.length + ' tópico(s) · ' + telas + ' tela(s)' %></span>
           <% if (em && em.estado === 'bloqueado') { %>
             <span class="ea-mod-pe ea-mod-bloq"><span>🔒 <%= em.motivo %></span></span>
           <% } else if (em && em.estado === 'concluido') { %>

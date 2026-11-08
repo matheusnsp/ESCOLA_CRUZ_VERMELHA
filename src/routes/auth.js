@@ -148,8 +148,10 @@ router.post('/cadastro', cadastroLimiter, async (req, res) => {
     // Quem veio do link de teste do curso online (/ead-teste/...) volta para o curso; o resto segue
     // para a Minha conta como sempre. Lido antes do regenerate (a sessão nova não tem o returnTo).
     const voltaAoCurso = voltaDepoisDoCadastro(req.session.returnTo);
+    const cupomEad = req.session.cupomEad; // cupom do curso online trazido pelo link (sobrevive ao regenerate)
     req.session.regenerate((err) => {
       if (err) { console.error('Erro ao iniciar sessão no cadastro:', err); return res.redirect('/login'); }
+      if (cupomEad) req.session.cupomEad = cupomEad;
       req.session.usuarioId = usuario.id;
       req.session.papel = usuario.papel;
       req.session.nome = usuario.nome;
@@ -518,6 +520,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     // depois, já não acharia nada e todo mundo cairia em /minha-conta — que
     // é exatamente o problema que este bloco existe pra resolver.
     const destino = consumirDestino(req, '/minha-conta');
+    const cupomEad = req.session.cupomEad; // cupom do curso online trazido pelo link (sobrevive ao regenerate)
 
     // Regenera a sessão para evitar session fixation.
     return req.session.regenerate((err) => {
@@ -529,6 +532,7 @@ router.post('/login', loginLimiter, async (req, res) => {
         });
       }
 
+      if (cupomEad) req.session.cupomEad = cupomEad;
       req.session.usuarioId = usuario.id;
       req.session.papel = usuario.papel;
       req.session.nome = usuario.nome;

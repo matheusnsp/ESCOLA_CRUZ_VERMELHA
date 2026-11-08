@@ -57,7 +57,8 @@
       <input type="text" name="dicaProfissional" maxlength="400" value="<%= v.dicaProfissional || '' %>">
     </label>
   </div>
-  <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> <%= nova ? 'Criar tela' : 'Salvar' %></button>
+  <button type="submit" class="adm-btn" name="depois" value="voltar"><i class="fa-solid fa-floppy-disk"></i> <%= nova ? 'Criar tela' : 'Salvar' %></button>
+  <% if (nova) { %><button type="submit" class="adm-btn adm-btn-out" name="depois" value="outra"><i class="fa-solid fa-plus"></i> Salvar e escrever outra</button><% } %>
 </form>
 
 <%- include('../foot') %>

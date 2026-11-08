@@ -252,7 +252,7 @@ const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
     <% } %>
 
     <div class="cc-rodape">
-      <% if (typeof destinoFinal !== 'undefined' && destinoFinal && destinoFinal.indexOf('/online/') === 0) { %>
+      <% if (typeof destinoFinal !== 'undefined' && destinoFinal && (destinoFinal.indexOf('/online/') === 0 || destinoFinal.indexOf('/escola-digital/') === 0)) { %>
       <a href="<%= destinoFinal %>">
         <i class="fa-solid fa-arrow-left"></i> Ir para o curso
       </a>
@@ -691,7 +691,7 @@ const _ref = (typeof transacaoRef !== 'undefined' && transacaoRef)
 
     <!-- ══ Rodapé ══════════════════════════════════════════════════════════ -->
     <div class="pix-rodape">
-      <% if (typeof destinoFinal !== 'undefined' && destinoFinal && destinoFinal.indexOf('/online/') === 0) { %>
+      <% if (typeof destinoFinal !== 'undefined' && destinoFinal && (destinoFinal.indexOf('/online/') === 0 || destinoFinal.indexOf('/escola-digital/') === 0)) { %>
       <a href="<%= destinoFinal %>">
         <i class="fa-solid fa-arrow-left"></i> Ir para o curso
       </a>

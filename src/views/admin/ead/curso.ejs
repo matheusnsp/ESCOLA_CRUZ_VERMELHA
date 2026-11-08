@@ -7,6 +7,7 @@
 </div>
 <%- include('_abas-curso', { co: co, aba: 'conteudo' }) %>
 <%- include('_mensagens') %>
+<%- include('_aviso-publicado', { publicado: co.publicado }) %>
 
 <% if (typeof dadosCurso !== 'undefined' && dadosCurso) { %>
 <%# Etapa 5: curso que só existe online — os dados do curso são editados aqui, não no presencial. %>
@@ -25,6 +26,42 @@
 </div>
 <% } %>
 <%# Etapa 4: venda no site. Preço único (PIX ou cartão, sem taxa) e o interruptor "Publicar no site". %>
+<div class="adm-box adm-espaco">
+  <div class="ead-topico-cab"><h3>Módulos</h3>
+    <a class="adm-btn" href="/ead/curso/<%= co.id %>/modulos/novo"><i class="fa-solid fa-plus"></i> Novo módulo</a>
+  </div>
+  <% if (!modulos.length) { %>
+    <p class="ead-vazio">Nenhum módulo ainda.</p>
+  <% } else { %>
+    <ul class="ead-lista">
+      <% modulos.forEach(function (m, i) { %>
+        <li>
+          <span class="ead-num"><%= m.final ? '★' : i + 1 %></span>
+          <div class="ead-tit">
+            <a href="/ead/modulo/<%= m.id %>"><%= m.titulo %></a>
+            <small>
+              <% var _min = ead.minutosDoModulo(m); if (_min) { %><%= _min %> min ·<% } %>
+              <% if (m.final) { %><%= m.nCenarios %> cenário(s)<% } else { %><%= m.topicos.length %> tópico(s) · <%= m.nTelas %> tela(s) · <%= m.nPerguntas %> pergunta(s) ativa(s)<% } %>
+            </small>
+          </div>
+          <% if (m.final) { %><span class="ead-selo final">Final · cenários</span><% } %>
+          <span class="ead-selo <%= m.status === 'VALIDADO' ? 'validado' : 'rascunho' %>"><%= m.status === 'VALIDADO' ? 'Validado' : 'Rascunho' %></span>
+          <% if (m.geradoPorIa) { %><span class="ead-selo final" title="Etapa 9: escrito pela IA">Gerado por IA — revise antes de validar</span><% } %>
+          <div class="ead-acoes">
+            <% if (!m.final) ['subir', 'descer'].forEach(function (d) { %>
+              <form method="POST" action="/ead/modulo/<%= m.id %>/<%= d %>" <% if (m.status === 'VALIDADO') { %>data-confirmar="Mudar a ordem volta este módulo (e o vizinho, se validado) para rascunho. Continuar?"<% } %>>
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="adm-mini" title="<%= d === 'subir' ? 'Subir' : 'Descer' %>"><i class="fa-solid fa-arrow-<%= d === 'subir' ? 'up' : 'down' %>"></i></button>
+              </form>
+            <% }) %>
+          </div>
+        </li>
+      <% }) %>
+    </ul>
+    <p class="adm-nota" style="margin: 0 16px 14px"><i class="fa-solid fa-circle-info"></i> O módulo final (de cenários) aparece sempre por último para o aluno.</p>
+  <% } %>
+</div>
+
 <div class="adm-box adm-box-pad adm-espaco ead-venda">
   <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-store"></i> Venda no site</h2>
   <% if (venda.aviso) { %>
@@ -35,7 +72,7 @@
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <label>Preço do curso online (R$)
         <input type="text" name="precoOnline" inputmode="decimal" placeholder="49,90" required
-               value="<%= co.precoOnline === null ? '' : Number(co.precoOnline).toFixed(2).replace('.', ',') %>">
+               value="<%= digitado.precoOnline !== undefined ? digitado.precoOnline : co.precoOnline === null ? '' : Number(co.precoOnline).toFixed(2).replace('.', ',') %>">
       </label>
       <p class="adm-mut">Cobrança única, por PIX ou cartão, sem taxa de inscrição.</p>
       <button type="submit" class="adm-btn adm-btn-out">Salvar preço</button>
@@ -62,49 +99,13 @@
         <p class="adm-mut">Para publicar, falta:</p>
         <ul class="ead-pendencias"><% venda.pendencias.forEach(function (p) { %><li><%= p %></li><% }) %></ul>
       <% } else { %>
-        <form method="POST" action="/ead/curso/<%= co.id %>/publicar" data-confirmar="Publicar no site? O curso aparece no catálogo com o selo ONLINE e já pode ser comprado." data-botao="Publicar">
+        <form method="POST" action="/ead/curso/<%= co.id %>/publicar" data-confirmar="Publicar no site? O curso aparece no catálogo com o selo ONLINE e já pode ser comprado." data-botao="Publicar" data-confirmar-tipo="ok">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="acao" value="ligar">
           <button class="adm-btn"><i class="fa-solid fa-globe"></i> Publicar no site</button>
         </form>
       <% } %>
     </div>
   </div>
-</div>
-
-<div class="adm-box adm-espaco">
-  <div class="ead-topico-cab"><h3>Módulos</h3>
-    <a class="adm-btn" href="/ead/curso/<%= co.id %>/modulos/novo"><i class="fa-solid fa-plus"></i> Novo módulo</a>
-  </div>
-  <% if (!modulos.length) { %>
-    <p class="ead-vazio">Nenhum módulo ainda.</p>
-  <% } else { %>
-    <ul class="ead-lista">
-      <% modulos.forEach(function (m, i) { %>
-        <li>
-          <span class="ead-num"><%= m.final ? '★' : i + 1 %></span>
-          <div class="ead-tit">
-            <a href="/ead/modulo/<%= m.id %>"><%= m.titulo %></a>
-            <small>
-              <%= m.minutosEstimados %> min ·
-              <% if (m.final) { %><%= m.nCenarios %> cenário(s)<% } else { %><%= m.topicos.length %> tópico(s) · <%= m.nTelas %> tela(s) · <%= m.nPerguntas %> pergunta(s) ativa(s)<% } %>
-            </small>
-          </div>
-          <% if (m.final) { %><span class="ead-selo final">Final · cenários</span><% } %>
-          <span class="ead-selo <%= m.status === 'VALIDADO' ? 'validado' : 'rascunho' %>"><%= m.status === 'VALIDADO' ? 'Validado' : 'Rascunho' %></span>
-          <% if (m.geradoPorIa) { %><span class="ead-selo final" title="Etapa 9: escrito pela IA">Gerado por IA — revise antes de validar</span><% } %>
-          <div class="ead-acoes">
-            <% if (!m.final) ['subir', 'descer'].forEach(function (d) { %>
-              <form method="POST" action="/ead/modulo/<%= m.id %>/<%= d %>" <% if (m.status === 'VALIDADO') { %>data-confirmar="Mudar a ordem volta este módulo (e o vizinho, se validado) para rascunho. Continuar?"<% } %>>
-                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <button class="adm-mini" title="<%= d === 'subir' ? 'Subir' : 'Descer' %>"><i class="fa-solid fa-arrow-<%= d === 'subir' ? 'up' : 'down' %>"></i></button>
-              </form>
-            <% }) %>
-          </div>
-        </li>
-      <% }) %>
-    </ul>
-    <p class="adm-nota" style="margin: 0 16px 14px"><i class="fa-solid fa-circle-info"></i> O módulo final (de cenários) aparece sempre por último para o aluno.</p>
-  <% } %>
 </div>
 
 <div class="adm-box adm-box-pad adm-espaco">
@@ -144,7 +145,7 @@
   <h2 class="adm-h2 adm-form-h">Configuração</h2>
   <div class="adm-form adm-campos">
     <label>Nota mínima no quiz e no pré-teste (%)
-      <input type="number" name="notaMinimaQuiz" min="50" max="100" step="1" required value="<%= co.notaMinimaQuiz %>">
+      <input type="number" name="notaMinimaQuiz" min="50" max="100" step="1" required value="<%= digitado.notaMinimaQuiz !== undefined ? digitado.notaMinimaQuiz : co.notaMinimaQuiz %>">
     </label>
   </div>
   <button type="submit" class="adm-btn adm-btn-out">Salvar</button>

@@ -22,6 +22,12 @@ describe('travas da compra e do lote', { skip: temBanco ? false : 'sem DATABASE_
   const gestor = (x) => ({ nome: `Gestor Trava ${x}`, email: `g${x}-trava-${s}@teste.local`, celular: '', cpf: cpf() });
   const loteBase = (x, extra = {}) => ({ escola: { nome: `Escola Trava ${x} ${s}` }, cursoOnlineId: co.id, vagas: 3, validoAte: new Date(Date.now() + 864e5), valor: 100, forma: 'PIX', gestor: gestor(x), atorId: 'dev', ...extra });
 
+  let restaurarEd; // Escola Digital começa desligada (2026-11): liga para o teste e devolve no fim
+
+  before(async () => { restaurarEd = await require('./helpers/escola-digital').ligarEscolaDigital(); });
+
+  after(async () => { if (restaurarEd) await restaurarEd(); });
+
   before(async () => {
     curso = await prisma.curso.create({ data: { nome: `Curso Trava ${s}`, cargaHoraria: 2, precoAvista: 0, precoCheio: 0, valorParcela: 0, ativo: false } });
     co = await prisma.cursoOnline.create({ data: { cursoId: curso.id, precoOnline: 50, publicado: true } });

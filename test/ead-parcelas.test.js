@@ -74,6 +74,12 @@ describe('cartão parcelado do curso online', { skip: temBanco ? false : 'sem DA
   let server; let site; let painel; let curso; let co; let ana; let bia; const auditoria = [];
   const cartao = { numero: '4111111111111111', titular: 'ANA TESTE', validade: '12/30', cvv: '123', etapa: 'curso' };
 
+  let restaurarEd; // Escola Digital começa desligada (2026-11): liga para o teste e devolve no fim
+
+  before(async () => { restaurarEd = await require('./helpers/escola-digital').ligarEscolaDigital(); });
+
+  after(async () => { if (restaurarEd) await restaurarEd(); });
+
   before(async () => {
     email.enviarCursoOnlineLiberado = async () => {};
     email.enviarMatriculaConfirmada = async () => {};

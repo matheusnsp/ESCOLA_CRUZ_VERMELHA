@@ -98,13 +98,14 @@ function slugCurso(nome) {
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'curso';
 }
 const urlCurso = (curso) => '/cursos/' + slugCurso(curso && curso.nome);
-// Curso online (etapa 8): o mesmo endereço pelo nome, /online/<nome>. O endereço com o id continua valendo
-// (routes/ead-teste.js redireciona para este).
-const urlOnline = (curso) => '/online/' + slugCurso(curso && curso.nome);
+// Curso online: o endereço pelo nome. Escola Digital (2026-11): /escola-digital/<nome>. Os antigos /online/<nome>
+// e /online/<id> continuam abrindo, com canonical para este (routes/ead-teste.js).
+const URL_ESCOLA_DIGITAL = '/escola-digital';
+const urlOnline = (curso) => URL_ESCOLA_DIGITAL + '/' + slugCurso(curso && curso.nome);
 
 // Selo de requisito do curso no site. Curso que exige comprovante da área da saúde (extra exigeComprovanteSaude,
 // lib/comprovante-saude.js) é para profissionais e estudantes da saúde, não para uma escolaridade.
 const PUBLICO_SAUDE = 'Profissionais e estudantes da saúde';
 const requisitoCurso = (curso) => (!curso ? null : curso.exigeComprovanteSaude ? PUBLICO_SAUDE : curso.escolaridadeMinima || null);
 
-module.exports = { CATEGORIAS, icone, reais, dataTurma, quando, agenda, ordenar, larguras, categoriasEmUso, slugCurso, urlCurso, urlOnline, requisitoCurso };
+module.exports = { CATEGORIAS, icone, reais, dataTurma, quando, agenda, ordenar, larguras, categoriasEmUso, slugCurso, urlCurso, urlOnline, requisitoCurso, URL_ESCOLA_DIGITAL };

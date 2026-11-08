@@ -14,6 +14,7 @@ const { iniciarCobrancaAVista, urlRetorno, cobrancaCartaoOnline, opcoesParcelasO
 const { lerOrigem } = require('../lib/origem-da-visita');
 const { anexarOnline } = require('../lib/ead-publicacao');
 const cursoSoOnline = require('../lib/ead-curso-online');
+const escolaDigital = require('../lib/escola-digital');
 const cacheRapido = require('../lib/cache-rapido');
 const extras = require('../lib/extras');
 const vitrine = require('../lib/vitrine');
@@ -194,16 +195,14 @@ async function carregarVitrine(filtro, { agenda = false } = {}) {
     },
   });
   await extras.anexar('curso', cursos);
-  await anexarOnline(cursos); // curso.online = { preco } quando o curso online está publicado
-  // O curso só online nunca entra como presencial (nem para o DEV, que vê os inativos).
+  // Escola Digital (2026-11): o catálogo e a home são só presencial (sem o selo "100% online"); os cursos
+  // online ficam na /escola-digital. O curso só online nunca entra como presencial (nem para o DEV).
   return vitrine.ordenar(await cursoSoOnline.semSoOnline(cursos));
 }
 
-// Catálogo /cursos: o presencial e, no fim, os cursos só online publicados (card com link para /online).
+// Catálogo /cursos: só o presencial (Escola Digital, 2026-11: os cursos online ficam na /escola-digital).
 async function carregarCatalogo(filtro) {
-  const [presencial, soOnline] = await Promise.all([carregarVitrine(filtro, { agenda: true }), cursoSoOnline.cursosSoOnlinePublicados()]);
-  await extras.anexar('curso', soOnline);
-  return [...presencial, ...soOnline];
+  return carregarVitrine(filtro, { agenda: true });
 }
 
 // A home mostra só alguns cursos em destaque; a lista completa fica em /cursos.
@@ -228,6 +227,13 @@ router.get('/', async (req, res) => {
 router.get('/sobre', (req, res) => res.redirect(302, '/#escola'));
 // Não existe página própria de dúvidas (dava erro 500): as perguntas frequentes ficam na home.
 router.get('/duvidas', (req, res) => res.redirect(302, '/#duvidas'));
+
+// Escola Digital CVB-RJ (2026-11): a aba dos cursos online. Desligada no painel, não existe (404).
+router.get('/escola-digital', (req, res, next) => (async () => {
+  if (!(await escolaDigital.estaLigada())) return next();
+  const cursos = await catalogo(res, 'escola-digital', () => escolaDigital.cursosDaEscolaDigital());
+  res.render('escola-digital', { cursos, vitrine, taxaExibicao, cfgMap: {} });
+})().catch(next));
 
 router.get('/cursos', async (req, res) => {
   const filtro = filtroVisibilidadeCurso(res.locals.usuario);
@@ -347,12 +353,14 @@ router.get('/turmas/:turmaId/agenda.ics', (req, res, next) => (async () => {
 
 // Lista de páginas públicas para o Google (o robots.txt, em server.js, aponta para cá).
 router.get('/sitemap.xml', (req, res, next) => (async () => {
-  const { cursos, soOnline } = await catalogo(res, 'sitemap', async () => ({
+  const ligada = await escolaDigital.estaLigada();
+  const { cursos, online } = await catalogo(res, 'sitemap', async () => ({
     cursos: await prisma.curso.findMany({ where: { ativo: true }, select: { nome: true }, orderBy: { nome: 'asc' } }),
-    soOnline: await cursoSoOnline.cursosSoOnlinePublicados(), // curso só online publicado: /online/<id>
+    online: await escolaDigital.cursosDaEscolaDigital(), // Escola Digital: /escola-digital/<curso>, só ligada
   }));
   const base = res.locals.urlSite;
-  const urls = ['/', '/cursos', '/privacidade'].concat(cursos.map(vitrine.urlCurso), soOnline.map((c) => vitrine.urlOnline(c)));
+  const urls = ['/', '/cursos', '/privacidade'].concat(cursos.map(vitrine.urlCurso),
+    ligada ? [vitrine.URL_ESCOLA_DIGITAL].concat(online.map((c) => vitrine.urlOnline(c))) : []);
   const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   res.set('Content-Type', 'application/xml; charset=utf-8');
   res.set('Cache-Control', 'public, max-age=3600');
@@ -466,8 +474,10 @@ router.get('/cursos/:cursoId', async (req, res, next) => {
   if (!podeVer)
     return res.status(404).render('erro', { mensagem: 'Curso não encontrado.' });
 
+  // Escola Digital desligada: nenhum link para o online na página do presencial (cópia: o objeto vem do cache).
+  const cursoPagina = curso.online && !(await escolaDigital.estaLigada()) ? { ...curso, online: null } : curso;
   res.render('curso-detalhe', {
-    curso,
+    curso: cursoPagina,
     outros,
     formatBRL,
     total: totalExibicao(curso, cfgMap),

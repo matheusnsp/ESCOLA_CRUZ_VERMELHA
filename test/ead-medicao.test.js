@@ -36,6 +36,12 @@ describe('medição nas páginas do curso online', { skip: temBanco ? false : 's
 
   const novaMatricula = (u, horas) => prisma.matricula.create({ data: { alunoId: u.id, turmaId: turma.id, plano: 'A_VISTA', forma: 'PIX', valorCurso: 49.9, valorTaxaMatricula: 0, statusPagamento: 'PAGO', taxaConfirmada: true, confirmadaEm: new Date(Date.now() - horas * 3600e3) } });
 
+  let restaurarEd; // Escola Digital começa desligada (2026-11): liga para o teste e devolve no fim
+
+  before(async () => { restaurarEd = await require('./helpers/escola-digital').ligarEscolaDigital(); });
+
+  after(async () => { if (restaurarEd) await restaurarEd(); });
+
   before(async () => {
     curso = await prisma.curso.create({ data: { nome: `Curso </script><script>alert(1)</script> ${s}`, descricao: 'Primeiros socorros para escolas.', cargaHoraria: 3, precoAvista: 0, precoCheio: 0, valorParcela: 0, ativo: false } });
     co = await prisma.cursoOnline.create({ data: { cursoId: curso.id, precoOnline: 49.9, publicado: true } });

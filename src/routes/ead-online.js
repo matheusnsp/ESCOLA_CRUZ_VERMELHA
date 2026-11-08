@@ -15,7 +15,9 @@ const { iniciarCobrancaAVista } = require('../lib/cobranca-avista');
 const { lerOrigem } = require('../lib/origem-da-visita');
 const { transacao } = require('../lib/transacao');
 const cupons = require('../lib/ead-cupom');
-const { limiteCupom } = require('../lib/limite-cupom');
+const { limiteCupom, registrarFalhaCupom } = require('../lib/limite-cupom');
+const { URL_ESCOLA_DIGITAL } = require('../lib/vitrine');
+const escolaDigital = require('../lib/escola-digital');
 
 const router = express.Router();
 
@@ -78,13 +80,15 @@ async function liberarPorCupom(alunoId, turmaId, v) {
   });
 }
 
-router.post('/online/:cursoId/comprar', requireLogin, limiteCupom, asyncHandler(async (req, res, next) => {
+router.post(['/online/:cursoId/comprar', '/escola-digital/:cursoId/comprar'], requireLogin, limiteCupom, asyncHandler(async (req, res, next) => {
   const coId = await cursoOnlineDoEndereco(req.params.cursoId);
   const co = coId ? await prisma.cursoOnline.findUnique({ where: { id: coId }, include: { curso: { select: { nome: true } } } }) : null;
   if (!co) return next();
-  const base = `/online/${req.params.cursoId}`;
+  const base = `${URL_ESCOLA_DIGITAL}/${req.params.cursoId}`;
   if (req.session.papel !== 'ALUNO') return res.redirect(base); // DEV/secretaria logados no site não compram
   const acesso = await acessoPago(req.session.usuarioId, co);
+  // Escola Digital desligada: não vende (quem já está no meio de um pagamento termina).
+  if (acesso.situacao === 'sem' && !(await escolaDigital.estaLigada())) return res.redirect(base);
   // Não publicado: só quem já está no meio de um pagamento pode terminá-lo.
   if (!co.publicado && acesso.situacao !== 'pendente') return acesso.situacao === 'sem' ? next() : res.redirect(base);
   if (acesso.liberado) return res.redirect(`${base}/continuar`);
@@ -100,7 +104,9 @@ router.post('/online/:cursoId/comprar', requireLogin, limiteCupom, asyncHandler(
   if (codigo) {
     if (req.cupomBloqueado) return voltaCupom(); // a capa mostra o aviso de tentativas
     v = await cupons.validarCupom(codigo, co);
-    if (v.erro) return voltaCupom();
+    // Revisão final (I-1): o código errado conta aqui também (quem não segue o redirecionamento escapava do
+    // limite); a capa recebe ?ja=1 para não contar duas vezes.
+    if (v.erro) { registrarFalhaCupom(req); return res.redirect(`${base}?cupom=${encodeURIComponent(codigo)}&ja=1`); }
   }
   const valor = v ? v.precoFinal : preco;
   if (forma === 'CUPOM' && valor !== 0) return v ? voltaCupom() : res.redirect(base);

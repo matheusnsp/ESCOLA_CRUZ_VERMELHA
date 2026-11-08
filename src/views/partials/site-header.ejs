@@ -38,6 +38,7 @@
 
     <nav class="v-menu" aria-label="Principal">
       <a href="/"<%- _ativo === 'inicio' ? ' aria-current="page"' : '' %>>Início</a>
+      <% if (typeof escolaDigital !== 'undefined' && escolaDigital) { %><a href="/escola-digital"<%- _ativo === 'escola-digital' ? ' aria-current="page"' : '' %>>Escola Digital</a><% } %>
       <a href="/#como">Como funciona</a>
       <a href="/#escola">Quem somos</a>
       <a href="/#duvidas">Dúvidas</a>
@@ -49,6 +50,8 @@
           <summary><i class="fa-solid fa-circle-user" aria-hidden="true"></i> Olá, <%= usuario.nome.split(' ')[0] %> <i class="fa-solid fa-chevron-down" aria-hidden="true"></i></summary>
           <div class="v-user-drop">
             <a href="/minha-conta?sec=inscricoes"><i class="fa-solid fa-graduation-cap"></i> Minhas inscrições</a>
+            <% if (typeof contaLinks !== 'undefined' && contaLinks && contaLinks.cursosOnline) { %><a href="/minha-conta?sec=online"><i class="fa-solid fa-laptop"></i> Cursos online</a><% } %>
+            <% if (typeof contaLinks !== 'undefined' && contaLinks && contaLinks.gestor) { %><a href="/minha-escola"><i class="fa-solid fa-school"></i> Minha escola</a><% } %>
             <a href="/minha-conta?sec=dados"><i class="fa-solid fa-id-card"></i> Meus dados</a>
             <a href="/minha-conta?sec=excluir"><i class="fa-solid fa-trash"></i> Excluir conta</a>
             <form method="POST" action="/logout">
@@ -72,10 +75,11 @@
     var _itens = [
       { href: '/', nome: 'Início', ativo: _ativo === 'inicio' },
       { href: '/cursos', nome: 'Cursos', ativo: _ativo === 'cursos' },
+    ].concat(typeof escolaDigital !== 'undefined' && escolaDigital ? [{ href: '/escola-digital', nome: 'Escola Digital', ativo: _ativo === 'escola-digital' }] : []).concat([
       { href: '/#como', nome: 'Como funciona' },
       { href: '/#escola', nome: 'Quem somos' },
       { href: '/#duvidas', nome: 'Dúvidas' }
-    ];
+    ]);
   %>
   <div class="v-gaveta" id="vGaveta" hidden>
     <div class="v-wrap v-gaveta-in">
@@ -97,6 +101,8 @@
             <p class="v-gaveta-ola"><span class="v-gaveta-avatar" aria-hidden="true"><%= (usuario.nome || '?').trim().charAt(0).toUpperCase() %></span>
               <span>Olá, <b><%= (usuario.nome || '').split(' ')[0] %></b><small>Sua área do aluno</small></span></p>
             <a href="/minha-conta?sec=inscricoes"><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i> Minhas inscrições</a>
+            <% if (typeof contaLinks !== 'undefined' && contaLinks && contaLinks.cursosOnline) { %><a href="/minha-conta?sec=online"><i class="fa-solid fa-laptop" aria-hidden="true"></i> Cursos online</a><% } %>
+            <% if (typeof contaLinks !== 'undefined' && contaLinks && contaLinks.gestor) { %><a href="/minha-escola"><i class="fa-solid fa-school" aria-hidden="true"></i> Minha escola</a><% } %>
             <a href="/minha-conta?sec=dados"><i class="fa-solid fa-id-card" aria-hidden="true"></i> Meus dados</a>
             <form method="POST" action="/logout">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">

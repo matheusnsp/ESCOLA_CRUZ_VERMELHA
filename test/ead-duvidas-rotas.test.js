@@ -15,6 +15,12 @@ describe('dúvidas na tela', { skip: temBanco ? false : 'sem DATABASE_URL local'
   require('../src/lib/email').enviarDuvidaRespondida = async () => {};
   let server; let site; let base; let pago; let curso; let co; let tela; let tela2; let ana; let bia; let codigo;
 
+  let restaurarEd; // Escola Digital começa desligada (2026-11): liga para o teste e devolve no fim
+
+  before(async () => { restaurarEd = await require('./helpers/escola-digital').ligarEscolaDigital(); });
+
+  after(async () => { if (restaurarEd) await restaurarEd(); });
+
   before(async () => {
     curso = await prisma.curso.create({ data: { nome: `TESTE dúvidas rotas ${Date.now()}`, cargaHoraria: 1, precoAvista: 0, precoCheio: 0, valorParcela: 0 } });
     co = await prisma.cursoOnline.create({ data: { cursoId: curso.id, precoOnline: 10, publicado: true } });
@@ -87,7 +93,7 @@ describe('dúvidas na tela', { skip: temBanco ? false : 'sem DATABASE_URL local'
   test('modo pago sem acesso: o POST volta à capa sem gravar', async () => {
     const antes = await contar();
     const r = await post(`${pago}/tela/${tela.id}/duvida`, bia, { texto: 'Pergunta de quem não comprou o curso.' });
-    assert.equal(r.status, 302); assert.equal(r.headers.get('location'), `/online/${curso.id}`);
+    assert.equal(r.status, 302); assert.equal(r.headers.get('location'), `/escola-digital/${curso.id}`);
     assert.equal(await contar(), antes);
   });
 

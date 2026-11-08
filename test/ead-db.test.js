@@ -75,34 +75,18 @@ describe('ead-db', { skip: pular }, () => {
     assert.equal(await edb.proximaOrdem(prisma, 'topicoEad', 'moduloId', m.id), 5);
   });
 
-  test('marcarFinal: só um final por curso; recusa módulo com tópico', async () => {
+  test('marcarFinal: só um final por curso (o segundo é recusado, Escola Digital P1); recusa módulo com tópico', async () => {
     const a = await novoModulo(); const b = await novoModulo();
     assert.deepEqual(await prisma.$transaction((tx) => edb.marcarFinal(tx, a.id, true)), {});
-    assert.deepEqual(await prisma.$transaction((tx) => edb.marcarFinal(tx, b.id, true)), {});
-    assert.equal((await prisma.moduloEad.findUnique({ where: { id: a.id } })).final, false);
-    assert.equal((await prisma.moduloEad.findUnique({ where: { id: b.id } })).final, true);
+    const r = await prisma.$transaction((tx) => edb.marcarFinal(tx, b.id, true));
+    assert.match(r.erro || '', /já tem um módulo final/);
+    assert.equal((await prisma.moduloEad.findUnique({ where: { id: a.id } })).final, true, 'o primeiro continua final');
+    assert.equal((await prisma.moduloEad.findUnique({ where: { id: b.id } })).final, false);
     const c = await novoModulo();
     await prisma.topicoEad.create({ data: { moduloId: c.id, titulo: 'T' } });
     assert.ok((await prisma.$transaction((tx) => edb.marcarFinal(tx, c.id, true))).erro);
-    await prisma.cenarioEad.create({ data: { moduloId: b.id, titulo: 'C' } });
-    assert.ok((await prisma.$transaction((tx) => edb.marcarFinal(tx, b.id, false))).erro);
-  });
-
-  test('marcarFinal: recusa trocar o final se o atual tem cenários; sem cenários, troca e invalida o anterior', async () => {
-    const curso2 = await prisma.curso.create({ data: { nome: 'TESTE ead-db 3', cargaHoraria: 1, precoAvista: 0, precoCheio: 0, valorParcela: 0 } });
-    const c2 = await prisma.cursoOnline.create({ data: { cursoId: curso2.id } });
-    const a = await prisma.moduloEad.create({ data: { cursoOnlineId: c2.id, titulo: 'A', final: true, status: 'VALIDADO', validadoEm: new Date() } });
     await prisma.cenarioEad.create({ data: { moduloId: a.id, titulo: 'C' } });
-    const b = await prisma.moduloEad.create({ data: { cursoOnlineId: c2.id, titulo: 'B' } });
-    const r = await prisma.$transaction((tx) => edb.marcarFinal(tx, b.id, true, 'teste-ead-db'));
-    assert.match(r.erro || '', /'A'/);
-    assert.equal((await prisma.moduloEad.findUnique({ where: { id: a.id } })).final, true);
-    assert.equal((await prisma.moduloEad.findUnique({ where: { id: b.id } })).final, false);
-    await prisma.cenarioEad.deleteMany({ where: { moduloId: a.id } });
-    assert.deepEqual(await prisma.$transaction((tx) => edb.marcarFinal(tx, b.id, true, 'teste-ead-db')), {});
-    const antes = await prisma.moduloEad.findUnique({ where: { id: a.id } });
-    assert.equal(antes.final, false); assert.equal(antes.status, 'RASCUNHO');
-    await prisma.cursoOnline.delete({ where: { id: c2.id } }); await prisma.curso.delete({ where: { id: curso2.id } });
+    assert.ok((await prisma.$transaction((tx) => edb.marcarFinal(tx, a.id, false))).erro);
   });
 
   test('moduloDe e carregarModulo', async () => {

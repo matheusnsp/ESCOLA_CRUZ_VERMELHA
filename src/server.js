@@ -321,6 +321,17 @@ visitas.iniciar();
 siteAluno.use(require('./routes/integracao'));
 // EAD: o link secreto de teste e o curso online pago (/online/<curso>), antes da contagem de visitas
 // (o endereço do teste é o segredo; as telas do curso não são visitas do site). A compra vem primeiro.
+// Escola Digital (2026-11): o interruptor do painel (menu do site, catálogo, rotas do curso online).
+siteAluno.use((req, res, next) => require('./lib/escola-digital').estaLigada().then((v) => { res.locals.escolaDigital = v; next(); }, next));
+// Escola Digital (2026-11, vistoria H1/H4): links do menu de conta ("Cursos online", "Minha escola") só para quem tem.
+siteAluno.use((req, res, next) => {
+  const id = req.session && req.session.papel === 'ALUNO' ? req.session.usuarioId : null;
+  if (!id) return next();
+  Promise.all([
+    prisma.alunoCursoEad.count({ where: { usuarioId: id } }).then((n) => n || prisma.matricula.count({ where: { alunoId: id, turma: { status: 'ONLINE' } } })).catch(() => 0),
+    prisma.gestorEscolaEad.count({ where: { usuarioId: id } }).catch(() => 0),
+  ]).then(([cursos, gestor]) => { res.locals.contaLinks = { cursosOnline: cursos > 0, gestor: gestor > 0 }; next(); }, () => next());
+});
 siteAluno.use(require('./routes/ead-online'));
 // Etapa 6: Minha escola (gestor) e o convite do lote; também marca o atalho na Minha conta.
 siteAluno.use(require('./routes/ead-escola'));

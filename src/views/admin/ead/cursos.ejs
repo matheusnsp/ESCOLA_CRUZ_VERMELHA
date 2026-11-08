@@ -7,6 +7,20 @@
 </div>
 <%- include('_mensagens') %>
 
+<%# Escola Digital (2026-11): o interruptor da aba dos cursos online no site. %>
+<form method="POST" action="/ead/escola-digital" class="adm-box adm-box-pad adm-espaco ead-interruptor"
+      data-confirmar="<%= escolaDigitalLigada ? 'Desligar a Escola Digital? Ela some do site para quem visita; quem já tem curso continua estudando.' : 'Ligar a Escola Digital? A aba aparece no menu do site com os cursos online publicados.' %>"
+      data-botao="<%= escolaDigitalLigada ? 'Desligar' : 'Ligar' %>"<%- escolaDigitalLigada ? '' : ' data-confirmar-tipo="ok"' %>>
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <input type="hidden" name="ligada" value="<%= escolaDigitalLigada ? '0' : '1' %>">
+  <div>
+    <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-laptop"></i> Escola Digital no site: <span class="ead-selo <%= escolaDigitalLigada ? 'validado' : 'rascunho' %>"><%= escolaDigitalLigada ? 'Ligada' : 'Desligada' %></span></h2>
+    <p class="adm-mut">A aba "Escola Digital" do site (escola.cursoscruzvermelha.org/escola-digital) mostra os cursos online publicados. Desligada, some para quem visita; quem já comprou ou recebeu vaga de escola continua estudando.</p>
+    <% if (!escolaDigitalLigada && !algumPublicado) { %><p class="adm-mut">Publique um curso antes de ligar.</p><% } %>
+  </div>
+  <button type="submit" class="adm-btn <%= escolaDigitalLigada ? 'adm-btn-out' : 'adm-btn-ok' %>"><%= escolaDigitalLigada ? 'Desligar' : 'Ligar a Escola Digital' %></button>
+</form>
+
 <div class="adm-box adm-espaco">
   <% if (!lista.length) { %>
     <p class="ead-vazio">Nenhum curso online ainda. Ative o EAD num curso abaixo.</p>

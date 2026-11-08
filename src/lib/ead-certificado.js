@@ -99,4 +99,21 @@ async function emitirCertificadoEad(alunoCursoId, { enviarEmail = false, linkCer
   return { dados, verificacao, avisoRedacao };
 }
 
-module.exports = { dadosCertificadoEad, assinaturasDoCurso, dataRio, emitirCertificadoEad };
+// Escola Digital (2026-11, vistoria T1): certificado do LINK DE TESTE. Mesmo desenho, marcado "TESTE", sem
+// Livro/Registro (não reserva número da escola), sem Redação e sem e-mail.
+async function previaCertificadoEad(alunoCursoId, { documentoAluno } = {}) {
+  const ac = await prisma.alunoCursoEad.findUnique({
+    where: { id: alunoCursoId },
+    include: { usuario: true, cursoOnline: { include: { curso: true, modulos: { select: { titulo: true, final: true, ordem: true, criadoEm: true }, orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] } } } },
+  });
+  if (!ac) return null;
+  const curso = ac.cursoOnline.curso;
+  await extras.anexar('curso', [curso]);
+  const dados = dadosCertificadoEad({
+    usuario: ac.usuario, curso, modulos: ac.cursoOnline.modulos, numero: { livro: null, registro: null, emitidoEm: new Date() },
+    concluidoEm: ac.concluidoEm || new Date(), ajustes: await cert.lerAjustes(), documentoAluno: documentoAluno || (() => null),
+  });
+  return { dados: { ...dados, teste: true }, verificacao: null };
+}
+
+module.exports = { dadosCertificadoEad, assinaturasDoCurso, dataRio, emitirCertificadoEad, previaCertificadoEad };

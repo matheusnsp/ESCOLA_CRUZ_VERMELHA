@@ -67,7 +67,7 @@
         </div>
         <div class="ea-instrutor <%= escolha.certa ? 'ok' : 'nao' %>" role="status">
           <strong>Instrutor:</strong>
-          <p><%= escolha.opcao.feedback %></p>
+          <p><%= escolha.opcao.feedback || (escolha.certa ? 'Certo!' : 'Não é a melhor escolha. Tente de novo.') %></p>
         </div>
         <% if (escolha.certa && escolha.fechou) { %>
           <a class="ea-pilula ea-pilula-red ea-pilula-bloco" href="<%= base %>/cenario/<%= cenario.id %>">Ver resultado →</a>

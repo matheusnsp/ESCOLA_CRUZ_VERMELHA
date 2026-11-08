@@ -44,7 +44,8 @@
         <img src="/img/certificado/cruz.jpg" alt="">
         <img src="/img/certificado/cruz-vermelha-rj.jpg" alt="Cruz Vermelha Brasileira — Rio de Janeiro">
       </div>
-<% if (c.online) { %>      <p class="cert-selo-online">CURSO ONLINE</p>
+<% if (c.online) { %><% if (c.teste) { %>      <p class="cert-teste">TESTE — sem validade</p>
+<% } %>      <p class="cert-selo-online">CURSO ONLINE</p>
 <% } %>      <h1 class="cert-titulo">Certificado</h1>
       <p class="cert-nome"><%= c.nome %></p>
       <p class="cert-texto">
@@ -100,7 +101,7 @@
 <% } else { -%>
           <p><b>Instrutor</b><br><%= c.instrutorNome || '—' %></p>
 <% } -%>
-          <p>Certificado Registrado no<br><b>Livro</b> Nº <%= c.livro %><br><b>Registro:</b> Nº <%= c.registro %></p>
+          <p>Certificado Registrado no<br><b>Livro</b> Nº <%= c.livro || '—' %><br><b>Registro:</b> Nº <%= c.registro || '—' %></p>
           <% if (c.validade) { %><p><b><%= c.validade %></b></p><% } %>
           <% if (c.verificacao) { %><p>Código de verificação<br><b><%= c.verificacao.codigo %></b></p><% } %>
         </div>
