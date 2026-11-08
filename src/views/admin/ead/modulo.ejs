@@ -35,7 +35,7 @@
           <input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="adm-btn adm-btn-out"><i class="fa-solid fa-rotate-left"></i> Reabrir</button>
         </form>
       <% } else { %>
-        <form method="POST" action="/ead/modulo/<%= modulo.id %>/validar" data-confirmar="Confirmar que a área técnica aprovou o conteúdo clínico deste módulo?" data-botao="Validar">
+        <form method="POST" action="/ead/modulo/<%= modulo.id %>/validar" data-confirmar="Confirmar que a área técnica aprovou o conteúdo clínico deste módulo?" data-botao="Validar" data-confirmar-tipo="ok">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button class="adm-btn adm-btn-ok" <%= pendencias.length ? 'disabled' : '' %> title="<%= pendencias.length ? 'Resolva as pendências antes' : '' %>"><i class="fa-solid fa-circle-check"></i> Validar módulo</button>
         </form>

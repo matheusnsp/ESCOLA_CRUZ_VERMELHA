@@ -137,3 +137,6 @@ html[data-tema="escuro"] .ia-roteiro .ia-modulo { border-color: #3a4149; }
 .ead-lista-check li { padding: 3px 0; }
 .ead-lista-check li.ok { color: #1f7a3a; }
 .ead-lista-check li.falta small { color: inherit; opacity: .8; }
+/* Escola Digital (2026-11, P8): no celular, campos e selects não passam da borda. */
+.adm-campos > *, .adm-campos select, .adm-campos input, .adm-campos textarea { min-width: 0; max-width: 100%; }
+.adm-form select { max-width: 100%; }

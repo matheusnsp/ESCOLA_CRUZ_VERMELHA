@@ -144,14 +144,17 @@
       motivoTit.textContent = f.dataset.motivo || 'Motivo';
       contabilRot.hidden = !('contabil' in f.dataset); contabil.checked = false;
       sim.textContent = f.dataset.botao || 'Confirmar';
+      sim.className = 'adm-btn ' + (f.dataset.confirmarTipo === 'ok' ? 'adm-btn-ok' : 'adm-btn-perigo'); // P7: cor da ação
       caixa.classList.add('aberto'); caixa.setAttribute('aria-hidden', 'false');
       (pedeMotivo ? motivo : sim).focus();
     }
 
+    var botaoClicado = null; // Escola Digital (2026-11, P5): submit() perde o botão clicado ("Salvar e escrever outra")
     document.addEventListener('submit', function (e) {
       var f = e.target;
       if (!f || !f.dataset || !f.dataset.confirmar) return;
       e.preventDefault();
+      botaoClicado = e.submitter || null;
       abrir(f);
     }, true);
 
@@ -167,6 +170,7 @@
         var c = campo(f, 'apenasContabil');
         if (contabil.checked) c.value = 'on'; else c.parentNode.removeChild(c);
       }
+      if (botaoClicado && botaoClicado.name) campo(f, botaoClicado.name).value = botaoClicado.value;
       fechar();
       f.submit(); // submit() não dispara o evento de novo
     });

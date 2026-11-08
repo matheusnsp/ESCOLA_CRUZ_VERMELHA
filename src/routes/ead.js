@@ -52,7 +52,12 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
   const voltar = (res, url, tipo, msg) => res.redirect(url + (url.includes('?') ? '&' : '?') + tipo + '=' + encodeURIComponent(msg));
   const naoAchou = (res) => res.status(404).render('admin/erro', { mensagem: 'Conteúdo EAD não encontrado.' });
   const urlModulo = (id) => `/ead/modulo/${id}`;
-  const flash = (req) => ({ ok: req.query.ok || null, erro: req.query.erro || null });
+  // Escola Digital (2026-11, P4): erro de formulário curto volta com o que foi digitado (?v_<campo>=…).
+  const flash = (req) => ({
+    ok: req.query.ok || null, erro: req.query.erro || null,
+    digitado: Object.fromEntries(Object.entries(req.query).filter(([k]) => k.startsWith('v_')).map(([k, v]) => [k.slice(2), String(v).slice(0, 2000)])),
+  });
+  const comDigitado = (url, campos) => url + (url.includes('?') ? '&' : '?') + Object.entries(campos).map(([k, v]) => `v_${k}=${encodeURIComponent(String(v || ''))}`).join('&');
 
   // Escrita que mexe no conteúdo de um módulo: transação + volta a rascunho se estava validado.
   async function escrever(req, moduloId, oQueMudou, fn) {
@@ -131,7 +136,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const co = await acharCursoOnline(req.params.id);
     if (!co) return naoAchou(res);
     const r = ead.schemaCursoOnline.safeParse(req.body);
-    if (!r.success) return voltar(res, `/ead/curso/${co.id}`, 'erro', 'Nota mínima: um número inteiro de 50 a 100.');
+    if (!r.success) return voltar(res, comDigitado(`/ead/curso/${co.id}`, { notaMinimaQuiz: req.body.notaMinimaQuiz }), 'erro', 'Nota mínima: um número inteiro de 50 a 100.');
     await prisma.cursoOnline.update({ where: { id: co.id }, data: r.data });
     voltar(res, `/ead/curso/${co.id}`, 'ok', 'Nota mínima salva.');
   });
@@ -618,7 +623,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const co = await acharCursoOnline(req.params.id);
     if (!co) return naoAchou(res);
     const preco = publicacao.lerPreco(req.body.precoOnline);
-    if (preco === null) return voltar(res, `/ead/curso/${co.id}`, 'erro', 'Preço: um valor em reais maior que zero (ex.: 49,90).');
+    if (preco === null) return voltar(res, comDigitado(`/ead/curso/${co.id}`, { precoOnline: req.body.precoOnline }), 'erro', 'Preço: um valor em reais maior que zero (ex.: 49,90).');
     await prisma.cursoOnline.update({ where: { id: co.id }, data: { precoOnline: preco } });
     await auditar(req, 'EAD_PRECO', 'CursoOnline', co.id, { de: co.precoOnline === null ? null : Number(co.precoOnline), para: preco });
     voltar(res, `/ead/curso/${co.id}`, 'ok', 'Preço salvo.');
