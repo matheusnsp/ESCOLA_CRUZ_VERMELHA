@@ -31,8 +31,8 @@ A vistoria foi feita em 3 frentes no app local. Foram percorridos a parte do alu
 | B2 | **Celular: o topo da página de venda é cortado à direita**: título, texto e botões do cartão de preço. Mesma causa da B1, mais a grade sem coluna `minmax(0,1fr)`. | Corrigir a grade do topo; conferir em 390 px. |
 | B3 | **O cupom some no login e no cadastro.** Quem chega pelo link com cupom e entra ou cria conta volta com o preço cheio. O cupom de 100% ("Criar conta e liberar") deixa de liberar. Causa: `session.regenerate()` (`auth.js:150-156`, `:515-530`) descarta `cupomEad`. | Levar o cupom para a sessão nova no login e no cadastro. Teste com login de verdade, não pelo cabeçalho de teste. |
 | B4 | **Estorno de um pagamento duplicado fecha o acesso.** O aluno pagou PIX e cartão, a secretaria estorna um dos dois, e ele fica bloqueado. (`status-pagamento.js:275-293`) | Só marcar ESTORNADO se não sobrar outro pagamento do curso PAGO na matrícula. |
-| B5 | **Rascunho aparece para quem pagou.** Um módulo novo, ou um escrito pela IA num curso já publicado, vai direto para o aluno. Um módulo vazio conta como feito e "desconta" quando ganha a primeira tela. (`ead-progresso-db.js:16-28`) | No modo pago, o aluno só vê módulos **liberados**: os validados agora, ou que já foram validados alguma vez. Coluna nova `ModuloEad.liberadoEm` (DateTime?), gravada na primeira validação e nunca apagada. O link de teste continua mostrando tudo. |
-| B6 | **Tópico com perguntas e sem telas trava o curso.** O teste não tem por onde entrar, e o aluno anda em círculo. Cenário sem decisões também trava. | O teste do tópico ganha um botão na página do módulo quando o tópico não tem telas. Cenário sem decisões não aparece para o aluno. Com a regra da seção 3, um módulo assim nem chega a ser liberado. |
+| B5 | **Rascunho aparece para quem pagou.** Um módulo novo, ou um escrito pela IA num curso já publicado, vai direto para o aluno. | **Decisão do Matheus (08/11): a tela do aluno fica exatamente como está.** A proteção fica na secretaria. Na página do curso e do módulo de um curso publicado, o painel mostra o aviso: "Este curso está publicado: o que você criar ou mudar aqui aparece para os alunos na hora." O formulário da IA mostra o mesmo aviso quando o destino é um curso publicado. |
+| B6 | **Tópico com perguntas e sem telas trava o curso.** O teste não tem por onde entrar, e o aluno anda em círculo. Cenário sem decisões também trava. | Também do lado da secretaria: para validar, todo tópico precisa de pelo menos 1 tela, e todo cenário de pelo menos 1 decisão (seção 3.1). A tela do aluno não muda. |
 | B7 | **Limite de tentativas do cupom conta usos certos.** Numa escola com o mesmo Wi-Fi, depois de 10 a 15 pessoas o link de cupom para de funcionar. (`limite-cupom.js`) | Contar só código inválido. |
 | B8 | **"Desativar EAD" dá erro 500** quando o curso tem cupom ou lote. (`ead.js:139-160`) | Conferir antes e mostrar a mensagem certa. |
 
@@ -118,7 +118,7 @@ O aluno não precisa de vídeo, âncora, introdução, tempo, quantidade mínima
 - **Módulo comum:**
   - título;
   - pelo menos 1 tópico com pelo menos 1 tela;
-  - todo tópico com tela ou com pergunta;
+  - todo tópico com pelo menos 1 tela (sem isso, o teste do tópico fica sem porta de entrada para o aluno);
   - toda pergunta com alternativas válidas (2 a 5, ao menos 1 correta). O formulário já garante isso.
 - **Módulo final:**
   - título;
@@ -151,13 +151,11 @@ A IA continua com as mesmas exigências na resposta (mais perguntas e cenários 
 
 ## 4. Banco
 
-Uma migração que só acrescenta: `ALTER TABLE "ModuloEad" ADD COLUMN "liberadoEm" TIMESTAMP(3)` (B5). Nenhuma tabela nova. O interruptor fica em `Configuracao`. Precisa passar no `scripts/checar-migracao-ead.js`.
-
-Regra de "liberado" sem reescrever dados: o módulo aparece no modo pago se está VALIDADO **ou** se tem `liberadoEm`. Os módulos validados hoje continuam aparecendo sem precisar preencher nada.
+Nenhuma migração. O interruptor fica em `Configuracao` (`escola-digital:ligada`).
 
 ## 5. Testes e verificação
 
-- Teste automático para cada item das seções 1 a 3 que tem regra: B3 a B8, T1, P1, P10, as regras da seção 3, o interruptor ligado e desligado com e sem acesso, endereços novos e antigos, e o catálogo só presencial.
+- Teste automático para cada item das seções 1 a 3 que tem regra: B3, B4, B6 a B8, T1, P1, P10, as regras da seção 3, o interruptor ligado e desligado com e sem acesso, endereços novos e antigos, e o catálogo só presencial.
 - B3 com login e cadastro de verdade (POST `/login` e `/cadastro`), não com o cabeçalho de teste.
 - Ciclo pela interface com prints, em 1280 e 390 px:
   - ligar a Escola Digital;

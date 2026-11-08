@@ -7,7 +7,7 @@
 - separar os cursos online numa aba própria, a "Escola Digital", com interruptor no painel;
 - simplificar a criação de cursos.
 
-**Architecture:** a Escola Digital é uma chave em `Configuracao` lida a cada pedido, guardada em cache. `res.locals.escolaDigital` alimenta o menu, o catálogo e as rotas do curso online. Os endereços `/escola-digital/<curso>` são apelidos das mesmas rotas de `/online/<curso>`, em `routes/ead-teste.js` e `routes/ead-online.js`, e `vitrine.urlOnline()` passa a gerar o novo endereço. As regras de validação viram uma lista única, `checklist(modulo)`, de onde saem as pendências (o que trava) e os avisos (o que é recomendado). O aluno pago vê só os módulos liberados, marcados pela coluna nova `ModuloEad.liberadoEm`.
+**Architecture:** a Escola Digital é uma chave em `Configuracao` lida a cada pedido, guardada em cache. `res.locals.escolaDigital` alimenta o menu, o catálogo e as rotas do curso online. Os endereços `/escola-digital/<curso>` são apelidos das mesmas rotas de `/online/<curso>`, em `routes/ead-teste.js` e `routes/ead-online.js`, e `vitrine.urlOnline()` passa a gerar o novo endereço. As regras de validação viram uma lista única, `checklist(modulo)`, de onde saem as pendências (o que trava) e os avisos (o que é recomendado). A tela do aluno não muda quanto aos módulos que ele vê (decisão do Matheus); a proteção contra rascunho fica no painel (avisos e regra de validação).
 
 **Tech Stack:** Node 22 CommonJS, Express 4, EJS, Prisma 5/Postgres, node:test (`npm test`), Playwright para o ciclo pela interface.
 
@@ -15,7 +15,7 @@
 
 ## Global Constraints
 
-- A migração só acrescenta: `ALTER TABLE "ModuloEad" ADD COLUMN "liberadoEm" TIMESTAMP(3)`. Precisa passar em `node scripts/checar-migracao-ead.js`.
+- **Sem migração.** A tela do aluno continua mostrando todos os módulos, como hoje (decisão do Matheus, 08/11).
 - O CSP proíbe JS inline: scripts em `src/public/js/*.js`, servidos por `asset()`.
 - O texto de interface é em português, sem jargão.
 - Interruptor: chave `escola-digital:ligada` em `Configuracao`, valor `'1'` ou `'0'`. O padrão é **desligada**. Auditoria: `ESCOLA_DIGITAL_LIGOU` / `ESCOLA_DIGITAL_DESLIGOU`.
@@ -28,43 +28,30 @@
 ## Review Focus
 
 1. Escola Digital desligada e funcionário de escola entrando pelo convite: o convite e `/escola-digital/<curso>` continuam abrindo o curso para ele (teste na Task 6).
-2. Módulo liberado que volta para rascunho porque alguém o editou: continua aparecendo para quem pagou (teste na Task 1).
+2. Curso publicado em que a secretaria cria um módulo: o aviso aparece no painel, e o aluno continua vendo o curso como antes (teste na Task 1).
 3. Cupom de 100% de quem ainda não tem conta, pelo caminho de cadastro de verdade: termina com o curso liberado sem digitar o código de novo (teste na Task 2).
 4. Links antigos `/online/<uuid>` de e-mails já enviados continuam abrindo a página do curso (teste na Task 6).
 5. Curso presencial que também tem versão online, com a Escola Digital desligada: o catálogo e a página do presencial não mostram nenhum link para o online (teste na Task 6).
 
 ---
 
-### Task 1: Aluno pago vê só módulos liberados; tópico sem telas e cenário sem decisões não travam (B5, B6)
+### Task 1: Proteção contra rascunho do lado da secretaria (B5, B6)
 
 **Files:**
-- Create: `prisma/migrations/20261112120000_ead_liberado/migration.sql`
-- Modify: `prisma/schema.prisma` (ModuloEad: `liberadoEm DateTime?`), `src/lib/ead-progresso-db.js` (`carregarCursoParaAluno`), `src/routes/ead-teste.js` (`resolverCurso`, página do módulo), `src/views/ead-teste/modulo.ejs`, `src/routes/ead.js` (POST `/ead/modulo/:id/validar`), chamadas em `src/lib/ead-meus-cursos.js`, `src/lib/ead-lote.js`, `src/lib/ead-relatorios.js`, `scripts/checar-migracao-ead.js` (se precisar listar a migração)
+- Modify: `src/views/admin/ead/curso.ejs`, `src/views/admin/ead/modulo.ejs`, `src/views/admin/ead/ia-form.ejs` (aviso), `src/routes/ead.js` (passar `publicado` para as views, se ainda não passa)
 - Test: `test/escola-digital-aluno.test.js`
 
 **Interfaces:**
-- Produces:
-  - `carregarCursoParaAluno(cursoOnlineId, { somenteLiberados = false } = {})`. Com `somenteLiberados`, só entram os módulos com `status === 'VALIDADO' || liberadoEm !== null`.
-  - Sempre: cenários com 0 decisões ficam de fora.
-  - A validação grava `liberadoEm` na primeira vez e nunca o apaga.
+- Produces: aviso com a classe `adm-aviso-publicado` e o texto exato "Este curso está publicado: o que você criar ou mudar aqui aparece para os alunos na hora." Aparece na página do curso e do módulo quando `co.publicado`, e no formulário da IA quando há cursos publicados entre os destinos (texto ao lado do select). A regra "todo tópico com pelo menos 1 tela" é feita na Task 4.
 
-- [ ] Step 1: testes (banco local) em `test/escola-digital-aluno.test.js`:
-  - `rascunho nunca validado não aparece no modo pago`: `carregarCursoParaAluno(id, {somenteLiberados:true}).co.modulos` não contém o rascunho; sem a opção, contém.
-  - `módulo liberado e depois invalidado continua no modo pago`: módulo com `liberadoEm` setado e `status: 'RASCUNHO'` aparece.
-  - `validar grava liberadoEm uma vez`: validar, invalidar (`edb.invalidarSeValidado`) e validar de novo mantêm o primeiro `liberadoEm`.
-  - `cenário sem decisões fica de fora`.
-  - `tópico sem telas com perguntas`: a página do módulo (`GET /ead-teste/<código>/modulo/<id>`, logado pelo cabeçalho de teste existente) contém `href=".../topico/<id>/quiz"` ou o form do quiz. Siga o padrão dos testes de rota em `test/ead-teste-rotas.test.js`.
-- [ ] Step 2: `node --test test/escola-digital-aluno.test.js` → FAIL.
-- [ ] Step 3: implementar:
-  - migração e schema; depois `npx prisma generate`;
-  - filtro em `carregarCursoParaAluno` (o select de cenários inclui `_count: { select: { decisoes: true } }`);
-  - `resolverCurso`: o modo pago passa `{ somenteLiberados: true }`, o modo teste não passa;
-  - as três libs do aluno (meus-cursos, lote, relatórios) passam `{ somenteLiberados: true }`;
-  - validar: `data: { status: 'VALIDADO', …, liberadoEm: modulo.liberadoEm || new Date() }`;
-  - `modulo.ejs`: na lista do módulo, o tópico sem telas e com perguntas mostra o botão "Fazer o teste rápido" (o mesmo POST do `quizForm` de `/tela/:telaId`), quando logado e com o quiz não aprovado;
-  - a rota do módulo passa os dados necessários.
-- [ ] Step 4: o teste passa. `node scripts/checar-migracao-ead.js` dá OK, e `npm test` fica verde.
-- [ ] Step 5: commit `fix(ead): aluno pago vê só módulos liberados; tópico sem telas e cenário vazio não travam`.
+- [ ] Step 1: testes:
+  - `curso publicado mostra o aviso no painel` (GET `/ead/curso/:id` e `/ead/modulo/:id`, padrão de `test/ead-ia-painel.test.js`);
+  - `curso não publicado não mostra`;
+  - `tela do aluno inalterada`: `carregarCursoParaAluno` continua devolvendo os módulos em rascunho, uma regressão contra filtrar.
+- [ ] Step 2: FAIL (os dois primeiros).
+- [ ] Step 3: implementar os avisos.
+- [ ] Step 4: PASS e `npm test` verde.
+- [ ] Step 5: commit `feat(painel): aviso de curso publicado ao criar ou mudar conteúdo`.
 
 ### Task 2: Cupom sobrevive ao login e ao cadastro; limite conta só código errado (B3, B7)
 
@@ -135,7 +122,7 @@
 - **Para validar** (comum):
   - "Título";
   - "Pelo menos 1 tópico com 1 tela";
-  - "Todo tópico tem tela ou pergunta";
+  - "Todo tópico tem pelo menos 1 tela";
   - "Perguntas com alternativas válidas".
 - **Para validar** (final):
   - "Título";
@@ -155,7 +142,7 @@
 - [ ] Step 1: testes:
   - `módulo com 1 tópico, 1 tela sem vídeo e sem perguntas valida` (`pendencias` = `[]`, `avisos` inclui o vídeo);
   - `módulo sem tópicos não valida`;
-  - `tópico vazio (sem tela e sem pergunta) não valida`;
+  - `tópico sem telas não valida, mesmo com perguntas`;
   - `decisão com 2 opções e 1 correta valida`; `decisão com 5 opções não valida`;
   - `minutosDoModulo` de 2 telas e 4 perguntas sem minutos → 10; com `minutosEstimados: 25` → 25;
   - `criar segundo módulo final é recusado` (POST `/ead/curso/:id/modulos/novo` com `final=1` → erro "Este curso já tem um módulo final");
@@ -270,7 +257,7 @@
 ### Task 8: Documentação, ciclo pela interface e revisão
 
 **Files:**
-- Modify: `docs/ead/como-publicar-um-curso.md` (regras novas, interruptor, endereço), `docs/ead/deploy.md` (8ª migração `20261112120000_ead_liberado`)
+- Modify: `docs/ead/como-publicar-um-curso.md` (regras novas, interruptor, endereço), `docs/ead/deploy.md` (sem migração nova nesta etapa)
 
 - [ ] Step 1: atualizar os guias.
 - [ ] Step 2: ciclo Playwright em 1280 e 390 px, com prints. Roteiro:
@@ -282,6 +269,6 @@
   - desligar: visitante vê "não disponível", quem comprou continua;
   - criar um curso mínimo do zero pelo painel, contando páginas e campos.
   - Apagar os dados de teste no fim.
-- [ ] Step 3: `npm test` → tudo verde. `node scripts/checar-migracao-ead.js` → OK.
+- [ ] Step 3: `npm test` → tudo verde.
 - [ ] Step 4: commit `docs(ead): Escola Digital e criação simplificada`.
 - [ ] Step 5: revisão final independente, correções com teste, e PR para `main` sem merge.
