@@ -7,7 +7,9 @@
 %>
 <%- include('_topo', { titulo: modulo.titulo, voltarMenu: true }) %>
 <%- include('_avisos') %>
-<section class="ea-heroi">
+<%# A foto de abertura do módulo é o fundo do topo, com véu escuro (2026-11-09); sem foto, o topo fica escuro. %>
+<section class="ea-heroi<%= modulo.fotoIntroUrl ? ' ea-heroi-foto' : '' %>">
+  <% if (modulo.fotoIntroUrl) { %><img src="<%= modulo.fotoIntroUrl %>" alt=""><% } %>
   <div class="ea-wrap ea-heroi-grid" style="min-height:0">
     <div>
       <a class="ea-pilula ea-pilula-escura ea-voltar" href="<%= base %>">← Todos os módulos</a>
@@ -19,7 +21,6 @@
 </section>
 <main class="ea-wrap ea-intro-grid">
   <article class="ea-prosa">
-    <% if (modulo.fotoIntroUrl) { %><img src="<%= modulo.fotoIntroUrl %>" alt=""><% } %>
     <div>
       <p class="ea-kicker">Antes de começar</p>
       <% (modulo.introducao || '').split(/\n\s*\n/).filter(Boolean).forEach(function (p) { %><p><%= p %></p><% }) %>
