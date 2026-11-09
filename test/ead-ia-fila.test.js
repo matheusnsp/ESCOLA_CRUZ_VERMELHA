@@ -61,6 +61,28 @@ describe('fila da geração com IA', { skip: temBanco ? false : 'sem DATABASE_UR
     assert.equal(await modulosNoCurso(), antes + 3);
   });
 
+  test('[2 ao mesmo tempo] dois módulos são escritos juntos (nunca mais de 2) e a ordem no curso segue o roteiro', async () => {
+    const g = await confirmada();
+    let agora = 0; let pico = 0; let soltar1; const m2Comecou = new Promise((r) => { soltar1 = r; });
+    const cli = clienteFalso([async (params) => {
+      agora++; pico = Math.max(pico, agora);
+      const n = Number((params.messages[0].content.at(-1).text.match(/Escreva agora o módulo (\d+)/) || [])[1]);
+      if (n === 2) soltar1();
+      if (n === 1) await m2Comecou; // o módulo 1 só termina depois que o 2 começou: prova que rodam juntos
+      await new Promise((r) => setTimeout(r, n === 1 ? 80 : 10)); // e o 2 termina antes do 1
+      agora--;
+      return responde()(params);
+    }]);
+    fila.acordar({ cliente: cli });
+    await fila.ocioso();
+    const d = await doBanco(g);
+    assert.equal(d.status, 'CONCLUIDA');
+    assert.equal(cli.chamadas.length, 3);
+    assert.equal(pico, 2, 'dois ao mesmo tempo, nunca três');
+    const noCurso = await prisma.moduloEad.findMany({ where: { id: { in: d.modulos.map((m) => m.moduloId) } }, orderBy: { ordem: 'asc' }, select: { titulo: true } });
+    assert.deepEqual(noCurso.map((m) => m.titulo), rot.modulos.map((m) => m.titulo), 'ordem do roteiro, mesmo o 2 terminando antes');
+  });
+
   test('roteiro pendente também é processado pela fila', async () => {
     const g = await IA.criarGeracao({ pedido: { destino: { tipo: 'existente', cursoOnlineId: co.id }, tema: 'Tema', publico: '', nModulos: 3, observacoes: '' }, material: { materialTexto: null, materialPdfs: [] }, criadoPor: `fila2-${s}` });
     geracoes.push(g.id);
@@ -106,7 +128,7 @@ describe('fila da geração com IA', { skip: temBanco ? false : 'sem DATABASE_UR
     assert.equal(d.modulos[0].moduloId, d0.modulos[0].moduloId);
   });
 
-  test('outro serviço trabalhando na geração (marca recente): retomar não mexe e a fila pula', async () => {
+  test('outro serviço escrevendo um módulo (marca recente): retomar não mexe nele; a outra vaga escreve os demais', async () => {
     const g = await confirmada();
     const d0 = await doBanco(g);
     await prisma.geracaoIaEad.update({ where: { id: g.id }, data: { modulos: d0.modulos.map((m) => (m.ordem === 0 ? { ...m, status: 'gerando' } : m)) } });
@@ -114,14 +136,17 @@ describe('fila da geração com IA', { skip: temBanco ? false : 'sem DATABASE_UR
     const cli = clienteFalso([responde()]);
     await fila.retomar({ cliente: cli });
     await fila.ocioso();
-    assert.equal((await doBanco(g)).modulos[0].status, 'gerando');
-    assert.equal(cli.chamadas.length, 0);
+    const d1 = await doBanco(g);
+    assert.deepEqual(d1.modulos.map((m) => m.status), ['gerando', 'pronto', 'pronto'], 'o do outro serviço fica; os outros dois são escritos (2 por vez no total)');
+    assert.equal(d1.status, 'MODULOS_GERANDO');
+    assert.equal(cli.chamadas.length, 2);
     // marca velha (o outro serviço morreu): retoma
     await prisma.configuracao.update({ where: { chave: `ead-ia:ocupado:${g.id}` }, data: { valor: String(Date.now() - 11 * 60e3) } });
     await fila.retomar({ cliente: cli });
     await fila.ocioso();
     assert.equal((await doBanco(g)).status, 'CONCLUIDA');
-    assert.equal(await prisma.configuracao.count({ where: { chave: `ead-ia:ocupado:${g.id}` } }), 0, 'a marca sai no fim');
+    assert.equal(cli.chamadas.length, 3, 'só o módulo 1 é refeito');
+    assert.equal(await prisma.configuracao.count({ where: { chave: { startsWith: `ead-ia:ocupado:${g.id}` } } }), 0, 'as marcas saem no fim');
   });
 
   test('acordar duas vezes seguidas não processa o mesmo módulo duas vezes', async () => {
