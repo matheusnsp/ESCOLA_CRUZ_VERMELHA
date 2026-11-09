@@ -364,19 +364,30 @@ async function gravarModulo(g, ordem, m) {
       });
     }
     const atual = await tx.geracaoIaEad.findUnique({ where: { id: g.id }, select: { modulos: true } });
-    const mods = atual.modulos.map((x) => (x.ordem === ordem ? { ...x, status: 'pronto', moduloId: mod.id, erro: null } : x));
+    const mods = atual.modulos.map((x) => (x.ordem === ordem ? { ...x, status: 'pronto', moduloId: mod.id, erro: null, marca: null } : x));
     await tx.geracaoIaEad.update({ where: { id: g.id }, data: { modulos: mods } });
+    // Dois módulos são escritos ao mesmo tempo (2026-11-09) e podem terminar fora de ordem: os módulos desta
+    // geração trocam de posição entre si para seguir o roteiro (as posições usadas continuam as mesmas).
+    const prontos = mods.filter((x) => x.moduloId).sort((a, b) => a.ordem - b.ordem);
+    const atuais = await tx.moduloEad.findMany({ where: { id: { in: prontos.map((x) => x.moduloId) } }, select: { id: true, ordem: true } });
+    const posicoes = atuais.map((x) => x.ordem).sort((a, b) => a - b);
+    for (const [i, x] of prontos.entries()) {
+      const agora = atuais.find((a) => a.id === x.moduloId);
+      if (agora && agora.ordem !== posicoes[i]) await tx.moduloEad.update({ where: { id: x.moduloId }, data: { ordem: posicoes[i] } });
+    }
     return mod;
   });
 }
 
-async function gerarModulo(geracaoId, ordem, { cliente }) {
+// Escreve um módulo. `marca`: a chave da marca da fila que o escreve (a varredura vê se ela ainda vale).
+// Devolve false se o módulo não estava pendente (outro trabalhador o pegou, ou a geração parou).
+async function gerarModulo(geracaoId, ordem, { cliente, marca = null }) {
   const ini = await mudarModulo(geracaoId, ordem, (m, ger) => {
     if (m.status !== 'pendente' || ger.status !== 'MODULOS_GERANDO') return false;
-    m.status = 'gerando'; m.erro = null;
+    m.status = 'gerando'; m.erro = null; m.marca = marca;
     return true;
   });
-  if (!ini || !ini.mudou) return;
+  if (!ini || !ini.mudou) return false;
   const g = await prisma.geracaoIaEad.findUnique({ where: { id: geracaoId } });
   try {
     const { system, messages } = montarMensagens(g, pedidoDoModulo(g, ordem));
@@ -391,6 +402,16 @@ async function gerarModulo(geracaoId, ordem, { cliente }) {
     if (e.usage) await somarCusto(geracaoId, e.usage);
     await mudarModulo(geracaoId, ordem, (m) => { m.status = 'erro'; m.erro = e instanceof ErroIa ? e.message : 'Erro inesperado ao gerar o módulo.'; });
   }
+  return true;
+}
+
+// Varredura da fila: o módulo "gerando" de quem sumiu (marca vencida) volta a pendente.
+async function devolverModulo(geracaoId, ordem) {
+  return mudarModulo(geracaoId, ordem, (m) => {
+    if (m.status !== 'gerando') return false;
+    m.status = 'pendente'; m.marca = null;
+    return true;
+  });
 }
 
 async function tentarDeNovo(geracaoId, ordem, atorId) {
@@ -415,5 +436,5 @@ module.exports = {
   MODELO, REGRAS_SYSTEM, MSG_CHAVE, EM_ANDAMENTO, ErroIa,
   prepararMaterial, montarMensagens, chamarClaude, ehChaveConfigurada, clientePadrao,
   gastoDoMes, tetoMensal, definirTeto, dentroDoTeto, podeComecar,
-  criarGeracao, gerarProposta, pedirOutraProposta, confirmarProposta, voltarParaProposta, gerarRoteiro, pedirOutroRoteiro, confirmarRoteiro, gerarModulo, tentarDeNovo, cancelar,
+  criarGeracao, gerarProposta, pedirOutraProposta, confirmarProposta, voltarParaProposta, gerarRoteiro, pedirOutroRoteiro, confirmarRoteiro, gerarModulo, devolverModulo, tentarDeNovo, cancelar,
 };
