@@ -93,6 +93,43 @@ describe('painel: criação com IA passo a passo', { skip: temBanco ? false : 's
     assert.equal(d.status, 'PROPOSTA_PRONTA');
   });
 
+  test('[revisão] voltar à proposta mostra o que a pessoa confirmou, não a sugestão da IA; outra proposta mostra a nova', async () => {
+    const prisma2 = require('../src/db');
+    const g = await prisma2.geracaoIaEad.findUnique({ where: { id: gid } });
+    assert.equal(g.status, 'PROPOSTA_PRONTA');
+    let t = await get(`/ead/ia/${gid}`);
+    assert.match(t, /name="tema"[^>]*value="Tema confirmado"/, 'o tema confirmado volta no formulário');
+    assert.match(t, /name="precoOnline"[^>]*value="39,90"/, 'o preço confirmado volta no formulário');
+    assert.equal((await post(`/ead/ia/${gid}/proposta-de-novo`, {})).status, 302);
+    await fila.acordar(); await fila.ocioso();
+    t = await get(`/ead/ia/${gid}`);
+    assert.match(t, /name="precoOnline"[^>]*value="49,90"/, 'pediu outra proposta: aparece a nova sugestão');
+  });
+
+  test('[revisão] curso existente: a proposta não pede nome nem preço e confirma só com tema e módulos', async () => {
+    const IA = require('../src/lib/ead-ia');
+    const c = await prisma.curso.create({ data: { nome: `Curso Existente Passos ${s}`, cargaHoraria: 2, precoAvista: 0, precoCheio: 0, valorParcela: 0, ativo: false } });
+    const co = await prisma.cursoOnline.create({ data: { cursoId: c.id } });
+    try {
+      const g = await IA.criarGeracao({ pedido: { ideia: 'Acrescentar um módulo sobre afogamento', destino: { tipo: 'existente', cursoOnlineId: co.id } }, material: { materialTexto: null, materialPdfs: [] }, criadoPor: quem });
+      await fila.acordar(); await fila.ocioso();
+      const t = await get(`/ead/ia/${g.id}`);
+      assert.doesNotMatch(t, /name="nome"/);
+      assert.doesNotMatch(t, /name="precoOnline"/);
+      const r = await post(`/ead/ia/${g.id}/proposta`, { tema: 'Afogamento', publico: 'professores', nModulos: '2', observacoes: '' });
+      assert.equal(r.status, 302);
+      const depois = await prisma.geracaoIaEad.findUnique({ where: { id: g.id } });
+      assert.ok(['ROTEIRO_GERANDO', 'ROTEIRO_PRONTO'].includes(depois.status), depois.status);
+      assert.equal(depois.pedido.tema, 'Afogamento');
+      assert.deepEqual(depois.pedido.destino, { tipo: 'existente', cursoOnlineId: co.id });
+      await fila.ocioso();
+      await IA.cancelar(g.id, quem);
+    } finally {
+      await fila.ocioso();
+      await prisma.cursoOnline.delete({ where: { id: co.id } }); await prisma.curso.delete({ where: { id: c.id } });
+    }
+  });
+
   test('passo 4: na conclusão aparecem os próximos passos', async () => {
     await post(`/ead/ia/${gid}/proposta`, { nome: nomeProposto, descricao: 'd', cargaHoraria: '4', precoOnline: '39,90', maxParcelas: '2', tema: 'Tema confirmado', publico: 'p', nModulos: '3', observacoes: '' });
     await fila.acordar(); await fila.ocioso();

@@ -230,7 +230,13 @@ async function gerarProposta(geracaoId, { cliente }) {
 async function pedirOutraProposta(geracaoId, atorId) {
   const t = await dentroDoTeto();
   if (!t.ok) return t;
-  const r = await prisma.geracaoIaEad.updateMany({ where: { id: geracaoId, status: { in: ['PROPOSTA_PRONTA', 'ERRO_PROPOSTA'] } }, data: { status: 'PROPOSTA_GERANDO', erro: null } });
+  const g = await prisma.geracaoIaEad.findUnique({ where: { id: geracaoId }, select: { pedido: true } });
+  if (!g) return { ok: false, erro: 'Esta geração não está na proposta.' };
+  // Uma proposta nova substitui o que foi confirmado antes: o formulário volta a mostrar a sugestão da IA.
+  const { tema, publico, nModulos, observacoes, ...resto } = g.pedido || {};
+  const d = resto.destino || {};
+  const pedido = { ...resto, destino: d.tipo === 'existente' ? { tipo: 'existente', cursoOnlineId: d.cursoOnlineId } : { tipo: d.tipo || 'novo' } };
+  const r = await prisma.geracaoIaEad.updateMany({ where: { id: geracaoId, status: { in: ['PROPOSTA_PRONTA', 'ERRO_PROPOSTA'] } }, data: { status: 'PROPOSTA_GERANDO', pedido, erro: null } });
   if (!r.count) return { ok: false, erro: 'Esta geração não está na proposta.' };
   await auditar(atorId, 'EAD_IA_OUTRA_PROPOSTA', geracaoId, null);
   return { ok: true };

@@ -402,11 +402,18 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const co = g.cursoOnlineId ? await prisma.cursoOnline.findUnique({ where: { id: g.cursoOnlineId }, select: { id: true, curso: { select: { nome: true } } } }) : null;
     const coDestino = !co && g.pedido.destino && g.pedido.destino.cursoOnlineId ? await prisma.cursoOnline.findUnique({ where: { id: g.pedido.destino.cursoOnlineId }, select: { curso: { select: { nome: true } } } }) : null;
     // Passo 2: o formulário da proposta (o que a pessoa digitou depois de um erro, senão a sugestão da IA).
+    // Depois de "← Voltar à proposta", mostra o que a pessoa já confirmou (não a sugestão original da IA).
     const p = g.pedido.proposta || {};
-    const valoresProposta = proposta || {
+    const reais = (v) => (v === null || v === undefined || v === '' ? '' : Number(v).toFixed(2).replace('.', ','));
+    const conf = g.pedido.tema ? g.pedido : null;
+    const dc = (conf && conf.destino) || {};
+    const valoresProposta = proposta || (conf ? {
+      nome: dc.nome, descricao: dc.descricao, cargaHoraria: dc.cargaHoraria, tema: conf.tema, publico: conf.publico, nModulos: conf.nModulos,
+      observacoes: conf.observacoes, maxParcelas: dc.maxParcelas, precoOnline: reais(dc.precoOnline),
+    } : {
       nome: p.nome, descricao: p.descricao, cargaHoraria: p.cargaHoraria, tema: p.tema, publico: p.publico, nModulos: p.nModulos,
-      observacoes: p.observacoes, maxParcelas: p.maxParcelas, precoOnline: p.precoSugerido ? Number(p.precoSugerido).toFixed(2).replace('.', ',') : '',
-    };
+      observacoes: p.observacoes, maxParcelas: p.maxParcelas, precoOnline: p.precoSugerido ? reais(p.precoSugerido) : '',
+    });
     res.status(status).render('admin/ead/ia-geracao', { g, roteiro: roteiro || g.roteiro, co, cursoNome: co ? co.curso.nome : coDestino ? coDestino.curso.nome : (g.pedido.destino && g.pedido.destino.nome) || p.nome, erro, ok, valoresProposta });
   }
   router.get('/ead/ia/:id', async (req, res) => {
