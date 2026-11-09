@@ -64,6 +64,30 @@ const ESQUEMA_PEDIDOS_IMAGENS = objeto({
 
 const faixa = (v, min, max, padrao) => { const n = Number(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : padrao; };
 const corta = (v, max) => String(v || '').trim().slice(0, max);
+// Escrever com IA (2026-11-09): textos do curso (presencial e só online) e as dúvidas frequentes.
+const FAQ = objeto({ pergunta: texto, resposta: texto });
+const ESQUEMA_TEXTOS_PRESENCIAL = objeto({ descricao: texto, descricaoLonga: texto, conteudoProgramatico: texto, faqs: lista(FAQ) });
+const ESQUEMA_TEXTOS_ONLINE = objeto({ descricao: texto, faqs: lista(FAQ) });
+const semAcento = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+// Dúvidas: sem vazias nem repetidas, cortes nos limites, no máximo `max`.
+function limparFaqs(lista, max = 6) {
+  const vistas = new Set();
+  const r = [];
+  for (const f of Array.isArray(lista) ? lista : []) {
+    const pergunta = corta(f && f.pergunta, 200); const resposta = corta(f && f.resposta, 600);
+    if (!pergunta || !resposta || vistas.has(semAcento(pergunta))) continue;
+    vistas.add(semAcento(pergunta));
+    r.push({ pergunta, resposta });
+    if (r.length >= max) break;
+  }
+  return r;
+}
+function validarTextos(json, tipo) {
+  const j = json || {};
+  if (tipo === 'online') return { descricao: corta(j.descricao, 1000), faqs: limparFaqs(j.faqs) };
+  return { descricao: corta(j.descricao, 300), descricaoLonga: corta(j.descricaoLonga, 3000), conteudoProgramatico: String(j.conteudoProgramatico || '').replace(/\r\n/g, '\n').trim().slice(0, 4000), faqs: limparFaqs(j.faqs) };
+}
+
 function validarPedidosImagens(json, moduloIds) {
   const limpo = (x) => ({ pedido: corta(x.pedido, 600), pedidoCurto: corta(x.pedidoCurto, 200), descricao: corta(x.descricao, 200) });
   if (!json || !json.capa || !corta(json.capa.pedido, 600)) return { ok: false, erro: 'A IA não devolveu o pedido da imagem da capa.' };
@@ -213,4 +237,4 @@ const tokensDe = (u) => partes(u).reduce((t, x) => ({
 }), { entrada: 0, saida: 0, cache: 0 });
 
 module.exports = {
-  ESQUEMA_PEDIDOS_IMAGENS, validarPedidosImagens, ESQUEMA_PROPOSTA, validarProposta, ESQUEMA_ROTEIRO, ESQUEMA_MODULO, MSG_ROTEIRO, validarRoteiro, validarModulo, roteiroDoFormulario, custoUsd, tokensDe, PRECO, PRECOS };
+  ESQUEMA_TEXTOS_PRESENCIAL, ESQUEMA_TEXTOS_ONLINE, validarTextos, limparFaqs, semAcento, ESQUEMA_PEDIDOS_IMAGENS, validarPedidosImagens, ESQUEMA_PROPOSTA, validarProposta, ESQUEMA_ROTEIRO, ESQUEMA_MODULO, MSG_ROTEIRO, validarRoteiro, validarModulo, roteiroDoFormulario, custoUsd, tokensDe, PRECO, PRECOS };
