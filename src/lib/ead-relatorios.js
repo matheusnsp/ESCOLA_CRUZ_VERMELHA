@@ -39,12 +39,15 @@ function ultimoAcessoDe(ac) {
 
 const faseDe = (inicio, agora) => (inicio ? (agora.getTime() < new Date(inicio).getTime() + DIAS_SEQUENCIAIS * DIA_MS ? 'Nos 7 dias' : 'Livre') : null);
 
+// A equipe (Dev, secretaria) que faz o curso pelo link de teste fica fora dos relatórios (2026-11-09).
+const SO_ALUNOS = { papel: 'ALUNO' };
+
 async function alunosDoCurso(cursoOnlineId, { filtro = 'todos', agora = new Date() } = {}) {
   const r = await carregarCursoParaAluno(cursoOnlineId);
   if (!r) return [];
   const [matriculas, acs] = await Promise.all([
     prisma.matricula.findMany({ where: { turma: { cursoId: r.co.cursoId, status: 'ONLINE' } }, include: { aluno: { select: { id: true, nome: true, email: true } }, cupomEad: { select: { cupom: { select: { codigo: true } } } } } }),
-    prisma.alunoCursoEad.findMany({ where: { cursoOnlineId }, include: INCLUDE_PROGRESSO }),
+    prisma.alunoCursoEad.findMany({ where: { cursoOnlineId, usuario: SO_ALUNOS }, include: INCLUDE_PROGRESSO }),
   ]);
   const acDe = new Map(acs.map((a) => [a.usuarioId, a]));
   // Etapa 6: quem entrou por lote de escola (vaga ativa).
@@ -115,7 +118,7 @@ async function detalheDoAluno(cursoOnlineId, alunoCursoId, { agora = new Date() 
 async function concluintesDoCurso(cursoOnlineId) {
   if (!ehId(cursoOnlineId)) return [];
   const acs = await prisma.alunoCursoEad.findMany({
-    where: { cursoOnlineId, concluidoEm: { not: null } },
+    where: { cursoOnlineId, concluidoEm: { not: null }, usuario: SO_ALUNOS },
     include: { usuario: { select: { nome: true, email: true } } },
     orderBy: { concluidoEm: 'desc' },
   });
@@ -140,10 +143,10 @@ const pct = (parte, total) => (total ? Math.round((parte / total) * 100) : 0);
 async function desempenhoDoCurso(cursoOnlineId) {
   if (!ehId(cursoOnlineId)) return { perguntas: [], cenarios: [], preTestes: [], duvidasPorTela: [] };
   const [tentativas, perguntas, cenarios, feitos, modulos] = await Promise.all([
-    prisma.tentativaEad.findMany({ where: { alunoCurso: { cursoOnlineId } }, select: { tipo: true, moduloId: true, aprovado: true, concluidaEm: true, respostas: true } }),
+    prisma.tentativaEad.findMany({ where: { alunoCurso: { cursoOnlineId, usuario: SO_ALUNOS } }, select: { tipo: true, moduloId: true, aprovado: true, concluidaEm: true, respostas: true } }),
     prisma.perguntaEad.findMany({ where: { topico: { modulo: { cursoOnlineId } } }, select: { id: true, enunciado: true, topico: { select: { titulo: true } } } }),
     prisma.cenarioEad.findMany({ where: { modulo: { cursoOnlineId } }, select: { id: true, titulo: true, tempoSugeridoSeg: true }, orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] }),
-    prisma.cenarioFeitoEad.findMany({ where: { cenario: { modulo: { cursoOnlineId } }, concluidoEm: { not: null } }, select: { cenarioId: true, tempoSeg: true, erros: true } }),
+    prisma.cenarioFeitoEad.findMany({ where: { cenario: { modulo: { cursoOnlineId } }, concluidoEm: { not: null }, alunoCurso: { usuario: SO_ALUNOS } }, select: { cenarioId: true, tempoSeg: true, erros: true } }),
     prisma.moduloEad.findMany({ where: { cursoOnlineId, final: false }, select: { id: true, titulo: true }, orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] }),
   ]);
 

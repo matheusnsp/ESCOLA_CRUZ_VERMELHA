@@ -47,9 +47,10 @@ function estadoDoCurso(curso, progresso, agora) {
   // 2º passo: bloqueio.
   const comunsConcluidos = modulos.filter((m) => !m.final).every((m) => m.concluido);
   let pendente = null; // primeiro módulo comum anterior ainda não concluído (regra de sequência)
+  // `progresso.semBloqueio` (2026-11-09): a equipe revisando pelo link de teste abre qualquer módulo, final incluído.
   for (const m of modulos) {
     let motivo = null;
-    if (m.final) {
+    if (progresso.semBloqueio) { /* nada fica fechado */ } else if (m.final) {
       if (!comunsConcluidos) motivo = 'Abre quando os outros módulos terminarem.';
     } else {
       if (!m.concluido && sequencial && pendente) motivo = `Abre depois do Módulo ${pendente.numero}.`;

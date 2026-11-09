@@ -63,8 +63,10 @@ router.use(['/ead-teste', '/online', '/escola-digital/:curso'], (req, res, next)
 const naoAchou = (res) => res.status(404).render('ead-teste/404');
 
 // ─── Aluno logado ───────────────────────────────────────────────────────────────────────────────
-// Só papel ALUNO conta como aluno; DEV/secretaria logados no site veem como visitante.
-const alunoDaSessao = (req) => (req.session && req.session.usuarioId && req.session.papel === 'ALUNO' ? req.session.usuarioId : null);
+// Papel ALUNO conta como aluno. A equipe (Dev, secretaria…) logada no site conta como aluno só no link de teste
+// (2026-11-09: quem revisa faz o curso inteiro, cenários incluídos, fora dos relatórios); na página paga, visitante.
+const ehEquipeNoTeste = (req) => !!(req.session && req.session.usuarioId && req.session.papel && req.session.papel !== 'ALUNO' && req.ead && req.ead.modo === 'teste');
+const alunoDaSessao = (req) => (req.session && req.session.usuarioId && (req.session.papel === 'ALUNO' || ehEquipeNoTeste(req)) ? req.session.usuarioId : null);
 
 // Progresso e avisos do aluno logado (null sem login). Abrir o curso logado já conta como início
 // (é daí que contam os 7 dias em sequência nesta etapa).
@@ -91,6 +93,8 @@ async function progressoDe(req, alunoCursoId) {
   const progresso = await pdb.carregarProgresso(alunoCursoId);
   const inicio = req.ead && req.ead.modo === 'pago' && req.ead.acesso && req.ead.acesso.inicio;
   if (inicio) progresso.iniciadoEm = inicio;
+  // A equipe revisando pelo link de teste não espera a sequência nem o fim dos outros módulos: tudo aberto.
+  if (ehEquipeNoTeste(req)) progresso.semBloqueio = true;
   return progresso;
 }
 const estadoDoModulo = (ctx, moduloId) => (ctx ? ctx.estado.modulos.find((m) => m.id === moduloId) : null);
