@@ -46,11 +46,14 @@ function dataTurma(d) {
   return { dia: p.day, mes: MESES[Number(p.month) - 1], curta: `${p.day}/${p.month}` };
 }
 
-// Data de início da turma nas próximas turmas (2026-11-09): { rotulo: 'Previsto para', valor: '22 de novembro' }
-// (a data é prevista e pode mudar; antes era "Começa em N dias").
+// Quanto falta para a turma começar, em dias de calendário de Brasília (a data já aparece no quadrinho ao lado):
+// { rotulo: 'Previsto em', valor: '6 dias' }, 'Previsto para amanhã' ou 'Previsto para hoje' (2026-11-09).
 function quando(d) {
-  const { dia, mes } = dataTurma(d);
-  return { rotulo: 'Previsto para', valor: `${Number(dia)} de ${mes}` };
+  const dia = (x) => { const p = partes(x); return Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day)); };
+  const n = Math.round((dia(d) - dia(new Date())) / 86400000);
+  if (n <= 0) return { rotulo: 'Previsto para', valor: 'hoje' };
+  if (n === 1) return { rotulo: 'Previsto para', valor: 'amanhã' };
+  return { rotulo: 'Previsto em', valor: `${n} dias` };
 }
 
 // Turmas abertas de todos os cursos, da mais próxima para a mais distante: [{ curso, turma }].
