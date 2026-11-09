@@ -101,3 +101,12 @@ test('avisos da conta no desenho do presencial: ícone, texto e botão vermelho'
   assert.match(regra('.ea-aviso-btn'), /background:\s*var\(--r\)/);
   assert.match(fs.readFileSync(path.join(__dirname, '..', 'src', 'views', 'ead-teste', 'capa.ejs'), 'utf8'), /ea-aviso ea-aviso-ok[\s\S]{0,400}ea-aviso-btn[\s\S]{0,120}>Ver a resposta</);
 });
+
+test('header: links do menu não quebram; com "Menu do curso" o menu vai para o ☰ até 1280 px', async () => {
+  const ejs = require('ejs');
+  const topo = (x) => ejs.renderFile(path.join(__dirname, '..', 'src', 'views', 'ead-teste', '_topo.ejs'), { asset: (u) => u, titulo: 'C', base: '/b', eadModo: 'pago', ...x });
+  assert.match(await topo({ voltarMenu: true }), /<header class="ea-header ea-header-curso">/);
+  assert.match(await topo({}), /<header class="ea-header">/);
+  assert.match(regra('.ea-menu'), /white-space:\s*nowrap/);
+  assert.match(css, /@media \(max-width: 1280px\) \{\s*\.ea-header-curso \.ea-menu, \.ea-header-curso \.ea-acao-pc \{ display: none; \}\s*\.ea-header-curso \.ea-gaveta \{ display: block; \}/);
+});

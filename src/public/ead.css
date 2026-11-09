@@ -445,7 +445,7 @@ details.ea-indice > summary, .ea-indice summary { padding: 12px 0; }
 .ea-logo { min-width: 0; }
 .ea-logo b { font-weight: 900; letter-spacing: .5px; }
 .ea-logo small { font-weight: 700; letter-spacing: 1.5px; }
-.ea-menu { display: flex; gap: 28px; font-size: 13.5px; font-weight: 650; }
+.ea-menu { display: flex; gap: 28px; font-size: 13.5px; font-weight: 650; white-space: nowrap; }
 .ea-menu a { position: relative; padding-bottom: 4px; color: #3a3a3a; text-decoration: none; transition: color .2s; }
 .ea-menu a::after { content: ""; position: absolute; left: 0; bottom: -2px; width: 0; height: 2px; background: var(--r); transition: width .2s; }
 .ea-menu a:hover { color: var(--r); }
@@ -514,3 +514,8 @@ details.ea-indice > summary, .ea-indice summary { padding: 12px 0; }
 /* Cartões dos módulos: o cartão ocupa a altura toda da linha, e "Módulo N / Abrir" fica alinhado embaixo. */
 .ea-modulos > li { display: flex; }
 .ea-modulos > li > .ea-mod { flex: 1; min-width: 0; }
+/* Com "Menu do curso" no header não cabe tudo numa linha até 1280 px: o menu vai para o ☰ (os links não quebram). */
+@media (max-width: 1280px) {
+  .ea-header-curso .ea-menu, .ea-header-curso .ea-acao-pc { display: none; }
+  .ea-header-curso .ea-gaveta { display: block; }
+}

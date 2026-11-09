@@ -33,7 +33,7 @@ _%>
 <div class="ea-topbar"><div class="ea-wrap"><a href="https://cruzvermelhariodejaneiro.org/" target="_blank" rel="noopener"><span class="ea-so-pc">Cruz Vermelha Brasileira · Filial do Estado do Rio de Janeiro</span><span class="ea-so-cel">Cruz Vermelha Brasileira · Rio de Janeiro</span> <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a><span class="ea-so-pc">Praça da Cruz Vermelha, 10 · Centro · Rio de Janeiro</span></div></div>
 <%# Cabeçalho igual ao do site (partials/site-header.ejs), com classes ea- (as páginas do curso não carregam o
     CSS do site). O menu do celular é um <details> (sem JS: CSP). "Menu do curso" é a única coisa a mais. %>
-<header class="ea-header">
+<header class="ea-header<%= typeof voltarMenu !== 'undefined' && voltarMenu ? ' ea-header-curso' : '' %>">
   <div class="ea-wrap">
     <a class="ea-logo" href="/">
       <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro">
