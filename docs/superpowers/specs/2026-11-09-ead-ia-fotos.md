@@ -1,6 +1,7 @@
 # Curso com IA: imagens da capa e dos módulos (o Claude descreve, a OpenAI gera)
 
-Data: 2026-11-09 (revisada: banco de fotos trocado pela geração de imagens da OpenAI) · Branch: `ead-ia-fotos` ·
+Data: 2026-11-09 (revisada: banco de fotos trocado pela geração de imagens da OpenAI; sem limite mensal, só a
+contagem; WebP em tudo; imagem do curso presencial também) · Branch: `ead-ia-fotos` ·
 Base: main
 
 ## Objetivo
@@ -31,7 +32,12 @@ secretaria enviar as imagens.
    abertura); nunca troca imagem que a secretaria já pôs. Roda na hora, com aviso no fim ("3 imagens geradas" /
    "Nada para preencher: a capa e os módulos já têm imagem.").
 
-O passo e o botão usam a mesma função. As imagens de um curso são geradas uma de cada vez (a OpenAI leva de 10 a
+3. **Curso presencial** (aba Cursos, formulário de editar curso): botão **"Gerar imagem com IA"**, só para a
+   **imagem do curso** (`Curso.imagemUrl`). Se o curso já tem imagem, pede confirmação ("Trocar a imagem atual por
+   uma gerada pela IA?") e apaga a antiga do armazenamento depois de gravar a nova. Mesma regra de pedido do Claude
+   (com nome, descrição e categoria do curso) e mesma geração.
+
+O passo e os botões usam as mesmas funções. As imagens de um curso são geradas uma de cada vez (a OpenAI leva de 10 a
 60 s por imagem).
 
 ## 2. O Claude (uma chamada por curso)
@@ -69,30 +75,38 @@ lista de módulos (título e tópicos). Devolve, no formato estruturado:
 - Recusa por conteúdo (erro de política da OpenAI) ou falha: tenta **uma vez** com o pedido simplificado (o Claude
   já manda uma versão curta `pedidoCurto` junto); falhando de novo, deixa vazio e mantém a descrição.
 - **Gerar outra**: gera de novo com o mesmo pedido (a imagem sai diferente) e apaga a antiga do armazenamento.
-- **Limite do mês**: no máximo **100 imagens por mês** (padrão; a secretaria pode mudar na página de configuração
-  da IA, ao lado do teto do Claude). Contador em `Configuracao` `ead-ia:imagens:<AAAA-MM>` (fuso do Rio). Limite
-  atingido: não gera e avisa "Limite de imagens do mês atingido (100). Aumente na configuração da IA ou envie as
-  imagens." O custo da OpenAI é cobrado na conta da OpenAI (cerca de US$ 0,04 a 0,07 por imagem em `medium`); o
-  painel mostra quantas imagens foram geradas no mês.
+- **Sem limite mensal** (decisão do Matheus): o sistema só **conta** as imagens geradas e mostra no painel
+  ("Imagens geradas com IA: 12 neste mês · 40 no total"). Contadores em `Configuracao`
+  `ead-ia:imagens:<AAAA-MM>` (fuso do Rio) e `ead-ia:imagens:total`. O custo da OpenAI é cobrado na conta da OpenAI
+  (cerca de US$ 0,04 a 0,07 por imagem em `medium`).
 
 ## 4. Dados (migração pequena, só acrescenta colunas)
 
 - `ModuloEad`: `fotoPedido String?`, `fotoSugestao String?`, `fotoGeradaPorIa Boolean @default(false)`.
-- `CursoOnline`: `capaPedido String?`, `capaSugestao String?`, `capaGeradaPorIa Boolean @default(false)` (a imagem
-  continua em `Curso.imagemUrl`).
-- Limite do mês: `Configuracao` `ead-ia:limite-imagens` (padrão 100) e o contador `ead-ia:imagens:<AAAA-MM>`.
-- Custo do Claude no botão (fora de uma geração): `Configuracao` `ead-ia:custo-avulso:<AAAA-MM>` (US$), somado no
+- `Curso` (serve para a capa do curso online e para o presencial): `imagemPedido String?`,
+  `imagemSugestao String?`, `imagemGeradaPorIa Boolean @default(false)`.
+- Contadores de imagens: `Configuracao` `ead-ia:imagens:<AAAA-MM>` e `ead-ia:imagens:total`.
+- Custo do Claude nos botões (fora de uma geração): `Configuracao` `ead-ia:custo-avulso:<AAAA-MM>` (US$), somado no
   gasto do mês.
 - Enviar uma imagem própria pelo painel desliga o `…GeradaPorIa` daquele alvo.
 
+## 4.1 Imagens em WebP (todas)
+
+Pedido do Matheus: "todas as imagens em formato webp, pra otimizar o meu espaço".
+- As geradas pela IA já entram em WebP (passam por `salvarFotoCurso`: WebP, qualidade 75, até 1000 px).
+- Os envios pelo painel já viram WebP, **menos o GIF**, que hoje é guardado como veio. Passa a virar **WebP
+  animado** (sharp com `animated: true`, mesma largura máxima). As imagens antigas não são convertidas.
+
 ## 5. Painel
 
-- **Página do curso online** (`/ead/curso/:id`): botão "Gerar imagens com IA" (com aviso do que faz e do limite).
+- **Página do curso online** (`/ead/curso/:id`): botão "Gerar imagens com IA" (com aviso do que faz).
   Na capa: selo "Imagem gerada por IA" quando for o caso, a descrição do Claude e "Gerar outra" (quando há pedido e
   chave da OpenAI).
 - **Página do módulo** (`/ead/modulo/:id`), na imagem de abertura: o mesmo (selo, descrição, "Gerar outra");
   "Enviar a minha" é o envio de foto que já existe.
-- **Configuração da IA**: limite de imagens do mês e quantas já foram geradas.
+- **Configuração da IA** (página onde fica o teto do Claude): "Imagens geradas com IA: N neste mês · M no total".
+- **Curso presencial** (formulário de editar curso): botão "Gerar imagem com IA" junto da imagem, selo "Imagem
+  gerada por IA" e a descrição do Claude quando for o caso.
 - Sem `OPENAI_API_KEY`: os botões "Gerar outra" não aparecem e o "Gerar imagens com IA" só grava as descrições
   (aviso: "Sem chave da OpenAI: as descrições do Claude estão em cada módulo, envie as imagens.").
 
@@ -111,6 +125,8 @@ Claude e OpenAI falsos (nenhum teste chama serviço de verdade):
 - botão em curso existente: só preenche o vazio (imagem já posta fica);
 - gerar outra: nova imagem e a antiga apagada;
 - sem `OPENAI_API_KEY`: grava só as descrições, sem chamar a OpenAI;
-- limite de imagens do mês: na 101ª não chama a OpenAI e avisa; o contador sobe a cada imagem gerada;
+- contadores: cada imagem gerada soma 1 no mês e no total; a página de configuração da IA mostra os dois;
+- curso presencial: "Gerar imagem com IA" grava a imagem do curso (WebP), apaga a antiga e liga o selo;
+- GIF enviado pelo painel é guardado como WebP;
 - teto do Claude estourado: não chama o Claude e avisa;
 - enviar imagem própria desliga o selo "gerada por IA".
