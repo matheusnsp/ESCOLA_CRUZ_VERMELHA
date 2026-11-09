@@ -63,4 +63,15 @@ describe('área do aluno com header e footer do site', { skip: temBanco ? false 
       assert.match(html, /Praça da Cruz Vermelha, 10 · Centro · Rio de Janeiro/, 'faixa de cima igual à do site');
     }
   });
+
+  test('header com o mesmo menu do site, sem "Site da escola"', async () => {
+    const html = await (await fetch(base)).text();
+    const header = (html.match(/<header[\s\S]*?<\/header>/) || [''])[0];
+    assert.doesNotMatch(header, /Site da escola/);
+    for (const [href, nome] of [['/', 'Início'], ['/#como', 'Como funciona'], ['/#escola', 'Quem somos'], ['/#duvidas', 'Dúvidas'], ['/cursos', 'Ver cursos'], ['/login', 'Entrar']]) {
+      assert.match(header, new RegExp(`href="${href.replace('#', '\\#')}"[^>]*>\\s*(<[^>]+>\\s*)*${nome}`), nome);
+    }
+    assert.match(header, /class="ea-burger"/, 'menu do celular');
+    assert.doesNotMatch(html, /<script>(?![^<]*gtag)/, 'sem script inline');
+  });
 });
