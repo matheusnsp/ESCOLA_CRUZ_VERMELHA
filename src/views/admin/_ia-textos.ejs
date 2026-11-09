@@ -1,0 +1,24 @@
+<%#
+  Escrever com IA (2026-11-09): bloco comum dos formulários de curso (presencial e só online). Fica DENTRO do
+  formulário: as dúvidas marcadas vão junto ao salvar (faqsIa[i][...]); "Ideias para a IA" não é salvo.
+  Espera: iaUrl, iaTipo ('presencial'|'online'), iaCursoId (ou ''). O JS é externo (/js/ia-textos.js).
+%>
+<div class="full ia-textos" data-ia-textos-url="<%= iaUrl %>" data-tipo="<%= iaTipo %>" data-curso-id="<%= iaCursoId || '' %>">
+  <div class="ia-textos-cab">
+    <i class="fa-solid fa-wand-magic-sparkles"></i>
+    <div>
+      <b>Escrever com IA</b>
+      <small class="adm-hint">O Claude escreve <%= iaTipo === 'online' ? 'a descrição' : 'a descrição curta, a descrição longa, o conteúdo programático' %> e as dúvidas frequentes no padrão dos outros cursos. Nada é salvo até você clicar em Salvar.</small>
+    </div>
+  </div>
+  <label>Ideias para a IA (opcional)
+    <textarea name="ideiasIa" rows="2" maxlength="500" placeholder="Ex.: foco em professores, Lei Lucas, linguagem simples"></textarea>
+  </label>
+  <button type="button" class="adm-btn adm-btn-neutro ia-textos-bt"><i class="fa-solid fa-wand-magic-sparkles"></i> Escrever com IA</button>
+  <p class="ia-textos-msg" role="status" hidden></p>
+  <div class="ia-faqs" hidden>
+    <b>Dúvidas frequentes sugeridas</b>
+    <small class="adm-hint">Desmarque as que não quiser e ajuste o texto. As marcadas entram no curso quando você salvar.</small>
+    <div class="ia-faqs-lista"></div>
+  </div>
+</div>

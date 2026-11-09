@@ -9,6 +9,7 @@
 const express = require('express');
 const escolaDigital = require('../lib/escola-digital');
 const imagensLib = require('../lib/ead-imagens');
+const iaTextos = require('../lib/ia-textos');
 const prisma = require('../db');
 const asyncHandler = require('../lib/asyncHandler');
 const ead = require('../lib/ead');
@@ -302,6 +303,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
       if (imagemUrl) await removerFotoCurso(imagemUrl);
       return res.status(400).render('admin/ead/curso-online-form', { co: null, valores, erro: r.erro });
     }
+    await iaTextos.salvarFaqs(r.co.cursoId, iaTextos.lerFaqsDoForm(req.body)); // dúvidas escritas com IA e marcadas
     await auditar(req, 'EAD_CRIOU_CURSO_ONLINE', 'CursoOnline', r.co.id, { cursoId: r.co.cursoId, nome: String(valores.nome).trim() });
     voltar(res, `/ead/curso/${r.co.id}`, 'ok', 'Curso criado. Agora crie o primeiro módulo.');
   });
@@ -310,7 +312,46 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const co = await acharCursoOnline(req.params.id);
     if (!co || !co.somenteOnline) return naoAchou(res);
     const c = await prisma.curso.findUnique({ where: { id: co.cursoId } });
-    res.render('admin/ead/curso-online-form', { co, valores: c, erro: null });
+    res.render('admin/ead/curso-online-form', { co, valores: c, erro: null, temOpenAI: imagensLib.temOpenAI(), statusImagem: await imagensLib.statusDe(`curso:${co.cursoId}`) });
+  });
+
+  // Escrever com IA (2026-11-09): o Claude escreve os textos do curso; a página só preenche os campos (nada é salvo).
+  // Responde JSON { ok, textos } ou { ok:false, erro }. Serve ao curso só online (tipo=online).
+  router.post('/ead/ia-textos', async (req, res) => {
+    if (!ia.ehChaveConfigurada()) return res.json({ ok: false, erro: ia.MSG_CHAVE });
+    const t = await ia.dentroDoTeto();
+    if (!t.ok) return res.json({ ok: false, erro: t.erro });
+    const b = req.body || {};
+    const cursoId = edb.ehId(b.cursoId) ? b.cursoId : null;
+    try {
+      const r = await iaTextos.escrever({ tipo: 'online', ideias: b.ideias, cursoId, dados: { nome: b.nome, cargaHoraria: b.cargaHoraria, descricao: b.descricao } });
+      await ia.somarCustoAvulso(r.usage);
+      await auditar(req, 'IA_TEXTOS_CURSO', 'Curso', cursoId || 'novo', { tipo: 'online' });
+      return res.json({ ok: true, textos: r.textos });
+    } catch (e) {
+      if (e.usage) await ia.somarCustoAvulso(e.usage).catch(() => {});
+      console.error('[IA TEXTOS]', e.message);
+      return res.json({ ok: false, erro: 'A IA não conseguiu escrever agora. Tente de novo em alguns instantes.' });
+    }
+  });
+
+  // "Gerar imagem com IA" no "Dados do curso" (só a imagem do curso; troca a atual). Em segundo plano.
+  router.post('/ead/curso/:id/imagem-curso-ia', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co || !co.somenteOnline) return naoAchou(res);
+    const volta = `/ead/curso/${co.id}/dados`;
+    if (!ia.ehChaveConfigurada()) return voltar(res, volta, 'erro', ia.MSG_CHAVE);
+    const t = await ia.dentroDoTeto();
+    if (!t.ok) return voltar(res, volta, 'erro', t.erro);
+    const nome = `curso:${co.cursoId}`;
+    if (await imagensLib.travaOcupada(nome)) return voltar(res, volta, 'erro', imagensLib.OCUPADO);
+    const quem = ator(req);
+    imagensLib.emSegundoPlano(nome, nome, async () => {
+      const r = await imagensLib.imagemDoCurso(co.cursoId, { custo: (u) => ia.somarCustoAvulso(u) });
+      if (r.ok) await prisma.logAuditoria.create({ data: { atorId: quem, acao: 'CURSO_IMAGEM_IA', alvoTipo: 'Curso', alvoId: co.cursoId } }).catch(() => {});
+      return { ok: r.ok, msg: r.ok ? 'Imagem do curso gerada.' : r.erro };
+    });
+    voltar(res, volta, 'ok', 'Gerando a imagem em segundo plano (cerca de 1 minuto). Recarregue a página para ver.');
   });
 
   router.post('/ead/curso/:id/dados', uploadFoto, async (req, res) => {
@@ -329,6 +370,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
       return res.status(400).render('admin/ead/curso-online-form', { co, valores, erro: r.erro });
     }
     if (imagemUrl !== undefined && atual.imagemUrl) await removerFotoCurso(atual.imagemUrl);
+    await iaTextos.salvarFaqs(co.cursoId, iaTextos.lerFaqsDoForm(req.body));
     await auditar(req, 'EAD_EDITOU_CURSO_ONLINE', 'CursoOnline', co.id, { cursoId: co.cursoId });
     voltar(res, `/ead/curso/${co.id}`, 'ok', 'Dados do curso salvos.');
   });

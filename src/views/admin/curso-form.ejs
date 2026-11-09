@@ -22,6 +22,8 @@
     <input type="text" name="nome" value="<%= c.nome || '' %>" required>
   </label>
 
+  <%- include('_ia-textos', { iaUrl: '/cursos/ia-textos', iaTipo: 'presencial', iaCursoId: novo ? '' : c.id }) %>
+
   <label class="full">Resumo
     <textarea name="descricao" rows="2" placeholder="Uma ou duas frases. Aparece no cartão do curso e no topo da página."><%= c.descricao || '' %></textarea>
   </label>
@@ -250,4 +252,5 @@
 
 <% } %>
 
+<script src="<%= asset('/js/ia-textos.js') %>"></script>
 <%- include('foot') %>

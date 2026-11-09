@@ -1063,6 +1063,7 @@ router.post('/cursos', requirePermissao('cursos:criar'), uploadFoto, async (req,
   const curso = await prisma.curso.create({ data: dados });
   await extras.salvarExtra('curso', curso.id, extrasCursoDoForm(req.body));
   await salvarAssinaturasDoCurso(curso.id, req.body, req);
+  await require('../lib/ia-textos').salvarFaqs(curso.id, require('../lib/ia-textos').lerFaqsDoForm(req.body)); // dúvidas escritas com IA e marcadas
   await auditar(req, 'CRIOU_CURSO', 'Curso', curso.id, { nome: curso.nome });
   res.redirect('/cursos?ok=Curso criado.');
 });
@@ -1104,6 +1105,30 @@ router.post('/cursos/:id/faqs/:faqId/remover', requirePermissao('cursos:gerencia
   res.redirect(`/cursos/${req.params.id}/editar#duvidas`);
 });
 
+// Escrever com IA (2026-11-09): o Claude escreve resumo, texto completo, conteúdo programático e dúvidas no padrão
+// dos outros cursos; a página só preenche os campos (nada é salvo). JSON { ok, textos } ou { ok:false, erro }.
+router.post('/cursos/ia-textos', requirePermissao('cursos:criar', 'cursos:gerenciar'), async (req, res) => {
+  const ia = require('../lib/ead-ia');
+  if (!ia.ehChaveConfigurada()) return res.json({ ok: false, erro: ia.MSG_CHAVE });
+  const t = await ia.dentroDoTeto();
+  if (!t.ok) return res.json({ ok: false, erro: t.erro });
+  const b = req.body || {};
+  const cursoId = /^[0-9a-f-]{36}$/i.test(String(b.cursoId || '')) ? b.cursoId : null;
+  try {
+    const r = await require('../lib/ia-textos').escrever({
+      tipo: 'presencial', ideias: b.ideias, cursoId,
+      dados: { nome: b.nome, cargaHoraria: b.cargaHoraria, escolaridade: b.escolaridadeMinima, categoria: b.categoria, descricao: b.descricao, descricaoLonga: b.descricaoLonga, conteudoProgramatico: b.conteudoProgramatico },
+    });
+    await ia.somarCustoAvulso(r.usage);
+    await auditar(req, 'IA_TEXTOS_CURSO', 'Curso', cursoId || 'novo', { tipo: 'presencial' });
+    return res.json({ ok: true, textos: r.textos });
+  } catch (e) {
+    if (e.usage) await ia.somarCustoAvulso(e.usage).catch(() => {});
+    console.error('[IA TEXTOS]', e.message);
+    return res.json({ ok: false, erro: 'A IA não conseguiu escrever agora. Tente de novo em alguns instantes.' });
+  }
+});
+
 router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, async (req, res) => {
   const existe = await prisma.curso.findUnique({ where: { id: req.params.id } });
   if (!existe) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
@@ -1131,6 +1156,7 @@ router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, asy
   if (dados.nome) await eadAcesso.guardarEnderecoAntigo(req.params.id, existe.nome, dados.nome); // links antigos do curso online
   await extras.salvarExtra('curso', req.params.id, extrasCursoDoForm(req.body));
   await salvarAssinaturasDoCurso(req.params.id, req.body, req);
+  await require('../lib/ia-textos').salvarFaqs(req.params.id, require('../lib/ia-textos').lerFaqsDoForm(req.body));
   await auditar(req, 'EDITOU_CURSO', 'Curso', req.params.id, { nome: dados.nome });
   res.redirect('/cursos?ok=Curso atualizado.');
 });
