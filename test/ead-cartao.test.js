@@ -75,7 +75,6 @@ describe('gerarCartao', { skip: temBanco ? false : 'sem DATABASE_URL local' }, (
     assert.match(buffer.toString('latin1'), /\/FontName\s*\/[A-Z]{6}\+Inter/);
     assert.match(buffer.toString('latin1'), /\/Subtype\s*\/Image/);
     assert.equal(nomeArquivo, 'cartao-de-bolso-primeiros-socorros-cartao.pdf');
-    require('fs').writeFileSync('/tmp/claude-0/cartao-teste.pdf', buffer);
   });
 
   test('carregarFoto: inexistente ou recusada ⇒ null; WEBP ⇒ JPEG', async () => {
@@ -91,4 +90,9 @@ test('registrarFontes: sem os arquivos da Inter, usa a Helvetica (não quebra)',
   const PDFDocument = require('pdfkit');
   assert.deepEqual(cartao.registrarFontes(new PDFDocument(), '/nao/existe'), { R: 'Helvetica', B: 'Helvetica-Bold', K: 'Helvetica-Bold' });
   assert.deepEqual(cartao.registrarFontes(new PDFDocument()), { R: 'InterR', B: 'InterB', K: 'InterK' });
+});
+
+test('[revisão] a licença OFL da Inter vai junto com os arquivos da fonte', () => {
+  const p = require('path').join(__dirname, '..', 'src', 'assets', 'fonts', 'OFL.txt');
+  assert.match(require('fs').readFileSync(p, 'utf8'), /SIL Open Font License/);
 });
