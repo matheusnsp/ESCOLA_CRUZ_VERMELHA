@@ -50,6 +50,8 @@ model Usuario {
   // EAD, etapa 6: gestor de escola e vagas de lote (só relações; nenhuma coluna nova em Usuario)
   gestorEscolas        GestorEscolaEad[]
   vagasLote            VagaLoteEad[]
+  downloadsEbook       DownloadEbook[]
+  acessosEbook         AcessoEbook[]
 
   @@index([papel])
   @@index([ultimaAtividade])
@@ -78,6 +80,8 @@ model Curso {
   turmas             Turma[]
   // EAD: só a relação do Prisma; não gera coluna em "Curso" (a FK fica em "CursoOnline").
   online             CursoOnline?
+  // E-book (2026-11-09): o curso escondido do e-book (a FK fica em "Ebook"). Fora de toda lista de cursos.
+  ebook              Ebook?
 }
 
 model FaqCurso {
@@ -660,6 +664,9 @@ model CupomEad {
   criadoEm      DateTime            @default(now())
   atualizadoEm  DateTime            @updatedAt
   cursoOnline   CursoOnline?        @relation(fields: [cursoOnlineId], references: [id], onDelete: Restrict)
+  // E-book (2026-11-09): cupom só deste e-book. Sem cursoOnlineId nem ebookId, vale para todos.
+  ebookId       String?
+  ebook         Ebook?              @relation(fields: [ebookId], references: [id], onDelete: Restrict)
   compras       CupomMatriculaEad[]
 }
 
@@ -701,4 +708,52 @@ model GeracaoIaEad {
 
   @@index([status])
   @@index([criadoEm])
+}
+
+// Escola Digital, e-books (2026-11-09, spec 2026-11-09-escola-digital-ebooks.md). Nome, descrições, capa e dúvidas
+// ficam no Curso escondido (ativo false); a compra é uma Matricula na turma ONLINE desse curso.
+model Ebook {
+  id              String          @id @default(uuid())
+  cursoId         String          @unique
+  arquivoPdf      String?
+  arquivoNome     String?
+  paginas         Int             @default(0)
+  tamanhoBytes    Int             @default(0)
+  precoOnline     Decimal         @default(0) @db.Decimal(10, 2)
+  gratuito        Boolean         @default(false)
+  maxParcelas     Int             @default(1)
+  publicado       Boolean         @default(false)
+  ordemVitrine    Int             @default(0)
+  capaGeradaPorIa Boolean         @default(false)
+  criadoEm        DateTime        @default(now())
+  atualizadoEm    DateTime        @updatedAt
+  curso           Curso           @relation(fields: [cursoId], references: [id], onDelete: Restrict)
+  downloads       DownloadEbook[]
+  acessos         AcessoEbook[]
+  cupons          CupomEad[]
+}
+
+model DownloadEbook {
+  id        String   @id @default(uuid())
+  ebookId   String
+  usuarioId String
+  criadoEm  DateTime @default(now())
+  ebook     Ebook    @relation(fields: [ebookId], references: [id], onDelete: Cascade)
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([ebookId])
+  @@index([usuarioId, criadoEm])
+}
+
+// Posse do e-book grátis (o primeiro download). O pago é a matrícula paga.
+model AcessoEbook {
+  id        String   @id @default(uuid())
+  ebookId   String
+  usuarioId String
+  criadoEm  DateTime @default(now())
+  ebook     Ebook    @relation(fields: [ebookId], references: [id], onDelete: Cascade)
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([ebookId, usuarioId])
+  @@index([usuarioId])
 }
