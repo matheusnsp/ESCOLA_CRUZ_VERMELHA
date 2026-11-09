@@ -392,3 +392,13 @@ details.ea-indice > summary, .ea-indice summary { padding: 12px 0; }
 .ea-cupom, .ea-cupom-linha { min-width: 0; max-width: 100%; }
 .ea-cupom-linha { display: flex; width: 100%; }
 .ea-cupom-linha input { width: 0; flex: 1 1 auto; }
+
+/* Dúvidas frequentes na página de venda do curso online (2026-11-09) */
+.ea-faq { margin-top: 48px; }
+.ea-faq-lista { display: grid; gap: 10px; }
+.ea-faq-item { border: 1px solid rgba(0,0,0,.1); border-radius: 14px; background: #fff; padding: 0 18px; }
+.ea-faq-item summary { cursor: pointer; padding: 16px 0; font-weight: 700; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+.ea-faq-item summary::-webkit-details-marker { display: none; }
+.ea-faq-item summary::after { content: "+"; color: var(--r, #d9081f); font-size: 20px; line-height: 1; }
+.ea-faq-item[open] summary::after { content: "–"; }
+.ea-faq-item p { margin: 0 0 16px; color: #555; white-space: pre-line; }

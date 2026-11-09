@@ -311,8 +311,29 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
   router.get('/ead/curso/:id/dados', async (req, res) => {
     const co = await acharCursoOnline(req.params.id);
     if (!co || !co.somenteOnline) return naoAchou(res);
-    const c = await prisma.curso.findUnique({ where: { id: co.cursoId } });
-    res.render('admin/ead/curso-online-form', { co, valores: c, erro: null, temOpenAI: imagensLib.temOpenAI(), statusImagem: await imagensLib.statusDe(`curso:${co.cursoId}`) });
+    const c = await prisma.curso.findUnique({ where: { id: co.cursoId }, include: { faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] } } });
+    res.render('admin/ead/curso-online-form', { co, valores: c, faqs: c.faqs, erro: null, temOpenAI: imagensLib.temOpenAI(), statusImagem: await imagensLib.statusDe(`curso:${co.cursoId}`) });
+  });
+
+  // Dúvidas frequentes do curso só online (2026-11-09): aparecem em sanfona na página de venda.
+  router.post('/ead/curso/:id/faqs', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co || !co.somenteOnline) return naoAchou(res);
+    const volta = `/ead/curso/${co.id}/dados#duvidas`;
+    const pergunta = String(req.body.pergunta || '').trim().slice(0, 200);
+    const resposta = String(req.body.resposta || '').trim().slice(0, 600);
+    if (!pergunta || !resposta) return voltar(res, volta, 'erro', 'Preencha a pergunta e a resposta.');
+    const total = await prisma.faqCurso.count({ where: { cursoId: co.cursoId } });
+    await prisma.faqCurso.create({ data: { cursoId: co.cursoId, pergunta, resposta, ordem: total } });
+    await auditar(req, 'ADICIONOU_FAQ', 'Curso', co.cursoId, { pergunta });
+    voltar(res, volta, 'ok', 'Dúvida adicionada.');
+  });
+  router.post('/ead/curso/:id/faqs/:faqId/remover', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co || !co.somenteOnline || !edb.ehId(req.params.faqId)) return naoAchou(res);
+    const r = await prisma.faqCurso.deleteMany({ where: { id: req.params.faqId, cursoId: co.cursoId } });
+    if (r.count) await auditar(req, 'REMOVEU_FAQ', 'Curso', co.cursoId, { faqId: req.params.faqId });
+    voltar(res, `/ead/curso/${co.id}/dados#duvidas`, 'ok', 'Dúvida removida.');
   });
 
   // Escrever com IA (2026-11-09): o Claude escreve os textos do curso; a página só preenche os campos (nada é salvo).

@@ -219,8 +219,10 @@ router.get(P(), limiteCupom, comCurso(async (req, res, co, base, curso) => {
   if (indexavel) res.removeHeader('X-Robots-Tag');
   res.locals.indexavel = indexavel;
   if (indexavel) res.locals.jsonLd = medicao.jsonLdCurso(co, co.curso, res.locals.urlSite);
+  // Escrever com IA (2026-11-09): as dúvidas frequentes do curso (as mesmas do presencial), em sanfona na capa.
+  const faqs = await prisma.faqCurso.findMany({ where: { cursoId: co.cursoId }, orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }], select: { pergunta: true, resposta: true } }).catch(() => []);
   res.render('ead-teste/capa', {
-    co, base, ctx, modo: req.ead.modo, compra: pagoSemAcesso ? await compraDaCapa(req, co, base) : null,
+    co, base, ctx, faqs, modo: req.ead.modo, compra: pagoSemAcesso ? await compraDaCapa(req, co, base) : null,
     continuarUrl: ctx ? urlDoPasso(co, base, ctx.estado.proximo) : null,
   });
 }, { livre: true }));
