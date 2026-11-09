@@ -61,6 +61,7 @@ Na página do curso, clique em **Gerar link de teste**. O link abre o curso como
 Em **Venda no site**, na página do curso:
 - **Preço do curso online:** o valor à vista (PIX ou cartão).
 - **Parcelas no cartão (máx.):** de 1 a 12. Com 1, o curso é só à vista. Acima de 1, o aluno escolhe e paga os juros do Únicopag.
+- **Curso gratuito:** clique em **Marcar como gratuito**. O preço vira "Grátis", as parcelas e os cupons saem, e o aluno libera o curso com o botão **Quero estudar · Grátis**. Precisa ter conta e estar logado (sem conta, o site leva a "Criar conta e liberar"). Não dá para marcar com cupom ativo: desative os cupons antes. **Deixar de ser gratuito** volta a pedir o preço; quem já liberou continua com o curso.
 
 Em **Online → Cupons**:
 - **Novo cupom:** código (ex.: LEILUCAS10), desconto em % ou em R$, curso (ou todos), validade e limite de usos.
@@ -75,7 +76,7 @@ Antes de publicar, clique em **Desligar** no link de teste. Com o curso no site,
 ## 7. Publicar
 
 Clique em **Publicar no site**. Só funciona com:
-- preço definido;
+- preço definido (ou curso gratuito);
 - pelo menos um módulo;
 - todos os módulos validados.
 
@@ -86,6 +87,16 @@ Publicado, o curso entra na **Escola Digital** (`/escola-digital`), no sitemap e
 Em **Online → Cursos online**, no topo: **Escola Digital no site: Ligada / Desligada**. Começa desligada, e só liga com pelo menos um curso publicado.
 - **Ligada:** a aba "Escola Digital" aparece no menu do site, com os cursos online publicados.
 - **Desligada:** some do site para quem visita (menu, página e venda). Quem já comprou, recebeu vaga de escola ou cortesia continua estudando pela Minha conta e recebe o certificado.
+
+### Vitrine (destaque e ordem)
+
+A página `/escola-digital` é uma vitrine: um curso grande no topo (o **destaque**, com a foto do curso de fundo) e linhas que rolam para o lado. A linha **Cursos online** traz todos os publicados; **Gratuitos** aparece quando há curso grátis; o aluno logado vê também **Continue de onde parou**, com o progresso. A vitrine nunca mostra vagas.
+
+Em **Online → Cursos online**, na caixa **Vitrine**:
+- **Destaque:** escolha o curso do topo. "Automático" usa o primeiro da ordem.
+- **Ordem:** ↑ ↓ mudam a posição de cada curso nas linhas. Curso publicado agora entra no fim.
+
+Para o topo ficar bonito, cadastre uma foto boa no curso (deitada, com espaço à esquerda para o texto).
 
 **Tirar do site** esconde o curso do catálogo. Quem já comprou continua com acesso.
 

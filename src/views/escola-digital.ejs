@@ -1,12 +1,17 @@
-<%# Escola Digital CVB-RJ (2026-11): a aba dos cursos online. Espera: cursos (formato do card do catálogo), vitrine. %>
+<%# Escola Digital CVB-RJ: vitrine estilo Netflix (fase 1, 2026-11-09). Espera: destaque, continuar, cursos, gratuitos (lib/escola-digital-vitrine.js), vitrine. Nunca mostra vagas. %>
 <%- include('partials/site-head', {
   titulo: 'Escola Digital',
   bodyClass: 'v-claro',
   descricao: 'Escola Digital CVB-RJ: cursos 100% online da Escola de Educação e Saúde da Cruz Vermelha Brasileira no Rio de Janeiro, com certificado.'
 }) %>
 <%- include('partials/site-header', { menuAtivo: 'escola-digital' }) %>
-
-<main>
+<%
+  var _linha = function (id, kicker, titulo, itens) { return { id: id, kicker: kicker, titulo: titulo, itens: itens }; };
+  var _linhas = [_linha('cursos', 'Cursos online', 'Cursos online', cursos)];
+  if (gratuitos.length) _linhas.push(_linha('gratuitos', 'Para começar', 'Gratuitos', gratuitos));
+%>
+<main class="ed-main">
+  <% if (!destaque) { %>
   <section class="v-ed-hero">
     <div class="v-wrap">
       <nav class="v-trilha" aria-label="Você está em">
@@ -17,7 +22,80 @@
       <p class="v-ed-kicker">Escola Digital CVB-RJ</p>
       <h1>Aprenda onde estiver<span>.</span></h1>
       <p class="v-ed-lead">Cursos 100% online da Escola de Educação e Saúde da Cruz Vermelha. Pelo celular, no seu ritmo, com certificado oficial ao concluir.</p>
-      <ul class="v-ed-selos">
+    </div>
+  </section>
+  <section class="ed-sec">
+    <div class="v-wrap">
+      <div class="v-vazio"><i class="fa-regular fa-folder-open" aria-hidden="true"></i> Novos cursos online em breve.</div>
+    </div>
+  </section>
+  <% } else { %>
+  <section class="ed-hero<%= destaque.imagemUrl ? '' : ' ed-hero-sem' %>"<% if (destaque.imagemUrl) { %> style="--ed-foto: url('<%= destaque.imagemUrl.replace(/['"()\\\s]/g, '') %>')"<% } %>>
+    <div class="v-wrap">
+      <nav class="v-trilha" aria-label="Você está em">
+        <a href="/">Início</a>
+        <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+        <span aria-current="page">Escola Digital</span>
+      </nav>
+      <p class="ed-tag">Escola Digital CVB-RJ</p>
+      <h1><%= destaque.nome %></h1>
+      <% if (destaque.resumo) { %><p class="ed-hero-lead"><%= destaque.resumo %></p><% } %>
+      <ul class="ed-hero-info">
+        <li><i class="fa-regular fa-clock" aria-hidden="true"></i> <%= destaque.cargaHoraria %> horas</li>
+        <li><i class="fa-solid fa-mobile-screen" aria-hidden="true"></i> No seu ritmo</li>
+        <li><i class="fa-solid fa-award" aria-hidden="true"></i> Certificado</li>
+        <li class="ed-hero-preco"><%= destaque.jaTem ? 'Você já tem' : destaque.online.gratis ? 'Grátis' : vitrine.reais(destaque.online.preco) %></li>
+      </ul>
+      <% if (destaque.jaTem) { %>
+        <a class="ed-bt ed-bt-r" href="<%= vitrine.urlOnline(destaque) %>/continuar">Continuar <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+      <% } else { %>
+        <a class="ed-bt ed-bt-r" href="<%= vitrine.urlOnline(destaque) %>">Ver curso <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+      <% } %>
+    </div>
+  </section>
+
+  <% if (continuar.length) { %>
+  <section class="ed-sec" id="continuar">
+    <div class="v-wrap">
+      <div class="ed-h"><h2>Continue de onde parou<span>.</span></h2><a href="/minha-conta">Minha conta →</a></div>
+      <div class="ed-carrossel">
+        <ul class="ed-linha ed-linha-continuar">
+          <% continuar.forEach(function (c) { %>
+          <li class="ed-card ed-card-cont">
+            <a href="<%= c.link %>" class="ed-card-link">
+              <span class="ed-capa<%= c.imagemUrl ? '' : ' ed-capa-sem' %>"><% if (c.imagemUrl) { %><img src="<%= c.imagemUrl %>" alt="" loading="lazy"><% } else { %><i class="fa-solid fa-kit-medical" aria-hidden="true"></i><% } %></span>
+              <span class="ed-card-corpo">
+                <b class="ed-card-nome"><%= c.curso %></b>
+                <span class="ed-prog"><span style="width: <%= c.percentual %>%"></span></span>
+                <span class="ed-card-info"><%= c.percentual %>% concluído · <%= c.situacao === 'novo' ? 'Começar' : 'Continuar' %> →</span>
+              </span>
+            </a>
+          </li>
+          <% }) %>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <% } %>
+
+  <% _linhas.forEach(function (l) { %>
+  <section class="ed-sec" id="<%= l.id %>">
+    <div class="v-wrap">
+      <div class="ed-h"><div><p class="ed-kicker"><%= l.kicker %></p><h2><%= l.titulo %><span>.</span></h2></div></div>
+      <div class="ed-carrossel">
+        <button type="button" class="ed-seta ed-seta-ant" aria-label="Voltar" hidden><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
+        <ul class="ed-linha">
+          <% l.itens.forEach(function (curso) { %><%- include('partials/ed-card', { curso: curso, vitrine: vitrine }) %><% }) %>
+        </ul>
+        <button type="button" class="ed-seta ed-seta-prox" aria-label="Avançar" hidden><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+      </div>
+    </div>
+  </section>
+  <% }) %>
+
+  <section class="ed-sec ed-selos-sec">
+    <div class="v-wrap">
+      <ul class="v-ed-selos ed-selos">
         <li><i class="fa-solid fa-mobile-screen" aria-hidden="true"></i> No celular ou computador</li>
         <li><i class="fa-regular fa-clock" aria-hidden="true"></i> No seu ritmo</li>
         <li><i class="fa-solid fa-award" aria-hidden="true"></i> Certificado da Cruz Vermelha</li>
@@ -25,26 +103,8 @@
       </ul>
     </div>
   </section>
-
-  <section class="v-cat-todos" id="cursos">
-    <div class="v-wrap">
-      <div class="v-secao-head">
-        <div>
-          <p class="v-kicker">Cursos online</p>
-          <h2>Comece hoje.</h2>
-        </div>
-      </div>
-      <% if (!cursos.length) { %>
-        <div class="v-vazio"><i class="fa-regular fa-folder-open" aria-hidden="true"></i> Novos cursos online em breve.</div>
-      <% } else { %>
-        <div class="v-grade-cat">
-          <% cursos.forEach(function (curso) { %>
-            <%- include('partials/v-card-cat', { curso: curso, vitrine: vitrine, taxaExibicao: taxaExibicao, cfgMap: cfgMap }) %>
-          <% }) %>
-        </div>
-      <% } %>
-    </div>
-  </section>
+  <% } %>
 </main>
+<script src="<%= asset('/js/escola-digital-vitrine.js') %>" defer></script>
 
 <%- include('partials/site-footer') %>
