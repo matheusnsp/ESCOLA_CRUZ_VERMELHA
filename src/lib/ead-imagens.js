@@ -24,7 +24,7 @@ Rules for every prompt (repeat them inside each prompt):
 - realistic photography, natural light, horizontal framing, empty space on the left side;
 - no written text, letters or numbers, and no other brands or logos anywhere in the image;
 - no blood, no wounds, no people in pain or distress; no child face in the foreground (children only from behind, far away, or hands);
-- follow the visual identity of the Cruz Vermelha Brasileira (Brazilian Red Cross) and its school website: red and white palette; the red cross on white may appear (instructors in white polo shirts with the red cross and red trousers, first-aid kits with a red cross, a Red Cross classroom); warm, professional, realistic style like the school site photos;
+- follow the visual identity of the Cruz Vermelha Brasileira (Brazilian Red Cross) and its school website: red and white palette; the course belongs to the Red Cross itself, so any cross in the image must be red on white (the Red Cross emblem) — never green, never another color (instructors in white polo shirts with the red cross and red trousers, first-aid kits with a red cross, a Red Cross classroom); warm, professional, realistic style like the school site photos;
 - Brazilian people with natural diversity and Brazilian settings (school, home, workplace) when it fits;
 - the same visual style across all images of the course: define one style and apply it to every prompt.`;
 
@@ -168,7 +168,7 @@ const msgFalha = (erros) => `A OpenAI não conseguiu gerar a imagem${erros && er
 // Regras acrescentadas no fim de todo pedido (2026-11-09), inclusive o escrito pela pessoa. Os cursos são da
 // própria Cruz Vermelha: as imagens seguem a identidade do site e da instituição (vermelho e branco, a cruz vermelha
 // liberada), sem texto escrito nem outras marcas, sem sangue e sem rosto de criança em destaque.
-const REGRAS_IMAGEM = 'Rules: realistic photography, horizontal framing; follow the visual identity of the Cruz Vermelha Brasileira (Brazilian Red Cross) and its school: red and white palette, the red cross on white is allowed (instructors in white shirts with the red cross and red trousers, first-aid kits with a red cross); no written text, letters or numbers and no other brands; no blood, wounds or people in distress; no child face in the foreground.';
+const REGRAS_IMAGEM = 'Rules: realistic photography, horizontal framing; follow the visual identity of the Cruz Vermelha Brasileira (Brazilian Red Cross) and its school: red and white palette; any cross must be red on white (the red cross on white is allowed and expected: instructors in white shirts with the red cross and red trousers, first-aid kits with a red cross), never a green cross; no written text, letters or numbers and no other brands; no blood, wounds or people in distress; no child face in the foreground.';
 const comRegras = (t) => (t ? `${t}\n\n${REGRAS_IMAGEM}` : t);
 
 async function gerarEGuardar(p, opts) {

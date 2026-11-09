@@ -90,8 +90,13 @@ function validarTextos(json, tipo) {
   return { descricao: corta(j.descricao, 300), descricaoLonga: corta(j.descricaoLonga, 3000), conteudoProgramatico: String(j.conteudoProgramatico || '').replace(/\r\n/g, '\n').trim().slice(0, 4000), faqs: limparFaqs(j.faqs) };
 }
 
+// Os cursos são da Cruz Vermelha: toda cruz é vermelha. Se o Claude escrever cruz verde/branca, vira vermelha.
+const cruzVermelha = (t) => String(t || '')
+  .replace(/\bgreen\s+(?:or\s+white\s+|and\s+white\s+)?cross(es)?\b/gi, 'red cross$1')
+  .replace(/\bwhite\s+or\s+green\s+cross(es)?\b/gi, 'red cross$1')
+  .replace(/\bcruz(es)?\s+verde(s)?\b/gi, (m, pl) => (pl ? 'cruzes vermelhas' : 'cruz vermelha'));
 function validarPedidosImagens(json, moduloIds) {
-  const limpo = (x) => ({ pedido: corta(x.pedido, 600), pedidoCurto: corta(x.pedidoCurto, 200), descricao: corta(x.descricao, 200) });
+  const limpo = (x) => ({ pedido: corta(cruzVermelha(x.pedido), 600), pedidoCurto: corta(cruzVermelha(x.pedidoCurto), 200), descricao: corta(cruzVermelha(x.descricao), 200) });
   if (!json || !json.capa || !corta(json.capa.pedido, 600)) return { ok: false, erro: 'A IA não devolveu o pedido da imagem da capa.' };
   const validos = new Set(moduloIds || []);
   const vistos = new Set();

@@ -122,8 +122,20 @@ test('[modelo] nenhum modelo de imagem na conta: erro explicando', async () => {
 test('[identidade] as regras seguem a identidade da Cruz Vermelha (cruz vermelha liberada, sem texto nem outras marcas)', () => {
   for (const t of [img.SYSTEM_PEDIDOS, img.REGRAS_IMAGEM]) {
     assert.match(t, /Cruz Vermelha Brasileira/);
-    assert.match(t, /red cross on white (is allowed|may appear)/i);
+    assert.match(t, /red cross on white (is allowed|may appear)|must be red on white/i);
     assert.doesNotMatch(t, /never the Red Cross emblem|green or white cross/i);
     assert.match(t, /no (written )?text/i);
   }
+});
+
+test('[cruz vermelha] toda cruz é vermelha: regra obrigatória e "green cross" do Claude vira "red cross"', async () => {
+  for (const t of [img.SYSTEM_PEDIDOS, img.REGRAS_IMAGEM]) assert.match(t, /must be red on white/i);
+  const E2 = require('../src/lib/ead-ia-esquema');
+  const j = pedidosImagensBons(['m1']);
+  j.capa.pedido = 'Woman organizing a first-aid kit with a green cross on a table'; j.capa.pedidoCurto = 'kit with a Green Cross';
+  j.modulos[0].pedido = 'Kit with a green or white cross'; j.capa.descricao = 'Kit com cruz verde';
+  const v = E2.validarPedidosImagens(j, ['m1']);
+  assert.match(v.pedidos.capa.pedido, /first-aid kit with a red cross/);
+  assert.doesNotMatch(JSON.stringify(v.pedidos), /green/i);
+  assert.match(v.pedidos.capa.descricao, /cruz vermelha/);
 });
