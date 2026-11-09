@@ -94,3 +94,10 @@ describe('cupom presencial', { skip: temBanco ? false : 'sem DATABASE_URL local'
     assert.equal(lista.find((c) => c.codigo === 'TODP' + s).curso, 'Todos os cursos presenciais');
   });
 });
+
+test('[revisão C1] todo formulário de pagamento da inscrição leva o cupom (à vista, parcelado, presencial, passaporte)', () => {
+  const v = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', 'inscrever.ejs'), 'utf8');
+  const forms = v.match(/<form method="POST" action="\/inscrever\/<%= turma\.id %>" novalidate[^>]*>\s*<input type="hidden" name="cupom"/g) || [];
+  assert.equal(forms.length, (v.match(/<form method="POST" action="\/inscrever\/<%= turma\.id %>" novalidate/g) || []).length);
+  assert.equal(forms.length, 4);
+});

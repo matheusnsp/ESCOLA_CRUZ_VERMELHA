@@ -36,7 +36,8 @@ const labelPlano = (p) =>
 //  pra que os números do relatório batam exatamente com os da tela.
 // ============================================================
 async function coletarDadosRelatorio(prisma) {
-  const incAluno = { aluno: true, turma: { include: { curso: true } } };
+  // cupomEad: o desconto do cupom do presencial entra no que falta receber (lib/matricula.js valorCursoSemTaxa).
+  const incAluno = { aluno: true, turma: { include: { curso: true } }, cupomEad: { select: { desconto: true } } };
 
   const [
     matriculas,

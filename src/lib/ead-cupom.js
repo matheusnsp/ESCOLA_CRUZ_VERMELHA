@@ -108,6 +108,10 @@ async function alterarCupom(id, d, atorId) {
   if (r.erro) return r;
   const temCompra = await prisma.cupomMatriculaEad.count({ where: { cupomId: id } }) > 0;
   if (temCompra && (r.dados.codigo !== atual.codigo || r.dados.tipo !== atual.tipo)) return { erro: 'Este cupom já foi usado: o código e o tipo não mudam.' };
+  // Revisão do cupom presencial (I2): usado, o valor e o "Vale para" também ficam (as inscrições guardam o desconto).
+  const mesmoAlvo = (a, b) => (a.cursoOnlineId || null) === (b.cursoOnlineId || null) && (a.ebookId || null) === (b.ebookId || null)
+    && (a.cursoId || null) === (b.cursoId || null) && !!a.todosPresenciais === !!b.todosPresenciais;
+  if (temCompra && (Number(r.dados.valor) !== Number(atual.valor) || !mesmoAlvo(r.dados, atual))) return { erro: 'Este cupom já foi usado: o desconto e o "Vale para" não mudam. Crie outro cupom.' };
   try {
     const cupom = await prisma.cupomEad.update({ where: { id }, data: r.dados });
     await auditar(atorId, 'EAD_CUPOM_ALTERADO', id, { antes: { codigo: atual.codigo, valor: Number(atual.valor), validoAte: atual.validoAte, limiteUsos: atual.limiteUsos }, depois: { codigo: cupom.codigo, valor: Number(cupom.valor), validoAte: cupom.validoAte, limiteUsos: cupom.limiteUsos } });

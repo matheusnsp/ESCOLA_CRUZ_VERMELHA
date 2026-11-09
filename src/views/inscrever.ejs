@@ -323,6 +323,7 @@ const _trilha = _totalPassos === 2
         <% if (ehPassaporte) { %>
         <!-- ── Passaporte: à vista, pago na secretaria ─────────────────── -->
         <form method="POST" action="/inscrever/<%= turma.id %>" novalidate>
+          <input type="hidden" name="cupom" value="<%= typeof _cp !== 'undefined' && _cp.cupom ? _cp.codigo : '' %>"><%# cupom aplicado na tela (2026-11-09) %>
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <input type="hidden" name="plano" value="A_VISTA">
 
@@ -416,6 +417,7 @@ const _trilha = _totalPassos === 2
         <!-- ── À vista ──────────────────────────────────────────────────── -->
         <div id="blocoAVista">
           <form method="POST" action="/inscrever/<%= turma.id %>" novalidate id="formAVista">
+          <input type="hidden" name="cupom" value="<%= typeof _cp !== 'undefined' && _cp.cupom ? _cp.codigo : '' %>"><%# cupom aplicado na tela (2026-11-09) %>
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <input type="hidden" name="plano" value="A_VISTA">
 
@@ -471,6 +473,7 @@ const _trilha = _totalPassos === 2
         <% if (parcelado && parceladoComJuros) { %>
         <div id="blocoParcelado" hidden>
           <form method="POST" action="/inscrever/<%= turma.id %>" novalidate id="formParcelado">
+          <input type="hidden" name="cupom" value="<%= typeof _cp !== 'undefined' && _cp.cupom ? _cp.codigo : '' %>"><%# cupom aplicado na tela (2026-11-09) %>
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <input type="hidden" name="plano" value="PARCELADO">
 
@@ -511,6 +514,7 @@ const _trilha = _totalPassos === 2
         <% if (false) { %>
         <div id="blocoPresencial" hidden>
           <form method="POST" action="/inscrever/<%= turma.id %>" novalidate id="formPresencial">
+          <input type="hidden" name="cupom" value="<%= typeof _cp !== 'undefined' && _cp.cupom ? _cp.codigo : '' %>"><%# cupom aplicado na tela (2026-11-09) %>
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <input type="hidden" name="plano" value="PRESENCIAL">
 

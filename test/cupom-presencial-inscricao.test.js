@@ -108,6 +108,54 @@ describe('cupom na inscrição do presencial', { skip: temBanco ? false : 'sem D
     assert.equal(await prisma.matricula.count({ where: { alunoId: duda.id } }), 0);
   });
 
+  test('[revisão C1] como na página de verdade: o formulário de pagamento leva o cupom aplicado', async () => {
+    const gabi = await novoAluno('gabi');
+    const html = await (await req(`/inscrever/${turma.id}?cupom=VINTE${s}`, gabi)).text();
+    const forms = html.match(/<form method="POST" action="\/inscrever\/[^"]+" novalidate[\s\S]*?<\/form>/g) || [];
+    assert.ok(forms.length >= 1, "formulários de pagamento (o parcelado depende do gateway, ausente no teste)");
+    for (const f of forms) assert.match(f, new RegExp(`<input type="hidden" name="cupom" value="VINTE${s}">`));
+    // envia só o que o formulário à vista tem (sem montar o cupom à mão)
+    const fAVista = forms.find((f) => /id="formAVista"/.test(f));
+    const campos = Object.fromEntries([...fAVista.matchAll(/<input type="hidden" name="([^"]+)" value="([^"]*)"/g)].map((m) => [m[1], m[2]]));
+    const r = await post(`/inscrever/${turma.id}`, gabi, { ...campos, forma: 'PIX' });
+    assert.equal(r.status, 302);
+    const m = await prisma.matricula.findFirst({ where: { alunoId: gabi.id, turmaId: turma.id } });
+    assert.equal(Number(m.valorCurso), 450);
+  });
+
+  test('[revisão I2] mudar o valor do cupom depois de usado: recusado; a matrícula segue com o desconto gravado', async () => {
+    const cupons = require('../src/lib/ead-cupom');
+    const c = await prisma.cupomEad.findUnique({ where: { codigo: `VINTE${s}` } });
+    const r = await cupons.alterarCupom(c.id, { codigo: c.codigo, tipo: c.tipo, valor: 50, alvo: `presencial:${curso.id}` }, 'teste');
+    assert.match(r.erro || '', /já foi usado/);
+    const r2 = await cupons.alterarCupom(c.id, { codigo: c.codigo, tipo: c.tipo, valor: 20, alvo: 'presenciais' }, 'teste');
+    assert.match(r2.erro || '', /já foi usado/);
+    // mesmo que o cupom mude no banco, vale o desconto gravado
+    await prisma.cupomEad.update({ where: { id: c.id }, data: { valor: 50 } });
+    try {
+      const cris = await prisma.usuario.findFirst({ where: { email: `aluno-cupom-cris-${s}@teste.local` } });
+      const m = await prisma.matricula.findFirst({ where: { alunoId: cris.id, turmaId: turma.id } });
+      assert.equal(Number((await calcularValores(curso, 'PARCELADO', cris.id, { matriculaId: m.id })).valorCurso), 480);
+    } finally { await prisma.cupomEad.update({ where: { id: c.id }, data: { valor: 20 } }); }
+  });
+
+  test('[revisão I3] "a receber" do painel e do Financeiro desconta o cupom', async () => {
+    const { faltaReceber } = require('../src/lib/matricula');
+    const cris = await prisma.usuario.findFirst({ where: { email: `aluno-cupom-cris-${s}@teste.local` } });
+    const m = await prisma.matricula.findFirst({ where: { alunoId: cris.id, turmaId: turma.id }, include: { turma: { include: { curso: true } }, cupomEad: { select: { desconto: true } }, pagamentos: true } });
+    await prisma.matricula.update({ where: { id: m.id }, data: { taxaConfirmada: true } });
+    assert.equal(faltaReceber({ ...m, taxaConfirmada: true }), 480);
+  });
+
+  test('[revisão I4] prévia da transferência desconta o cupom no mesmo curso', async () => {
+    const ejs = require('ejs');
+    const cris = await prisma.usuario.findFirst({ where: { email: `aluno-cupom-cris-${s}@teste.local` } });
+    const src = require('fs').readFileSync(path.join(__dirname, '..', 'src', 'views', 'admin', 'transferir.ejs'), 'utf8');
+    assert.match(src, /data-desconto="<%= typeof descontoNoCurso === 'function' \? descontoNoCurso\(t\.curso\) : 0 %>"/);
+    assert.match(src, /Number\(opt\.dataset\.desconto\)/);
+    assert.ok(cris);
+  });
+
   test('100% num curso sem taxa: inscrição confirmada sem cobrança', async () => {
     const edu = await novoAluno('edu');
     const antes = gateway.length;

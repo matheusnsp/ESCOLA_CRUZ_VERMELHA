@@ -780,7 +780,7 @@ router.get('/', async (req, res) => {
       take: 6,
       include: {
         aluno: true,
-        turma: { include: { curso: true } },
+        turma: { include: { curso: true } }, cupomEad: { select: { desconto: true } },
       },
     }),
 
@@ -2103,19 +2103,19 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     prisma.matricula.findMany({
       where: { taxaConfirmada: true },
       orderBy: { taxaConfirmadaEm: 'desc' },
-      include: { aluno: true, turma: { include: { curso: true } } },
+      include: { aluno: true, turma: { include: { curso: true } }, cupomEad: { select: { desconto: true } } },
     }),
 
     prisma.matricula.findMany({
       where: { statusPagamento: { in: ['PAGO', 'PARCELADO'] } },
       orderBy: { confirmadaEm: 'desc' },
-      include: { aluno: true, turma: { include: { curso: true } } },
+      include: { aluno: true, turma: { include: { curso: true } }, cupomEad: { select: { desconto: true } } },
     }),
 
     prisma.matricula.findMany({
       where: { taxaConfirmada: false, statusPagamento: { notIn: ['ESTORNADO', 'CANCELADO'] }, turma: { status: { not: 'ONLINE' } } },
       orderBy: { criadoEm: 'desc' },
-      include: { aluno: true, turma: { include: { curso: true } } },
+      include: { aluno: true, turma: { include: { curso: true } }, cupomEad: { select: { desconto: true } } },
     }),
 
     prisma.matricula.findMany({
@@ -2125,13 +2125,13 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
         turma: turmaEmAberto(),
       },
       orderBy: { criadoEm: 'desc' },
-      include: { aluno: true, turma: { include: { curso: true } }, pagamentos: { select: { tipo: true, status: true } } },
+      include: { aluno: true, turma: { include: { curso: true } }, cupomEad: { select: { desconto: true } }, pagamentos: { select: { tipo: true, status: true } } },
     }),
 
     prisma.matricula.findMany({
       where: { statusPagamento: 'ESTORNADO' },
       orderBy: { atualizadoEm: 'desc' },
-      include: { aluno: true, turma: { include: { curso: true } } },
+      include: { aluno: true, turma: { include: { curso: true } }, cupomEad: { select: { desconto: true } } },
     }),
 
     prisma.logAuditoria.findMany({
@@ -2716,6 +2716,13 @@ router.post('/inscricoes/:id/situacao', requirePermissao('turmas:gerenciar'), as
   res.redirect(`/inscricoes/${m.id}/nota`);
 });
 
+// Cupom do presencial (2026-11-09): a prévia da transferência desconta o cupom gravado nos cursos em que ele vale.
+async function descontoDaTransferencia(matriculaId) {
+  const cm = await prisma.cupomMatriculaEad.findUnique({ where: { matriculaId }, include: { cupom: true } }).catch(() => null);
+  const { valeNoPresencial } = require('../lib/ead-cupom');
+  return (curso) => (cm && valeNoPresencial(cm.cupom, curso) ? Number(cm.desconto) : 0);
+}
+
 router.get('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), async (req, res) => {
   const m = await prisma.matricula.findUnique({
     where: { id: req.params.id },
@@ -2729,7 +2736,7 @@ router.get('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), 
     include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
   });
   res.render('admin/transferir', {
-    m, turmas, formatBRL, erro: null,
+    m, turmas, formatBRL, erro: null, descontoNoCurso: await descontoDaTransferencia(m.id),
     origemQ: req.query.q || '',
     origemTurma: req.query.turma || '',
     origemStatus: req.query.status || '',
@@ -2776,6 +2783,7 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
       turmas,
       formatBRL,
       erro,
+      descontoNoCurso: await descontoDaTransferencia(m.id),
     });
   };
 
@@ -3168,7 +3176,7 @@ router.get('/pendentes', requirePermissao('pendentes:gerenciar'), async (req, re
         turma: TURMA_VALE,
       },
       orderBy: { turma: { inicioPrevisto: 'asc' } },
-      include: { aluno: true, turma: { include: { curso: true } }, pagamentos: true },
+      include: { aluno: true, turma: { include: { curso: true } }, cupomEad: { select: { desconto: true } }, pagamentos: true },
     }),
 
     // ── 2. Nada pago, ainda dá tempo ──────────────────────────────────────
@@ -3179,7 +3187,7 @@ router.get('/pendentes', requirePermissao('pendentes:gerenciar'), async (req, re
         turma: TURMA_VALE,
       },
       orderBy: { turma: { inicioPrevisto: 'asc' } },
-      include: { aluno: true, turma: { include: { curso: true } }, pagamentos: true },
+      include: { aluno: true, turma: { include: { curso: true } }, cupomEad: { select: { desconto: true } }, pagamentos: true },
     }),
 
     // ── 3. Fora de prazo ──────────────────────────────────────────────────
