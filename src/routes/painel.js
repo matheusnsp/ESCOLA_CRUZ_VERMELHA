@@ -138,7 +138,7 @@ router.post('/conta/comprovante-saude', requireLogin, comprovanteSaude.receber('
 
 // Área do aluno — painel único com seções (inscricoes | dados | seguranca | excluir).
 router.get('/minha-conta', requireLogin, async (req, res) => {
-  const secValidas = ['inscricoes', 'online', 'dados', 'seguranca', 'excluir'];
+  const secValidas = ['inscricoes', 'online', 'ebooks', 'dados', 'seguranca', 'excluir'];
   const sec = secValidas.includes(req.query.sec) ? req.query.sec : 'inscricoes';
 
   const usuario = await prisma.usuario.findUnique({ where: { id: req.session.usuarioId } });
@@ -167,6 +167,8 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
     matriculas: matriculasComRetomada.filter((m) => m.turma.status !== 'ONLINE'),
     urlOnline: require('../lib/vitrine').urlOnline,
     cursosOnline: await require('../lib/ead-meus-cursos').meusCursosOnline(usuario.id).catch((e) => { console.error('[Minha conta] cursos online:', e.message); return []; }),
+    ebooks: await require('../lib/ebook').meus(usuario.id).catch((e) => { console.error('[Minha conta] e-books:', e.message); return []; }),
+    vitrine: require('../lib/vitrine'),
     saude: await saudeDaConta(usuario.id, matriculas, req.query),
     avisosTurma: await avisosDeBoasVindas(matriculas),
     matriculasAtivas,

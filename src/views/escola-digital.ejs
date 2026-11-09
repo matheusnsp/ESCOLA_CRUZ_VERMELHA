@@ -93,6 +93,8 @@
   </section>
   <% }) %>
 
+  <%- include('partials/ed-linha-ebooks', { ebooks: typeof ebooks !== 'undefined' ? ebooks : [], vitrine: vitrine }) %>
+
   <section class="ed-sec ed-selos-sec">
     <div class="v-wrap">
       <ul class="v-ed-selos ed-selos">

@@ -235,7 +235,8 @@ router.get('/escola-digital', (req, res, next) => (async () => {
   // Vitrine (2026-11-09): o que depende de quem vê ("Continue", "Você já tem") fica fora do cache.
   const usuario = req.session && req.session.usuarioId ? { id: req.session.usuarioId, papel: req.session.papel } : null;
   const v = await require('../lib/escola-digital-vitrine').montarVitrine(lista, usuario);
-  res.render('escola-digital', { ...v, vitrine });
+  const ebooks = await require('../lib/ebook').daVitrine(); // e-books (2026-11-09): fileira própria, sem cache
+  res.render('escola-digital', { ...v, ebooks, vitrine });
 })().catch(next));
 
 router.get('/cursos', async (req, res) => {

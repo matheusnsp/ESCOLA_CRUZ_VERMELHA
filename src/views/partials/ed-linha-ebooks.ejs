@@ -1,0 +1,29 @@
+<%# Fileira "E-books" da vitrine da Escola Digital (2026-11-09). Espera: ebooks (lib/ebook.js daVitrine), vitrine. Sem e-book, nada. %>
+<% if (ebooks && ebooks.length) { %>
+<section class="ed-sec" id="ebooks">
+  <div class="v-wrap">
+    <div class="ed-h"><div><p class="ed-kicker">Para ler e guardar</p><h2>E-books<span>.</span></h2></div></div>
+    <div class="ed-carrossel">
+      <button type="button" class="ed-seta ed-seta-ant" aria-label="Voltar" hidden><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
+      <ul class="ed-linha ed-linha-ebooks">
+        <% ebooks.forEach(function (e) { %>
+        <li class="ed-card">
+          <a href="<%= vitrine.urlEbook(e.curso) %>" class="ed-card-link">
+            <span class="ed-capa ed-capa-ebook<%= e.curso.imagemUrl ? '' : ' ed-capa-sem' %>">
+              <% if (e.curso.imagemUrl) { %><img src="<%= e.curso.imagemUrl %>" alt="" loading="lazy"><% } else { %><i class="fa-solid fa-book-open" aria-hidden="true"></i><% } %>
+              <% if (e.gratuito) { %><span class="ed-selo ed-selo-gratis">Grátis</span><% } %>
+            </span>
+            <span class="ed-card-corpo">
+              <b class="ed-card-nome"><%= e.curso.nome %></b>
+              <span class="ed-card-info"><i class="fa-regular fa-file-pdf" aria-hidden="true"></i> E-book · <%= e.paginas %> páginas</span>
+              <span class="ed-card-preco"><b><%= e.gratuito ? 'Grátis' : vitrine.reais(Number(e.precoOnline)) %></b></span>
+            </span>
+          </a>
+        </li>
+        <% }) %>
+      </ul>
+      <button type="button" class="ed-seta ed-seta-prox" aria-label="Avançar" hidden><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+    </div>
+  </div>
+</section>
+<% } %>

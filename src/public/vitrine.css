@@ -1001,3 +1001,8 @@ html.v-menu-aberto .v-acoes .v-so-pc, html.v-menu-aberto .v-acoes .v-user { disp
   .ed-linha { grid-auto-columns: 72%; gap: 12px; }
   .ed-seta { display: none; }
 }
+/* E-books (2026-11-09): fileira com a capa em pé (mais cards por linha). */
+.ed-linha-ebooks { grid-auto-columns: calc((100% - 5 * 16px) / 6); }
+.ed-capa-ebook { aspect-ratio: 3 / 4; }
+@media (max-width: 1000px) { .ed-linha-ebooks { grid-auto-columns: calc((100% - 3 * 16px) / 4); } }
+@media (max-width: 700px) { .ed-linha-ebooks { grid-auto-columns: 44%; } }
