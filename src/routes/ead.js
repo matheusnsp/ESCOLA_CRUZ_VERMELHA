@@ -441,7 +441,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
       await prisma.logAuditoria.create({ data: { atorId: quem, acao: 'EAD_IMAGENS_IA', alvoTipo: 'CursoOnline', alvoId: co.id, detalhe: { geradas: r.geradas, descricoes: r.descricoes } } }).catch(() => {});
       if (r.aviso) return { ok: !!r.geradas, msg: r.geradas ? `${plural(r.geradas)}. ${r.aviso}` : r.aviso };
       if (!r.descricoes) return { ok: true, msg: 'Nada para preencher: a capa e os módulos já têm imagem.' };
-      if (!r.geradas) return { ok: false, msg: 'A OpenAI não conseguiu gerar as imagens. As descrições ficaram em cada módulo; tente de novo ou envie as imagens.' };
+      if (!r.geradas) return { ok: false, msg: `A OpenAI não conseguiu gerar as imagens${r.motivo ? `: ${String(r.motivo).slice(0, 300)}` : ''}. As descrições ficaram em cada módulo; tente de novo ou envie as imagens.` };
       return { ok: true, msg: `${plural(r.geradas)}.` };
     });
     voltar(res, volta, 'ok', MSG_SEGUNDO_PLANO);
