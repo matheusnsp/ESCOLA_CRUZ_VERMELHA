@@ -40,9 +40,26 @@ async function obterTaxaMatricula(curso, alunoId) {
   return base; // POR_CURSO
 }
 
-// Monta os valores de uma matricula (sem persistir).
-async function calcularValores(curso, plano, alunoId) {
-  const valorCurso = valorCursoPorPlano(curso, plano);
+// Cupom do presencial (2026-11-09; spec 2026-11-09-cupom-presencial.md): o cupom gravado na matrícula, se ele vale
+// para este curso (transferida para outro curso, o cupom do antigo não vale). Validade e limite já foram conferidos
+// quando a matrícula ganhou o desconto: o que foi concedido continua.
+async function cupomDaMatricula(matriculaId, curso) {
+  if (!matriculaId) return null;
+  const cm = await prisma.cupomMatriculaEad.findUnique({ where: { matriculaId }, include: { cupom: true } }).catch(() => null);
+  return cm && require('./ead-cupom').valeNoPresencial(cm.cupom, curso) ? cm.cupom : null;
+}
+
+// Monta os valores de uma matricula (sem persistir). opts.cupom (validado agora) ou opts.matriculaId (o gravado):
+// o desconto entra só no valor do curso; a taxa de inscrição não muda. desconto = quanto saiu do curso.
+async function calcularValores(curso, plano, alunoId, { cupom = null, matriculaId = null } = {}) {
+  let valorCurso = new Prisma.Decimal(valorCursoPorPlano(curso, plano));
+  let desconto = ZERO;
+  const c = cupom || (await cupomDaMatricula(matriculaId, curso));
+  if (c) {
+    const d = require('./ead-cupom').calcularDesconto(c, Number(valorCurso));
+    desconto = new Prisma.Decimal(d.desconto);
+    valorCurso = new Prisma.Decimal(d.precoFinal);
+  }
   const valorTaxaMatricula = await obterTaxaMatricula(curso, alunoId);
   const total = new Prisma.Decimal(valorCurso).add(valorTaxaMatricula);
 
@@ -54,7 +71,7 @@ async function calcularValores(curso, plano, alunoId) {
     valorParcela = total.div(parcelas);
   }
 
-  return { valorCurso, valorTaxaMatricula, total, valorParcela };
+  return { valorCurso, valorTaxaMatricula, total, valorParcela, desconto, cupom: c };
 }
 
 // Formata um Decimal/numero como moeda BRL.

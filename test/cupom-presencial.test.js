@@ -43,6 +43,47 @@ describe('cupom presencial', { skip: temBanco ? false : 'sem DATABASE_URL local'
     assert.equal((await cupons.validarCupom('GERAL' + s, co)).precoFinal, 80, 'o geral continua valendo no online');
   });
 
+  test('calcularValores: sem cupom igual a hoje; com cupom só o curso desce; gravado na matrícula; de outro curso não', async () => {
+    const { calcularValores } = require('../src/lib/matricula');
+    const sem = await calcularValores(cursoA, 'A_VISTA', null);
+    const pra = await prisma.cupomEad.findUnique({ where: { codigo: 'PRA' + s } });
+    const com = await calcularValores(cursoA, 'A_VISTA', null, { cupom: pra });
+    assert.equal(Number(com.valorCurso), Number(sem.valorCurso) * 0.8);
+    assert.equal(Number(com.valorTaxaMatricula), Number(sem.valorTaxaMatricula), 'taxa não muda');
+    assert.equal(Number(com.total), Number(com.valorCurso) + Number(com.valorTaxaMatricula));
+    assert.equal(Number(com.desconto), Number(sem.valorCurso) * 0.2);
+    const parc = await calcularValores(cursoA, 'PARCELADO', null, { cupom: pra });
+    assert.equal(Number(parc.valorCurso), 480, 'no parcelado o desconto é sobre o preço cheio');
+    // gravado numa matrícula
+    const turma = await prisma.turma.create({ data: { cursoId: cursoA.id, inicioPrevisto: new Date('2099-01-01'), vagas: 10 } });
+    const u = await prisma.usuario.create({ data: { nome: 'Cupom Gravado', email: `cupom-gravado-${s}@teste.local` } });
+    const m = await prisma.matricula.create({ data: { alunoId: u.id, turmaId: turma.id, plano: 'A_VISTA', forma: 'PIX', valorCurso: 400, statusPagamento: 'PENDENTE' } });
+    await prisma.cupomMatriculaEad.create({ data: { matriculaId: m.id, cupomId: pra.id, precoCheio: 500, desconto: 100, precoFinal: 400 } });
+    try {
+      assert.equal(Number((await calcularValores(cursoA, 'A_VISTA', u.id, { matriculaId: m.id })).valorCurso), 400);
+      // cupom desativado/vencido depois de gravado: o desconto já concedido continua
+      await prisma.cupomEad.update({ where: { id: pra.id }, data: { ativo: false, validoAte: new Date('2020-01-01') } });
+      assert.equal(Number((await calcularValores(cursoA, 'A_VISTA', u.id, { matriculaId: m.id })).valorCurso), 400);
+      // transferida para outro curso: o cupom do curso A não vale no B
+      assert.equal(Number((await calcularValores(cursoB, 'A_VISTA', u.id, { matriculaId: m.id })).valorCurso), 300);
+    } finally {
+      await prisma.cupomEad.update({ where: { id: pra.id }, data: { ativo: true, validoAte: null } });
+      await prisma.cupomMatriculaEad.deleteMany({ where: { matriculaId: m.id } });
+      await prisma.matricula.delete({ where: { id: m.id } });
+      await prisma.turma.delete({ where: { id: turma.id } });
+      await prisma.usuario.delete({ where: { id: u.id } });
+    }
+  });
+
+  test('chamadores com matrícula passam matriculaId', () => {
+    const ler = (p) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
+    const cursos = ler('src/routes/cursos.js');
+    assert.ok((cursos.match(/calcularValores\([^;]*matriculaId: matricula\.id/g) || []).length >= 6, 'routes/cursos.js');
+    assert.match(ler('src/lib/lembretes.js'), /calcularValores\(curso, 'PARCELADO', matricula\.alunoId, \{ matriculaId: matricula\.id \}\)/);
+    assert.match(ler('src/lib/matricula-rapida.js'), /m\.alunoId, \{ matriculaId: m\.id \}\)/);
+    assert.match(ler('src/routes/admin.js'), /calcularValores\(destino\.curso, m\.plano, m\.alunoId, \{ matriculaId: m\.id \}\)/);
+  });
+
   test('formulário: alvo presencial grava cursoId; "presenciais" grava todosPresenciais; lista com rótulos', async () => {
     const a = cupons.lerDados({ codigo: 'X' + s, tipo: 'PERCENTUAL', valor: '10', alvo: `presencial:${cursoA.id}` });
     assert.equal(a.dados.cursoId, cursoA.id); assert.equal(a.dados.todosPresenciais, false); assert.equal(a.dados.cursoOnlineId, null);

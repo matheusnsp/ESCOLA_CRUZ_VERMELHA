@@ -819,7 +819,7 @@ router.get('/inscrever/:turmaId/pagar-taxa', requireLogin, async (req, res) => {
   const valores = await calcularValores(
     matricula.turma.curso,
     matricula.plano === 'PRESENCIAL' ? 'A_VISTA' : 'PARCELADO',
-    req.session.usuarioId
+    req.session.usuarioId, { matriculaId: matricula.id }
   );
   const valorTaxa = Number(valores.valorTaxaMatricula);
 
@@ -865,7 +865,7 @@ router.post('/inscrever/:turmaId/pagar-taxa', requireLogin, async (req, res) => 
   const valores = await calcularValores(
     matricula.turma.curso,
     matricula.plano === 'PRESENCIAL' ? 'A_VISTA' : 'PARCELADO',
-    req.session.usuarioId
+    req.session.usuarioId, { matriculaId: matricula.id }
   );
   const valorTaxa = Number(valores.valorTaxaMatricula);
 
@@ -1008,7 +1008,7 @@ router.get('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) => 
 
   // ---------------- PRESENCIAL: só mostra a tela de confirmação ----------------
   if (matricula.plano === 'PRESENCIAL') {
-    const valores = await calcularValores(matricula.turma.curso, 'A_VISTA', req.session.usuarioId);
+    const valores = await calcularValores(matricula.turma.curso, 'A_VISTA', req.session.usuarioId, { matriculaId: matricula.id });
     return res.render('inscrever', {
       turma: matricula.turma, curso: matricula.turma.curso, formatBRL,
       valorCurso: Number(valores.valorCurso), numParcelas: 1, parceladoComJuros: null,
@@ -1020,7 +1020,7 @@ router.get('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) => 
   // ---------------- PARCELADO: resumo + botão que leva à tela do cartão ------
   // Aqui o parcelamento incide só sobre o curso (a taxa já foi paga na etapa 2),
   // então parceladoComJuros.total é só o curso COM juros — sem taxa por fora.
-  const valores = await calcularValores(matricula.turma.curso, 'PARCELADO', req.session.usuarioId);
+  const valores = await calcularValores(matricula.turma.curso, 'PARCELADO', req.session.usuarioId, { matriculaId: matricula.id });
   const numParcelas = Number(matricula.turma.curso.parcelas) || 1;
   const amountCentavos = Math.round(parseFloat(valores.valorCurso) * 100);
   const opcao = await obterOpcaoParcelamento(amountCentavos, numParcelas);
@@ -1065,7 +1065,7 @@ router.post('/inscrever/:turmaId/pagar-curso', requireLogin, async (req, res) =>
   // ---------------- PRESENCIAL: sem gateway — só registra o Pagamento pendente
   // e confirma a inscrição. O valor será cobrado na secretaria. ----------------
   if (matricula.plano === 'PRESENCIAL') {
-    const valores = await calcularValores(matricula.turma.curso, 'A_VISTA', req.session.usuarioId);
+    const valores = await calcularValores(matricula.turma.curso, 'A_VISTA', req.session.usuarioId, { matriculaId: matricula.id });
     try {
       await prisma.pagamento.create({
         data: {
@@ -1210,14 +1210,14 @@ async function calcularCobrancaCartao(matricula, etapa, alunoId, parcelasOnline 
 
   if (etapa === 'taxa') {
     const valores = await calcularValores(
-      curso, matricula.plano === 'PRESENCIAL' ? 'A_VISTA' : 'PARCELADO', alunoId
+      curso, matricula.plano === 'PRESENCIAL' ? 'A_VISTA' : 'PARCELADO', alunoId, { matriculaId: matricula.id }
     );
     const taxa = Number(valores.valorTaxaMatricula);
     return { valorCobranca: taxa, valorBase: taxa, numParcelas: 1, valorParcela: null, tipo: 'TAXA' };
   }
 
   if (matricula.plano === 'PARCELADO') {
-    const valores = await calcularValores(curso, 'PARCELADO', alunoId);
+    const valores = await calcularValores(curso, 'PARCELADO', alunoId, { matriculaId: matricula.id });
     const numParcelas = Number(curso.parcelas) || 1;
     const amountCentavos = Math.round(parseFloat(valores.valorCurso) * 100);
     const opcao = await obterOpcaoParcelamento(amountCentavos, numParcelas);
@@ -1236,7 +1236,7 @@ async function calcularCobrancaCartao(matricula, etapa, alunoId, parcelasOnline 
   }
 
   // A_VISTA no cartão: curso + taxa numa cobrança só.
-  const valores = await calcularValores(curso, 'A_VISTA', alunoId);
+  const valores = await calcularValores(curso, 'A_VISTA', alunoId, { matriculaId: matricula.id });
   const total = Number(valores.total);
   return { valorCobranca: total, valorBase: total, numParcelas: 1, valorParcela: null, tipo: 'CURSO' };
 }

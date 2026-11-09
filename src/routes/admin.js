@@ -2793,7 +2793,7 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
   }
 
   const valorAntigo = Number(m.valorCurso);
-  const valoresDestino = await calcularValores(destino.curso, m.plano, m.alunoId);
+  const valoresDestino = await calcularValores(destino.curso, m.plano, m.alunoId, { matriculaId: m.id });
   const valorNovo = Number(valoresDestino.total);
   const diferenca = Math.round((valorNovo - valorAntigo) * 100) / 100;
 
