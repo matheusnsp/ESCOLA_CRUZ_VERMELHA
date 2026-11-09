@@ -57,12 +57,12 @@ function dataLonga(d) {
           <div class="v-curso-turma">
             <div class="v-data"><b><%= d.dia %></b><span><%= d.mes %></span></div>
             <div>
-              <strong>Início em <%= dataLonga(prox.inicioPrevisto) %></strong>
+              <strong>Previsto para <%= dataLonga(prox.inicioPrevisto) %></strong>
               <% if (prox.aulas && prox.aulas.length) { %><em><i class="fa-regular fa-clock" aria-hidden="true"></i> <%= prox.aulas[0].horario %></em><% } %>
             </div>
           </div>
           <div class="curso-countdown v-contagem" data-inicio="<%= new Date(prox.inicioPrevisto).toISOString() %>">
-            <span class="v-contagem-rot">Começa em</span>
+            <span class="v-contagem-rot">Previsto em</span>
             <div class="cd-nums v-contagem-nums">
               <span><b data-d>--</b><i>dias</i></span>
               <span><b data-h>--</b><i>horas</i></span>
@@ -131,7 +131,7 @@ function dataLonga(d) {
                 <div class="v-turma">
                   <div class="v-data"><b><%= dt.dia %></b><span><%= dt.mes %></span></div>
                   <div class="v-turma-txt">
-                    <strong>Início em <%= dataLonga(t.inicioPrevisto) %></strong>
+                    <strong>Previsto para <%= dataLonga(t.inicioPrevisto) %></strong>
                     <span><%= t.aulas && t.aulas.length ? t.aulas[0].horario + ' · ' : '' %>Praça da Cruz Vermelha, 10 · Centro</span>
                   </div>
                   <a class="v-btn v-btn-red" href="/inscrever/<%= t.id %>">Inscrever-se <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
