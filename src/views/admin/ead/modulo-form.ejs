@@ -37,35 +37,35 @@
     <label class="full">Foto da introdução (JPG, PNG ou WEBP, até 3 MB)
       <input type="file" name="foto" accept="image/jpeg,image/png,image/webp">
     </label>
+    <% var _stImg = typeof statusImagem !== 'undefined' ? statusImagem : null; %>
+    <% var _comIa = typeof temOpenAI !== 'undefined' && temOpenAI; %>
+    <% if (!novo && modulo && _stImg) { %><div class="full"><%- include('_status-imagens', { st: _stImg }) %></div><% } %>
     <% if (v.fotoIntroUrl) { %>
       <div class="full"><img src="<%= v.fotoIntroUrl %>" alt="" style="max-width:220px;border-radius:10px;display:block;margin-bottom:6px">
+        <% if (!novo && modulo && modulo.fotoGeradaPorIa) { %><span class="ead-selo ia">Imagem gerada por IA</span><% } %>
         <label class="check"><input type="checkbox" name="removerFoto"> Remover a foto</label></div>
+    <% } %>
+    <%# Imagens com IA (2026-11-09): pedido, "Escrever pedido com o Claude" e "Gerar imagem com IA" junto do campo da
+        foto. O pedido e o botão de gerar pertencem ao formulário formImagemModuloIa (abaixo; este aqui é multipart). %>
+    <% if (!novo && modulo && _comIa) { %>
+      <div class="full ead-pedido-img">
+        <% if (modulo.fotoSugestao) { %><small class="adm-mut">Descrição da imagem: <%= modulo.fotoSugestao %></small><% } %>
+        <label>Pedido da imagem <small class="adm-mut">(edite ou escreva o seu, pode ser em português)</small>
+          <textarea name="pedido" id="pedidoModulo" form="formImagemModuloIa" rows="3" maxlength="1000" placeholder="Ex.: pessoas aprendendo a manobra de desengasgo num boneco, luz natural"><%= modulo.fotoPedido || '' %></textarea>
+        </label>
+        <button type="button" class="adm-btn adm-btn-neutro ia-pedido-bt" data-url="/ead/imagens/pedido" data-tipo="modulo" data-id="<%= modulo.id %>" data-alvo="pedidoModulo"><i class="fa-solid fa-pen-nib"></i> Escrever pedido com o Claude</button>
+        <p class="ia-textos-msg" id="pedidoModulo-msg" role="status" hidden></p>
+        <button type="submit" form="formImagemModuloIa" class="adm-btn adm-btn-neutro"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar imagem com IA</button>
+      </div>
     <% } %>
   </div>
   <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> <%= novo ? 'Criar módulo' : 'Salvar' %></button>
 </form>
-
-<%# Imagens com IA (2026-11-09): selo, descrição do Claude e "Gerar outra" da imagem de abertura. %>
-<% var _stImg = typeof statusImagem !== 'undefined' ? statusImagem : null; %>
-<% var _comIa = typeof temOpenAI !== 'undefined' && temOpenAI; %>
-<% if (!novo && modulo && (modulo.fotoSugestao || modulo.fotoGeradaPorIa || _stImg || _comIa)) { %>
-<div class="adm-box adm-box-pad adm-espaco ead-imagens-ia">
-  <%- include('_status-imagens', { st: _stImg }) %>
-  <p><b>Imagem de abertura</b><% if (modulo.fotoGeradaPorIa) { %> <span class="ead-selo ia">Imagem gerada por IA</span><% } %></p>
-  <% if (modulo.fotoSugestao) { %><p class="adm-mut">Descrição: <%= modulo.fotoSugestao %></p><% } %>
-  <% if (_comIa) { %>
-    <form method="POST" action="/ead/modulo/<%= modulo.id %>/foto/gerar-outra" class="ead-pedido-img" data-confirmar="Gerar a imagem de abertura com este pedido? A atual é apagada." data-botao="Gerar" data-confirmar-tipo="ok">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <label>Pedido da imagem <small class="adm-mut">(edite ou escreva o seu, pode ser em português)</small>
-        <textarea name="pedido" id="pedidoModulo" rows="3" maxlength="1000" placeholder="Ex.: pessoas aprendendo a manobra de desengasgo num boneco, luz natural"><%= modulo.fotoPedido || '' %></textarea>
-      </label>
-      <button type="button" class="adm-btn adm-btn-neutro ia-pedido-bt" data-url="/ead/imagens/pedido" data-tipo="modulo" data-id="<%= modulo.id %>" data-alvo="pedidoModulo"><i class="fa-solid fa-pen-nib"></i> Escrever pedido com o Claude</button>
-          <p class="ia-textos-msg" id="pedidoModulo-msg" role="status" hidden></p>
-          <button type="submit" class="adm-btn adm-btn-out"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar com este pedido</button>
-    </form>
-
-  <% } %>
-</div>
+<% if (!novo && modulo) { %>
+<form id="formImagemModuloIa" method="POST" action="/ead/modulo/<%= modulo.id %>/foto/gerar-outra" hidden
+      data-confirmar="<%= v.fotoIntroUrl ? 'Gerar a imagem de abertura com este pedido? A atual é apagada.' : 'Gerar a imagem de abertura com este pedido?' %>" data-botao="Gerar" data-confirmar-tipo="ok">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+</form>
 <% } %>
 
 <script src="<%= asset('/js/imagem-pedido.js') %>"></script>

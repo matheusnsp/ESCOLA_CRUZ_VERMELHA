@@ -456,7 +456,15 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (await imagensLib.travaOcupada(`curso:${co.cursoId}`)) return voltar(res, volta, 'erro', imagensLib.OCUPADO);
     const pedido = String((req.body && req.body.pedido) || ''); // pedido escrito/editado pela pessoa (opcional)
     imagensLib.emSegundoPlano(`curso-online:${co.id}`, `curso:${co.cursoId}`, async () => {
-      const r = await imagensLib.gerarOutra({ tipo: 'curso', id: co.cursoId, pedido: pedido });
+      let p = pedido.trim();
+      if (!p && !(await prisma.curso.findUnique({ where: { id: co.cursoId }, select: { imagemPedido: true } })).imagemPedido) {
+        const t = await ia.dentroDoTeto();
+        if (!t.ok) return { ok: false, msg: t.erro };
+        const sug = await imagensLib.sugerirPedido({ tipo: 'curso', id: co.cursoId });
+        await ia.somarCustoAvulso(sug.usage).catch(() => {});
+        p = sug.pedido;
+      }
+      const r = await imagensLib.gerarOutra({ tipo: 'curso', id: co.cursoId, pedido: p });
       return { ok: r.ok, msg: r.ok ? 'Imagem nova gerada.' : r.erro };
     });
     voltar(res, volta, 'ok', 'Gerando outra imagem em segundo plano (cerca de 1 minuto). Recarregue a página para ver.');
@@ -487,7 +495,16 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (await imagensLib.travaOcupada(`modulo:${m.id}`)) return voltar(res, volta, 'erro', imagensLib.OCUPADO);
     const pedido = String((req.body && req.body.pedido) || '');
     imagensLib.emSegundoPlano(`modulo:${m.id}`, `modulo:${m.id}`, async () => {
-      const r = await imagensLib.gerarOutra({ tipo: 'modulo', id: m.id, pedido });
+      // Pedido em branco e módulo ainda sem pedido: o Claude escreve um antes de gerar.
+      let p = pedido.trim();
+      if (!p && !(await prisma.moduloEad.findUnique({ where: { id: m.id }, select: { fotoPedido: true } })).fotoPedido) {
+        const t = await ia.dentroDoTeto();
+        if (!t.ok) return { ok: false, msg: t.erro };
+        const sug = await imagensLib.sugerirPedido({ tipo: 'modulo', id: m.id });
+        await ia.somarCustoAvulso(sug.usage).catch(() => {});
+        p = sug.pedido;
+      }
+      const r = await imagensLib.gerarOutra({ tipo: 'modulo', id: m.id, pedido: p });
       return { ok: r.ok, msg: r.ok ? 'Imagem nova gerada.' : r.erro };
     });
     voltar(res, volta, 'ok', 'Gerando outra imagem em segundo plano (cerca de 1 minuto). Recarregue a página para ver.');

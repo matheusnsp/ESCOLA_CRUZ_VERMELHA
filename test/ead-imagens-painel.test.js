@@ -156,4 +156,31 @@ describe('painel: imagens com IA', { skip: temBanco ? false : 'sem DATABASE_URL 
     assert.equal(chamadasClaude, n);
     await IA.definirTeto('50', quem);
   });
+
+  test('[módulo] a IA da imagem fica junto do campo "Foto da introdução" (antes do Salvar)', async () => {
+    const pm = await get(`/ead/modulo/${m1.id}/editar`);
+    const foto = pm.indexOf('Foto da introdução');
+    const salvar = pm.indexOf('fa-floppy-disk');
+    const pedido = pm.search(/<textarea[^>]*id="pedidoModulo"/);
+    assert.ok(foto > 0 && pedido > foto && pedido < salvar, 'o pedido aparece entre a foto e o Salvar');
+    assert.match(pm, /<textarea[^>]*id="pedidoModulo"[^>]*form="formImagemModuloIa"|<textarea[^>]*form="formImagemModuloIa"[^>]*id="pedidoModulo"/);
+    assert.match(pm, /<form[^>]*id="formImagemModuloIa"[^>]*action="\/ead\/modulo\/[0-9a-f-]{36}\/foto\/gerar-outra"/);
+    assert.match(pm, /form="formImagemModuloIa"[^>]*>[^<]*<i[^>]*><\/i>\s*Gerar imagem com IA/);
+  });
+
+  test('[módulo] pedido em branco e módulo sem pedido: o Claude escreve e a imagem é gerada', async () => {
+    const m3 = await prisma.moduloEad.create({ data: { cursoOnlineId: co.id, titulo: 'Guardar o kit', ordem: 5 } });
+    try {
+      const r = await post(`/ead/modulo/${m3.id}/foto/gerar-outra`, { pedido: '' });
+      assert.equal(r.status, 302);
+      await img.ocioso();
+      const d = await prisma.moduloEad.findUnique({ where: { id: m3.id } });
+      assert.ok(d.fotoPedido, 'o Claude escreveu o pedido');
+      assert.ok(d.fotoIntroUrl, 'a imagem foi gerada');
+    } finally {
+      const d = await prisma.moduloEad.findUnique({ where: { id: m3.id } });
+      if (d.fotoIntroUrl) fs.rmSync(path.join(uploadsDir, path.basename(d.fotoIntroUrl)), { force: true });
+      await prisma.moduloEad.delete({ where: { id: m3.id } });
+    }
+  });
 });
