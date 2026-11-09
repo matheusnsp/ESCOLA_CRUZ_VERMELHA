@@ -113,9 +113,23 @@ function inicioDoMesRio(agora = new Date()) {
   const ym = agora.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
   return new Date(`${ym}-01T00:00:00-03:00`);
 }
+// Custo do Claude fora de uma geração (botões de imagem com IA, 2026-11-09), por mês, em Configuracao.
+const mesRio = (agora = new Date()) => agora.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
+const chaveCustoAvulso = (agora) => `ead-ia:custo-avulso:${mesRio(agora)}`;
+async function somarCustoAvulso(usage) {
+  if (!usage) return;
+  const chave = chaveCustoAvulso();
+  await transacao(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${chave}))`;
+    const c = await tx.configuracao.findUnique({ where: { chave } });
+    const valor = String(Math.round(((c ? Number(c.valor) || 0 : 0) + E.custoUsd(usage)) * 1e6) / 1e6);
+    await tx.configuracao.upsert({ where: { chave }, update: { valor }, create: { chave, valor } });
+  });
+}
 async function gastoDoMes(agora = new Date()) {
   const r = await prisma.geracaoIaEad.aggregate({ where: { criadoEm: { gte: inicioDoMesRio(agora) } }, _sum: { custoUsd: true } });
-  return Math.round(Number(r._sum.custoUsd || 0) * 1e4) / 1e4;
+  const avulso = await prisma.configuracao.findUnique({ where: { chave: chaveCustoAvulso(agora) } }).catch(() => null);
+  return Math.round((Number(r._sum.custoUsd || 0) + (avulso ? Number(avulso.valor) || 0 : 0)) * 1e4) / 1e4;
 }
 async function tetoMensal() {
   const c = await prisma.configuracao.findUnique({ where: { chave: CHAVE_TETO } }).catch(() => null);
@@ -435,6 +449,6 @@ async function cancelar(geracaoId, atorId) {
 module.exports = {
   MODELO, REGRAS_SYSTEM, MSG_CHAVE, EM_ANDAMENTO, ErroIa,
   prepararMaterial, montarMensagens, chamarClaude, ehChaveConfigurada, clientePadrao,
-  gastoDoMes, tetoMensal, definirTeto, dentroDoTeto, podeComecar,
+  gastoDoMes, somarCustoAvulso, mesRio, tetoMensal, definirTeto, dentroDoTeto, podeComecar,
   criarGeracao, gerarProposta, pedirOutraProposta, confirmarProposta, voltarParaProposta, gerarRoteiro, pedirOutroRoteiro, confirmarRoteiro, gerarModulo, devolverModulo, tentarDeNovo, cancelar,
 };

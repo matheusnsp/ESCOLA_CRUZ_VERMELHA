@@ -97,4 +97,147 @@ async function gerarComReserva({ pedido, pedidoCurto }, opts = {}) {
   return null;
 }
 
-module.exports = { ErroImagem, temOpenAI, modeloImagem, pedirAoClaude, gerarNaOpenAI, gerarComReserva, SYSTEM_PEDIDOS };
+// ─── Banco: gravar, gerar outra, contar ─────────────────────────────────────────────────────────
+const prisma = require('../db');
+const { transacao } = require('./transacao');
+const { salvarFotoCurso, removerFotoCurso } = require('./upload');
+
+const AVISO_SEM_CHAVE = 'Sem chave da OpenAI: as descrições do Claude estão em cada módulo, envie as imagens.';
+let fetchFixo = null; // testes fixam um fetch falso (definirFetch)
+const definirFetch = (f) => { fetchFixo = f || null; };
+const fetchDe = (o) => (o && o.fetch) || fetchFixo || globalThis.fetch;
+
+// Contadores (sem limite: o painel só mostra quantas foram geradas).
+const chaveMes = () => `ead-ia:imagens:${require('./ead-ia').mesRio()}`;
+const CHAVE_TOTAL = 'ead-ia:imagens:total';
+async function contarImagem() {
+  for (const chave of [chaveMes(), CHAVE_TOTAL]) {
+    await transacao(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${chave}))`;
+      const c = await tx.configuracao.findUnique({ where: { chave } });
+      const valor = String((c ? Number(c.valor) || 0 : 0) + 1);
+      await tx.configuracao.upsert({ where: { chave }, update: { valor }, create: { chave, valor } });
+    });
+  }
+}
+async function contagem() {
+  const ler = async (chave) => { const c = await prisma.configuracao.findUnique({ where: { chave } }).catch(() => null); return c ? Number(c.valor) || 0 : 0; };
+  return { mes: await ler(chaveMes()), total: await ler(CHAVE_TOTAL) };
+}
+
+// Gera (com reserva) e guarda em WebP; null se a OpenAI não gerou.
+async function gerarEGuardar(p, opts) {
+  const buf = await gerarComReserva(p, { fetch: fetchDe(opts) });
+  if (!buf) return null;
+  const url = await salvarFotoCurso({ buffer: buf, mimetype: 'image/png' });
+  await contarImagem();
+  return url;
+}
+
+// Uma geração de imagens por alvo por vez (duplo clique; passo da fila + botão). Marca em Configuracao (como a fila
+// da IA): criada no começo, apagada no fim; vence em 15 min (serviço que morreu no meio). Sem transação longa aberta.
+const VALIDADE_TRAVA_MS = 15 * 60 * 1000;
+const OCUPADO = 'As imagens já estão sendo geradas. Aguarde um pouco e recarregue a página.';
+async function comTrava(nome, fn, seOcupado) {
+  const chave = `ead-ia:imagens-ocupado:${nome}`;
+  const meu = `${Date.now()}:${process.pid}-${Math.random().toString(36).slice(2, 10)}`;
+  try {
+    await prisma.configuracao.create({ data: { chave, valor: meu } });
+  } catch (e) {
+    if (e.code !== 'P2002') throw e;
+    const atual = await prisma.configuracao.findUnique({ where: { chave } });
+    const hora = atual ? Number(String(atual.valor).split(':')[0]) || 0 : 0;
+    if (atual && Date.now() - hora < VALIDADE_TRAVA_MS) return seOcupado;
+    const r = await prisma.configuracao.updateMany({ where: { chave, valor: atual ? atual.valor : '' }, data: { valor: meu } });
+    if (!r.count) return seOcupado;
+  }
+  try {
+    return await fn();
+  } finally {
+    await prisma.configuracao.deleteMany({ where: { chave, valor: meu } }).catch(() => {});
+  }
+}
+
+// Curso online: capa e abertura dos módulos, só o que está vazio. { geradas, descricoes, aviso }.
+async function imagensDoCursoOnline(cursoOnlineId, { cliente, fetch, custo = () => {} } = {}) {
+  return comTrava(`curso-online:${cursoOnlineId}`, async () => {
+    const co = await prisma.cursoOnline.findUnique({
+      where: { id: cursoOnlineId },
+      include: { curso: true, modulos: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }], include: { topicos: { orderBy: { ordem: 'asc' }, select: { titulo: true } } } } },
+    });
+    if (!co) return { geradas: 0, descricoes: 0, aviso: null };
+    const vazios = co.modulos.filter((m) => !m.fotoIntroUrl);
+    const capaVazia = !co.curso.imagemUrl;
+    if (!capaVazia && !vazios.length) return { geradas: 0, descricoes: 0, aviso: null };
+    const { pedidos, usage } = await pedirAoClaude({
+      curso: { nome: co.curso.nome, descricao: co.curso.descricao, categoria: null },
+      modulos: vazios.map((m) => ({ id: m.id, titulo: m.titulo, topicos: m.topicos.map((t) => t.titulo) })),
+    }, { cliente });
+    await custo(usage);
+    const comChave = temOpenAI();
+    let geradas = 0; let descricoes = 0;
+    if (capaVazia) {
+      descricoes++;
+      const url = comChave ? await gerarEGuardar(pedidos.capa, { fetch }) : null;
+      // Só grava a imagem se a capa continua vazia (alguém pode ter enviado uma enquanto gerava).
+      const r = await prisma.curso.updateMany({
+        where: { id: co.curso.id, imagemUrl: null },
+        data: { imagemPedido: pedidos.capa.pedido, imagemSugestao: pedidos.capa.descricao, ...(url ? { imagemUrl: url, imagemGeradaPorIa: true } : {}) },
+      });
+      if (url && r.count) geradas++; else if (url) await removerFotoCurso(url);
+    }
+    for (const p of pedidos.modulos) {
+      descricoes++;
+      const url = comChave ? await gerarEGuardar(p, { fetch }) : null;
+      const r = await prisma.moduloEad.updateMany({
+        where: { id: p.moduloId, fotoIntroUrl: null },
+        data: { fotoPedido: p.pedido, fotoSugestao: p.descricao, ...(url ? { fotoIntroUrl: url, fotoGeradaPorIa: true } : {}) },
+      });
+      if (url && r.count) geradas++; else if (url) await removerFotoCurso(url);
+    }
+    return { geradas, descricoes, aviso: comChave ? null : AVISO_SEM_CHAVE };
+  }, { geradas: 0, descricoes: 0, aviso: OCUPADO });
+}
+
+// Curso presencial (só a imagem do curso): sempre gera e troca; a antiga é apagada depois de gravar a nova.
+async function imagemDoCurso(cursoId, { cliente, fetch, custo = () => {} } = {}) {
+  if (!temOpenAI()) return { ok: false, erro: 'Sem chave da OpenAI: configure OPENAI_API_KEY no Render para gerar imagens.' };
+  return comTrava(`curso:${cursoId}`, async () => {
+    const c = await prisma.curso.findUnique({ where: { id: cursoId } });
+    if (!c) return { ok: false, erro: 'Curso não encontrado.' };
+    const extras = await require('./extras').lerExtra('curso', c.id).catch(() => ({}));
+    const { pedidos, usage } = await pedirAoClaude({ curso: { nome: c.nome, descricao: c.descricao, categoria: (extras && extras.categoria) || null } }, { cliente });
+    await custo(usage);
+    const url = await gerarEGuardar(pedidos.capa, { fetch });
+    if (!url) return { ok: false, erro: 'A OpenAI não conseguiu gerar a imagem. Tente de novo ou envie uma imagem.' };
+    await prisma.curso.update({ where: { id: c.id }, data: { imagemUrl: url, imagemPedido: pedidos.capa.pedido, imagemSugestao: pedidos.capa.descricao, imagemGeradaPorIa: true } });
+    if (c.imagemUrl) await removerFotoCurso(c.imagemUrl).catch(() => {});
+    return { ok: true };
+  }, { ok: false, erro: OCUPADO });
+}
+
+// "Gerar outra": mesmo pedido, imagem nova; a antiga é apagada. tipo 'curso' (id do Curso) ou 'modulo'.
+async function gerarOutra({ tipo, id }, opts = {}) {
+  const semPedido = { ok: false, erro: 'Ainda não há pedido de imagem: use Gerar imagens com IA.' };
+  if (!temOpenAI()) return { ok: false, erro: 'Sem chave da OpenAI: configure OPENAI_API_KEY no Render para gerar imagens.' };
+  return comTrava(`${tipo}:${id}`, async () => {
+    const alvo = tipo === 'modulo'
+      ? await prisma.moduloEad.findUnique({ where: { id }, select: { fotoPedido: true, fotoIntroUrl: true } })
+      : await prisma.curso.findUnique({ where: { id }, select: { imagemPedido: true, imagemUrl: true } });
+    if (!alvo) return { ok: false, erro: 'Não encontrado.' };
+    const pedido = tipo === 'modulo' ? alvo.fotoPedido : alvo.imagemPedido;
+    if (!pedido) return semPedido;
+    const url = await gerarEGuardar({ pedido }, opts);
+    if (!url) return { ok: false, erro: 'A OpenAI não conseguiu gerar a imagem. Tente de novo ou envie uma imagem.' };
+    const antiga = tipo === 'modulo' ? alvo.fotoIntroUrl : alvo.imagemUrl;
+    if (tipo === 'modulo') await prisma.moduloEad.update({ where: { id }, data: { fotoIntroUrl: url, fotoGeradaPorIa: true } });
+    else await prisma.curso.update({ where: { id }, data: { imagemUrl: url, imagemGeradaPorIa: true } });
+    if (antiga) await removerFotoCurso(antiga).catch(() => {});
+    return { ok: true };
+  }, { ok: false, erro: OCUPADO });
+}
+
+module.exports = {
+  ErroImagem, temOpenAI, modeloImagem, pedirAoClaude, gerarNaOpenAI, gerarComReserva, SYSTEM_PEDIDOS,
+  AVISO_SEM_CHAVE, OCUPADO, definirFetch, contagem, imagensDoCursoOnline, imagemDoCurso, gerarOutra,
+};

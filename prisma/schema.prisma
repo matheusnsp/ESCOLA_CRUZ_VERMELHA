@@ -62,6 +62,10 @@ model Curso {
   cargaHoraria       Int
   escolaridadeMinima String?
   imagemUrl          String?
+  // Imagens com IA (2026-11-09): pedido do Claude, descrição e selo da imagem do curso (online e presencial).
+  imagemPedido       String?
+  imagemSugestao     String?
+  imagemGeradaPorIa  Boolean            @default(false)
   precoAvista        Decimal      @db.Decimal(10, 2)
   precoCheio         Decimal      @db.Decimal(10, 2)
   parcelas           Int          @default(1)
@@ -342,6 +346,10 @@ model ModuloEad {
   status           StatusModuloEad @default(RASCUNHO)
   // Etapa 9: módulo escrito pela IA (selo "Gerado por IA" no painel; histórico, fica depois de validar).
   geradoPorIa      Boolean         @default(false)
+  // Imagens com IA (2026-11-09): o pedido do Claude para a imagem de abertura, a descrição e o selo.
+  fotoPedido       String?
+  fotoSugestao     String?
+  fotoGeradaPorIa  Boolean         @default(false)
   validadoPor      String?
   validadoEm       DateTime?
   criadoEm         DateTime        @default(now())
