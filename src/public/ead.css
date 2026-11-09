@@ -514,3 +514,10 @@ details.ea-indice > summary, .ea-indice summary { padding: 12px 0; }
   .ea-header-curso .ea-menu, .ea-header-curso .ea-acao-pc { display: none; }
   .ea-header-curso .ea-gaveta { display: block; }
 }
+/* E-books da Escola Digital (2026-11-09): capa em pé ao lado do título e o texto "Sobre o e-book". */
+.ea-ebook-topo { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
+.ea-ebook-capa { width: 150px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; border: 1px solid var(--ln); box-shadow: 0 18px 40px rgba(16,24,40,.14); background: #fff; display: block; }
+.ea-ebook-capa-vazia { display: grid; place-items: center; color: var(--r); font-size: 40px; background: #fff5f5; }
+@media (min-width: 720px) { .ea-ebook-topo { grid-template-columns: 180px minmax(0, 1fr); gap: 28px; } .ea-ebook-capa { width: 180px; } }
+.ea-ebook-sobre { max-width: 760px; margin-bottom: 36px; }
+.ea-ebook-sobre p { font-size: 16.5px; line-height: 1.7; color: #3a3a3a; margin: 0 0 14px; }

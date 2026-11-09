@@ -332,6 +332,7 @@ siteAluno.use((req, res, next) => {
     prisma.gestorEscolaEad.count({ where: { usuarioId: id } }).catch(() => 0),
   ]).then(([cursos, gestor]) => { res.locals.contaLinks = { cursosOnline: cursos > 0, gestor: gestor > 0 }; next(); }, () => next());
 });
+siteAluno.use(require('./routes/ebooks')); // e-books da Escola Digital (2026-11-09), antes de /escola-digital/<curso>
 siteAluno.use(require('./routes/ead-online'));
 // Etapa 6: Minha escola (gestor) e o convite do lote; também marca o atalho na Minha conta.
 siteAluno.use(require('./routes/ead-escola'));

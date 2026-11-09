@@ -127,8 +127,9 @@ async function opcoesParcelasOnline(valor, max, buscarTabela = buscarTabelaPadra
 }
 
 // Para onde a tela de retorno leva quando o pagamento confirma.
+// E-book (2026-11-09): o curso escondido do e-book vem com curso.ebook (routes/cursos.js inclui) e volta à página dele.
 const destinoAposPagamento = (matricula) => (matricula && matricula.turma && matricula.turma.status === 'ONLINE'
-  ? require('./vitrine').urlOnline(matricula.turma.curso)
+  ? (matricula.turma.curso && matricula.turma.curso.ebook ? require('./vitrine').urlEbook(matricula.turma.curso) : require('./vitrine').urlOnline(matricula.turma.curso))
   : '/minha-conta?inscrito=1');
 
 module.exports = { iniciarCobrancaAVista, urlRetorno, JANELA_PIX_MS, cobrancaCartaoOnline, opcoesParcelasOnline, destinoAposPagamento };

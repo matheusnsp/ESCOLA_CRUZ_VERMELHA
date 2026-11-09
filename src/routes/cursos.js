@@ -1106,7 +1106,7 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
     ? await prisma.matricula.findFirst({
         where: { id: matriculaId, alunoId: req.session.usuarioId },
         include: {
-          turma: { include: { curso: true } },
+          turma: { include: { curso: { include: { ebook: { select: { id: true } } } } } },
           pagamentos: { orderBy: { criadoEm: 'desc' }, take: 1 },
         },
       })

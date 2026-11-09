@@ -143,3 +143,5 @@ router.post(['/online/:cursoId/comprar', '/escola-digital/:cursoId/comprar'], re
 }));
 
 module.exports = router;
+// E-books (2026-11-09): a compra do e-book (routes/ebooks.js) usa as mesmas peças.
+module.exports.compra = { matriculaDaCompra, gravarCupom, liberarSemPagamento, SELECT_ALUNO_CHECKOUT };

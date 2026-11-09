@@ -657,6 +657,21 @@ async function enviarCursoOnlineLiberado(email, nome, { curso, link }) {
   await enviar(email, `Seu curso online está liberado: ${limpo(curso)}`, html, `Curso online liberado (${curso})`, link);
 }
 
+// E-books (2026-11-09): compra do e-book confirmada (lib/status-pagamento.js, turma ONLINE do curso escondido).
+async function enviarEbookLiberado(email, nome, { ebook, link }) {
+  const limpo = (t) => String(t).replace(/[<>&"]/g, '');
+  const html = moldura(
+    'Seu e-book está liberado',
+    limpo(nome),
+    `Recebemos o seu pagamento. O e-book <strong>${limpo(ebook)}</strong> já é seu: entre com o seu login e baixe o PDF `
+      + 'quando quiser, quantas vezes precisar. Ele também fica em "Minha conta", na seção E-books.',
+    'Baixar e-book',
+    link,
+    'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.'
+  );
+  await enviar(email, `Seu e-book está liberado: ${limpo(ebook)}`, html, `E-book liberado (${ebook})`, link);
+}
+
 // Etapa 5: a Escola respondeu a dúvida que o aluno mandou numa aula do curso online.
 async function enviarDuvidaRespondida(email, nome, { curso, tela, link }) {
   const limpo = (t) => String(t).replace(/[<>&"]/g, '');
@@ -714,6 +729,7 @@ module.exports = {
   enviarGestorEscola,
   enviarDuvidaRespondida,
   enviarCursoOnlineLiberado,
+  enviarEbookLiberado,
   enviarCertificadoEadPronto,
   enviarComprovanteRecusado,
   enviarEncaixeMatriculaRapida,

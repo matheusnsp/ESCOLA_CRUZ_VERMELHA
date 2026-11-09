@@ -37,11 +37,14 @@ function calcularDesconto(cupom, preco) {
 
 const usosDoCupom = (cupomId) => prisma.cupomMatriculaEad.count({ where: { cupomId, matricula: { statusPagamento: { in: PAGOS } } } });
 
-async function validarCupom(codigo, co) {
+// alvo: o CursoOnline ou (com { ebook: true }) o Ebook — os dois têm id e precoOnline. E-books (2026-11-09): cupom
+// de um curso não vale para e-book e vice-versa; sem curso nem e-book, vale para todos.
+async function validarCupom(codigo, co, { ebook = false } = {}) {
   const c = normalizarCodigo(codigo);
   const cupom = codigoValido(c) ? await prisma.cupomEad.findUnique({ where: { codigo: c } }) : null;
   if (!cupom || !cupom.ativo) return { erro: MSG.naoAchou };
-  if (cupom.cursoOnlineId && cupom.cursoOnlineId !== co.id) return { erro: MSG.outroCurso };
+  if (cupom.cursoOnlineId && (ebook || cupom.cursoOnlineId !== co.id)) return { erro: MSG.outroCurso };
+  if (cupom.ebookId && (!ebook || cupom.ebookId !== co.id)) return { erro: MSG.outroCurso };
   if (cupom.validoAte && fimDoDiaRio(cupom.validoAte) < new Date()) return { erro: MSG.venceu };
   if (cupom.limiteUsos !== null && cupom.limiteUsos !== undefined && await usosDoCupom(cupom.id) >= cupom.limiteUsos) return { erro: MSG.esgotado };
   return { cupom, ...calcularDesconto(cupom, Number(co.precoOnline || 0)) };

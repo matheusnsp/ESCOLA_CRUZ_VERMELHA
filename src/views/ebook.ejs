@@ -1,0 +1,119 @@
+<%#
+  Página do e-book na Escola Digital (2026-11-09; spec 2026-11-09-escola-digital-ebooks.md §3.1). Mesmo visual da
+  página do curso online (ead.css, _topo/_fim). acesso.situacao: sem | gratis | pendente | pago | cancelado.
+%><%
+  var c = ebook.curso;
+  var temAcesso = acesso.situacao === 'pago' || acesso.situacao === 'gratis';
+  var dataBR = function (d) { return new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }); };
+  var final = cupom ? cupom.precoFinal : preco;
+%>
+<%- include('ead-teste/_topo', { titulo: c.nome }) %>
+<% if (!ebook.publicado) { %><div class="ea-teste">Rascunho · só a equipe vê esta página</div><% } %>
+<section class="ea-heroi ea-heroi-ebook">
+  <div class="ea-wrap ea-heroi-grid">
+    <div class="ea-ebook-topo">
+      <% if (c.imagemUrl) { %><img class="ea-ebook-capa" src="<%= c.imagemUrl %>" alt="Capa do e-book <%= c.nome %>"><% } else { %><span class="ea-ebook-capa ea-ebook-capa-vazia" aria-hidden="true"><i class="fa-solid fa-book-open"></i></span><% } %>
+      <div>
+        <p class="ea-kicker">E-book</p>
+        <h1><%= c.nome %><span>.</span></h1>
+        <% if (c.descricao) { %><p class="ea-heroi-lead"><%= c.descricao %></p><% } %>
+        <div class="ea-chips">
+          <span class="ea-chip"><i class="fa-regular fa-file-pdf" aria-hidden="true"></i> <%= ebook.paginas %> páginas</span>
+          <span class="ea-chip">PDF</span>
+          <span class="ea-chip"><i class="fa-solid fa-mobile-screen" aria-hidden="true"></i> Leia no celular ou imprima</span>
+        </div>
+      </div>
+    </div>
+    <div class="ea-cartao">
+      <% if (temAcesso && (acesso.situacao === 'pago' || acesso.desde)) { %>
+        <p class="ea-kicker">Seu e-book</p>
+        <h2>Pronto para baixar<span style="color:var(--r)">.</span></h2>
+        <p>Já é seu desde <%= dataBR(acesso.desde) %>. Baixe quantas vezes precisar: o PDF sai com o seu nome no rodapé.</p>
+        <a class="ea-pilula ea-pilula-red" href="<%= base %>/baixar">Baixar e-book</a>
+      <% } else if (acesso.situacao === 'gratis') { %>
+        <p class="ea-kicker">E-book</p>
+        <h2>Grátis<span style="color:var(--r)">.</span></h2>
+        <p>É só baixar. O PDF sai com o seu nome no rodapé.</p>
+        <a class="ea-pilula ea-pilula-red" href="<%= base %>/baixar">Baixar e-book</a>
+      <% } else if (acesso.situacao === 'pendente') { %>
+        <p class="ea-kicker">Pagamento em andamento</p>
+        <h2>Falta só confirmar o pagamento<span style="color:var(--r)">.</span></h2>
+        <p>Assim que o banco confirmar, o botão de baixar aparece aqui e você recebe um e-mail. O PIX costuma confirmar em segundos.</p>
+        <% if (retornoUrl) { %><a class="ea-pilula ea-pilula-red" href="<%= retornoUrl %>">Ver o pagamento →</a><% } %>
+      <% } else if (ebook.gratuito) { %>
+        <p class="ea-kicker">E-book</p>
+        <h2>Grátis<span style="color:var(--r)">.</span></h2>
+        <p>Crie sua conta (ou entre) e baixe o PDF. É grátis.</p>
+        <a class="ea-pilula ea-pilula-red" href="<%= base %>/criar-conta">Criar conta e baixar</a>
+        <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/entrar">Já tenho conta</a>
+      <% } else { %>
+        <p class="ea-kicker"><%= acesso.situacao === 'cancelado' ? 'Compra cancelada' : 'E-book' %></p>
+        <% if (cupom) { %>
+          <h2><s><%= brl(cupom.precoCheio) %></s> <%= final === 0 ? 'Grátis' : brl(final) %><span style="color:var(--r)">.</span></h2>
+        <% } else { %>
+          <h2><%= brl(preco) %><span style="color:var(--r)">.</span></h2>
+        <% } %>
+        <p><%= acesso.situacao === 'cancelado' ? 'O pagamento foi cancelado ou devolvido. Para ter o e-book, faça uma nova compra.' : (ebook.maxParcelas > 1 ? 'À vista no PIX ou em até ' + ebook.maxParcelas + 'x no cartão. ' : 'Pagamento único, por PIX ou cartão. ') + 'Depois de confirmado, é só baixar.' %></p>
+        <% if (erro) { %><p class="ea-obs" role="alert"><b><%= erro %></b></p><% } %>
+        <% if (cupom) { %>
+          <p class="ea-obs ea-cupom-ok">Cupom <%= cupom.codigo %> aplicado: <%= brl(cupom.desconto) %> de desconto. <a href="<%= base %>?cupom=">tirar</a></p>
+        <% } else { %>
+          <form method="GET" action="<%= base %>" class="ea-cupom">
+            <label class="ea-obs" for="eaCupom">Tem cupom?</label>
+            <span class="ea-cupom-linha">
+              <input id="eaCupom" type="text" name="cupom" maxlength="40" autocomplete="off" autocapitalize="characters" placeholder="CÓDIGO">
+              <button type="submit" class="ea-pilula ea-pilula-clara">Aplicar</button>
+            </span>
+            <% if (erroCupom) { %><p class="ea-obs" role="alert"><b><%= erroCupom %></b> <a href="<%= base %>?cupom=">tirar</a></p><% } %>
+          </form>
+        <% } %>
+        <% if (logado) { %>
+          <form method="POST" action="<%= base %>/comprar" class="ea-compra">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <% if (cupom) { %><input type="hidden" name="cupom" value="<%= cupom.codigo %>"><% } %>
+            <% if (cupom && final === 0) { %>
+              <input type="hidden" name="forma" value="CUPOM">
+              <button type="submit" class="ea-pilula ea-pilula-red">Liberar e-book</button>
+            <% } else { %>
+              <fieldset class="ea-compra-formas">
+                <legend class="ea-obs">Forma de pagamento</legend>
+                <label><input type="radio" name="forma" value="PIX" checked> PIX</label>
+                <label><input type="radio" name="forma" value="CREDITO"> Cartão de crédito</label>
+              </fieldset>
+              <button type="submit" class="ea-pilula ea-pilula-red">Comprar · <%= brl(final) %></button>
+            <% } %>
+          </form>
+        <% } else { %>
+          <a class="ea-pilula ea-pilula-red" href="<%= base %>/criar-conta">Criar conta e comprar</a>
+          <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/entrar">Já tenho conta</a>
+        <% } %>
+      <% } %>
+      <% if (temAcesso && erro) { %><p class="ea-obs" role="alert"><b><%= erro %></b></p><% } %>
+    </div>
+  </div>
+</section>
+
+<main class="ea-wrap ea-secao">
+  <% if (c.descricaoLonga) { %>
+  <section class="ea-ebook-sobre">
+    <p class="ea-kicker">O que você vai encontrar</p>
+    <h2 class="ea-secao-h">Sobre o e-book<span>.</span></h2>
+    <% c.descricaoLonga.split(/\n\s*\n/).forEach(function (par) { %><p><%= par.trim() %></p><% }) %>
+  </section>
+  <% } %>
+  <% if (faqs.length) { %>
+  <section class="ea-faq" aria-labelledby="faq-titulo">
+    <p class="ea-kicker">Antes de baixar</p>
+    <h2 class="ea-secao-h" id="faq-titulo">Dúvidas frequentes<span>.</span></h2>
+    <div class="ea-faq-lista">
+      <% faqs.forEach(function (f) { %>
+        <details class="ea-faq-item">
+          <summary><%= f.pergunta %></summary>
+          <p><%= f.resposta %></p>
+        </details>
+      <% }) %>
+    </div>
+  </section>
+  <% } %>
+</main>
+<%- include('ead-teste/_fim') %>
