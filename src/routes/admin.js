@@ -1239,6 +1239,11 @@ router.post('/cursos/:id/excluir', requirePermissao('cursos:gerenciar'), async (
     return res.redirect(backCursos(req, 'Não é possível excluir: o curso tem conteúdo EAD. Desative o EAD em EAD → curso antes.', 'erro'));
   }
 
+  // Cupom do curso presencial (2026-11-09): o banco recusaria (onDelete Restrict); apagar o cupom muda o alcance dele.
+  if (await prisma.cupomEad.count({ where: { cursoId: curso.id } })) {
+    return res.redirect(backCursos(req, 'Não é possível excluir: o curso tem cupom de desconto. Apague o cupom em Cupons antes.', 'erro'));
+  }
+
   await prisma.curso.delete({ where: { id: curso.id } });
   await removerFotoCurso(curso.imagemUrl);
   await auditar(req, 'EXCLUIU_CURSO', 'Curso', curso.id, { nome: curso.nome });

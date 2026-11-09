@@ -705,7 +705,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
   });
   const valoresDoCupom = (c) => ({
     codigo: c.codigo, tipo: c.tipo, valor: Number(c.valor).toLocaleString('pt-BR', { maximumFractionDigits: 2 }), cursoOnlineId: c.cursoOnlineId || '',
-    alvo: c.ebookId ? `ebook:${c.ebookId}` : c.cursoOnlineId ? `curso:${c.cursoOnlineId}` : '',
+    alvo: c.ebookId ? `ebook:${c.ebookId}` : c.cursoOnlineId ? `curso:${c.cursoOnlineId}` : c.cursoId ? `presencial:${c.cursoId}` : c.todosPresenciais ? 'presenciais' : '',
     validoAte: c.validoAte ? new Date(c.validoAte).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }) : '',
     limiteUsos: c.limiteUsos === null ? '' : String(c.limiteUsos), observacao: c.observacao || '',
   });
@@ -718,7 +718,9 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
 
   async function formCupom(res, { cupom = null, valores = {}, erro = null, compras = [], status = 200, ok = null } = {}) {
     const ebooks = await prisma.ebook.findMany({ select: { id: true, curso: { select: { nome: true } } }, orderBy: { criadoEm: 'asc' } });
-    res.status(status).render('admin/ead/cupom-form', { cupom, valores, erro, ok, compras, cursos: await cursosDoForm(), ebooks, usos: cupom ? await cupons.usosDoCupom(cupom.id) : 0 });
+    // Presencial (2026-11-09): os cursos do presencial (sem os só online e os de e-book).
+    const presenciais = await cursoSoOnline.semSoOnline(await prisma.curso.findMany({ select: { id: true, nome: true, ativo: true }, orderBy: { nome: 'asc' } }));
+    res.status(status).render('admin/ead/cupom-form', { cupom, valores, erro, ok, compras, cursos: await cursosDoForm(), ebooks, presenciais, usos: cupom ? await cupons.usosDoCupom(cupom.id) : 0 });
   }
   router.get('/ead/cupons/novo', async (req, res) => formCupom(res, { valores: { tipo: 'PERCENTUAL' } }));
   router.post('/ead/cupons/novo', async (req, res) => {

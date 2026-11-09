@@ -82,6 +82,7 @@ model Curso {
   online             CursoOnline?
   // E-book (2026-11-09): o curso escondido do e-book (a FK fica em "Ebook"). Fora de toda lista de cursos.
   ebook              Ebook?
+  cuponsPresencial   CupomEad[]
 }
 
 model FaqCurso {
@@ -667,6 +668,10 @@ model CupomEad {
   // E-book (2026-11-09): cupom só deste e-book. Sem cursoOnlineId nem ebookId, vale para todos.
   ebookId       String?
   ebook         Ebook?              @relation(fields: [ebookId], references: [id], onDelete: Restrict)
+  // Cupom no presencial (2026-11-09): um curso presencial (qualquer turma) ou todos os presenciais.
+  cursoId          String?
+  curso            Curso?           @relation(fields: [cursoId], references: [id], onDelete: Restrict)
+  todosPresenciais Boolean          @default(false)
   compras       CupomMatriculaEad[]
 }
 

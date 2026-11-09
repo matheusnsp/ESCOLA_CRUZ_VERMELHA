@@ -50,12 +50,16 @@
       <% if (travado) { %><input type="hidden" name="tipo" value="<%= v.tipo %>"><% } %>
     </label>
     <label>Desconto (% ou R$)<input type="text" name="valor" inputmode="decimal" required value="<%= v.valor || '' %>" placeholder="10"></label>
-    <% var _alvo = v.alvo !== undefined ? v.alvo : (v.cursoOnlineId ? 'curso:' + v.cursoOnlineId : ''); var _eb = typeof ebooks !== 'undefined' ? ebooks : []; %>
+    <% var _alvo = v.alvo !== undefined ? v.alvo : (v.cursoOnlineId ? 'curso:' + v.cursoOnlineId : ''); var _eb = typeof ebooks !== 'undefined' ? ebooks : []; var _pr = typeof presenciais !== 'undefined' ? presenciais : []; %>
     <label>Vale para
       <select name="alvo">
         <option value="">Todos os cursos online e e-books</option>
         <optgroup label="Cursos online">
           <% cursos.forEach(function (c) { %><option value="curso:<%= c.id %>" <%= _alvo === 'curso:' + c.id ? 'selected' : '' %>><%= c.curso.nome %></option><% }) %>
+        </optgroup>
+        <optgroup label="Cursos presenciais (o desconto vale só no valor do curso, não na taxa)">
+          <option value="presenciais" <%= _alvo === 'presenciais' ? 'selected' : '' %>>Todos os cursos presenciais</option>
+          <% _pr.forEach(function (c) { %><option value="presencial:<%= c.id %>" <%= _alvo === 'presencial:' + c.id ? 'selected' : '' %>><%= c.nome %><%= c.ativo ? '' : ' (inativo)' %></option><% }) %>
         </optgroup>
         <% if (_eb.length) { %>
         <optgroup label="E-books">
