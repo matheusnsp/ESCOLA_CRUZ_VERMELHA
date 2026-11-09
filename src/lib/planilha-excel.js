@@ -267,6 +267,8 @@ function abaTurma(wb, escolhas) {
     quantidade: LINHAS_LISTA,
     colunas: [
       ['Aluno', 'Aluno', 36],
+      // CPF ao lado do nome: a secretaria confere a pessoa sem sair da aba (vem de Matrículas → Documento).
+      ['CPF', 'Documento', 16],
       ['Situação do pagamento', 'Situação do pagamento', 32],
       ['Falta pagar (R$)', 'Falta pagar (R$)', 16],
       ['WhatsApp', (n) => linkWhats(valor('Matriculas', 'Celular', n)), 12],
@@ -275,8 +277,8 @@ function abaTurma(wb, escolhas) {
       ['E-mail', 'E-mail', 32],
     ],
   });
-  corPorSituacao(ws, `B9:B${8 + LINHAS_LISTA}`);
-  ws.getColumn(3).width = 16; ws.getColumn(4).width = 12; ws.getColumn(5).width = 24; ws.getColumn(6).width = 14;
+  corPorSituacao(ws, `C9:C${8 + LINHAS_LISTA}`);
+  ws.getColumn(4).width = 16; ws.getColumn(5).width = 12; ws.getColumn(6).width = 24; ws.getColumn(7).width = 14;
 }
 
 function abaAluno(wb, escolhas) {
