@@ -111,6 +111,42 @@ async function criarOuRetomarMatricula(alunoId, turmaId, dados) {
   return prisma.matricula.create({ data: { alunoId, turmaId, ...dados } });
 }
 
+// ── Cupom na inscrição do presencial (2026-11-09; spec 2026-11-09-cupom-presencial.md) ──────────────────
+// O código vem do link/formulário da tela (?cupom=), do envio (body.cupom) ou da sessão (chegou pelo link e fez
+// login). Devolve { cupom (o registro, ou null), codigo, erro, pediu }. Só o válido fica na sessão.
+const cupons = require('../lib/ead-cupom');
+const { limiteCupom, registrarFalhaCupom, MSG_TENTATIVAS } = require('../lib/limite-cupom');
+async function cupomDaInscricao(req, curso, { doEnvio = false } = {}) {
+  const daSessao = req.session && req.session.cupomPresencial && req.session.cupomPresencial.curso === curso.id ? req.session.cupomPresencial.codigo : '';
+  const pediu = doEnvio ? req.body.cupom !== undefined : req.query.cupom !== undefined;
+  const codigo = pediu ? cupons.normalizarCodigo(doEnvio ? req.body.cupom : req.query.cupom) : (doEnvio ? '' : daSessao);
+  if (req.session && pediu && !doEnvio) req.session.cupomPresencial = undefined;
+  if (!codigo) return { cupom: null, codigo: '', erro: null, pediu };
+  if (req.cupomBloqueado) return { cupom: null, codigo, erro: MSG_TENTATIVAS, pediu };
+  const v = await cupons.validarCupom(codigo, curso, { presencial: true, preco: Number(curso.precoAvista) });
+  if (v.erro) { if (pediu) registrarFalhaCupom(req); return { cupom: null, codigo, erro: v.erro, pediu }; }
+  if (req.session) req.session.cupomPresencial = { curso: curso.id, codigo: v.cupom.codigo };
+  return { cupom: v.cupom, codigo: v.cupom.codigo, erro: null, pediu };
+}
+
+// Grava (ou tira) o cupom da matrícula: preço do curso no plano, desconto e preço final.
+async function gravarCupomInscricao(matriculaId, cupom, valores) {
+  if (!cupom) return prisma.cupomMatriculaEad.deleteMany({ where: { matriculaId } });
+  const precoFinal = Number(valores.valorCurso); const desconto = Number(valores.desconto);
+  const dados = { cupomId: cupom.id, precoCheio: Math.round((precoFinal + desconto) * 100) / 100, desconto, precoFinal };
+  return prisma.cupomMatriculaEad.upsert({ where: { matriculaId }, update: dados, create: { matriculaId, ...dados } });
+}
+
+// Total zero (curso de graça pelo cupom e sem taxa): confirma sem cobrança, como o cupom de 100% do online.
+async function confirmarSemCobranca(matricula, cupom) {
+  const agora = new Date();
+  const quem = `cupom:${cupom.codigo}`;
+  await prisma.matricula.update({ where: { id: matricula.id }, data: { statusPagamento: 'PAGO', taxaConfirmada: true, taxaConfirmadaEm: agora, taxaConfirmadaPor: quem, confirmadaEm: agora, confirmadaPor: quem } });
+  await prisma.pagamento.updateMany({ where: { matriculaId: matricula.id, status: 'PENDENTE' }, data: { status: 'CANCELADO' } });
+  await cupons.auditar(matricula.alunoId, 'CUPOM_PRESENCIAL_LIBEROU', cupom.id, { matriculaId: matricula.id });
+  await require('../lib/status-pagamento').avisarMatriculaConfirmada(matricula.id);
+}
+
 // Cursos inativos ficam visíveis e matriculáveis apenas para o papel DEV.
 // Serve para testar um curso "em construção" sem publicá-lo pros alunos.
 function filtroVisibilidadeCurso(usuario) {
@@ -526,7 +562,7 @@ async function situacaoSaude(curso, alunoId, query = {}) {
   };
 }
 
-router.get('/inscrever/:turmaId', requireLogin, async (req, res) => {
+router.get('/inscrever/:turmaId', requireLogin, limiteCupom, async (req, res) => {
   const turma = await prisma.turma.findUnique({
     where: { id: req.params.turmaId },
     include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
@@ -571,21 +607,22 @@ router.get('/inscrever/:turmaId', requireLogin, async (req, res) => {
   });
   const ehPassaporte = aluno?.tipoDocumento === 'PASSAPORTE';
 
-  const aVista = await calcularValores(turma.curso, 'A_VISTA', req.session.usuarioId);
+  const cupomInfo = await cupomDaInscricao(req, turma.curso);
+  const aVista = await calcularValores(turma.curso, 'A_VISTA', req.session.usuarioId, { cupom: cupomInfo.cupom });
 
   // Parcelamento só é oferecido a quem tem CPF/CNPJ (gateway) e quando o
-  // curso de fato tem mais de 1 parcela configurada.
+  // curso de fato tem mais de 1 parcela configurada. Curso de graça pelo cupom: só à vista (a taxa).
   let parcelado = null;
   let parceladoComJuros = null;
   const numParcelas = Number(turma.curso.parcelas) || 1;
-  if (!ehPassaporte && numParcelas > 1) {
-    parcelado = await calcularValores(turma.curso, 'PARCELADO', req.session.usuarioId);
+  if (!ehPassaporte && numParcelas > 1 && Number(aVista.valorCurso) > 0) {
+    parcelado = await calcularValores(turma.curso, 'PARCELADO', req.session.usuarioId, { cupom: cupomInfo.cupom });
     parceladoComJuros = await montarParceladoComJuros(parcelado, numParcelas);
   }
 
   res.render('inscrever', {
     turma, curso: turma.curso, formatBRL,
-    aVista, parcelado, parceladoComJuros,
+    aVista, parcelado, parceladoComJuros, cupomInfo,
     ehPassaporte,
     saude: await situacaoSaude(turma.curso, req.session.usuarioId, req.query),
     etapaAtual: 'escolha',
@@ -612,7 +649,7 @@ router.post('/inscrever/:turmaId/comprovante', requireLogin, comprovanteSaude.re
   return volta('comprovante=enviado');
 });
 
-router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
+router.post('/inscrever/:turmaId', requireLogin, limiteCupom, async (req, res) => {
   const turma = await prisma.turma.findUnique({
     where: { id: req.params.turmaId },
     include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
@@ -643,21 +680,28 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   });
   const ehPassaporte = aluno?.tipoDocumento === 'PASSAPORTE';
 
+  // Cupom do envio: conferido de novo aqui. Inválido ⇒ volta com a mensagem, nada é gravado.
+  const cupomInfo = await cupomDaInscricao(req, turma.curso, { doEnvio: true });
+  const cupom = cupomInfo.cupom;
+  const valoresDe = (plano) => calcularValores(turma.curso, plano, req.session.usuarioId, { cupom });
+
   const reRenderErro = async (msg, etapaAtual = 'escolha') => {
-    const aVista = await calcularValores(turma.curso, 'A_VISTA', req.session.usuarioId);
+    const aVista = await valoresDe('A_VISTA');
     let parcelado = null, parceladoComJuros = null;
     const numParcelas = Number(turma.curso.parcelas) || 1;
-    if (!ehPassaporte && numParcelas > 1) {
-      parcelado = await calcularValores(turma.curso, 'PARCELADO', req.session.usuarioId);
+    if (!ehPassaporte && numParcelas > 1 && Number(aVista.valorCurso) > 0) {
+      parcelado = await valoresDe('PARCELADO');
       parceladoComJuros = await montarParceladoComJuros(parcelado, numParcelas);
     }
     return res.status(400).render('inscrever', {
       turma, curso: turma.curso, formatBRL,
-      aVista, parcelado, parceladoComJuros,
+      aVista, parcelado, parceladoComJuros, cupomInfo: cupomInfo.erro ? cupomInfo : { ...cupomInfo, pediu: false },
       ehPassaporte, etapaAtual, erro: msg,
       saude: await situacaoSaude(turma.curso, req.session.usuarioId),
     });
   };
+
+  if (cupomInfo.erro) return reRenderErro(cupomInfo.erro);
 
   // Curso da área da saúde: sem comprovante enviado (ou aprovado), não segue para o pagamento.
   const saude = await situacaoSaude(turma.curso, req.session.usuarioId);
@@ -676,7 +720,7 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
     if (!formasValidas.includes(forma))
       return reRenderErro('Forma de pagamento inválida.');
 
-    const valoresCalculados = await calcularValores(turma.curso, 'A_VISTA', req.session.usuarioId);
+    const valoresCalculados = await valoresDe('A_VISTA');
     const total = Number(valoresCalculados.total); // já inclui taxa de matrícula
 
     try {
@@ -687,6 +731,8 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
         valorTaxaMatricula: valoresCalculados.valorTaxaMatricula,
         statusPagamento: 'PENDENTE',
       });
+      await gravarCupomInscricao(matricula.id, cupom, valoresCalculados);
+      if (cupom && total <= 0) { await confirmarSemCobranca(matricula, cupom); return res.redirect('/minha-conta?inscrito=1'); }
 
       await prisma.pagamento.create({
         data: {
@@ -720,7 +766,7 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
     if (!['PIX', 'CREDITO'].includes(forma))
       return reRenderErro('Selecione a forma de pagamento.');
 
-    const valoresCalculados = await calcularValores(turma.curso, 'A_VISTA', req.session.usuarioId);
+    const valoresCalculados = await valoresDe('A_VISTA');
     const total = Number(valoresCalculados.total); // curso + taxa
 
     let matricula;
@@ -736,6 +782,11 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
       console.error('[Inscrição] Erro ao criar matrícula:', err.message);
       return reRenderErro('Não foi possível concluir a inscrição.');
     }
+    await gravarCupomInscricao(matricula.id, cupom, valoresCalculados);
+    if (cupom && total <= 0) {
+      await confirmarSemCobranca(matricula, cupom);
+      return res.redirect('/minha-conta?inscrito=1');
+    }
 
     // Cobrança à vista (crédito: cartão na tela de retorno; PIX: QR reaproveitado ou criado agora).
     const cobranca = await iniciarCobrancaAVista({
@@ -749,17 +800,19 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   // /pagar-taxa (PIX ou Cartão, via gateway); o curso em si é pago
   // presencialmente na secretaria, sem gateway, em /pagar-curso. -----
   if (plano === 'PRESENCIAL') {
-    const valoresCalculados = await calcularValores(turma.curso, 'A_VISTA', req.session.usuarioId);
+    const valoresCalculados = await valoresDe('A_VISTA');
     const total = Number(valoresCalculados.total);
 
+    if (cupom && Number(valoresCalculados.valorCurso) <= 0) return reRenderErro('Com este cupom o curso sai de graça: escolha o pagamento à vista.');
     try {
-      await criarOuRetomarMatricula(req.session.usuarioId, turma.id, {
+      const mp = await criarOuRetomarMatricula(req.session.usuarioId, turma.id, {
         plano: 'PRESENCIAL',
         forma: 'DINHEIRO', // forma real do curso é escolhida na secretaria; aqui é só placeholder
         valorCurso: total,
         valorTaxaMatricula: valoresCalculados.valorTaxaMatricula,
         statusPagamento: 'PENDENTE',
       });
+      await gravarCupomInscricao(mp.id, cupom, valoresCalculados);
     } catch (err) {
       console.error('[Inscrição] Erro ao criar matrícula (presencial):', err.message);
       return reRenderErro('Não foi possível concluir a inscrição.');
@@ -776,17 +829,19 @@ router.post('/inscrever/:turmaId', requireLogin, async (req, res) => {
   // parcelado) — fixamos 'CREDITO' aqui por ser o método que sempre paga o
   // curso (a parte principal do valor). A forma real de cada Pagamento fica
   // registrada individualmente em Pagamento.metodo.
-  const valoresCalculados = await calcularValores(turma.curso, 'PARCELADO', req.session.usuarioId);
+  const valoresCalculados = await valoresDe('PARCELADO');
   const total = Number(valoresCalculados.total);
 
+  if (cupom && Number(valoresCalculados.valorCurso) <= 0) return reRenderErro('Com este cupom o curso sai de graça: escolha o pagamento à vista.');
   try {
-    await criarOuRetomarMatricula(req.session.usuarioId, turma.id, {
+    const mp = await criarOuRetomarMatricula(req.session.usuarioId, turma.id, {
       plano: 'PARCELADO',
       forma: 'CREDITO',
       valorCurso: total,
       valorTaxaMatricula: valoresCalculados.valorTaxaMatricula,
       statusPagamento: 'PENDENTE',
     });
+    await gravarCupomInscricao(mp.id, cupom, valoresCalculados);
   } catch (err) {
     console.error('[Inscrição] Erro ao criar matrícula (parcelado):', err.message);
     return reRenderErro('Não foi possível concluir a inscrição.');
