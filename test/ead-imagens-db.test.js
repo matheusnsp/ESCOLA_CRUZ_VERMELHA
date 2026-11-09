@@ -177,4 +177,18 @@ describe('imagens com IA: banco', { skip: temBanco ? false : 'sem DATABASE_URL l
     }
     assert.ok(vistos.size >= 2, `a trava mudou durante a geração (${vistos.size})`);
   });
+
+  test('[motivo] a OpenAI recusa: a mensagem mostra o motivo que ela devolveu', async () => {
+    process.env.OPENAI_API_KEY = 'sk-teste';
+    const c = await prisma.curso.create({ data: { nome: `Presencial Motivo ${s}`, cargaHoraria: 8, precoAvista: 100, precoCheio: 120, valorParcela: 40, ativo: true } });
+    cursos.push(c.id);
+    const recusa = () => ({ status: 403, json: { error: { message: 'Your organization must be verified to use the model `gpt-image-1`.', type: 'invalid_request_error' } } });
+    const r = await img.imagemDoCurso(c.id, { cliente: claude([]), fetch: openaiFalso([recusa]), custo: () => {} });
+    assert.equal(r.ok, false);
+    assert.match(r.erro, /organization must be verified/);
+    const { co, m1, m2 } = await cursoOnline({ comFotoNoSegundo: false });
+    const b = await img.imagensDoCursoOnline(co.id, { cliente: claude([m1.id, m2.id]), fetch: openaiFalso([recusa]), custo: () => {} });
+    assert.equal(b.geradas, 0);
+    assert.match(b.motivo || '', /organization must be verified/);
+  });
 });

@@ -50,31 +50,62 @@ async function pedirAoClaude({ curso, modulos = [] }, opts = {}) {
   return { pedidos: v.pedidos, usage };
 }
 
+// Modelo de imagem: OPENAI_IMAGE_MODEL ou gpt-image-1. Se a conta não tiver esse modelo ("does not exist"), o
+// sistema consulta a lista de modelos da chave (/v1/models), escolhe o de imagem mais novo e guarda (2026-11-09).
+let modeloDescoberto = null;
+const esquecerModelo = () => { modeloDescoberto = null; };
+const modeloAtual = () => modeloDescoberto || modeloImagem();
+const versao = (id) => Number((String(id).match(/gpt-image-(\d+(?:\.\d+)?)/) || [])[1]) || 0;
+function escolherModelo(ids) {
+  const gpt = ids.filter((id) => /^gpt-image/.test(id));
+  const cheio = gpt.filter((id) => !/mini/.test(id)).sort((a, b) => versao(b) - versao(a) || b.length - a.length);
+  if (cheio.length) return cheio[0];
+  if (gpt.length) return gpt.sort((a, b) => versao(b) - versao(a))[0];
+  return ids.includes('dall-e-3') ? 'dall-e-3' : null;
+}
+// dall-e-3 tem tamanhos e qualidades próprios.
+const corpo = (model, prompt) => (/^dall-e/.test(model)
+  ? { model, prompt, size: '1792x1024', quality: 'standard', n: 1, response_format: 'b64_json' }
+  : { model, prompt, size: '1536x1024', quality: 'medium', n: 1 });
+const naoExiste = (status, corpoResp) => (status === 400 || status === 404)
+  && /does not exist|model_not_found/i.test(JSON.stringify((corpoResp && corpoResp.error) || ''));
+
 // Gera uma imagem na OpenAI e devolve o Buffer (PNG). Lança ErroImagem em qualquer falha.
 async function gerarNaOpenAI(prompt, { fetch = globalThis.fetch, timeoutMs = TIMEOUT_MS } = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    let r;
+  const auth = { Authorization: `Bearer ${String(process.env.OPENAI_API_KEY || '').trim()}` };
+  const chamar = async (url, opts) => {
     try {
-      r = await fetch(URL_OPENAI, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${String(process.env.OPENAI_API_KEY || '').trim()}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: modeloImagem(), prompt, size: '1536x1024', quality: 'medium', n: 1 }),
-        signal: ctrl.signal,
-      });
+      return await fetch(url, { ...opts, signal: ctrl.signal });
     } catch (e) {
       throw new ErroImagem(e.name === 'AbortError' ? 'A OpenAI demorou demais para gerar a imagem.' : `Não foi possível falar com a OpenAI: ${e.message}`);
     }
-    const corpo = await r.json().catch(() => null);
+  };
+  try {
+    let model = modeloAtual();
+    let r = await chamar(URL_OPENAI, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify(corpo(model, prompt)) });
+    let resp = await r.json().catch(() => null);
+    if (!r.ok && naoExiste(r.status, resp)) {
+      const lista = await chamar('https://api.openai.com/v1/models', { method: 'GET', headers: auth });
+      const dados = await lista.json().catch(() => null);
+      const novo = escolherModelo(((dados && dados.data) || []).map((m) => m.id));
+      if (!novo) throw new ErroImagem(`A sua conta da OpenAI não tem nenhum modelo de imagem disponível (o modelo "${model}" não existe para esta chave). Veja em platform.openai.com se o projeto da chave tem acesso a modelos de imagem.`);
+      if (novo !== model) {
+        console.log(`[EAD IMAGENS] Modelo "${model}" não existe nesta conta; usando "${novo}".`);
+        modeloDescoberto = novo; model = novo;
+        r = await chamar(URL_OPENAI, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify(corpo(model, prompt)) });
+        resp = await r.json().catch(() => null);
+      }
+    }
     if (!r.ok) {
-      const msg = corpo && corpo.error ? corpo.error.message || corpo.error.code : `HTTP ${r.status}`;
+      const msg = resp && resp.error ? resp.error.message || resp.error.code : `HTTP ${r.status}`;
       throw new ErroImagem(`A OpenAI recusou ou falhou (${r.status}): ${msg}`);
     }
-    const item = corpo && Array.isArray(corpo.data) ? corpo.data[0] : null;
+    const item = resp && Array.isArray(resp.data) ? resp.data[0] : null;
     if (item && item.b64_json) return Buffer.from(item.b64_json, 'base64');
     if (item && item.url) {
-      const d = await fetch(item.url, { signal: ctrl.signal }).catch((e) => { throw new ErroImagem(`Não foi possível baixar a imagem: ${e.message}`); });
+      const d = await chamar(item.url, { method: 'GET' });
       if (!d.ok) throw new ErroImagem(`Não foi possível baixar a imagem (${d.status}).`);
       const buf = Buffer.from(await d.arrayBuffer());
       if (buf.length) return buf;
@@ -85,7 +116,7 @@ async function gerarNaOpenAI(prompt, { fetch = globalThis.fetch, timeoutMs = TIM
   }
 }
 
-// Tenta o pedido; se falhar, o pedido curto; as duas falham → null (o alvo fica vazio, com a descrição).
+// opts.erros (lista, opcional) recebe o motivo de cada falha, para a tela mostrar o que a OpenAI respondeu.
 async function gerarComReserva({ pedido, pedidoCurto }, opts = {}) {
   for (const p of [pedido, pedidoCurto].filter(Boolean)) {
     try {
@@ -93,6 +124,7 @@ async function gerarComReserva({ pedido, pedidoCurto }, opts = {}) {
     } catch (e) {
       if (!(e instanceof ErroImagem)) throw e;
       console.error('[EAD IMAGENS]', e.message);
+      if (Array.isArray(opts.erros)) opts.erros.push(e.message);
     }
   }
   return null;
@@ -129,9 +161,12 @@ async function contagem() {
   return { mes: await ler(chaveMes()), total: await ler(CHAVE_TOTAL) };
 }
 
+// A mensagem da tela quando a OpenAI não gera: com o motivo que ela devolveu (ex.: organização não verificada).
+const msgFalha = (erros) => `A OpenAI não conseguiu gerar a imagem${erros && erros.length ? `: ${String(erros[erros.length - 1]).slice(0, 300)}` : ''}. Tente de novo ou envie uma imagem.`;
+
 // Gera (com reserva) e guarda em WebP; null se a OpenAI não gerou.
 async function gerarEGuardar(p, opts) {
-  const buf = await gerarComReserva(p, { fetch: fetchDe(opts) });
+  const buf = await gerarComReserva(p, { fetch: fetchDe(opts), erros: opts && opts.erros });
   if (!buf) return null;
   const url = await salvarFotoCurso({ buffer: buf, mimetype: 'image/png' });
   await contarImagem();
@@ -232,10 +267,11 @@ async function imagensDoCursoOnline(cursoOnlineId, { cliente, fetch, custo = () 
     }, { cliente });
     await custo(usage);
     const comChave = temOpenAI();
+    const erros = [];
     let geradas = 0; let descricoes = 0;
     if (capaVazia) {
       descricoes++;
-      const url = comChave ? await gerarEGuardar(pedidos.capa, { fetch }) : null;
+      const url = comChave ? await gerarEGuardar(pedidos.capa, { fetch, erros }) : null;
       // Só grava a imagem se a capa continua vazia (alguém pode ter enviado uma enquanto gerava).
       const r = await prisma.curso.updateMany({
         where: { id: co.curso.id, imagemUrl: null },
@@ -245,7 +281,7 @@ async function imagensDoCursoOnline(cursoOnlineId, { cliente, fetch, custo = () 
     }
     for (const p of pedidos.modulos) {
       descricoes++;
-      const url = comChave ? await gerarEGuardar(p, { fetch }) : null;
+      const url = comChave ? await gerarEGuardar(p, { fetch, erros }) : null;
       // Revisão I2: imagem nova num módulo validado volta o módulo a rascunho (precisa de revisão), como toda
       // mudança de conteúdo do módulo.
       const r = await transacao(async (tx) => {
@@ -258,7 +294,7 @@ async function imagensDoCursoOnline(cursoOnlineId, { cliente, fetch, custo = () 
       });
       if (url && r.count) geradas++; else if (url) await removerFotoCurso(url);
     }
-    return { geradas, descricoes, aviso: comChave ? null : AVISO_SEM_CHAVE };
+    return { geradas, descricoes, aviso: comChave ? null : AVISO_SEM_CHAVE, motivo: erros[0] || null };
   }, { geradas: 0, descricoes: 0, aviso: OCUPADO });
 }
 
@@ -271,8 +307,9 @@ async function imagemDoCurso(cursoId, { cliente, fetch, custo = () => {} } = {})
     const extras = await require('./extras').lerExtra('curso', c.id).catch(() => ({}));
     const { pedidos, usage } = await pedirAoClaude({ curso: { nome: c.nome, descricao: c.descricao, categoria: (extras && extras.categoria) || null } }, { cliente });
     await custo(usage);
-    const url = await gerarEGuardar(pedidos.capa, { fetch });
-    if (!url) return { ok: false, erro: 'A OpenAI não conseguiu gerar a imagem. Tente de novo ou envie uma imagem.' };
+    const erros = [];
+    const url = await gerarEGuardar(pedidos.capa, { fetch, erros });
+    if (!url) return { ok: false, erro: msgFalha(erros) };
     await prisma.curso.update({ where: { id: c.id }, data: { imagemUrl: url, imagemPedido: pedidos.capa.pedido, imagemSugestao: pedidos.capa.descricao, imagemGeradaPorIa: true } });
     if (c.imagemUrl) await removerFotoCurso(c.imagemUrl).catch(() => {});
     return { ok: true };
@@ -290,8 +327,9 @@ async function gerarOutra({ tipo, id }, opts = {}) {
     if (!alvo) return { ok: false, erro: 'Não encontrado.' };
     const pedido = tipo === 'modulo' ? alvo.fotoPedido : alvo.imagemPedido;
     if (!pedido) return semPedido;
-    const url = await gerarEGuardar({ pedido }, opts);
-    if (!url) return { ok: false, erro: 'A OpenAI não conseguiu gerar a imagem. Tente de novo ou envie uma imagem.' };
+    const erros = [];
+    const url = await gerarEGuardar({ pedido }, { ...opts, erros });
+    if (!url) return { ok: false, erro: msgFalha(erros) };
     const antiga = tipo === 'modulo' ? alvo.fotoIntroUrl : alvo.imagemUrl;
     if (tipo === 'modulo') {
       await transacao(async (tx) => {
@@ -306,6 +344,6 @@ async function gerarOutra({ tipo, id }, opts = {}) {
 }
 
 module.exports = {
-  ErroImagem, temOpenAI, modeloImagem, pedirAoClaude, gerarNaOpenAI, gerarComReserva, SYSTEM_PEDIDOS,
-  AVISO_SEM_CHAVE, OCUPADO, definirFetch, definirCliente, configurar, emSegundoPlano, statusDe, ocioso, travaOcupada, contagem, imagensDoCursoOnline, imagemDoCurso, gerarOutra,
+  ErroImagem, temOpenAI, modeloImagem, esquecerModelo, escolherModelo, pedirAoClaude, gerarNaOpenAI, gerarComReserva, SYSTEM_PEDIDOS,
+  AVISO_SEM_CHAVE, OCUPADO, msgFalha, definirFetch, definirCliente, configurar, emSegundoPlano, statusDe, ocioso, travaOcupada, contagem, imagensDoCursoOnline, imagemDoCurso, gerarOutra,
 };

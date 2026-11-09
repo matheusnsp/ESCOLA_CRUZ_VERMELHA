@@ -59,6 +59,20 @@ describe('painel: criação com IA passo a passo', { skip: temBanco ? false : 's
     assert.match(await r.text(), /Conte a ideia em pelo menos 10 caracteres/);
   });
 
+  test('[sem limite] ideia longa (5 mil caracteres) é aceita e o campo não tem limite', async () => {
+    assert.doesNotMatch(await get('/ead/ia/novo'), /name="ideia"[^>]*maxlength/);
+    const r = await post('/ead/ia/novo', { ideia: 'Primeiros socorros para professores de creche. '.repeat(110), destino: 'novo' });
+    const t = r.status === 302 ? '' : await r.text();
+    assert.doesNotMatch(t, /Ideia: até/);
+    const id = r.status === 302 ? (r.headers.get('location').match(/\/ead\/ia\/([0-9a-f-]{36})/) || [])[1] : null;
+    assert.ok(id, 'criou a geração');
+    const g = await prisma.geracaoIaEad.findUnique({ where: { id } });
+    assert.ok(g.pedido.ideia.length > 5000, 'a ideia inteira foi guardada');
+    await fila.ocioso();
+    await require('../src/lib/ead-ia').cancelar(id, quem).catch(() => {});
+    await prisma.geracaoIaEad.delete({ where: { id } }).catch(() => {});
+  });
+
   test('passo 1 → 2: a ideia cria a geração e a proposta aparece preenchida', async () => {
     const r = await post('/ead/ia/novo', { ideia: 'Primeiros socorros para professores de creche', destino: 'novo' });
     assert.equal(r.status, 302);

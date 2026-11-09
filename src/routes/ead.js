@@ -441,7 +441,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
       await prisma.logAuditoria.create({ data: { atorId: quem, acao: 'EAD_IMAGENS_IA', alvoTipo: 'CursoOnline', alvoId: co.id, detalhe: { geradas: r.geradas, descricoes: r.descricoes } } }).catch(() => {});
       if (r.aviso) return { ok: !!r.geradas, msg: r.geradas ? `${plural(r.geradas)}. ${r.aviso}` : r.aviso };
       if (!r.descricoes) return { ok: true, msg: 'Nada para preencher: a capa e os módulos já têm imagem.' };
-      if (!r.geradas) return { ok: false, msg: 'A OpenAI não conseguiu gerar as imagens. As descrições ficaram em cada módulo; tente de novo ou envie as imagens.' };
+      if (!r.geradas) return { ok: false, msg: `A OpenAI não conseguiu gerar as imagens${r.motivo ? `: ${String(r.motivo).slice(0, 300)}` : ''}. As descrições ficaram em cada módulo; tente de novo ou envie as imagens.` };
       return { ok: true, msg: `${plural(r.geradas)}.` };
     });
     voltar(res, volta, 'ok', MSG_SEGUNDO_PLANO);
@@ -522,7 +522,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const ideia = String(b.ideia || '').trim();
     const texto = String(b.texto || '');
     if (ideia.length < 10) return { erro: 'Conte a ideia em pelo menos 10 caracteres (o que ensinar e para quem).' };
-    if (ideia.length > 1000) return { erro: 'Ideia: até 1000 caracteres.' };
+    // Sem limite de tamanho para a ideia (pedido do Matheus, 2026-11-09): vale o limite do envio do formulário.
     if (texto.length > 100000) return { erro: 'Texto colado: até 100 mil caracteres.' };
     if (arquivos.some((f) => !ehMaterial(f))) return { erro: 'Envie só arquivos PDF ou Word (.docx).' };
     if (arquivos.reduce((t, f) => t + f.size, 0) > MAX_BYTES_MATERIAL) return { erro: 'Os arquivos passam de 20 MB.' };

@@ -12,11 +12,12 @@
 
 <form method="POST" action="/ead/ia/novo?_csrf=<%= csrfToken %>" enctype="multipart/form-data" class="adm-box adm-box-pad ia-ideia">
   <h2 class="adm-h2 adm-form-h">Qual é a ideia?</h2>
-  <p class="adm-mut">Conte com suas palavras o que você quer ensinar e para quem. A IA sugere o nome, a descrição, a carga horária, o preço e os módulos, e você confere no próximo passo.</p>
+  <p class="adm-mut">Conte com suas palavras o que você quer ensinar e para quem. A IA sugere o nome, a descrição, a carga horária, o preço, os módulos e as dúvidas frequentes, e você confere no próximo passo.</p>
   <div class="adm-form adm-campos">
     <label class="full">O que você quer ensinar, e para quem?
-      <textarea name="ideia" rows="4" maxlength="1000" required placeholder="Ex.: primeiros socorros para professores de creche, com foco em engasgo, quedas e como pedir ajuda"><%= v.ideia || '' %></textarea>
+      <textarea name="ideia" rows="6" required placeholder="Ex.: primeiros socorros para professores de creche, com foco em engasgo, quedas e como pedir ajuda"><%= v.ideia || '' %></textarea>
     </label>
+    <p class="full adm-hint">Dica: quer dúvidas específicas na página do curso? Escreva aqui, por exemplo "Inclua nas dúvidas: Precisa de experiência? Tem certificado?". A IA usa essas perguntas como você escreveu e completa até 6.</p>
   </div>
 
   <details class="ia-opcional"<%- v.destino === 'existente' || v.texto ? ' open' : '' %>>
