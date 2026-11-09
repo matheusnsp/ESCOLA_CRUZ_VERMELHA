@@ -9,10 +9,12 @@ const prisma = require('../db');
 const extras = require('./extras');
 
 const CHAVE = 'escola-digital:ligada';
+const CHAVE_DESTAQUE = 'escola-digital:destaque'; // id do CursoOnline em destaque na vitrine (ausente = automático)
 const CACHE_MS = 30 * 1000; // os 3 serviços do Render leem o banco; 30 s de atraso no máximo depois de mudar
 let cache = null; // { valor, ate }
+let cacheDestaque = null; // { valor, ate }
 
-function limparCache() { cache = null; }
+function limparCache() { cache = null; cacheDestaque = null; }
 
 async function estaLigada() {
   if (cache && cache.ate > Date.now()) return cache.valor;
@@ -40,16 +42,48 @@ async function definirLigada(ligada, req) {
   return {};
 }
 
+// Destaque da vitrine (2026-11-09): id do CursoOnline escolhido na secretaria, ou null (automático).
+async function lerDestaque() {
+  if (cacheDestaque && cacheDestaque.ate > Date.now()) return cacheDestaque.valor;
+  let valor = null;
+  try {
+    const c = await prisma.configuracao.findUnique({ where: { chave: CHAVE_DESTAQUE } });
+    valor = c && c.valor ? c.valor : null;
+  } catch (e) {
+    console.error('[ESCOLA DIGITAL] leitura do destaque:', e.message);
+  }
+  cacheDestaque = { valor, ate: Date.now() + CACHE_MS };
+  return valor;
+}
+
+async function definirDestaque(cursoOnlineId, req) {
+  if (cursoOnlineId) {
+    const ok = /^[0-9a-f-]{36}$/i.test(String(cursoOnlineId)) && (await prisma.cursoOnline.count({ where: { id: cursoOnlineId, publicado: true } }));
+    if (!ok) return { erro: 'Escolha um curso online publicado.' };
+    await prisma.configuracao.upsert({ where: { chave: CHAVE_DESTAQUE }, update: { valor: cursoOnlineId }, create: { chave: CHAVE_DESTAQUE, valor: cursoOnlineId } });
+  } else {
+    await prisma.configuracao.deleteMany({ where: { chave: CHAVE_DESTAQUE } });
+  }
+  limparCache();
+  await prisma.logAuditoria.create({
+    data: { atorId: (req && req.session && req.session.usuarioId) || 'SISTEMA', acao: 'ESCOLA_DIGITAL_DESTAQUE', alvoTipo: 'Configuracao', alvoId: CHAVE_DESTAQUE, detalhe: { cursoOnlineId: cursoOnlineId || null } },
+  }).catch((e) => console.error('[ESCOLA DIGITAL] auditoria:', e.message));
+  return {};
+}
+
 // Cursos da página /escola-digital: todo curso online publicado (com preço), no formato do card do catálogo
 // (partials/v-card-cat.ejs). Todos levam à página do curso online (online.somenteOnline = true no card).
 async function cursosDaEscolaDigital() {
   try {
     const lista = await prisma.cursoOnline.findMany({
-      where: { publicado: true, precoOnline: { gt: 0 } },
+      where: { publicado: true, OR: [{ gratuito: true }, { precoOnline: { gt: 0 } }] },
       include: { curso: { select: { id: true, nome: true, descricao: true, imagemUrl: true, cargaHoraria: true, escolaridadeMinima: true } } },
-      orderBy: { curso: { nome: 'asc' } },
+      orderBy: [{ ordemVitrine: 'asc' }, { curso: { nome: 'asc' } }],
     });
-    const cursos = lista.map((co) => ({ ...co.curso, turmas: [], online: { preco: Number(co.precoOnline), somenteOnline: true } }));
+    const cursos = lista.map((co) => ({
+      ...co.curso, turmas: [],
+      online: { preco: co.gratuito ? 0 : Number(co.precoOnline), gratis: co.gratuito, maxParcelas: co.maxParcelas || 1, cursoOnlineId: co.id, somenteOnline: true },
+    }));
     await extras.anexar('curso', cursos);
     return cursos;
   } catch (e) {
@@ -58,4 +92,4 @@ async function cursosDaEscolaDigital() {
   }
 }
 
-module.exports = { CHAVE, estaLigada, definirLigada, cursosDaEscolaDigital, limparCache };
+module.exports = { CHAVE, CHAVE_DESTAQUE, estaLigada, definirLigada, lerDestaque, definirDestaque, cursosDaEscolaDigital, limparCache };

@@ -6,12 +6,13 @@
 
 const prisma = require('../db');
 
-const temPreco = (co) => co.precoOnline !== null && co.precoOnline !== undefined && Number(co.precoOnline) > 0;
+// À venda: preço maior que zero, ou gratuito (Escola Digital, vitrine 2026-11-09: o grátis fica com preço 0).
+const temPreco = (co) => co.gratuito === true || (co.precoOnline !== null && co.precoOnline !== undefined && Number(co.precoOnline) > 0);
 
-// Pendências para ligar (lista vazia = pode publicar). co: { precoOnline, modulos: [{ titulo, status }] }
+// Pendências para ligar (lista vazia = pode publicar). co: { precoOnline, gratuito, modulos: [{ titulo, status }] }
 function podePublicar(co) {
   const pend = [];
-  if (!temPreco(co)) pend.push('Defina o preço do curso online.');
+  if (!temPreco(co)) pend.push('Defina o preço do curso online (ou marque Gratuito).');
   const modulos = co.modulos || [];
   if (!modulos.length) pend.push('O curso não tem módulos.');
   for (const m of modulos) if (m.status !== 'VALIDADO') pend.push(`Módulo "${m.titulo}" em rascunho.`);
@@ -34,23 +35,23 @@ function lerPreco(texto) {
   return v > 0 && v <= 99999.99 ? v : null;
 }
 
-// Map cursoId → preço dos cursos online publicados, para o catálogo e a página do curso. Consulta à
+// Map cursoId → { preco, gratis } dos cursos online publicados, para o catálogo e a página do curso. Consulta à
 // parte e sem derrubar a página: se falhar (ex.: banco sem a migração), o site sai sem o selo.
 async function cursosOnlinePublicados() {
   try {
-    const lista = await prisma.cursoOnline.findMany({ where: { publicado: true }, select: { cursoId: true, precoOnline: true } });
-    return new Map(lista.filter(temPreco).map((c) => [c.cursoId, Number(c.precoOnline)]));
+    const lista = await prisma.cursoOnline.findMany({ where: { publicado: true }, select: { cursoId: true, precoOnline: true, gratuito: true } });
+    return new Map(lista.filter(temPreco).map((c) => [c.cursoId, { preco: c.gratuito ? 0 : Number(c.precoOnline), gratis: c.gratuito }]));
   } catch (e) {
     console.error('[EAD] cursos online publicados:', e.message);
     return new Map();
   }
 }
 
-// Põe curso.online = { preco } (ou null) em cada curso da lista.
+// Põe curso.online = { preco, gratis } (ou null) em cada curso da lista.
 async function anexarOnline(cursos) {
   const mapa = await cursosOnlinePublicados();
-  for (const c of cursos) if (c) c.online = mapa.has(c.id) ? { preco: mapa.get(c.id) } : null;
+  for (const c of cursos) if (c) c.online = mapa.has(c.id) ? { ...mapa.get(c.id) } : null;
   return cursos;
 }
 
-module.exports = { podePublicar, avisoPublicado, lerPreco, cursosOnlinePublicados, anexarOnline };
+module.exports = { temPreco, podePublicar, avisoPublicado, lerPreco, cursosOnlinePublicados, anexarOnline };

@@ -317,6 +317,9 @@ model CursoOnline {
   somenteOnline  Boolean         @default(false)
   // Etapa 7: parcelas no cartão (1 = só à vista), juros do Únicopag com o aluno.
   maxParcelas    Int             @default(1)
+  // Escola Digital, vitrine (2026-11-09): curso grátis (precoOnline fica 0) e a ordem na vitrine (menor primeiro).
+  gratuito       Boolean         @default(false)
+  ordemVitrine   Int             @default(0)
   criadoEm       DateTime        @default(now())
   atualizadoEm   DateTime        @updatedAt
   // Restrict: apagar o curso não leva o conteúdo junto por acidente (POST /cursos/:id/excluir avisa).
