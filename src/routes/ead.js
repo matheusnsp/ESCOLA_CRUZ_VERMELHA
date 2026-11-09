@@ -568,10 +568,10 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const dc = (conf && conf.destino) || {};
     const valoresProposta = proposta || (conf ? {
       nome: dc.nome, descricao: dc.descricao, cargaHoraria: dc.cargaHoraria, tema: conf.tema, publico: conf.publico, nModulos: conf.nModulos,
-      observacoes: conf.observacoes, maxParcelas: dc.maxParcelas, precoOnline: reais(dc.precoOnline),
+      observacoes: conf.observacoes, maxParcelas: dc.maxParcelas, precoOnline: reais(dc.precoOnline), faqs: conf.faqs || [],
     } : {
       nome: p.nome, descricao: p.descricao, cargaHoraria: p.cargaHoraria, tema: p.tema, publico: p.publico, nModulos: p.nModulos,
-      observacoes: p.observacoes, maxParcelas: p.maxParcelas, precoOnline: p.precoSugerido ? reais(p.precoSugerido) : '',
+      observacoes: p.observacoes, maxParcelas: p.maxParcelas, precoOnline: p.precoSugerido ? reais(p.precoSugerido) : '', faqs: p.faqs || [],
     });
     res.status(status).render('admin/ead/ia-geracao', { g, roteiro: roteiro || g.roteiro, co, cursoNome: co ? co.curso.nome : coDestino ? coDestino.curso.nome : (g.pedido.destino && g.pedido.destino.nome) || p.nome, erro, ok, valoresProposta });
   }
@@ -601,8 +601,9 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (g.status !== 'PROPOSTA_PRONTA') return voltar(res, `/ead/ia/${g.id}`, 'erro', 'Esta geração não está esperando a proposta.');
     const d = g.pedido.destino || {};
     const r = await lerPedidoIa({ ...req.body, destino: d.tipo, cursoOnlineId: d.cursoOnlineId }, []);
-    if (r.erro) return paginaGeracao(res, g, { erro: r.erro, proposta: req.body, status: 400 });
-    const c = await ia.confirmarProposta(g.id, r.pedido, ator(req));
+    const faqsForm = Object.values((req.body && req.body.faqsIa) || {}).map((f) => ({ pergunta: f.pergunta, resposta: f.resposta, usar: f.usar }));
+    if (r.erro) return paginaGeracao(res, g, { erro: r.erro, proposta: { ...req.body, faqs: faqsForm }, status: 400 });
+    const c = await ia.confirmarProposta(g.id, { ...r.pedido, faqs: iaTextos.lerFaqsDoForm(req.body) }, ator(req));
     if (!c.ok) return paginaGeracao(res, g, { erro: c.erro, proposta: req.body, status: 400 });
     iaFila.acordar();
     voltar(res, `/ead/ia/${g.id}`, 'ok', 'Proposta confirmada. A IA está montando o roteiro.');

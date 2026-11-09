@@ -52,6 +52,8 @@ const ESQUEMA_PROPOSTA = objeto({
   nome: texto, descricao: texto, cargaHoraria: { type: 'integer' }, publico: texto, tema: texto,
   nModulos: { type: 'integer' }, precoSugerido: { type: 'number' }, maxParcelas: { type: 'integer' }, observacoes: texto,
   porqueCargaHoraria: texto, porqueModulos: texto, porquePreco: texto,
+  // Escrever com IA (2026-11-09): as dúvidas frequentes do curso vêm na proposta e entram no curso ao criar.
+  faqs: lista(objeto({ pergunta: texto, resposta: texto })),
 });
 
 // Proposta da IA: números ajustados às faixas do formulário; nome e tema obrigatórios.
@@ -110,6 +112,7 @@ function validarProposta(json) {
       cargaHoraria: Math.round(faixa(j.cargaHoraria, 1, 600, 4)), nModulos: Math.round(faixa(j.nModulos, 2, 12, 4)),
       precoSugerido: Math.round(faixa(j.precoSugerido, 0, 10000, 0) * 100) / 100, maxParcelas: Math.round(faixa(j.maxParcelas, 1, 12, 1)),
       porqueCargaHoraria: corta(j.porqueCargaHoraria, 300), porqueModulos: corta(j.porqueModulos, 300), porquePreco: corta(j.porquePreco, 300),
+      faqs: limparFaqs(j.faqs),
     },
   };
 }

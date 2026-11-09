@@ -1928,3 +1928,7 @@ a.mr-num:hover { border-color: var(--linha); }
 .ia-faqs { display: grid; gap: 8px; }
 .ia-faq { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: start; padding: 10px; border: 1px solid var(--linha); border-radius: var(--r-s); background: #fff; }
 .ia-faq textarea { grid-column: 2; }
+.ia-faq input[type="text"], .ia-faq textarea { width: 100%; font: inherit; font-size: 14px; color: var(--tinta); background: var(--campo); border: 1px solid var(--linha); border-radius: var(--r-s); padding: 10px 12px; box-sizing: border-box; }
+.ia-faq textarea { resize: vertical; }
+.ia-faq input[type="text"]:focus, .ia-faq textarea:focus { outline: none; border-color: var(--vermelho); }
+.ia-faq .check { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; padding-top: 10px; }

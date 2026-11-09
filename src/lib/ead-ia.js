@@ -221,7 +221,8 @@ async function gerarProposta(geracaoId, { cliente }) {
     existente
       ? 'Proponha os módulos novos para um curso online que já existe: tema, público, número de módulos (2 a 12) e observações para o roteiro. Os campos nome, descrição, carga horária, preço e parcelas podem repetir o óbvio (não serão usados).'
       : 'Proponha o curso online: nome curto (até 80 caracteres), descrição de uma ou duas frases para a página de venda, carga horária em horas, público, tema detalhado, número de módulos (2 a 12, o último é o módulo final com cenários), preço sugerido em reais (cursos online da escola costumam ficar entre R$ 29,90 e R$ 99,90) e parcelas no cartão (1 a 12).',
-    'Para carga horária, número de módulos e preço, explique a sugestão numa frase curta e simples (porqueCargaHoraria, porqueModulos, porquePreco). Proponha o curso.',
+    'Para carga horária, número de módulos e preço, explique a sugestão numa frase curta e simples (porqueCargaHoraria, porqueModulos, porquePreco).',
+    'Escreva também 5 ou 6 dúvidas frequentes (faqs) que o aluno costuma ter sobre este curso (para quem é, pré-requisito, como funciona, certificado), com respostas curtas e corretas: sem preço, sem prometer prática em manequim (o curso online é teórico) e com o certificado só ao concluir. Proponha o curso.',
   ].join('\n\n');
   try {
     const { system, messages } = montarMensagens(g, pedido);
@@ -247,7 +248,7 @@ async function pedirOutraProposta(geracaoId, atorId) {
   const g = await prisma.geracaoIaEad.findUnique({ where: { id: geracaoId }, select: { pedido: true } });
   if (!g) return { ok: false, erro: 'Esta geração não está na proposta.' };
   // Uma proposta nova substitui o que foi confirmado antes: o formulário volta a mostrar a sugestão da IA.
-  const { tema, publico, nModulos, observacoes, ...resto } = g.pedido || {};
+  const { tema, publico, nModulos, observacoes, faqs, ...resto } = g.pedido || {}; // eslint-disable-line no-unused-vars
   const d = resto.destino || {};
   const pedido = { ...resto, destino: d.tipo === 'existente' ? { tipo: 'existente', cursoOnlineId: d.cursoOnlineId } : { tipo: d.tipo || 'novo' } };
   const r = await prisma.geracaoIaEad.updateMany({ where: { id: geracaoId, status: { in: ['PROPOSTA_PRONTA', 'ERRO_PROPOSTA'] } }, data: { status: 'PROPOSTA_GERANDO', pedido, erro: null } });
@@ -310,6 +311,11 @@ async function confirmarRoteiro(geracaoId, roteiroEditado, atorId) {
       return { ok: false, erro: 'Este curso já tem um módulo final: desmarque "final" no roteiro.' };
     }
     cursoOnlineId = co.id;
+  }
+  // Escrever com IA (2026-11-09): as dúvidas conferidas na proposta entram no curso (sem repetir pergunta).
+  if (Array.isArray(g.pedido.faqs) && g.pedido.faqs.length) {
+    const alvo = await prisma.cursoOnline.findUnique({ where: { id: cursoOnlineId }, select: { cursoId: true } });
+    if (alvo) await require('./ia-textos').salvarFaqs(alvo.cursoId, g.pedido.faqs).catch((e) => console.error('[EAD IA] dúvidas:', e.message));
   }
   const modulos = v.roteiro.modulos.map((m, i) => ({ ordem: i, titulo: m.titulo, status: 'pendente' }));
   const r = await prisma.geracaoIaEad.updateMany({ where: { id: geracaoId, status: 'ROTEIRO_PRONTO' }, data: { status: 'MODULOS_GERANDO', roteiro: v.roteiro, cursoOnlineId, modulos } });

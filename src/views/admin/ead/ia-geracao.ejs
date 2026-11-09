@@ -69,6 +69,21 @@
       <label class="full">Público<input type="text" name="publico" maxlength="200" value="<%= esc1(vp.publico) %>"></label>
       <label class="full">Observações para a IA<textarea name="observacoes" rows="3" maxlength="2000"><%= esc1(vp.observacoes) %></textarea></label>
     </div>
+    <%# Escrever com IA (2026-11-09): as dúvidas frequentes propostas; as marcadas entram no curso ao criar. %>
+    <% var _faqs = Array.isArray(vp.faqs) ? vp.faqs : []; %>
+    <% if (_faqs.length) { %>
+    <div class="ia-faqs">
+      <b>Dúvidas frequentes do curso</b>
+      <small class="adm-hint">Entram na página de venda quando o curso for criado. Desmarque as que não quiser e ajuste o texto.</small>
+      <% _faqs.forEach(function (f, i) { %>
+        <div class="ia-faq">
+          <label class="check"><input type="checkbox" name="faqsIa[<%= i %>][usar]" value="1"<%= f.usar === undefined || String(f.usar) === '1' ? ' checked' : '' %>> Usar</label>
+          <input type="text" name="faqsIa[<%= i %>][pergunta]" maxlength="200" value="<%= f.pergunta %>">
+          <textarea name="faqsIa[<%= i %>][resposta]" rows="2" maxlength="600"><%= f.resposta %></textarea>
+        </div>
+      <% }) %>
+    </div>
+    <% } %>
     <button type="submit" class="adm-btn"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar roteiro</button>
   </form>
 <% } %>
