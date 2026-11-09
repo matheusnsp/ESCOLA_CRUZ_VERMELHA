@@ -55,8 +55,26 @@ const ESQUEMA_PROPOSTA = objeto({
 });
 
 // Proposta da IA: números ajustados às faixas do formulário; nome e tema obrigatórios.
+// Imagens com IA (2026-11-09): o pedido de cada imagem (capa e abertura dos módulos), escrito pelo Claude.
+const PEDIDO_IMAGEM = { pedido: texto, pedidoCurto: texto, descricao: texto };
+const ESQUEMA_PEDIDOS_IMAGENS = objeto({
+  capa: objeto(PEDIDO_IMAGEM),
+  modulos: lista(objeto({ moduloId: texto, ...PEDIDO_IMAGEM })),
+});
+
 const faixa = (v, min, max, padrao) => { const n = Number(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : padrao; };
 const corta = (v, max) => String(v || '').trim().slice(0, max);
+function validarPedidosImagens(json, moduloIds) {
+  const limpo = (x) => ({ pedido: corta(x.pedido, 600), pedidoCurto: corta(x.pedidoCurto, 200), descricao: corta(x.descricao, 200) });
+  if (!json || !json.capa || !corta(json.capa.pedido, 600)) return { ok: false, erro: 'A IA não devolveu o pedido da imagem da capa.' };
+  const validos = new Set(moduloIds || []);
+  const vistos = new Set();
+  const modulos = (Array.isArray(json.modulos) ? json.modulos : [])
+    .filter((m) => m && validos.has(m.moduloId) && corta(m.pedido, 600) && !vistos.has(m.moduloId) && vistos.add(m.moduloId))
+    .map((m) => ({ moduloId: m.moduloId, ...limpo(m) }));
+  return { ok: true, pedidos: { capa: limpo(json.capa), modulos } };
+}
+
 function validarProposta(json) {
   const j = json || {};
   const nome = corta(j.nome, 120); const tema = corta(j.tema, 300);
@@ -194,4 +212,5 @@ const tokensDe = (u) => partes(u).reduce((t, x) => ({
   cache: t.cache + (x.cache_read_input_tokens || 0) + (x.cache_creation_input_tokens || 0),
 }), { entrada: 0, saida: 0, cache: 0 });
 
-module.exports = { ESQUEMA_PROPOSTA, validarProposta, ESQUEMA_ROTEIRO, ESQUEMA_MODULO, MSG_ROTEIRO, validarRoteiro, validarModulo, roteiroDoFormulario, custoUsd, tokensDe, PRECO, PRECOS };
+module.exports = {
+  ESQUEMA_PEDIDOS_IMAGENS, validarPedidosImagens, ESQUEMA_PROPOSTA, validarProposta, ESQUEMA_ROTEIRO, ESQUEMA_MODULO, MSG_ROTEIRO, validarRoteiro, validarModulo, roteiroDoFormulario, custoUsd, tokensDe, PRECO, PRECOS };

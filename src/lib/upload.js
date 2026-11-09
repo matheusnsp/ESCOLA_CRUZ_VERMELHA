@@ -31,11 +31,10 @@ function uploadFoto(req, res, next) {
   });
 }
 
-// Comprime qualquer imagem para WEBP (melhor compressão, menor egress).
-// GIF é preservado sem conversão pra não perder animação.
+// Comprime qualquer imagem para WEBP (melhor compressão, menor egress). Desde 2026-11-09 o GIF também vira WebP,
+// animado (pedido do Matheus: "todas as imagens em formato webp").
 async function comprimirImagem(file) {
-  if (file.mimetype === 'image/gif') return { buffer: file.buffer, mimetype: 'image/gif' };
-  const buffer = await sharp(file.buffer)
+  const buffer = await sharp(file.buffer, { animated: file.mimetype === 'image/gif' })
     // 1000 px cobre o maior uso (topo da página do curso) em tela de alta densidade. Com
     // quality 75, uma foto real de 1200 px caiu de 242 KB para 112 KB sem diferença visível.
     .resize({ width: 1000, withoutEnlargement: true }) // não amplia imagens pequenas

@@ -87,11 +87,17 @@ async function passo(cliente) {
   for (const g of roteiros) {
     if (await comMarca(chave(g.id), async () => { await IA.gerarRoteiro(g.id, { cliente }); })) return true;
   }
+  const imagens = await prisma.geracaoIaEad.findMany({ where: { status: 'FOTOS_GERANDO' }, orderBy: { criadoEm: 'asc' }, select: { id: true } });
+  for (const g of imagens) {
+    // gerarImagens devolve false quando as imagens do curso estão ocupadas: comMarca solta e a fila segue.
+    if (await comMarca(chave(g.id), () => IA.gerarImagens(g.id, { cliente }))) return true;
+  }
   const gs = await prisma.geracaoIaEad.findMany({ where: { status: 'MODULOS_GERANDO' }, orderBy: { criadoEm: 'asc' }, select: { id: true, modulos: true } });
   for (const g of gs) {
     const mods = Array.isArray(g.modulos) ? g.modulos : [];
     if (terminou(mods)) {
-      await prisma.geracaoIaEad.updateMany({ where: { id: g.id, status: 'MODULOS_GERANDO' }, data: { status: 'CONCLUIDA', materialPdfs: require('@prisma/client').Prisma.DbNull } });
+      // Imagens com IA (2026-11-09): antes de concluir, o passo das imagens (capa e abertura dos módulos).
+      await prisma.geracaoIaEad.updateMany({ where: { id: g.id, status: 'MODULOS_GERANDO' }, data: { status: 'FOTOS_GERANDO' } });
       return true;
     }
     // Pendentes na ordem; cada um numa vaga livre (2 por geração). gerarModulo devolve false se outro já o pegou.

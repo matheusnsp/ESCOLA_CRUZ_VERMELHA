@@ -1075,7 +1075,11 @@ router.get('/cursos/:id/editar', requirePermissao('cursos:gerenciar'), async (re
   if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
   await extras.anexar('curso', [curso]);
   const valores = await simularValores(curso, await lerConfigMatricula());
-  res.render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso, valores, formatBRL, escolaridades: ESCOLARIDADES, erro: null, erroFaq: req.query.erroFaq || null });
+  res.render('admin/curso-form', {
+    taxaPadrao: await lerTaxaPadrao(), curso, valores, formatBRL, escolaridades: ESCOLARIDADES, erro: null, erroFaq: req.query.erroFaq || null,
+    okImagem: req.query.okImagem || null, erroImagem: req.query.erroImagem || null, temOpenAI: require('../lib/ead-imagens').temOpenAI(),
+    statusImagem: await require('../lib/ead-imagens').statusDe(`curso:${curso.id}`),
+  });
 });
 
 router.post('/cursos/:id/faqs', requirePermissao('cursos:gerenciar'), async (req, res) => {
@@ -1114,9 +1118,11 @@ router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, asy
   }
   if (req.file) {
     dados.imagemUrl = await salvarFotoCurso(req.file);
+    dados.imagemGeradaPorIa = false; // imagem própria: sem o selo de IA (2026-11-09)
     await removerFotoCurso(existe.imagemUrl); 
   } else if (req.body.removerFoto === 'on') {
     dados.imagemUrl = null;
+    dados.imagemGeradaPorIa = false;
     await removerFotoCurso(existe.imagemUrl); 
   } else {
     dados.imagemUrl = existe.imagemUrl; 
@@ -1127,6 +1133,34 @@ router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, asy
   await salvarAssinaturasDoCurso(req.params.id, req.body, req);
   await auditar(req, 'EDITOU_CURSO', 'Curso', req.params.id, { nome: dados.nome });
   res.redirect('/cursos?ok=Curso atualizado.');
+});
+
+// Imagens com IA (2026-11-09): a imagem do curso presencial. O Claude escreve o pedido, a OpenAI gera (WebP); a
+// imagem anterior é apagada depois de gravar a nova.
+router.post('/cursos/:id/imagem-ia', requirePermissao('cursos:gerenciar'), async (req, res) => {
+  const ia = require('../lib/ead-ia');
+  const img = require('../lib/ead-imagens');
+  const volta = (tipo, msg) => res.redirect(`/cursos/${encodeURIComponent(req.params.id)}/editar?${tipo}Imagem=${encodeURIComponent(msg)}#foto-do-curso`);
+  if (!(await prisma.curso.findUnique({ where: { id: req.params.id }, select: { id: true } }).catch(() => null))) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
+  if (!ia.ehChaveConfigurada()) return volta('erro', ia.MSG_CHAVE);
+  const t = await ia.dentroDoTeto();
+  if (!t.ok) return volta('erro', t.erro);
+  const nome = `curso:${req.params.id}`;
+  if (await img.travaOcupada(nome)) return volta('erro', img.OCUPADO);
+  const atorId = req.session.usuarioId;
+  // Em segundo plano (revisão I4: atrás do Cloudflare, mais de 100 s vira erro 524); o formulário mostra o andamento.
+  img.emSegundoPlano(nome, nome, async () => {
+    let r;
+    try {
+      r = await img.imagemDoCurso(req.params.id, { custo: (u) => ia.somarCustoAvulso(u) });
+    } catch (e) {
+      if (e.usage) await ia.somarCustoAvulso(e.usage).catch(() => {});
+      throw e;
+    }
+    if (r.ok) await prisma.logAuditoria.create({ data: { atorId, acao: 'CURSO_IMAGEM_IA', alvoTipo: 'Curso', alvoId: req.params.id } }).catch(() => {});
+    return { ok: r.ok, msg: r.ok ? 'Imagem do curso gerada.' : r.erro };
+  });
+  return volta('ok', 'Gerando a imagem em segundo plano (cerca de 1 minuto). Recarregue a página para ver.');
 });
 
 router.post('/cursos/:id/excluir', requirePermissao('cursos:gerenciar'), async (req, res) => {

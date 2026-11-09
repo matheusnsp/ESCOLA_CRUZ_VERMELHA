@@ -164,3 +164,9 @@ html[data-tema="escuro"] .ia-roteiro .ia-modulo { border-color: #3a4149; }
 .ead-vitrine-setas { display: inline-flex; gap: 6px; flex: none; }
 .ead-vitrine-setas form { margin: 0; }
 .ead-vitrine-setas .adm-btn { padding: 4px 10px; min-width: 0; }
+
+/* Imagens com IA (2026-11-09) */
+.ead-img-ia-linha { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 8px; }
+.ead-img-ia { width: 180px; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 10px; flex: none; }
+.ead-img-ia.vazio { display: inline-flex; align-items: center; justify-content: center; background: #f1efeb; color: #b5b0a8; font-size: 28px; }
+.ead-selo.ia { background: #efe7ff; color: #5b2bbf; }

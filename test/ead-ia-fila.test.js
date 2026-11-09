@@ -3,7 +3,7 @@
 require('dotenv').config();
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { roteiroBom, roteiroComum, moduloBom, clienteFalso } = require('./helpers/ia-falso');
+const { roteiroBom, roteiroComum, moduloBom, clienteFalso, pedidosImagensBons, openaiFalso } = require('./helpers/ia-falso');
 
 const temBanco = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');
 
@@ -16,6 +16,7 @@ describe('fila da geração com IA', { skip: temBanco ? false : 'sem DATABASE_UR
   const rot = roteiroComum(3);
   const responde = () => (params) => {
     const pedido = params.messages[0].content.at(-1).text;
+    if (/pedido da capa/.test(pedido)) return pedidosImagensBons([...pedido.matchAll(/moduloId: ([0-9a-f-]{36})/g)].map((x) => x[1])); // passo das imagens
     const n = Number((pedido.match(/Escreva agora o módulo (\d+)/) || [])[1]);
     return n ? moduloBom(rot.modulos[n - 1]) : roteiroBom(3);
   };
@@ -77,10 +78,60 @@ describe('fila da geração com IA', { skip: temBanco ? false : 'sem DATABASE_UR
     await fila.ocioso();
     const d = await doBanco(g);
     assert.equal(d.status, 'CONCLUIDA');
-    assert.equal(cli.chamadas.length, 3);
+    assert.equal(cli.chamadas.length, 4, '3 módulos + o pedido das imagens');
     assert.equal(pico, 2, 'dois ao mesmo tempo, nunca três');
     const noCurso = await prisma.moduloEad.findMany({ where: { id: { in: d.modulos.map((m) => m.moduloId) } }, orderBy: { ordem: 'asc' }, select: { titulo: true } });
     assert.deepEqual(noCurso.map((m) => m.titulo), rot.modulos.map((m) => m.titulo), 'ordem do roteiro, mesmo o 2 terminando antes');
+  });
+
+  test('[imagens] módulos prontos → passo "Gerando as imagens" → CONCLUIDA com capa e módulos com imagem', async () => {
+    const chave = process.env.OPENAI_API_KEY; process.env.OPENAI_API_KEY = 'sk-teste';
+    const img = require('../src/lib/ead-imagens');
+    img.definirFetch(openaiFalso());
+    try {
+      const g = await confirmada();
+      const vistos = new Set();
+      const cli = clienteFalso([async (params) => {
+        vistos.add((await doBanco(g)).status);
+        return responde()(params);
+      }]);
+      fila.acordar({ cliente: cli });
+      await fila.ocioso();
+      const d = await doBanco(g);
+      assert.equal(d.status, 'CONCLUIDA');
+      assert.ok(vistos.has('FOTOS_GERANDO'), 'passou pelo passo das imagens');
+      const mods = await prisma.moduloEad.findMany({ where: { id: { in: d.modulos.map((m) => m.moduloId) } } });
+      assert.ok(mods.every((m) => m.fotoIntroUrl && m.fotoGeradaPorIa), 'módulos com imagem');
+      assert.ok((await prisma.curso.findUnique({ where: { id: curso.id } })).imagemUrl, 'capa com imagem');
+      assert.equal(d.pedido.avisoImagens, undefined);
+    } finally {
+      img.definirFetch(null);
+      if (chave === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = chave;
+      for (const m of await prisma.moduloEad.findMany({ where: { cursoOnlineId: co.id } })) await prisma.moduloEad.update({ where: { id: m.id }, data: { fotoIntroUrl: null } });
+      await prisma.curso.update({ where: { id: curso.id }, data: { imagemUrl: null } });
+    }
+  });
+
+  test('[imagens] Claude falha no passo das imagens → CONCLUIDA mesmo assim, com o aviso', async () => {
+    const g = await confirmada();
+    const cli = clienteFalso([(params) => {
+      if (/pedido da capa/.test(params.messages[0].content.at(-1).text)) return { stop_reason: 'refusal' };
+      return responde()(params);
+    }]);
+    fila.acordar({ cliente: cli });
+    await fila.ocioso();
+    const d = await doBanco(g);
+    assert.equal(d.status, 'CONCLUIDA');
+    assert.equal(d.pedido.avisoImagens, 'As imagens não puderam ser geradas; use o botão Gerar imagens com IA na página do curso.');
+  });
+
+  test('[imagens] curso online apagado antes do passo → CONCLUIDA sem erro', async () => {
+    const g = await IA.criarGeracao({ pedido: { destino: { tipo: 'existente', cursoOnlineId: co.id }, tema: 'Tema', publico: '', nModulos: 3, observacoes: '' }, material: { materialTexto: null, materialPdfs: [] }, criadoPor: `fila-img-${s}` });
+    geracoes.push(g.id);
+    await prisma.geracaoIaEad.update({ where: { id: g.id }, data: { status: 'FOTOS_GERANDO', cursoOnlineId: null } });
+    fila.acordar({ cliente: clienteFalso([responde()]) });
+    await fila.ocioso();
+    assert.equal((await doBanco(g)).status, 'CONCLUIDA');
   });
 
   test('roteiro pendente também é processado pela fila', async () => {
@@ -124,7 +175,7 @@ describe('fila da geração com IA', { skip: temBanco ? false : 'sem DATABASE_UR
     await fila.ocioso();
     const d = await doBanco(g);
     assert.equal(d.status, 'CONCLUIDA');
-    assert.equal(cli.chamadas.length, 2, 'refaz o módulo 2 e faz o 3; o 1 já estava pronto');
+    assert.equal(cli.chamadas.length, 3, 'refaz o módulo 2 e faz o 3 (o 1 já estava pronto) + o pedido das imagens');
     assert.equal(d.modulos[0].moduloId, d0.modulos[0].moduloId);
   });
 
@@ -145,7 +196,7 @@ describe('fila da geração com IA', { skip: temBanco ? false : 'sem DATABASE_UR
     await fila.retomar({ cliente: cli });
     await fila.ocioso();
     assert.equal((await doBanco(g)).status, 'CONCLUIDA');
-    assert.equal(cli.chamadas.length, 3, 'só o módulo 1 é refeito');
+    assert.equal(cli.chamadas.length, 4, 'só o módulo 1 é refeito; + o pedido das imagens');
     assert.equal(await prisma.configuracao.count({ where: { chave: { startsWith: `ead-ia:ocupado:${g.id}` } } }), 0, 'as marcas saem no fim');
   });
 
@@ -155,7 +206,7 @@ describe('fila da geração com IA', { skip: temBanco ? false : 'sem DATABASE_UR
     fila.acordar({ cliente: cli });
     fila.acordar({ cliente: cli });
     await fila.ocioso();
-    assert.equal(cli.chamadas.length, 3);
+    assert.equal(cli.chamadas.length, 4, '3 módulos + o pedido das imagens, cada um uma vez');
     assert.equal((await doBanco(g)).status, 'CONCLUIDA');
   });
 
@@ -168,7 +219,7 @@ describe('fila da geração com IA', { skip: temBanco ? false : 'sem DATABASE_UR
     await fila.varrer({ cliente: cli });
     await fila.ocioso();
     assert.equal((await doBanco(g)).status, 'CONCLUIDA');
-    assert.equal(cli.chamadas.length, 3);
+    assert.equal(cli.chamadas.length, 4, '3 módulos + o pedido das imagens');
     const server = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'server.js'), 'utf8');
     assert.match(server, /ead-ia-fila'\)\.agendar\(/, 'o servidor agenda a varredura');
   });
@@ -202,5 +253,22 @@ describe('fila da geração com IA', { skip: temBanco ? false : 'sem DATABASE_UR
     assert.ok(m && m.valor.endsWith(':outro-servico'), 'a marca do outro serviço não foi apagada');
     await prisma.configuracao.delete({ where: { chave: `ead-ia:ocupado:${g.id}` } });
     await IA.cancelar(g.id, 'dev');
+  });
+
+  test('[revisão I1] imagens ocupadas (outro serviço ou o botão gerando): o passo não conclui; tenta de novo depois', async () => {
+    const g = await IA.criarGeracao({ pedido: { destino: { tipo: 'existente', cursoOnlineId: co.id }, tema: 'Tema', publico: '', nModulos: 3, observacoes: '' }, material: { materialTexto: null, materialPdfs: [] }, criadoPor: `fila-ocup-${s}` });
+    geracoes.push(g.id);
+    await prisma.geracaoIaEad.update({ where: { id: g.id }, data: { status: 'FOTOS_GERANDO', cursoOnlineId: co.id } });
+    await prisma.configuracao.create({ data: { chave: `ead-ia:imagens-ocupado:curso-online:${co.id}`, valor: `${Date.now()}:outro` } });
+    try {
+      await IA.gerarImagens(g.id, { cliente: clienteFalso([responde()]) });
+      const d = await doBanco(g);
+      assert.equal(d.status, 'FOTOS_GERANDO', 'não concluiu com o aviso de ocupado');
+      assert.equal(d.pedido.avisoImagens, undefined);
+    } finally {
+      await prisma.configuracao.deleteMany({ where: { chave: `ead-ia:imagens-ocupado:curso-online:${co.id}` } });
+    }
+    await IA.gerarImagens(g.id, { cliente: clienteFalso([responde()]) });
+    assert.equal((await doBanco(g)).status, 'CONCLUIDA');
   });
 });

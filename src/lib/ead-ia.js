@@ -13,7 +13,7 @@ const E = require('./ead-ia-esquema');
 const MODELO = 'claude-opus-5-5';
 const CHAVE_TETO = 'ead-ia:teto-mensal-usd';
 const TETO_PADRAO = 50;
-const EM_ANDAMENTO = ['PROPOSTA_GERANDO', 'PROPOSTA_PRONTA', 'ROTEIRO_GERANDO', 'ROTEIRO_PRONTO', 'MODULOS_GERANDO'];
+const EM_ANDAMENTO = ['PROPOSTA_GERANDO', 'PROPOSTA_PRONTA', 'ROTEIRO_GERANDO', 'ROTEIRO_PRONTO', 'MODULOS_GERANDO', 'FOTOS_GERANDO'];
 const MSG_CHAVE = 'Configure a chave da API da Anthropic (ANTHROPIC_API_KEY) no servidor.';
 
 class ErroIa extends Error {
@@ -71,14 +71,14 @@ function montarMensagens(geracao, pedidoDoPasso) {
 
 const temMaterial = (messages) => (messages[0] && Array.isArray(messages[0].content) ? messages[0].content.length > 1 : false);
 
-async function chamarClaude(cliente, { system, messages, schema }) {
+async function chamarClaude(cliente, { system, messages, schema, effort = 'high' }) {
   let msg;
   try {
     const stream = cliente.beta.messages.stream({
       model: MODELO,
       max_tokens: 32000,
       thinking: { type: 'adaptive' },
-      output_config: { effort: 'high', format: { type: 'json_schema', schema } },
+      output_config: { effort, format: { type: 'json_schema', schema } },
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
       system,
@@ -113,9 +113,23 @@ function inicioDoMesRio(agora = new Date()) {
   const ym = agora.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
   return new Date(`${ym}-01T00:00:00-03:00`);
 }
+// Custo do Claude fora de uma geração (botões de imagem com IA, 2026-11-09), por mês, em Configuracao.
+const mesRio = (agora = new Date()) => agora.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
+const chaveCustoAvulso = (agora) => `ead-ia:custo-avulso:${mesRio(agora)}`;
+async function somarCustoAvulso(usage) {
+  if (!usage) return;
+  const chave = chaveCustoAvulso();
+  await transacao(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${chave}))`;
+    const c = await tx.configuracao.findUnique({ where: { chave } });
+    const valor = String(Math.round(((c ? Number(c.valor) || 0 : 0) + E.custoUsd(usage)) * 1e6) / 1e6);
+    await tx.configuracao.upsert({ where: { chave }, update: { valor }, create: { chave, valor } });
+  });
+}
 async function gastoDoMes(agora = new Date()) {
   const r = await prisma.geracaoIaEad.aggregate({ where: { criadoEm: { gte: inicioDoMesRio(agora) } }, _sum: { custoUsd: true } });
-  return Math.round(Number(r._sum.custoUsd || 0) * 1e4) / 1e4;
+  const avulso = await prisma.configuracao.findUnique({ where: { chave: chaveCustoAvulso(agora) } }).catch(() => null);
+  return Math.round((Number(r._sum.custoUsd || 0) + (avulso ? Number(avulso.valor) || 0 : 0)) * 1e4) / 1e4;
 }
 async function tetoMensal() {
   const c = await prisma.configuracao.findUnique({ where: { chave: CHAVE_TETO } }).catch(() => null);
@@ -405,6 +419,34 @@ async function gerarModulo(geracaoId, ordem, { cliente, marca = null }) {
   return true;
 }
 
+// Imagens com IA (2026-11-09): capa e abertura dos módulos, no fim da geração. Nunca trava: em qualquer erro (ou
+// curso apagado) conclui assim mesmo, com o aviso em pedido.avisoImagens.
+const AVISO_IMAGENS = 'As imagens não puderam ser geradas; use o botão Gerar imagens com IA na página do curso.';
+async function gerarImagens(geracaoId, { cliente, fetch } = {}) {
+  const g = await prisma.geracaoIaEad.findUnique({ where: { id: geracaoId }, select: { cursoOnlineId: true, pedido: true, status: true } });
+  if (!g || g.status !== 'FOTOS_GERANDO') return true;
+  let aviso = null;
+  try {
+    if (g.cursoOnlineId) {
+      const img = require('./ead-imagens');
+      const r = await img.imagensDoCursoOnline(g.cursoOnlineId, { cliente, fetch, custo: (u) => somarCusto(geracaoId, u) });
+      // Revisão I1: outro trabalho gerando as imagens deste curso (o botão, ou um serviço que caiu no meio e cuja
+      // trava ainda não venceu): não conclui; a fila tenta de novo na próxima volta.
+      if (r.aviso === img.OCUPADO) return false;
+      aviso = r.aviso;
+    }
+  } catch (e) {
+    if (e.usage) await somarCusto(geracaoId, e.usage).catch(() => {});
+    console.error('[EAD IA] imagens:', e.message);
+    aviso = AVISO_IMAGENS;
+  }
+  await prisma.geracaoIaEad.updateMany({
+    where: { id: geracaoId, status: 'FOTOS_GERANDO' },
+    data: { status: 'CONCLUIDA', materialPdfs: require('@prisma/client').Prisma.DbNull, ...(aviso ? { pedido: { ...g.pedido, avisoImagens: aviso } } : {}) },
+  });
+  return true;
+}
+
 // Varredura da fila: o módulo "gerando" de quem sumiu (marca vencida) volta a pendente.
 async function devolverModulo(geracaoId, ordem) {
   return mudarModulo(geracaoId, ordem, (m) => {
@@ -435,6 +477,6 @@ async function cancelar(geracaoId, atorId) {
 module.exports = {
   MODELO, REGRAS_SYSTEM, MSG_CHAVE, EM_ANDAMENTO, ErroIa,
   prepararMaterial, montarMensagens, chamarClaude, ehChaveConfigurada, clientePadrao,
-  gastoDoMes, tetoMensal, definirTeto, dentroDoTeto, podeComecar,
-  criarGeracao, gerarProposta, pedirOutraProposta, confirmarProposta, voltarParaProposta, gerarRoteiro, pedirOutroRoteiro, confirmarRoteiro, gerarModulo, devolverModulo, tentarDeNovo, cancelar,
+  gastoDoMes, somarCustoAvulso, mesRio, tetoMensal, definirTeto, dentroDoTeto, podeComecar,
+  criarGeracao, gerarProposta, pedirOutraProposta, confirmarProposta, voltarParaProposta, gerarRoteiro, pedirOutroRoteiro, confirmarRoteiro, gerarModulo, devolverModulo, gerarImagens, AVISO_IMAGENS, tentarDeNovo, cancelar,
 };

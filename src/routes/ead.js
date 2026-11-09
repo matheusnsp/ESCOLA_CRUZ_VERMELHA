@@ -8,6 +8,7 @@
 
 const express = require('express');
 const escolaDigital = require('../lib/escola-digital');
+const imagensLib = require('../lib/ead-imagens');
 const prisma = require('../db');
 const asyncHandler = require('../lib/asyncHandler');
 const ead = require('../lib/ead');
@@ -169,7 +170,13 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
       aviso: publicacao.avisoPublicado({ ...co, modulos }),
       urlCurso: `${urlSite}${require('../lib/vitrine').urlOnline(co.curso)}`,
     };
-    res.render('admin/ead/curso', { co, modulos, ead, venda, dadosCurso, linkTeste: codigo ? `${urlSite}/ead-teste/${codigo}` : null, erroForm: null, ...flash(req) });
+    // Imagens com IA (2026-11-09): a imagem do curso (capa) com selo, descrição e "Gerar outra".
+    const imagensIa = {
+      curso: await prisma.curso.findUnique({ where: { id: co.cursoId }, select: { id: true, imagemUrl: true, imagemPedido: true, imagemSugestao: true, imagemGeradaPorIa: true } }),
+      temOpenAI: imagensLib.temOpenAI(),
+      status: await imagensLib.statusDe(`curso-online:${co.id}`),
+    };
+    res.render('admin/ead/curso', { co, modulos, ead, venda, dadosCurso, imagensIa, linkTeste: codigo ? `${urlSite}/ead-teste/${codigo}` : null, erroForm: null, ...flash(req) });
   });
 
   router.post('/ead/curso/:id', async (req, res) => {
@@ -316,6 +323,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (req.file) imagemUrl = await salvarFotoCurso(req.file);
     else if (req.body.removerFoto) imagemUrl = null;
     const r = await cursoSoOnline.editarCursoOnline(co.id, { ...valores, ...(imagemUrl !== undefined ? { imagemUrl } : {}) });
+    if (r.ok && imagemUrl !== undefined) await prisma.curso.update({ where: { id: co.cursoId }, data: { imagemGeradaPorIa: false } }); // imagem própria
     if (!r.ok) {
       if (imagemUrl) await removerFotoCurso(imagemUrl);
       return res.status(400).render('admin/ead/curso-online-form', { co, valores, erro: r.erro });
@@ -324,6 +332,64 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     await auditar(req, 'EAD_EDITOU_CURSO_ONLINE', 'CursoOnline', co.id, { cursoId: co.cursoId });
     voltar(res, `/ead/curso/${co.id}`, 'ok', 'Dados do curso salvos.');
   });
+
+  // ─── Imagens com IA (2026-11-09): o Claude escreve o pedido, a OpenAI gera (lib/ead-imagens.js) ─────────────
+  // Revisão I4: o trabalho roda em segundo plano (atrás do Cloudflare, mais de 100 s vira erro 524); a página mostra
+  // "Gerando as imagens…" e depois o resultado (imagensLib.statusDe).
+  const MSG_SEGUNDO_PLANO = 'Gerando as imagens em segundo plano (de 1 a 5 minutos). Recarregue a página para ver o resultado.';
+  const plural = (n) => `${n} ${n === 1 ? 'imagem gerada' : 'imagens geradas'}`;
+  router.post('/ead/curso/:id/imagens-ia', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co) return naoAchou(res);
+    const volta = `/ead/curso/${co.id}`;
+    if (!ia.ehChaveConfigurada()) return voltar(res, volta, 'erro', ia.MSG_CHAVE);
+    const t = await ia.dentroDoTeto();
+    if (!t.ok) return voltar(res, volta, 'erro', t.erro);
+    const nome = `curso-online:${co.id}`;
+    if (await imagensLib.travaOcupada(nome)) return voltar(res, volta, 'erro', imagensLib.OCUPADO);
+    const quem = ator(req);
+    imagensLib.emSegundoPlano(nome, nome, async () => {
+      let r;
+      try {
+        r = await imagensLib.imagensDoCursoOnline(co.id, { custo: (u) => ia.somarCustoAvulso(u) });
+      } catch (e) {
+        if (e.usage) await ia.somarCustoAvulso(e.usage).catch(() => {});
+        throw e;
+      }
+      if (r.aviso === imagensLib.OCUPADO) return { ok: false, msg: r.aviso };
+      await prisma.logAuditoria.create({ data: { atorId: quem, acao: 'EAD_IMAGENS_IA', alvoTipo: 'CursoOnline', alvoId: co.id, detalhe: { geradas: r.geradas, descricoes: r.descricoes } } }).catch(() => {});
+      if (r.aviso) return { ok: !!r.geradas, msg: r.geradas ? `${plural(r.geradas)}. ${r.aviso}` : r.aviso };
+      if (!r.descricoes) return { ok: true, msg: 'Nada para preencher: a capa e os módulos já têm imagem.' };
+      if (!r.geradas) return { ok: false, msg: 'A OpenAI não conseguiu gerar as imagens. As descrições ficaram em cada módulo; tente de novo ou envie as imagens.' };
+      return { ok: true, msg: `${plural(r.geradas)}.` };
+    });
+    voltar(res, volta, 'ok', MSG_SEGUNDO_PLANO);
+  });
+
+  router.post('/ead/curso/:id/capa/gerar-outra', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co) return naoAchou(res);
+    const volta = `/ead/curso/${co.id}`;
+    if (await imagensLib.travaOcupada(`curso:${co.cursoId}`)) return voltar(res, volta, 'erro', imagensLib.OCUPADO);
+    imagensLib.emSegundoPlano(`curso-online:${co.id}`, `curso:${co.cursoId}`, async () => {
+      const r = await imagensLib.gerarOutra({ tipo: 'curso', id: co.cursoId });
+      return { ok: r.ok, msg: r.ok ? 'Imagem nova gerada.' : r.erro };
+    });
+    voltar(res, volta, 'ok', 'Gerando outra imagem em segundo plano (cerca de 1 minuto). Recarregue a página para ver.');
+  });
+
+  router.post('/ead/modulo/:id/foto/gerar-outra', async (req, res) => {
+    const m = edb.ehId(req.params.id) ? await prisma.moduloEad.findUnique({ where: { id: req.params.id }, select: { id: true } }) : null;
+    if (!m) return naoAchou(res);
+    const volta = `/ead/modulo/${m.id}/editar`;
+    if (await imagensLib.travaOcupada(`modulo:${m.id}`)) return voltar(res, volta, 'erro', imagensLib.OCUPADO);
+    imagensLib.emSegundoPlano(`modulo:${m.id}`, `modulo:${m.id}`, async () => {
+      const r = await imagensLib.gerarOutra({ tipo: 'modulo', id: m.id });
+      return { ok: r.ok, msg: r.ok ? 'Imagem nova gerada.' : r.erro };
+    });
+    voltar(res, volta, 'ok', 'Gerando outra imagem em segundo plano (cerca de 1 minuto). Recarregue a página para ver.');
+  });
+
 
   // ─── Criar curso com IA (etapa 9) ──────────────────────────────────────────────────────────────
   // As regras ficam em lib/ead-ia.js; a fila (lib/ead-ia-fila.js) faz o roteiro e os módulos em segundo plano.
@@ -398,7 +464,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const cos = new Map((await prisma.cursoOnline.findMany({ where: { id: { in: lista.map((g) => g.cursoOnlineId || (g.pedido.destino && g.pedido.destino.cursoOnlineId)).filter(Boolean) } }, select: { id: true, curso: { select: { nome: true } } } })).map((c) => [c.id, c.curso.nome]));
     res.render('admin/ead/ia-lista', {
       lista: lista.map((g) => ({ ...g, quem: nomes.get(g.criadoPor) || 'Dev', cursoNome: cos.get(g.cursoOnlineId || (g.pedido.destino && g.pedido.destino.cursoOnlineId)) || (g.pedido.destino && g.pedido.destino.nome) || '—' })),
-      gasto: await ia.gastoDoMes(), teto: await ia.tetoMensal(), chave: ia.ehChaveConfigurada(), msgChave: ia.MSG_CHAVE, ...flash(req),
+      gasto: await ia.gastoDoMes(), teto: await ia.tetoMensal(), imagens: await imagensLib.contagem(), chave: ia.ehChaveConfigurada(), msgChave: ia.MSG_CHAVE, ...flash(req),
     });
   });
 
@@ -842,7 +908,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
   router.get('/ead/modulo/:id/editar', async (req, res) => {
     const modulo = await edb.carregarModulo(req.params.id);
     if (!modulo) return naoAchou(res);
-    res.render('admin/ead/modulo-form', { co: modulo.cursoOnline, modulo, valores: modulo, erro: null });
+    res.render('admin/ead/modulo-form', { co: modulo.cursoOnline, modulo, valores: modulo, erro: null, temOpenAI: imagensLib.temOpenAI(), statusImagem: await imagensLib.statusDe(`modulo:${modulo.id}`) });
   });
 
   router.post('/ead/modulo/:id/editar', uploadFoto, async (req, res) => {
@@ -855,7 +921,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const { final, ...dados } = r.data;
     const fotoNova = req.file ? await salvarFotoCurso(req.file) : null;
     const tirarFoto = req.body.removerFoto === 'on';
-    if (fotoNova || tirarFoto) dados.fotoIntroUrl = fotoNova;
+    if (fotoNova || tirarFoto) { dados.fotoIntroUrl = fotoNova; dados.fotoGeradaPorIa = false; } // imagem própria: sem o selo de IA
     try {
       await escrever(req, modulo.id, 'o próprio módulo', async (tx) => {
         await tx.moduloEad.update({ where: { id: modulo.id }, data: dados });

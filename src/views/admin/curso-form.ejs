@@ -55,8 +55,11 @@
     </label>
   <% } %>
 
-  <div class="full adm-foto-campo">
-    <span class="adm-foto-rot">Foto do curso</span>
+  <div class="full adm-foto-campo" id="foto-do-curso">
+    <span class="adm-foto-rot">Foto do curso<% if (c.imagemGeradaPorIa) { %> <span class="adm-badge-ia">Imagem gerada por IA</span><% } %></span>
+    <% if (typeof okImagem !== 'undefined' && okImagem) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= okImagem %></div><% } %>
+    <% if (typeof erroImagem !== 'undefined' && erroImagem) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erroImagem %></div><% } %>
+    <% if (typeof statusImagem !== 'undefined' && statusImagem && !(typeof okImagem !== 'undefined' && okImagem && statusImagem.estado === 'gerando')) { %><%- include('ead/_status-imagens', { st: statusImagem }) %><% } %>
     <div class="adm-foto-linha">
       <% if (c.imagemUrl) { %>
         <img src="<%= c.imagemUrl %>" alt="Foto atual" class="adm-foto-atual">
@@ -69,6 +72,11 @@
         <% if (c.imagemUrl) { %>
           <label class="check"><input type="checkbox" name="removerFoto"> Remover a foto atual</label>
         <% } %>
+        <% if (!novo && typeof temOpenAI !== 'undefined' && temOpenAI) { %>
+          <%# Envia o formulário de baixo (fora deste, que é multipart): o Claude escreve o pedido, a OpenAI gera. %>
+          <button type="submit" form="formImagemIa" class="adm-btn adm-btn-neutro adm-btn-ia"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar imagem com IA</button>
+        <% } %>
+        <% if (c.imagemSugestao) { %><small class="adm-hint">Descrição da imagem: <%= c.imagemSugestao %></small><% } %>
       </div>
     </div>
   </div>
@@ -181,6 +189,12 @@
     <a href="/cursos" class="adm-link">Cancelar</a>
   </div>
 </form>
+<% if (!novo) { %>
+<form id="formImagemIa" method="POST" action="/cursos/<%= c.id %>/imagem-ia" hidden
+      data-confirmar="<%= c.imagemUrl ? 'Trocar a imagem atual por uma gerada pela IA? A atual é apagada. Leva cerca de 1 minuto.' : 'Gerar a imagem do curso com IA? Leva cerca de 1 minuto.' %>" data-botao="Gerar imagem" data-confirmar-tipo="ok">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+</form>
+<% } %>
 
 <% if (!novo) { %>
 
