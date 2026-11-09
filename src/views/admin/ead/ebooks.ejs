@@ -1,0 +1,42 @@
+<%# E-books da Escola Digital (2026-11-09): lista com capa, preço, situação, downloads e vendas. %>
+<% var brl = function (v) { return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }; %>
+<%- include('../head', { titulo: 'E-books' }) %>
+<%- include('../header', { ativo: 'ebooks' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">E-books</h1>
+  <a class="adm-btn" href="/ead/ebooks/novo"><i class="fa-solid fa-plus"></i> Novo e-book</a>
+</div>
+<%- include('_mensagens') %>
+<p class="adm-mut">E-books em PDF da Escola Digital. Quem baixa precisa ter conta; cada download sai com o nome da pessoa no rodapé das páginas.</p>
+
+<% if (!lista.length) { %>
+  <div class="adm-box adm-box-pad"><p class="ead-vazio">Nenhum e-book ainda. Crie o primeiro.</p></div>
+<% } else { %>
+  <div class="adm-box adm-espaco">
+    <div class="ead-tabela-rolagem">
+      <table class="adm-table">
+        <thead><tr><th>E-book</th><th>Preço</th><th>Situação</th><th class="centro">Downloads</th><th class="centro">Vendas</th><th class="centro">Ordem</th></tr></thead>
+        <tbody>
+          <% lista.forEach(function (e) { %>
+            <tr>
+              <td>
+                <a class="ead-ebook-linha" href="/ead/ebooks/<%= e.id %>">
+                  <% if (e.curso.imagemUrl) { %><img src="<%= e.curso.imagemUrl %>" alt="" width="40" height="54"><% } else { %><span class="ead-ebook-sem-capa"><i class="fa-solid fa-book"></i></span><% } %>
+                  <span><b><%= e.curso.nome %></b><small><%= e.paginas ? e.paginas + ' páginas' : 'sem PDF' %></small></span>
+                </a>
+              </td>
+              <td><%= e.gratuito ? 'Grátis' : brl(e.precoOnline) %></td>
+              <td><span class="ead-selo <%= e.publicado ? 'validado' : 'rascunho' %>"><%= e.publicado ? 'Publicado' : 'Rascunho' %></span></td>
+              <td class="centro"><%= e._count.downloads %></td>
+              <td class="centro"><%= e.gratuito ? '—' : e.vendas %></td>
+              <td class="centro"><%= e.ordemVitrine %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } %>
+
+<%- include('../foot') %>

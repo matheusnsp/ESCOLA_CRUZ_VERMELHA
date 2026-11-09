@@ -627,6 +627,7 @@ router.post('/modo', requireDev, (req, res) => {
 });
 // EAD (curso 100% online): só DEV. Spec docs/superpowers/specs/2026-11-05-ead-estrutura-conteudo.md
 router.use(require('./ead')({ requireDev, auditar, ADMIN_URL }));
+router.use(require('./ead-ebooks')({ requireDev, auditar })); // E-books da Escola Digital (2026-11-09)
 
 // ---------- Dashboard ----------
 

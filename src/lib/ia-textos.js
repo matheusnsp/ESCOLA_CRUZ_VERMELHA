@@ -24,6 +24,13 @@ Regras:
 // Até 3 cursos de exemplo do mesmo tipo (sem o próprio curso).
 async function exemplos(tipo, excetoCursoId) {
   const faqs = { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }], take: 6, select: { pergunta: true, resposta: true } };
+  if (tipo === 'ebook') {
+    const ebs = await prisma.ebook.findMany({
+      where: { publicado: true, ...(excetoCursoId ? { cursoId: { not: excetoCursoId } } : {}) },
+      include: { curso: { select: { nome: true, descricao: true, descricaoLonga: true, faqs } } }, orderBy: { atualizadoEm: 'desc' }, take: 3,
+    });
+    return ebs.map((e) => ({ nome: e.curso.nome, descricao: e.curso.descricao, descricaoLonga: e.curso.descricaoLonga, faqs: e.curso.faqs }));
+  }
   if (tipo === 'online') {
     const cos = await prisma.cursoOnline.findMany({
       where: { publicado: true, somenteOnline: true, ...(excetoCursoId ? { cursoId: { not: excetoCursoId } } : {}) },
@@ -45,25 +52,30 @@ function blocoExemplo(e, i) {
     e.faqs && e.faqs.length ? `Dúvidas:\n${e.faqs.map((f) => `- ${f.pergunta} — ${f.resposta}`).join('\n')}` : null].filter(Boolean).join('\n');
 }
 
-// tipo 'presencial' | 'online'; dados: o que está no formulário. Devolve { textos, usage }.
-async function escrever({ tipo, dados = {}, ideias = '', cursoId = null }, opts = {}) {
+// tipo 'presencial' | 'online' | 'ebook'; dados: o que está no formulário. pdf (só e-book): Buffer com as primeiras
+// páginas, mandado ao Claude como documento para ele não inventar o conteúdo. Devolve { textos, usage }.
+async function escrever({ tipo, dados = {}, ideias = '', cursoId = null, pdf = null }, opts = {}) {
   const IA = require('./ead-ia');
   const ex = await exemplos(tipo, cursoId);
-  const curso = [`Curso a escrever (${tipo === 'online' ? '100% online, teórico' : 'presencial, no Centro do Rio'}): ${dados.nome || '(sem nome)'}`,
+  const qual = tipo === 'ebook' ? 'E-book (PDF) a descrever' : `Curso a escrever (${tipo === 'online' ? '100% online, teórico' : 'presencial, no Centro do Rio'})`;
+  const curso = [`${qual}: ${dados.nome || '(sem nome)'}`,
     dados.cargaHoraria ? `Carga horária: ${dados.cargaHoraria} horas` : null, dados.escolaridade ? `Escolaridade mínima: ${dados.escolaridade}` : null,
     dados.categoria ? `Área: ${dados.categoria}` : null, dados.descricao ? `Descrição atual: ${dados.descricao}` : null,
     dados.descricaoLonga ? `Descrição longa atual:\n${dados.descricaoLonga}` : null, dados.conteudoProgramatico ? `Conteúdo atual:\n${dados.conteudoProgramatico}` : null,
     Array.isArray(dados.faqsAtuais) && dados.faqsAtuais.length ? `Dúvidas que o curso já tem (não repita):\n${dados.faqsAtuais.map((f) => `- ${f.pergunta}`).join('\n')}` : null,
     String(ideias || '').trim() ? `Ideias de quem pediu: ${String(ideias).trim().slice(0, 500)}` : null].filter(Boolean).join('\n');
-  const pede = tipo === 'online'
+  const pede = tipo === 'ebook'
+    ? `Escreva a descrição curta (1 ou 2 frases, até 300 caracteres), o texto da página de venda (até 3000, parágrafos curtos: o que a pessoa vai encontrar, para quem é) e 5 ou 6 dúvidas frequentes sobre o e-book (para quem é, como recebe, se tem certificado: não tem). ${pdf ? 'Baseie-se SÓ no conteúdo do PDF anexado (as primeiras páginas).' : 'Sem o PDF, não invente o conteúdo: fale do tema de forma geral.'}`
+    : tipo === 'online'
     ? 'Escreva a descrição da página de venda (até 1000 caracteres, 1 a 3 parágrafos curtos) e as dúvidas frequentes.'
     : 'Escreva a descrição curta (1 ou 2 frases, até 300 caracteres), a descrição longa (parágrafos, até 3000), o conteúdo programático (um item por linha) e as dúvidas frequentes.';
   const content = [
-    ...(ex.length ? [{ type: 'text', text: `Cursos de exemplo (siga este padrão):\n\n${ex.map(blocoExemplo).join('\n\n')}` }] : []),
+    ...(pdf ? [{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: Buffer.from(pdf).toString('base64') } }] : []),
+    ...(ex.length ? [{ type: 'text', text: `${tipo === 'ebook' ? 'E-books' : 'Cursos'} de exemplo (siga este padrão):\n\n${ex.map(blocoExemplo).join('\n\n')}` }] : []),
     { type: 'text', text: `${curso}\n\n${pede}` },
   ];
   const { json, usage } = await IA.chamarClaude(clienteDe(opts), {
-    system: SYSTEM, messages: [{ role: 'user', content }], schema: tipo === 'online' ? E.ESQUEMA_TEXTOS_ONLINE : E.ESQUEMA_TEXTOS_PRESENCIAL, effort: 'low',
+    system: SYSTEM, messages: [{ role: 'user', content }], schema: tipo === 'ebook' ? E.ESQUEMA_TEXTOS_EBOOK : tipo === 'online' ? E.ESQUEMA_TEXTOS_ONLINE : E.ESQUEMA_TEXTOS_PRESENCIAL, effort: 'low',
   });
   return { textos: E.validarTextos(json, tipo), usage };
 }

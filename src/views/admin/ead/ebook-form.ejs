@@ -1,0 +1,105 @@
+<%#
+  E-book (2026-11-09): criar (ebook = null) ou editar. Nome, descrições, capa e dúvidas ficam no curso escondido.
+%><% var novo = !ebook; var v = valores || {}; var bool = function (x) { return x === true || x === '1' || x === 'on'; }; %>
+<%- include('../head', { titulo: novo ? 'Novo e-book' : 'E-book' }) %>
+<%- include('../header', { ativo: 'ebooks' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= novo ? 'Novo e-book' : v.nome %></h1>
+  <a href="/ead/ebooks" class="adm-link">← E-books</a>
+</div>
+<%- include('_mensagens') %>
+
+<form method="POST" action="<%= novo ? '/ead/ebooks/novo' : '/ead/ebooks/' + ebook.id %>?_csrf=<%= csrfToken %>" enctype="multipart/form-data" class="adm-box adm-box-pad">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="adm-form adm-campos">
+    <label class="full">Título do e-book
+      <input type="text" name="nome" required maxlength="120" value="<%= v.nome || '' %>" placeholder="Ex.: Guia do kit de primeiros socorros">
+    </label>
+    <label class="full">Descrição curta (aparece no card da vitrine e no topo da página)
+      <textarea name="descricao" rows="2" maxlength="300"><%= v.descricao || '' %></textarea>
+    </label>
+    <label class="full">Texto da página de venda ("Sobre o e-book")
+      <textarea name="descricaoLonga" rows="6" maxlength="3000"><%= v.descricaoLonga || '' %></textarea>
+    </label>
+    <%- include('../_ia-textos', { iaUrl: '/ead/ebooks/ia-textos', iaTipo: 'ebook', iaCursoId: novo ? '' : ebook.cursoId, iaSemFaqs: !novo, iaFaqsIniciais: faqsIniciais || [] }) %>
+    <label class="full">PDF do e-book (até 50 MB)
+      <input type="file" name="pdf" accept="application/pdf">
+      <% if (!novo && ebook.arquivoPdf) { %><small class="adm-hint">Atual: <b><%= ebook.arquivoNome %></b> · <%= ebook.paginas %> páginas · <%= (ebook.tamanhoBytes / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) %> MB. Envie outro para trocar.</small><% } else { %><small class="adm-hint">Obrigatório para publicar. O arquivo fica guardado em lugar privado: só sai pelo download, com o nome de quem baixou no rodapé.</small><% } %>
+    </label>
+    <label class="check full"><input type="checkbox" name="gratuito" value="1"<%= bool(v.gratuito) ? ' checked' : '' %>> Grátis (só precisa de conta para baixar)</label>
+    <label>Preço (R$)
+      <input type="text" name="preco" inputmode="decimal" value="<%= v.preco || '' %>" placeholder="Ex.: 19,90">
+    </label>
+    <label>Parcelas no cartão
+      <input type="number" name="maxParcelas" min="1" max="12" value="<%= v.maxParcelas || 1 %>">
+    </label>
+    <label>Ordem na vitrine (menor primeiro)
+      <input type="number" name="ordemVitrine" min="-999" max="999" value="<%= v.ordemVitrine || 0 %>">
+    </label>
+    <label class="check full"><input type="checkbox" name="publicado" value="1"<%= bool(v.publicado) ? ' checked' : '' %>> Publicado (aparece na Escola Digital)</label>
+    <label class="full">Capa (JPG, PNG ou WEBP, até 3 MB)<% if (v.capaGeradaPorIa) { %> <span class="ead-selo ia">Capa gerada por IA</span><% } %>
+      <input type="file" name="foto" accept="image/jpeg,image/png,image/webp">
+    </label>
+    <% if (!novo && statusImagem) { %><div class="full"><%- include('_status-imagens', { st: statusImagem }) %></div><% } %>
+    <% if (v.imagemUrl) { %>
+      <div class="full"><img src="<%= v.imagemUrl %>" alt="" class="ead-ebook-capa-previa">
+        <label class="check"><input type="checkbox" name="removerFoto" value="1"> Remover a capa</label></div>
+    <% } %>
+    <% if (!novo && temOpenAI) { %>
+      <div class="full ead-pedido-img">
+        <label>Pedido da capa <small class="adm-mut">(opcional: em branco, o Claude escreve)</small>
+          <textarea name="pedido" id="pedidoCapaEbook" form="formCapaEbookIa" rows="3" maxlength="1000"></textarea>
+        </label>
+        <button type="button" class="adm-btn adm-btn-neutro ia-pedido-bt" data-url="/ead/imagens/pedido" data-tipo="curso" data-id="<%= ebook.cursoId %>" data-alvo="pedidoCapaEbook"><i class="fa-solid fa-pen-nib"></i> Escrever pedido com o Claude</button>
+        <p class="ia-textos-msg" id="pedidoCapaEbook-msg" role="status" hidden></p>
+        <button type="submit" form="formCapaEbookIa" class="adm-btn adm-btn-neutro"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar capa com IA</button>
+      </div>
+    <% } %>
+  </div>
+  <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> <%= novo ? 'Criar e-book' : 'Salvar' %></button>
+</form>
+
+<% if (!novo) { %>
+<div id="duvidas" class="adm-box adm-box-pad adm-espaco">
+  <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-circle-question"></i> Dúvidas frequentes</h2>
+  <p class="adm-mut">Aparecem em sanfona na página do e-book.</p>
+  <%- include('../_ia-duvidas', { iaUrl: '/ead/ebooks/ia-textos', iaTipo: 'ebook', iaCursoId: ebook.cursoId, salvarUrl: '/ead/ebooks/' + ebook.id + '/faqs-ia' }) %>
+  <% if (faqs.length) { %>
+    <div class="adm-itens">
+      <% faqs.forEach(function (f) { %>
+        <div class="adm-item">
+          <div class="adm-item-txt"><strong><%= f.pergunta %></strong><div><%= f.resposta %></div></div>
+          <form method="POST" action="/ead/ebooks/<%= ebook.id %>/faqs/<%= f.id %>/remover" data-confirmar="Remover esta dúvida?">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="adm-mini danger" title="Remover"><i class="fa-solid fa-trash"></i></button>
+          </form>
+        </div>
+      <% }) %>
+    </div>
+  <% } else { %><p class="adm-mut">Nenhuma dúvida cadastrada ainda.</p><% } %>
+  <form method="POST" action="/ead/ebooks/<%= ebook.id %>/faqs" class="adm-form c1">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Pergunta <input type="text" name="pergunta" required maxlength="200"></label>
+    <label>Resposta <textarea name="resposta" required rows="3" maxlength="600"></textarea></label>
+    <button type="submit" class="adm-btn adm-btn-out">Adicionar dúvida</button>
+  </form>
+</div>
+
+<div class="adm-box adm-box-pad adm-espaco">
+  <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-trash"></i> Excluir</h2>
+  <p class="adm-mut">Só dá para excluir um e-book sem compras. Com compras, desmarque "Publicado".</p>
+  <form method="POST" action="/ead/ebooks/<%= ebook.id %>/excluir" data-confirmar="Excluir este e-book? O PDF é apagado." data-botao="Excluir">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="adm-btn adm-btn-out danger">Excluir e-book</button>
+  </form>
+</div>
+<form id="formCapaEbookIa" method="POST" action="/ead/ebooks/<%= ebook.id %>/capa-ia" hidden
+      data-confirmar="<%= v.imagemUrl ? 'Trocar a capa atual por uma gerada pela IA? Leva cerca de 1 minuto.' : 'Gerar a capa com IA? Leva cerca de 1 minuto.' %>" data-botao="Gerar capa" data-confirmar-tipo="ok">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+</form>
+<% } %>
+<script src="<%= asset('/js/ia-textos.js') %>"></script>
+<script src="<%= asset('/js/imagem-pedido.js') %>"></script>
+
+<%- include('../foot') %>
