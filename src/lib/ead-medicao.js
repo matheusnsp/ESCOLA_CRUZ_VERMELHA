@@ -55,7 +55,7 @@ function jsonLdCurso(co, curso, urlSite) {
     provider: { '@type': 'Organization', name: 'Escola de Educação e Saúde CVB-RJ', sameAs: 'https://cruzvermelhariodejaneiro.org' },
   };
   if (co.precoOnline !== null && co.precoOnline !== undefined) {
-    ld.offers = { '@type': 'Offer', price: valorDe(co.precoOnline), priceCurrency: 'BRL', category: 'Paid', url: `${(urlSite || '').replace(/\/+$/, '')}${require('./vitrine').urlOnline(curso)}` };
+    ld.offers = { '@type': 'Offer', price: co.gratuito ? 0 : valorDe(co.precoOnline), priceCurrency: 'BRL', category: co.gratuito ? 'Free' : 'Paid', url: `${(urlSite || '').replace(/\/+$/, '')}${require('./vitrine').urlOnline(curso)}` };
   }
   return ld;
 }

@@ -12,6 +12,14 @@ test('temPreco: gratuito ou preço maior que zero', () => {
   assert.equal(publicacao.temPreco({ precoOnline: 49.9 }), true);
 });
 
+test('[revisão] JSON-LD do curso grátis: oferta "Free" com preço 0', () => {
+  const { jsonLdCurso } = require('../src/lib/ead-medicao');
+  const ld = jsonLdCurso({ gratuito: true, precoOnline: 0 }, { nome: 'Curso X' }, 'https://escola.exemplo');
+  assert.equal(ld.offers.category, 'Free');
+  assert.equal(ld.offers.price, 0);
+  assert.equal(jsonLdCurso({ precoOnline: 49.9 }, { nome: 'Curso Y' }, '').offers.category, 'Paid');
+});
+
 test('podePublicar: curso gratuito publica sem preço; sem preço e não grátis pede preço (ou Gratuito)', () => {
   assert.deepEqual(publicacao.podePublicar({ gratuito: true, precoOnline: 0, modulos: [{ titulo: 'M', status: 'VALIDADO' }] }), []);
   assert.ok(publicacao.podePublicar({ precoOnline: null, modulos: [{ titulo: 'M', status: 'VALIDADO' }] })
@@ -54,6 +62,14 @@ describe('vitrine: dados', { skip: temBanco ? false : 'sem DATABASE_URL local' }
     assert.equal(lista[0].online.cursoOnlineId, coZ.id);
     assert.equal(lista[1].online.gratis, false);
     assert.equal(lista[1].online.maxParcelas, 3);
+  });
+
+  test('[revisão] cursosSoOnlinePublicados inclui o grátis (o link /cursos/<curso> redireciona em vez de 404)', async () => {
+    const lista = await require('../src/lib/ead-curso-online').cursosSoOnlinePublicados();
+    const g = lista.find((c) => c.id === cZ.id);
+    assert.ok(g, 'curso grátis na lista');
+    assert.equal(g.online.gratis, true);
+    assert.equal(g.online.preco, 0);
   });
 
   test('anexarOnline: curso grátis publicado ganha online.gratis', async () => {

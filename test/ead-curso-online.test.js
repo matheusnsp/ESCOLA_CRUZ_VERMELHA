@@ -94,7 +94,7 @@ describe('curso só online', { skip: temBanco ? false : 'sem DATABASE_URL local'
     await prisma.cursoOnline.update({ where: { id: co.id }, data: { publicado: true, precoOnline: 39.9 } });
     cacheRapido.limparTudo();
     const [c] = (await cso.cursosSoOnlinePublicados()).filter((x) => x.id === co.cursoId);
-    assert.deepEqual(c.online, { preco: 39.9, somenteOnline: true });
+    assert.deepEqual(c.online, { preco: 39.9, gratis: false, somenteOnline: true });
     const html = await ejs.renderFile(path.join(__dirname, '..', 'src', 'views', 'partials', 'v-card-cat.ejs'), { curso: { ...c, turmas: [] }, vitrine, taxaExibicao: () => 0, cfgMap: {}, urlCurso: vitrine.urlCurso });
     assert.match(html, new RegExp(`href="${await linkOn()}"`));
     assert.doesNotMatch(html, /Matrícula à vista/); assert.match(html, /R\$\s?39,90/);

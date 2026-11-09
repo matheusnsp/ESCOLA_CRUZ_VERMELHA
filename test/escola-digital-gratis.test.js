@@ -134,6 +134,19 @@ describe('curso gratuito no site', { skip: temBanco ? false : 'sem DATABASE_URL 
     assert.equal((await matriculas(dev.id, cG.id)).length, 0, 'DEV');
   });
 
+  test('[revisão] Escola Digital desligada: inscrição cancelada de antes não libera o curso grátis', async () => {
+    const turma = await turmaOnline(coG);
+    const m = await prisma.matricula.create({ data: { alunoId: pendente.id, turmaId: turma.id, plano: 'A_VISTA', forma: 'PIX', valorCurso: 30, valorTaxaMatricula: 0, statusPagamento: 'CANCELADO' } });
+    await prisma.configuracao.update({ where: { chave: ed.CHAVE }, data: { valor: '0' } }); ed.limparCache();
+    try {
+      await liberar(urlG(), pendente.id);
+      assert.equal((await prisma.matricula.findUnique({ where: { id: m.id } })).statusPagamento, 'CANCELADO');
+    } finally {
+      await prisma.configuracao.update({ where: { chave: ed.CHAVE }, data: { valor: '1' } }); ed.limparCache();
+      await prisma.matricula.delete({ where: { id: m.id } });
+    }
+  });
+
   test('PIX pendente de curso que virou grátis: libera e cancela o pagamento', async () => {
     await prisma.cursoOnline.update({ where: { id: coP.id }, data: { gratuito: true, precoOnline: 0 } });
     try {

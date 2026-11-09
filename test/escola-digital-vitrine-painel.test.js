@@ -54,11 +54,12 @@ describe('painel: vitrine e curso gratuito', { skip: temBanco ? false : 'sem DAT
     assert.equal(Number((await ler(co.id)).precoOnline), 0, 'preço não muda com Gratuito marcado');
     assert.equal((await post(`/ead/curso/${co.id}/publicar`, { acao: 'ligar' })).status, 302);
     assert.equal((await ler(co.id)).publicado, true);
-    await post(`/ead/curso/${co.id}/publicar`, { acao: 'desligar' });
     const r2 = await post(`/ead/curso/${co.id}/gratuito`, { gratuito: '0' });
     assert.match(await flash(r2), /defina o preço/);
+    assert.match(await flash(r2), /não aparece no site/, '[revisão] avisa que o curso publicado some até ter preço');
     d = await ler(co.id);
     assert.equal(d.gratuito, false); assert.equal(d.precoOnline, null);
+    await post(`/ead/curso/${co.id}/publicar`, { acao: 'desligar' });
     await post(`/ead/curso/${co.id}/publicar`, { acao: 'ligar' });
     assert.equal((await ler(co.id)).publicado, false);
     assert.match(await get(`/ead/curso/${co.id}`), /Defina o preço do curso online \(ou marque Gratuito\)\./);

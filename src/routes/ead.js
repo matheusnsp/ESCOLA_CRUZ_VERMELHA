@@ -733,7 +733,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     await prisma.cursoOnline.update({ where: { id: co.id }, data: gratuito ? { gratuito: true, precoOnline: 0, maxParcelas: 1 } : { gratuito: false, precoOnline: null } });
     await auditar(req, 'EAD_GRATUITO', 'CursoOnline', co.id, { gratuito });
     require('../lib/cache-rapido').limparTudo();
-    voltar(res, `/ead/curso/${co.id}`, 'ok', gratuito ? 'Curso marcado como gratuito.' : 'Curso deixou de ser gratuito: defina o preço.');
+    voltar(res, `/ead/curso/${co.id}`, 'ok', gratuito ? 'Curso marcado como gratuito.' : co.publicado ? 'Curso deixou de ser gratuito: defina o preço. Até lá, ele não aparece no site.' : 'Curso deixou de ser gratuito: defina o preço.');
   });
 
   // Etapa 7: máximo de parcelas no cartão (1 = só à vista). Os juros do Únicopag ficam com o aluno.

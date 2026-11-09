@@ -94,7 +94,7 @@ router.post(['/online/:cursoId/comprar', '/escola-digital/:cursoId/comprar'], re
   if (acesso.liberado) return res.redirect(`${base}/continuar`);
   // Curso gratuito (vitrine 2026-11-09): libera com um clique, só com conta (requireLogin acima), sem CPF nem cupom.
   if (co.gratuito) {
-    if (String(req.body.forma || '') !== 'GRATIS' || !co.publicado) return res.redirect(base);
+    if (String(req.body.forma || '') !== 'GRATIS' || !co.publicado || !(await escolaDigital.estaLigada())) return res.redirect(base);
     const turma = await turmaOnline(co);
     const r = await liberarSemPagamento(req.session.usuarioId, turma.id, { confirmadaPor: 'gratuito' });
     if (r.nova) {
