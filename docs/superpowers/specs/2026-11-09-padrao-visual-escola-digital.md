@@ -52,6 +52,8 @@ o botão vermelho "Responder"). Pré-teste, teste rápido e prova já usam esse 
 - Depois de responder, as opções aparecem como no retorno do teste (`.ea-alt` com ✓ verde na escolhida certa, ✕ rosa na
   escolhida errada; as outras normais), seguidas da fala do instrutor como hoje.
 - A classe `.ea-opcao` deixa de ser usada e sai do CSS.
+- A caixa "Instrutor" depois de uma escolha errada sai do amarelo (`#fff8e6` / `#d99a06`) e fica como o retorno do
+  teste: rosa `#fff1f2`, faixa vermelha, "Instrutor:" em vermelho escuro. Escolha certa continua verde.
 
 ## 5. Ajustes menores
 
