@@ -8,17 +8,24 @@ const temBanco = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');
 const prisma = temBanco ? require('../src/db') : null;
 const nPaginas = (buf) => (buf.toString('latin1').match(/\/Type\s*\/Page\b(?!s)/g) || []).length;
 
-describe('paginasDoCartao', () => {
-  const tela = (id, extra = {}) => ({ id, titulo: id, revisaoItens: ['passo'], alerta: null, ...extra });
-  test('capa + telas com revisão ou alerta, sem o módulo final', () => {
+describe('paginasDoCartao (1 página por módulo, 2026-11-09)', () => {
+  const tela = (id, extra = {}) => ({ id, titulo: id, revisaoItens: [id + '-1', id + '-2'], alerta: null, ...extra });
+  test('capa + 1 página por módulo não final: 1º item de cada tela (máx. 6) e o 1º alerta', () => {
     const p = cartao.paginasDoCartao([
-      { titulo: 'Engasgo', final: false, topicos: [{ telas: [tela('a'), tela('b', { revisaoItens: [], alerta: null })] }, { telas: [tela('c', { revisaoItens: [], alerta: 'cuidado' })] }] },
-      { titulo: 'Juntando tudo', final: true, topicos: [] },
-      { titulo: 'Sangramento', final: false, topicos: [{ telas: [tela('d')] }] },
+      { titulo: 'Engasgo', final: false, fotoIntroUrl: '/img/capa.webp', topicos: [
+        { telas: [tela('a'), tela('b', { revisaoItens: [] }), tela('c', { alerta: 'primeiro alerta' })] },
+        { telas: [tela('d', { alerta: 'segundo' }), tela('e'), tela('f'), tela('g'), tela('h')] },
+      ] },
+      { titulo: 'Juntando tudo', final: true, topicos: [{ telas: [tela('z')] }] },
+      { titulo: 'Vazio', final: false, topicos: [] },
     ]);
-    assert.deepEqual(p.map((x) => (x.tipo === 'capa' ? 'capa' : x.tela.id)), ['capa', 'a', 'c', 'd']);
-    assert.deepEqual(p.slice(1).map((x) => x.primeiraDoModulo), [true, false, true]);
-    assert.deepEqual(p.slice(1).map((x) => x.modulo.numero), [1, 1, 2]);
+    assert.deepEqual(p.map((x) => x.tipo), ['capa', 'modulo', 'modulo']);
+    assert.deepEqual(p[1], { tipo: 'modulo', numero: 1, titulo: 'Engasgo', fotoUrl: '/img/capa.webp', passos: ['a-1', 'c-1', 'd-1', 'e-1', 'f-1', 'g-1'], alerta: 'primeiro alerta' });
+    assert.deepEqual(p[2], { tipo: 'modulo', numero: 2, titulo: 'Vazio', fotoUrl: null, passos: [], alerta: null });
+  });
+  test('item em branco é pulado (pega o próximo não vazio da tela)', () => {
+    const p = cartao.paginasDoCartao([{ titulo: 'M', final: false, topicos: [{ telas: [tela('a', { revisaoItens: ['  ', 'real'] })] }] }]);
+    assert.deepEqual(p[1].passos, ['real']);
   });
 });
 
@@ -48,7 +55,12 @@ describe('gerarCartao', { skip: temBanco ? false : 'sem DATABASE_URL local' }, (
       { ordem: 2, titulo: 'Foto apagada', fotoUrl: '/uploads/nao-existe.webp', alerta: 'só alerta' },
       { ordem: 3, titulo: 'Sem nada' },
     ] } } });
-    await prisma.moduloEad.create({ data: { cursoOnlineId: co.id, titulo: 'Final', ordem: 1, final: true } });
+    await prisma.moduloEad.create({ data: { cursoOnlineId: co.id, titulo: 'Final', ordem: 2, final: true } });
+    const m2 = await prisma.moduloEad.create({ data: { cursoOnlineId: co.id, titulo: 'Título gigante '.repeat(40), ordem: 1, fotoIntroUrl: '/img/capa.webp' } });
+    await prisma.topicoEad.create({ data: { moduloId: m2.id, titulo: 'T', telas: { create: [
+      { ordem: 0, titulo: 'Longa', revisaoItens: ['palavra '.repeat(300)], alerta: 'alerta '.repeat(300) },
+      ...Array.from({ length: 9 }, (_, i) => ({ ordem: i + 1, titulo: 'x' + i, revisaoItens: ['passo comprido de verdade número ' + i + ' '.repeat(1) + 'com mais texto para ocupar duas linhas no cartão'] })),
+    ] } } });
   });
   after(async () => {
     await prisma.cursoOnline.delete({ where: { id: co.id } });
@@ -56,13 +68,13 @@ describe('gerarCartao', { skip: temBanco ? false : 'sem DATABASE_URL local' }, (
     await prisma.$disconnect();
   });
 
-  test('PDF com capa + 3 telas, foto WEBP convertida, fotos quebradas puladas', async () => {
+  test('PDF com capa + 1 página por módulo (final fora), fonte Inter e vermelho do site', async () => {
     const { buffer, nomeArquivo } = await cartao.gerarCartao(co.id);
     assert.equal(buffer.subarray(0, 5).toString(), '%PDF-');
-    assert.equal(nPaginas(buffer), 4);
+    assert.equal(nPaginas(buffer), 3);
+    assert.match(buffer.toString('latin1'), /\/FontName\s*\/[A-Z]{6}\+Inter/);
     assert.match(buffer.toString('latin1'), /\/Subtype\s*\/Image/);
     assert.equal(nomeArquivo, 'cartao-de-bolso-primeiros-socorros-cartao.pdf');
-    require('fs').writeFileSync('/tmp/claude-0/cartao-teste.pdf', buffer);
   });
 
   test('carregarFoto: inexistente ou recusada ⇒ null; WEBP ⇒ JPEG', async () => {
@@ -72,4 +84,15 @@ describe('gerarCartao', { skip: temBanco ? false : 'sem DATABASE_URL local' }, (
     const j = await cartao.carregarFoto('/img/capa.webp');
     assert.equal(j[0], 0xff); assert.equal(j[1], 0xd8); // assinatura JPEG
   });
+});
+
+test('registrarFontes: sem os arquivos da Inter, usa a Helvetica (não quebra)', () => {
+  const PDFDocument = require('pdfkit');
+  assert.deepEqual(cartao.registrarFontes(new PDFDocument(), '/nao/existe'), { R: 'Helvetica', B: 'Helvetica-Bold', K: 'Helvetica-Bold' });
+  assert.deepEqual(cartao.registrarFontes(new PDFDocument()), { R: 'InterR', B: 'InterB', K: 'InterK' });
+});
+
+test('[revisão] a licença OFL da Inter vai junto com os arquivos da fonte', () => {
+  const p = require('path').join(__dirname, '..', 'src', 'assets', 'fonts', 'OFL.txt');
+  assert.match(require('fs').readFileSync(p, 'utf8'), /SIL Open Font License/);
 });
