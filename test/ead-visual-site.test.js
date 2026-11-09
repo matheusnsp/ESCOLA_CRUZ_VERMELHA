@@ -75,3 +75,8 @@ describe('área do aluno com header e footer do site', { skip: temBanco ? false 
     assert.doesNotMatch(html, /<script>(?![^<]*gtag)/, 'sem script inline');
   });
 });
+
+test('CSS: cartões dos módulos da mesma linha com a mesma altura (rodapé "Módulo N / Abrir" alinhado)', () => {
+  assert.match(css, /\.ea-modulos > li\s*\{[^}]*display:\s*flex/);
+  assert.match(css, /\.ea-modulos > li > \.ea-mod\s*\{[^}]*flex:\s*1/);
+});
