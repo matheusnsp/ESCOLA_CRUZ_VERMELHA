@@ -41,11 +41,17 @@ toda. O aviso verde de "dúvida respondida" segue o mesmo desenho, em verde.
 Com "Menu do curso" + "Olá, nome" + "Ver cursos", os links do menu quebravam em duas linhas. Links do menu nunca quebram
 (`white-space: nowrap`); quando não cabem (até 1280 px com "Menu do curso"), o menu vai para o ☰ como no celular.
 
-## 4. Opções do cenário iguais às perguntas do teste
+## 4. Toda pergunta para responder no mesmo desenho
 
-Hoje: botões com contorno vermelho, texto vermelho centralizado em caixa alta espaçada. Passam a ser como as opções do
-teste: caixa branca, borda cinza (`--ln`), texto escuro à esquerda, peso 600; passar o mouse = borda vermelha. Depois de
-escolher: certa = verde, errada = rosa com borda vermelha, as outras apagadas (como hoje).
+Pedido do Matheus: "todas as perguntas pra responder estejam nesse padrão" (o do pré-teste: caixas brancas com bolinha e
+o botão vermelho "Responder"). Pré-teste, teste rápido e prova já usam esse desenho (`pergunta.ejs`, `.ea-alt`). Só as
+**decisões do cenário** fogem (botões com contorno vermelho, texto vermelho centralizado, um clique já responde).
+
+- A decisão passa a usar a mesma marcação do teste: lista de `label.ea-alt` com bolinha (`input type="radio"
+  name="opcaoId" required`) e o botão vermelho de largura toda **"Responder"** embaixo. A rota não muda (lê `opcaoId`).
+- Depois de responder, as opções aparecem como no retorno do teste (`.ea-alt` com ✓ verde na escolhida certa, ✕ rosa na
+  escolhida errada; as outras normais), seguidas da fala do instrutor como hoje.
+- A classe `.ea-opcao` deixa de ser usada e sai do CSS.
 
 ## 5. Ajustes menores
 
@@ -63,6 +69,6 @@ certificado (já segue o modelo do presencial).
 
 - Cartão: curso com 7 módulos + final → PDF com 8 páginas (capa + 7); página do módulo tem no máximo 6 passos e o
   1º alerta; módulo sem revisão/alerta ainda tem página; texto gigante não cria página extra; logo e Inter carregam.
-- CSS/HTML: avisos com botão e classe nova, sem texto solto; `.ea-opcao` sem `text-align: center` nem borda vermelha;
+- CSS/HTML: avisos com botão e classe nova, sem texto solto; decisão do cenário com `label.ea-alt` + radio `opcaoId` + botão "Responder", sem `.ea-opcao`;
   `.ea-menu a` com `nowrap`; selo sem amarelo; quadro de dúvidas com a largura da aula.
 - Prints: cartão (capa + 2 módulos), avisos (computador e celular), cenário, header 1280 com "Menu do curso".
