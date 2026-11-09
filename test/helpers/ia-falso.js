@@ -64,4 +64,29 @@ function roteiroComum(n = 3) {
   return { modulos: Array.from({ length: n }, (_, i) => ({ titulo: `Módulo ${i + 1}`, minutos: 20, final: false, topicos: [{ titulo: `Tópico ${i + 1}.1` }, { titulo: `Tópico ${i + 1}.2` }, { titulo: `Tópico ${i + 1}.3` }], cenarios: [] })) };
 }
 
-module.exports = { propostaBoa, roteiroBom, roteiroComum, moduloBom, clienteFalso, alternativas };
+// Imagens com IA (2026-11-09): o que o Claude devolve para os pedidos de imagem.
+function pedidosImagensBons(moduloIds = []) {
+  return {
+    capa: { pedido: 'Realistic photo of a first aid kit on a kitchen counter, natural light, empty space on the left, no text', pedidoCurto: 'First aid kit on a counter', descricao: 'Kit de primeiros socorros sobre a bancada' },
+    modulos: moduloIds.map((id, i) => ({ moduloId: id, pedido: `Realistic photo for module ${i + 1}, no text`, pedidoCurto: `Module ${i + 1} photo`, descricao: `Imagem do módulo ${i + 1}` })),
+  };
+}
+
+// PNG 1x1 em base64 (sharp converte para WebP).
+const PNG_1X1 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+// fetch falso da OpenAI: `respostas` é lista de (url, opts) => { status, json } | 'nunca'; a última repete.
+function openaiFalso(respostas = [() => ({ status: 200, json: { data: [{ b64_json: PNG_1X1 }] } })]) {
+  const chamadas = [];
+  const f = async (url, opts = {}) => {
+    chamadas.push({ url: String(url), opts, body: opts.body ? JSON.parse(opts.body) : null });
+    const r = respostas[Math.min(chamadas.length - 1, respostas.length - 1)](url, opts);
+    if (r === 'nunca') return new Promise((resolve, reject) => { if (opts.signal) opts.signal.addEventListener('abort', () => reject(Object.assign(new Error('abortado'), { name: 'AbortError' }))); });
+    if (r.bytes) return { ok: true, status: 200, arrayBuffer: async () => r.bytes, json: async () => ({}) };
+    return { ok: r.status >= 200 && r.status < 300, status: r.status, json: async () => r.json, text: async () => JSON.stringify(r.json) };
+  };
+  f.chamadas = chamadas;
+  return f;
+}
+
+module.exports = { pedidosImagensBons, openaiFalso, PNG_1X1, propostaBoa, roteiroBom, roteiroComum, moduloBom, clienteFalso, alternativas };

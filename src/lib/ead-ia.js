@@ -71,14 +71,14 @@ function montarMensagens(geracao, pedidoDoPasso) {
 
 const temMaterial = (messages) => (messages[0] && Array.isArray(messages[0].content) ? messages[0].content.length > 1 : false);
 
-async function chamarClaude(cliente, { system, messages, schema }) {
+async function chamarClaude(cliente, { system, messages, schema, effort = 'high' }) {
   let msg;
   try {
     const stream = cliente.beta.messages.stream({
       model: MODELO,
       max_tokens: 32000,
       thinking: { type: 'adaptive' },
-      output_config: { effort: 'high', format: { type: 'json_schema', schema } },
+      output_config: { effort, format: { type: 'json_schema', schema } },
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
       system,
