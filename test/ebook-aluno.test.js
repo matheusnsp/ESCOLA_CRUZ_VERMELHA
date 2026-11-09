@@ -112,6 +112,35 @@ describe('e-book: página, compra e download', { skip: temBanco ? false : 'sem D
     assert.match(await (await req(url(pago), bia)).text(), /Já é seu desde/);
   });
 
+  test('[revisão I1] despublicado: quem comprou continua vendo e baixando; visitante não', async () => {
+    await prisma.ebook.update({ where: { id: pago.id }, data: { publicado: false } });
+    try {
+      assert.equal((await req(url(pago), bia)).status, 200);
+      assert.equal((await req(url(pago, '/baixar'), bia)).status, 200);
+      assert.equal((await req(url(pago))).status, 404);
+      assert.equal((await req(url(pago), ana)).status, 404);
+    } finally { await prisma.ebook.update({ where: { id: pago.id }, data: { publicado: true } }); }
+  });
+
+  test('[revisão I2] cartão do e-book usa as parcelas do e-book', async () => {
+    await prisma.ebook.update({ where: { id: pago.id }, data: { maxParcelas: 4 } });
+    const turma = await prisma.turma.findFirst({ where: { cursoId: pago.cursoId, status: 'ONLINE' } });
+    assert.equal(await require('../src/routes/cursos').maxParcelasOnline(turma), 4);
+  });
+
+  test('[revisão I4] e-book pago não conta como inscrição em andamento (não trava excluir a conta)', async () => {
+    assert.equal(await require('../src/lib/excluir-conta').contarEmAndamento(bia.id), 0);
+  });
+
+  test('[revisão I3] limite de downloads conferido antes de preparar o PDF', async () => {
+    await prisma.downloadEbook.createMany({ data: Array.from({ length: 20 }, () => ({ ebookId: gratis.id, usuarioId: ana.id })) });
+    await prisma.ebook.update({ where: { id: gratis.id }, data: { arquivoPdf: 'local:sumiu-tambem.pdf' } });
+    const r = await req(url(gratis, '/baixar'), ana);
+    assert.equal(r.status, 302, 'acima do limite volta para a página (sem ler nem montar o PDF)');
+    assert.match(r.headers.get('location'), /erro=limite/);
+    await prisma.downloadEbook.deleteMany({ where: { ebookId: gratis.id, usuarioId: ana.id } });
+  });
+
   test('arquivo sumido: página de erro amigável (503), sem contar download', async () => {
     const antes = await prisma.downloadEbook.count({ where: { usuarioId: ana.id } });
     await prisma.ebook.update({ where: { id: gratis.id }, data: { arquivoPdf: 'local:sumiu.pdf' } });

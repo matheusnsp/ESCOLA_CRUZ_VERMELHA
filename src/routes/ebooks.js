@@ -33,10 +33,12 @@ const brl = (v) => Number(v).toLocaleString('pt-BR', { style: 'currency', curren
 // Acha o e-book do endereço e decide se a pessoa pode ver a página. Escola Digital desligada: só quem já tem
 // o e-book (ou está pagando) vê. DEV vê rascunho. Devolve { ebook, acesso } ou null (404).
 async function carregar(req) {
-  const ebook = await eb.doEndereco(req.params.end, { incluirRascunho: ehDev(req) });
+  // Revisão I1: despublicado continua aberto para quem já tem (comprou, está pagando ou baixou grátis).
+  const ebook = await eb.doEndereco(req.params.end, { incluirRascunho: true });
   if (!ebook) return null;
   const acesso = await eb.acesso(aluno(req), ebook);
   const jaTem = acesso.situacao === 'pago' || acesso.situacao === 'pendente' || (acesso.situacao === 'gratis' && acesso.desde);
+  if (!ebook.publicado && !jaTem && !ehDev(req)) return null;
   if (!jaTem && !ehDev(req) && !(await escolaDigital.estaLigada())) return null;
   return { ebook, acesso };
 }
@@ -128,6 +130,8 @@ router.get(P('/baixar'), requireLogin, comEbook(async (req, res, ebook, acesso) 
   const base = urlDe(ebook);
   const usuarioId = aluno(req);
   if (!usuarioId || !eb.podeBaixar(acesso)) return res.redirect(base);
+  // Revisão I3: o limite é conferido antes de ler e montar o PDF (trabalho pesado com arquivos grandes).
+  if (await eb.passouDoLimite(usuarioId)) return res.redirect(`${base}?erro=limite`);
   const original = ebook.arquivoPdf ? await arq.ler(ebook.arquivoPdf) : null;
   let pdf = null;
   if (original) {

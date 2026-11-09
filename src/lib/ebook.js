@@ -113,6 +113,8 @@ async function acesso(usuarioId, ebook) {
 }
 const podeBaixar = (a) => a.situacao === 'gratis' || a.situacao === 'pago';
 
+const passouDoLimite = async (usuarioId) => (await prisma.downloadEbook.count({ where: { usuarioId, criadoEm: { gte: new Date(Date.now() - 3600 * 1000) } } })) >= LIMITE_HORA;
+
 // Conta o download (limite por hora) e, no grátis, grava a posse (única por pessoa). { ok } ou { erro: 'LIMITE' }.
 async function registrarDownload(usuarioId, ebook) {
   return prisma.$transaction(async (tx) => {
@@ -173,4 +175,4 @@ async function excluir(id) {
   return { ok: true };
 }
 
-module.exports = { MAX_PDF, LIMITE_HORA, endereco, salvar, doEndereco, porId, acesso, podeBaixar, registrarDownload, daVitrine, meus, excluir };
+module.exports = { MAX_PDF, LIMITE_HORA, endereco, salvar, doEndereco, porId, acesso, podeBaixar, passouDoLimite, registrarDownload, daVitrine, meus, excluir };

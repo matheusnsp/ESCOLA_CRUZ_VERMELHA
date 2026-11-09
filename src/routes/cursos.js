@@ -1189,6 +1189,9 @@ async function eventosInicioCompra(matricula) {
 
 // Máximo de parcelas do curso online desta turma (1 a 12; sem cadastro, 1).
 async function maxParcelasOnline(turma) {
+  // E-book (2026-11-09, revisão I2): o curso escondido do e-book tem as parcelas no Ebook.
+  const ebook = await prisma.ebook.findUnique({ where: { cursoId: turma.cursoId }, select: { maxParcelas: true } });
+  if (ebook) return Math.min(Math.max(Number(ebook.maxParcelas) || 1, 1), 12);
   const co = await prisma.cursoOnline.findUnique({ where: { cursoId: turma.cursoId }, select: { maxParcelas: true } });
   return Math.min(Math.max(Number(co && co.maxParcelas) || 1, 1), 12);
 }
@@ -1461,4 +1464,4 @@ router.get('/inscricao/status/:matriculaId', requireLogin, async (req, res) => {
 });
 
 module.exports = router;
-module.exports.carregarVitrine = carregarVitrine;
+module.exports.carregarVitrine = carregarVitrine;module.exports.maxParcelasOnline = maxParcelasOnline;
