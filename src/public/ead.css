@@ -506,3 +506,6 @@ details.ea-indice > summary, .ea-indice summary { padding: 12px 0; }
   .ea-curso-pc { display: none; }
   .ea-topbar .ea-wrap { justify-content: center; }
 }
+/* Cartões dos módulos: o cartão ocupa a altura toda da linha, e "Módulo N / Abrir" fica alinhado embaixo. */
+.ea-modulos > li { display: flex; }
+.ea-modulos > li > .ea-mod { flex: 1; min-width: 0; }
