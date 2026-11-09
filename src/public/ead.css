@@ -402,3 +402,7 @@ details.ea-indice > summary, .ea-indice summary { padding: 12px 0; }
 .ea-faq-item summary::after { content: "+"; color: var(--r, #d9081f); font-size: 20px; line-height: 1; }
 .ea-faq-item[open] summary::after { content: "–"; }
 .ea-faq-item p { margin: 0 0 16px; color: #555; white-space: pre-line; }
+
+/* Página do módulo com foto de abertura no topo (2026-11-09): mais altura para a foto aparecer. */
+.ea-heroi-foto .ea-heroi-grid { padding: 48px 0 56px; }
+@media (min-width: 900px) { .ea-heroi-foto .ea-heroi-grid { padding: 72px 0 84px; } }
