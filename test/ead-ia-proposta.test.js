@@ -158,4 +158,15 @@ describe('proposta no banco e na fila', { skip: temBanco ? false : 'sem DATABASE
       await require('./helpers/painel-ead').apagarCursosOnline(prisma, [co.id]).catch(() => {});
     }
   });
+
+  test('[dúvidas da ideia] o pedido da proposta manda usar exatamente as dúvidas que a pessoa escreveu na ideia', async () => {
+    let pedido = '';
+    const g = await IA.criarGeracao({ pedido: { ideia: 'Curso de primeiros socorros para babás. Inclua nas dúvidas: Precisa de experiência? Tem certificado?', destino: { tipo: 'novo' } }, material: { materialTexto: null, materialPdfs: [] }, criadoPor: `${quem}-ideia` });
+    geracoes.push(g.id);
+    await IA.gerarProposta(g.id, { cliente: clienteFalso([(params) => { pedido = params.messages[0].content.at(-1).text; return propostaBoa(); }]) });
+    assert.match(pedido, /Precisa de experiência\? Tem certificado\?/);
+    assert.match(pedido, /exatamente/i);
+    assert.match(pedido, /mesma redação/i);
+    assert.match(pedido, /complete até 6/i);
+  });
 });

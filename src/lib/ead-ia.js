@@ -222,7 +222,8 @@ async function gerarProposta(geracaoId, { cliente }) {
       ? 'Proponha os módulos novos para um curso online que já existe: tema, público, número de módulos (2 a 12) e observações para o roteiro. Os campos nome, descrição, carga horária, preço e parcelas podem repetir o óbvio (não serão usados).'
       : 'Proponha o curso online: nome curto (até 80 caracteres), descrição de uma ou duas frases para a página de venda, carga horária em horas, público, tema detalhado, número de módulos (2 a 12, o último é o módulo final com cenários), preço sugerido em reais (cursos online da escola costumam ficar entre R$ 29,90 e R$ 99,90) e parcelas no cartão (1 a 12).',
     'Para carga horária, número de módulos e preço, explique a sugestão numa frase curta e simples (porqueCargaHoraria, porqueModulos, porquePreco).',
-    'Escreva também 5 ou 6 dúvidas frequentes (faqs) que o aluno costuma ter sobre este curso (para quem é, pré-requisito, como funciona, certificado), com respostas curtas e corretas: sem preço, sem prometer prática em manequim (o curso online é teórico) e com o certificado só ao concluir. Proponha o curso.',
+    'Escreva também 5 ou 6 dúvidas frequentes (faqs) que o aluno costuma ter sobre este curso (para quem é, pré-requisito, como funciona, certificado), com respostas curtas e corretas: sem preço, sem prometer prática em manequim (o curso online é teórico) e com o certificado só ao concluir.',
+    'Se a ideia trouxer dúvidas ou perguntas que a pessoa quer no curso, use exatamente essas perguntas, na mesma redação e na mesma ordem, primeiro na lista, com respostas corretas; depois complete até 6 com dúvidas suas (sem repetir). Proponha o curso.',
   ].join('\n\n');
   try {
     const { system, messages } = montarMensagens(g, pedido);
