@@ -12,27 +12,31 @@ const locais = (extra = {}) => ({ asset: (u) => u, titulo: 'Curso', base: '/esco
 const topo = (extra) => ejs.renderFile(path.join(V, 'ead-teste', '_topo.ejs'), locais(extra));
 const fim = (extra) => ejs.renderFile(path.join(V, 'ead-teste', '_fim.ejs'), locais(extra));
 
-test('topo: marca "ESCOLA DIGITAL" e o logo vai para /escola-digital (ligada) ou / (desligada)', async () => {
+test('topo: marca igual à do site ("ESCOLA DE EDUCAÇÃO / E SAÚDE CVB-RJ", 2026-11-09) e o logo vai para / como no site', async () => {
   const lig = await topo({ escolaDigital: true });
-  assert.match(lig, /ESCOLA DIGITAL/);
-  assert.match(lig, /class="ea-logo" href="\/escola-digital"/);
-  assert.match(await topo({ escolaDigital: false }), /class="ea-logo" href="\/"/);
+  assert.match(lig, /ESCOLA DE EDUCAÇÃO/);
+  assert.match(lig, /E SAÚDE CVB-RJ/);
+  assert.match(lig, /class="ea-logo" href="\/"/);
+  assert.match(lig, /href="\/escola-digital">Escola Digital/, 'menu com Escola Digital quando ligada');
+  assert.doesNotMatch(await topo({ escolaDigital: false }), /Escola Digital<\/a>/);
 });
 
-test('topo: logado tem "Minha conta", "Cursos online" e "Sair"; deslogado tem "Entrar"; gestor vê "Minha escola"', async () => {
-  const logado = await topo({ usuario: { id: 'u', nome: 'Ana Paula', papel: 'ALUNO' }, contaLinks: { gestor: true } });
+test('topo: logado tem "Minhas inscrições", "Cursos online" e "Sair"; deslogado tem "Entrar"; gestor vê "Minha escola"', async () => {
+  const logado = await topo({ usuario: { id: 'u', nome: 'Ana Paula', papel: 'ALUNO' }, contaLinks: { gestor: true, cursosOnline: true } });
   assert.match(logado, /Olá, Ana/);
-  assert.match(logado, /href="\/minha-conta"/); assert.match(logado, /href="\/minha-conta\?sec=online"/);
+  assert.match(logado, /href="\/minha-conta\?sec=inscricoes"/); assert.match(logado, /href="\/minha-conta\?sec=online"/);
   assert.match(logado, /href="\/minha-escola"/); assert.match(logado, /action="\/logout"|href="\/logout"/);
   const sem = await topo({ usuario: null });
   assert.match(sem, /href="\/login"[^>]*>Entrar/);
+  assert.doesNotMatch(sem, /sec=online/);
   assert.doesNotMatch(sem, /Minha escola/);
 });
 
-test('topo: a faixa de cima leva ao site da Cruz Vermelha RJ e tem "Site da escola"', async () => {
+test('topo: a faixa de cima leva ao site da Cruz Vermelha RJ ; o menu é o do site, sem "Site da escola"', async () => {
   const t = await topo({});
   assert.match(t, /class="ea-topbar"[\s\S]*href="https:\/\/cruzvermelhariodejaneiro\.org\/"/);
-  assert.match(t, /Site da escola/);
+  assert.doesNotMatch(t, /Site da escola/);
+  assert.match(t, /href="\/cursos">Ver cursos/);
 });
 
 test('rodapé: privacidade, preferências de cookies, WhatsApp e copyright', async () => {
