@@ -312,14 +312,15 @@ async function confirmarRoteiro(geracaoId, roteiroEditado, atorId) {
     }
     cursoOnlineId = co.id;
   }
-  // Escrever com IA (2026-11-09): as dúvidas conferidas na proposta entram no curso (sem repetir pergunta).
+  const modulos = v.roteiro.modulos.map((m, i) => ({ ordem: i, titulo: m.titulo, status: 'pendente' }));
+  const r = await prisma.geracaoIaEad.updateMany({ where: { id: geracaoId, status: 'ROTEIRO_PRONTO' }, data: { status: 'MODULOS_GERANDO', roteiro: v.roteiro, cursoOnlineId, modulos } });
+  if (!r.count) return { ok: false, erro: 'Esta geração não está esperando confirmação.' };
+  // Escrever com IA (2026-11-09): as dúvidas conferidas na proposta entram no curso (sem repetir pergunta). Só
+  // depois da confirmação protegida (revisão M3: clique duplo ou cancelar ao mesmo tempo não grava em dobro).
   if (Array.isArray(g.pedido.faqs) && g.pedido.faqs.length) {
     const alvo = await prisma.cursoOnline.findUnique({ where: { id: cursoOnlineId }, select: { cursoId: true } });
     if (alvo) await require('./ia-textos').salvarFaqs(alvo.cursoId, g.pedido.faqs).catch((e) => console.error('[EAD IA] dúvidas:', e.message));
   }
-  const modulos = v.roteiro.modulos.map((m, i) => ({ ordem: i, titulo: m.titulo, status: 'pendente' }));
-  const r = await prisma.geracaoIaEad.updateMany({ where: { id: geracaoId, status: 'ROTEIRO_PRONTO' }, data: { status: 'MODULOS_GERANDO', roteiro: v.roteiro, cursoOnlineId, modulos } });
-  if (!r.count) return { ok: false, erro: 'Esta geração não está esperando confirmação.' };
   await auditar(atorId, 'EAD_IA_CONFIRMOU', geracaoId, { cursoOnlineId, modulos: modulos.length });
   return { ok: true, cursoOnlineId };
 }

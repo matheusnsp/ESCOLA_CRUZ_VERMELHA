@@ -39,6 +39,18 @@ test('lerFaqsDoForm: só as marcadas, sem vazias, cortes, no máximo 6', () => {
   assert.deepEqual(txt.lerFaqsDoForm({}), []);
 });
 
+test('[revisão I3] lerFaqsDoForm com índice gigante (vetor esparso) não trava', () => {
+  const a = []; a[300000000] = { usar: '1', pergunta: 'Esparsa?', resposta: 'r' };
+  const t0 = Date.now();
+  assert.deepEqual(txt.lerFaqsDoForm({ faqsIa: a }), [{ pergunta: 'Esparsa?', resposta: 'r' }]);
+  assert.ok(Date.now() - t0 < 200, `levou ${Date.now() - t0} ms`);
+});
+
+test('[revisão M1] a caixa de dúvidas sugeridas some quando vazia ([hidden] vence o display)', () => {
+  const css = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'public', 'admin.css'), 'utf8');
+  assert.match(css, /\.ia-faqs\[hidden\][^{]*\{\s*display:\s*none/);
+});
+
 const temBanco = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');
 
 describe('textos com IA: banco', { skip: temBanco ? false : 'sem DATABASE_URL local' }, () => {

@@ -296,12 +296,14 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
 
   router.post('/ead/curso-online/novo', uploadFoto, async (req, res) => {
     const valores = { nome: req.body.nome, descricao: req.body.descricao, cargaHoraria: req.body.cargaHoraria };
-    if (req.uploadErro) return res.status(400).render('admin/ead/curso-online-form', { co: null, valores, erro: req.uploadErro });
+    // Revisão I2: depois de um erro, as dúvidas sugeridas pela IA voltam no formulário.
+    const deNovo = (erro) => res.status(400).render('admin/ead/curso-online-form', { co: null, valores, erro, faqsIniciais: iaTextos.faqsDoCorpo(req.body) });
+    if (req.uploadErro) return deNovo(req.uploadErro);
     const imagemUrl = req.file ? await salvarFotoCurso(req.file) : null;
     const r = await cursoSoOnline.criarCursoOnline({ ...valores, imagemUrl });
     if (!r.ok) {
       if (imagemUrl) await removerFotoCurso(imagemUrl);
-      return res.status(400).render('admin/ead/curso-online-form', { co: null, valores, erro: r.erro });
+      return deNovo(r.erro);
     }
     await iaTextos.salvarFaqs(r.co.cursoId, iaTextos.lerFaqsDoForm(req.body)); // dúvidas escritas com IA e marcadas
     await auditar(req, 'EAD_CRIOU_CURSO_ONLINE', 'CursoOnline', r.co.id, { cursoId: r.co.cursoId, nome: String(valores.nome).trim() });
@@ -328,6 +330,14 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     await auditar(req, 'ADICIONOU_FAQ', 'Curso', co.cursoId, { pergunta });
     voltar(res, volta, 'ok', 'Dúvida adicionada.');
   });
+  // As dúvidas marcadas de "Escrever dúvidas com IA" (seção de dúvidas), gravadas direto.
+  router.post('/ead/curso/:id/faqs-ia', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co || !co.somenteOnline) return naoAchou(res);
+    const n = await iaTextos.salvarFaqs(co.cursoId, iaTextos.lerFaqsDoForm(req.body));
+    if (n) await auditar(req, 'ADICIONOU_FAQ', 'Curso', co.cursoId, { porIa: true, quantas: n });
+    voltar(res, `/ead/curso/${co.id}/dados#duvidas`, n ? 'ok' : 'erro', n ? `${n} ${n === 1 ? 'dúvida adicionada' : 'dúvidas adicionadas'}.` : 'Nenhuma dúvida marcada (ou todas já existiam).');
+  });
   router.post('/ead/curso/:id/faqs/:faqId/remover', async (req, res) => {
     const co = await acharCursoOnline(req.params.id);
     if (!co || !co.somenteOnline || !edb.ehId(req.params.faqId)) return naoAchou(res);
@@ -344,8 +354,11 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (!t.ok) return res.json({ ok: false, erro: t.erro });
     const b = req.body || {};
     const cursoId = edb.ehId(b.cursoId) ? b.cursoId : null;
+    // "Escrever dúvidas com IA" na seção de dúvidas: os dados vêm do banco (com as dúvidas que o curso já tem).
+    const dados = b.soDuvidas === '1' && cursoId ? await iaTextos.dadosDoCurso(cursoId) : { nome: b.nome, cargaHoraria: b.cargaHoraria, descricao: b.descricao };
+    if (!dados) return res.json({ ok: false, erro: 'Curso não encontrado.' });
     try {
-      const r = await iaTextos.escrever({ tipo: 'online', ideias: b.ideias, cursoId, dados: { nome: b.nome, cargaHoraria: b.cargaHoraria, descricao: b.descricao } });
+      const r = await iaTextos.escrever({ tipo: 'online', ideias: b.ideias, cursoId, dados });
       await ia.somarCustoAvulso(r.usage);
       await auditar(req, 'IA_TEXTOS_CURSO', 'Curso', cursoId || 'novo', { tipo: 'online' });
       return res.json({ ok: true, textos: r.textos });
@@ -379,8 +392,13 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const co = await acharCursoOnline(req.params.id);
     if (!co || !co.somenteOnline) return naoAchou(res);
     const atual = await prisma.curso.findUnique({ where: { id: co.cursoId } });
-    const valores = { nome: req.body.nome, descricao: req.body.descricao, cargaHoraria: req.body.cargaHoraria, imagemUrl: atual.imagemUrl };
-    if (req.uploadErro) return res.status(400).render('admin/ead/curso-online-form', { co, valores, erro: req.uploadErro });
+    const valores = { nome: req.body.nome, descricao: req.body.descricao, cargaHoraria: req.body.cargaHoraria, imagemUrl: atual.imagemUrl, imagemSugestao: atual.imagemSugestao, imagemGeradaPorIa: atual.imagemGeradaPorIa };
+    // Revisão I2: o formulário que volta com erro mantém a lista de dúvidas e o botão de imagem.
+    const deNovo = async (erro) => res.status(400).render('admin/ead/curso-online-form', {
+      co, valores, erro, faqs: await prisma.faqCurso.findMany({ where: { cursoId: co.cursoId }, orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] }),
+      temOpenAI: imagensLib.temOpenAI(), statusImagem: await imagensLib.statusDe(`curso:${co.cursoId}`),
+    });
+    if (req.uploadErro) return deNovo(req.uploadErro);
     let imagemUrl;
     if (req.file) imagemUrl = await salvarFotoCurso(req.file);
     else if (req.body.removerFoto) imagemUrl = null;
@@ -388,7 +406,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (r.ok && imagemUrl !== undefined) await prisma.curso.update({ where: { id: co.cursoId }, data: { imagemGeradaPorIa: false } }); // imagem própria
     if (!r.ok) {
       if (imagemUrl) await removerFotoCurso(imagemUrl);
-      return res.status(400).render('admin/ead/curso-online-form', { co, valores, erro: r.erro });
+      return deNovo(r.erro);
     }
     if (imagemUrl !== undefined && atual.imagemUrl) await removerFotoCurso(atual.imagemUrl);
     await iaTextos.salvarFaqs(co.cursoId, iaTextos.lerFaqsDoForm(req.body));
@@ -601,10 +619,11 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (g.status !== 'PROPOSTA_PRONTA') return voltar(res, `/ead/ia/${g.id}`, 'erro', 'Esta geração não está esperando a proposta.');
     const d = g.pedido.destino || {};
     const r = await lerPedidoIa({ ...req.body, destino: d.tipo, cursoOnlineId: d.cursoOnlineId }, []);
-    const faqsForm = Object.values((req.body && req.body.faqsIa) || {}).map((f) => ({ pergunta: f.pergunta, resposta: f.resposta, usar: f.usar }));
+    // Revisão I1: depois de um erro, as dúvidas voltam como a pessoa deixou (desmarcada continua desmarcada).
+    const faqsForm = iaTextos.faqsDoCorpo(req.body);
     if (r.erro) return paginaGeracao(res, g, { erro: r.erro, proposta: { ...req.body, faqs: faqsForm }, status: 400 });
     const c = await ia.confirmarProposta(g.id, { ...r.pedido, faqs: iaTextos.lerFaqsDoForm(req.body) }, ator(req));
-    if (!c.ok) return paginaGeracao(res, g, { erro: c.erro, proposta: req.body, status: 400 });
+    if (!c.ok) return paginaGeracao(res, g, { erro: c.erro, proposta: { ...req.body, faqs: faqsForm }, status: 400 });
     iaFila.acordar();
     voltar(res, `/ead/ia/${g.id}`, 'ok', 'Proposta confirmada. A IA está montando o roteiro.');
   });

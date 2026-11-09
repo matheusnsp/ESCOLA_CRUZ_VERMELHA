@@ -1,0 +1,19 @@
+<%#
+  "Escrever dúvidas com IA" dentro da seção "Dúvidas frequentes" (curso já criado, 2026-11-09): as sugestões aparecem
+  aqui, com caixinhas, e "Adicionar as marcadas" grava direto (sem salvar o formulário do curso).
+  Espera: iaUrl (rota que escreve), iaTipo, iaCursoId (id do Curso), salvarUrl (rota que grava as marcadas).
+%>
+<div class="ia-duvidas" data-ia-textos-url="<%= iaUrl %>" data-tipo="<%= iaTipo %>" data-curso-id="<%= iaCursoId %>" data-salvar-url="<%= salvarUrl %>">
+  <div class="ia-textos-cab">
+    <i class="fa-solid fa-wand-magic-sparkles"></i>
+    <div><b>Escrever dúvidas com IA</b>
+      <small class="adm-hint">O Claude sugere de 5 a 6 dúvidas para este curso, sem repetir as que já existem. Você escolhe quais entram.</small></div>
+  </div>
+  <button type="button" class="adm-btn adm-btn-neutro ia-duvidas-bt"><i class="fa-solid fa-wand-magic-sparkles"></i> Escrever dúvidas com IA</button>
+  <p class="ia-textos-msg" role="status" hidden></p>
+  <form method="POST" action="<%= salvarUrl %>" class="ia-duvidas-form" hidden>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="ia-faqs-lista"></div>
+    <button type="submit" class="adm-btn"><i class="fa-solid fa-plus"></i> Adicionar as marcadas</button>
+  </form>
+</div>

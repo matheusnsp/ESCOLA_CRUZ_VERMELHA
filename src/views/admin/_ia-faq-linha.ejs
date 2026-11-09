@@ -1,0 +1,6 @@
+<%# Uma dúvida sugerida pela IA (caixinha + pergunta + resposta). Espera f = { pergunta, resposta, usar? }, i. %>
+<div class="ia-faq">
+  <label class="check"><input type="checkbox" name="faqsIa[<%= i %>][usar]" value="1"<%= f.usar === undefined || String(f.usar) === '1' ? ' checked' : '' %>> Usar</label>
+  <input type="text" name="faqsIa[<%= i %>][pergunta]" maxlength="200" value="<%= f.pergunta %>">
+  <textarea name="faqsIa[<%= i %>][resposta]" rows="2" maxlength="600"><%= f.resposta %></textarea>
+</div>

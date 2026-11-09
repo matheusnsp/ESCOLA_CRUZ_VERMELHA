@@ -27,7 +27,7 @@
     <label class="full">Descrição (aparece no catálogo e na página do curso)
       <textarea name="descricao" rows="4" maxlength="1000"><%= v.descricao || '' %></textarea>
     </label>
-    <%- include('../_ia-textos', { iaUrl: '/ead/ia-textos', iaTipo: 'online', iaCursoId: novo ? '' : co.cursoId }) %>
+    <%- include('../_ia-textos', { iaUrl: '/ead/ia-textos', iaTipo: 'online', iaCursoId: novo ? '' : co.cursoId, iaSemFaqs: !novo, iaFaqsIniciais: typeof faqsIniciais !== 'undefined' ? faqsIniciais : [] }) %>
     <label class="full">Foto (JPG, PNG ou WEBP, até 3 MB)<% if (v.imagemGeradaPorIa) { %> <span class="ead-selo ia">Imagem gerada por IA</span><% } %>
       <input type="file" name="foto" accept="image/jpeg,image/png,image/webp">
     </label>
@@ -47,6 +47,7 @@
 <div id="duvidas" class="adm-box adm-box-pad adm-espaco">
   <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-circle-question"></i> Dúvidas frequentes</h2>
   <p class="adm-mut">Aparecem em sanfona na página de venda do curso.</p>
+  <%- include('../_ia-duvidas', { iaUrl: '/ead/ia-textos', iaTipo: 'online', iaCursoId: co.cursoId, salvarUrl: '/ead/curso/' + co.id + '/faqs-ia' }) %>
   <% if (_faqs.length) { %>
     <div class="adm-itens">
       <% _faqs.forEach(function (f) { %>

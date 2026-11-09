@@ -100,4 +100,42 @@ describe('painel: escrever com IA (curso online)', { skip: temBanco ? false : 's
     assert.equal(c.imagemGeradaPorIa, true);
     assert.match(await get(`/ead/curso/${co.id}/dados`), /Imagem do curso gerada\./);
   });
+
+  test('[revisão I2] erro ao criar curso online: as dúvidas sugeridas voltam no formulário', async () => {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries({ _csrf: 'x', nome: 'X', cargaHoraria: '3', descricao: 'd', 'faqsIa[0][usar]': '1', 'faqsIa[0][pergunta]': 'Sobrevive ao erro?', 'faqsIa[0][resposta]': 'Sim.' })) fd.append(k, v);
+    const r = await fetch(`${srv.url}/ead/curso-online/novo`, { method: 'POST', redirect: 'manual', body: fd });
+    assert.equal(r.status, 400);
+    const t = await r.text();
+    assert.match(t, /value="Sobrevive ao erro\?"/);
+    assert.match(t, /name="faqsIa\[0\]\[usar\]" value="1" checked/);
+  });
+
+  test('[revisão I2] erro ao salvar "Dados do curso": a lista de dúvidas e o botão de imagem continuam', async () => {
+    const co = await prisma.cursoOnline.findUnique({ where: { id: cos[0] } });
+    const fd = new FormData(); for (const [k, v] of Object.entries({ _csrf: 'x', nome: 'X', cargaHoraria: '3', descricao: 'd' })) fd.append(k, v);
+    const r = await fetch(`${srv.url}/ead/curso/${co.id}/dados`, { method: 'POST', redirect: 'manual', body: fd });
+    assert.equal(r.status, 400);
+    const t = await r.text();
+    assert.match(t, /Quem pode fazer\?/, 'lista das dúvidas existentes');
+    assert.match(t, /Gerar imagem com IA/);
+  });
+
+  test('[dúvidas na seção] "Escrever dúvidas com IA" no curso existente: lê o curso do banco, manda as dúvidas atuais e grava as marcadas', async () => {
+    const co = await prisma.cursoOnline.findUnique({ where: { id: cos[0] }, include: { curso: true } });
+    const html = await get(`/ead/curso/${co.id}/dados`);
+    assert.match(html, /class="[^"]*ia-duvidas[^"]*"[^>]*data-salvar-url="\/ead\/curso\/[0-9a-f-]{36}\/faqs-ia"/);
+    assert.match(html, /class="full ia-textos"[^>]*data-sem-faqs="1"/, 'o botão do topo fica só com os textos');
+    let pedidoClaude = '';
+    txt.definirCliente(clienteFalso([(params) => { pedidoClaude = params.messages[0].content.map((c) => c.text).join('\n'); return { descricao: 'x', faqs: [faq(7), faq(8)] }; }]));
+    const j = await (await post('/ead/ia-textos', { tipo: 'online', soDuvidas: '1', cursoId: co.cursoId })).json();
+    assert.equal(j.ok, true, j.erro);
+    assert.match(pedidoClaude, new RegExp(co.curso.nome));
+    assert.match(pedidoClaude, /Quem pode fazer\?/, 'as dúvidas atuais vão no pedido, para não repetir');
+    const r = await post(`/ead/curso/${co.id}/faqs-ia`, { 'faqsIa[0][usar]': '1', 'faqsIa[0][pergunta]': 'Pergunta 7?', 'faqsIa[0][resposta]': 'Resposta 7.', 'faqsIa[1][pergunta]': 'Pergunta 8?', 'faqsIa[1][resposta]': 'x' });
+    assert.equal(r.status, 302);
+    const faqs = await prisma.faqCurso.findMany({ where: { cursoId: co.cursoId } });
+    assert.ok(faqs.some((f) => f.pergunta === 'Pergunta 7?'));
+    assert.ok(!faqs.some((f) => f.pergunta === 'Pergunta 8?'));
+  });
 });

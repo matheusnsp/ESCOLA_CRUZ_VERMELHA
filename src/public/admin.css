@@ -1932,3 +1932,7 @@ a.mr-num:hover { border-color: var(--linha); }
 .ia-faq textarea { resize: vertical; }
 .ia-faq input[type="text"]:focus, .ia-faq textarea:focus { outline: none; border-color: var(--vermelho); }
 .ia-faq .check { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; padding-top: 10px; }
+.ia-faqs[hidden], .ia-duvidas-form[hidden] { display: none; }
+.ia-duvidas { display: grid; gap: 10px; margin: 0 0 16px; padding: 14px 16px; border: 1px dashed var(--linha); border-radius: var(--r-s); background: #fbf9ff; }
+.ia-duvidas-form { display: grid; gap: 8px; }
+.ia-duvidas-bt, .ia-duvidas-form > button { justify-self: start; }

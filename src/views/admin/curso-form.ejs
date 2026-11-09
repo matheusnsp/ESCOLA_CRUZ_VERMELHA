@@ -22,7 +22,7 @@
     <input type="text" name="nome" value="<%= c.nome || '' %>" required>
   </label>
 
-  <%- include('_ia-textos', { iaUrl: '/cursos/ia-textos', iaTipo: 'presencial', iaCursoId: novo ? '' : c.id }) %>
+  <%- include('_ia-textos', { iaUrl: '/cursos/ia-textos', iaTipo: 'presencial', iaCursoId: novo ? '' : c.id, iaSemFaqs: !novo, iaFaqsIniciais: typeof faqsIniciais !== 'undefined' ? faqsIniciais : [] }) %>
 
   <label class="full">Resumo
     <textarea name="descricao" rows="2" placeholder="Uma ou duas frases. Aparece no cartão do curso e no topo da página."><%= c.descricao || '' %></textarea>
@@ -203,6 +203,7 @@
   <div id="duvidas" class="adm-box adm-box-pad adm-topo-espaco">
     <h2 class="adm-h2 adm-bloco-h">Dúvidas frequentes</h2>
     <p class="adm-bloco-sub">Aparecem em formato de sanfona na página do curso.</p>
+    <%- include('_ia-duvidas', { iaUrl: '/cursos/ia-textos', iaTipo: 'presencial', iaCursoId: c.id, salvarUrl: '/cursos/' + c.id + '/faqs-ia' }) %>
 
     <% if (typeof erroFaq !== 'undefined' && erroFaq) { %>
       <div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erroFaq %></div>

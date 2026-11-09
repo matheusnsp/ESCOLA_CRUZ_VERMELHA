@@ -1,14 +1,15 @@
 <%#
   Escrever com IA (2026-11-09): bloco comum dos formulários de curso (presencial e só online). Fica DENTRO do
   formulário: as dúvidas marcadas vão junto ao salvar (faqsIa[i][...]); "Ideias para a IA" não é salvo.
-  Espera: iaUrl, iaTipo ('presencial'|'online'), iaCursoId (ou ''). O JS é externo (/js/ia-textos.js).
-%>
-<div class="full ia-textos" data-ia-textos-url="<%= iaUrl %>" data-tipo="<%= iaTipo %>" data-curso-id="<%= iaCursoId || '' %>">
+  Espera: iaUrl, iaTipo ('presencial'|'online'), iaCursoId (ou ''). Opcionais: iaSemFaqs (curso já criado: as dúvidas
+  ficam na seção de dúvidas) e iaFaqsIniciais (as linhas que voltam depois de um erro). O JS é externo (/js/ia-textos.js).
+%><% var _ini = (typeof iaFaqsIniciais !== 'undefined' && iaFaqsIniciais) || []; var _semFaqs = typeof iaSemFaqs !== 'undefined' && iaSemFaqs; %>
+<div class="full ia-textos" data-ia-textos-url="<%= iaUrl %>" data-tipo="<%= iaTipo %>" data-curso-id="<%= iaCursoId || '' %>"<%- _semFaqs ? ' data-sem-faqs="1"' : '' %>>
   <div class="ia-textos-cab">
     <i class="fa-solid fa-wand-magic-sparkles"></i>
     <div>
       <b>Escrever com IA</b>
-      <small class="adm-hint">O Claude escreve <%= iaTipo === 'online' ? 'a descrição' : 'a descrição curta, a descrição longa, o conteúdo programático' %> e as dúvidas frequentes no padrão dos outros cursos. Nada é salvo até você clicar em Salvar.</small>
+      <small class="adm-hint">O Claude escreve <%= iaTipo === 'online' ? 'a descrição' : 'a descrição curta, a descrição longa e o conteúdo programático' %><%= _semFaqs ? '' : ' e as dúvidas frequentes' %> no padrão dos outros cursos. Nada é salvo até você clicar em Salvar.<%= _semFaqs ? ' As dúvidas ficam na seção "Dúvidas frequentes", mais abaixo.' : '' %></small>
     </div>
   </div>
   <label>Ideias para a IA (opcional)
@@ -16,9 +17,13 @@
   </label>
   <button type="button" class="adm-btn adm-btn-neutro ia-textos-bt"><i class="fa-solid fa-wand-magic-sparkles"></i> Escrever com IA</button>
   <p class="ia-textos-msg" role="status" hidden></p>
-  <div class="ia-faqs" hidden>
+  <% if (!_semFaqs) { %>
+  <div class="ia-faqs"<%= _ini.length ? '' : ' hidden' %>>
     <b>Dúvidas frequentes sugeridas</b>
     <small class="adm-hint">Desmarque as que não quiser e ajuste o texto. As marcadas entram no curso quando você salvar.</small>
-    <div class="ia-faqs-lista"></div>
+    <div class="ia-faqs-lista">
+      <% _ini.forEach(function (f, i) { %><%- include('_ia-faq-linha', { f: f, i: i }) %><% }) %>
+    </div>
   </div>
+  <% } %>
 </div>

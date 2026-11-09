@@ -53,6 +53,7 @@ async function escrever({ tipo, dados = {}, ideias = '', cursoId = null }, opts 
     dados.cargaHoraria ? `Carga horária: ${dados.cargaHoraria} horas` : null, dados.escolaridade ? `Escolaridade mínima: ${dados.escolaridade}` : null,
     dados.categoria ? `Área: ${dados.categoria}` : null, dados.descricao ? `Descrição atual: ${dados.descricao}` : null,
     dados.descricaoLonga ? `Descrição longa atual:\n${dados.descricaoLonga}` : null, dados.conteudoProgramatico ? `Conteúdo atual:\n${dados.conteudoProgramatico}` : null,
+    Array.isArray(dados.faqsAtuais) && dados.faqsAtuais.length ? `Dúvidas que o curso já tem (não repita):\n${dados.faqsAtuais.map((f) => `- ${f.pergunta}`).join('\n')}` : null,
     String(ideias || '').trim() ? `Ideias de quem pediu: ${String(ideias).trim().slice(0, 500)}` : null].filter(Boolean).join('\n');
   const pede = tipo === 'online'
     ? 'Escreva a descrição da página de venda (até 1000 caracteres, 1 a 3 parágrafos curtos) e as dúvidas frequentes.'
@@ -67,10 +68,27 @@ async function escrever({ tipo, dados = {}, ideias = '', cursoId = null }, opts 
   return { textos: E.validarTextos(json, tipo), usage };
 }
 
+// "Escrever dúvidas com IA" na seção de dúvidas (curso já criado): os dados vêm do banco, com as dúvidas atuais.
+async function dadosDoCurso(cursoId) {
+  const c = await prisma.curso.findUnique({ where: { id: cursoId }, include: { faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }], select: { pergunta: true } } } });
+  if (!c) return null;
+  const ex = await require('./extras').lerExtra('curso', c.id).catch(() => ({}));
+  return { nome: c.nome, cargaHoraria: c.cargaHoraria, escolaridade: c.escolaridadeMinima, categoria: (ex && ex.categoria) || null, descricao: c.descricao, descricaoLonga: c.descricaoLonga, faqsAtuais: c.faqs };
+}
+
+// As linhas de dúvidas que vieram no formulário (marcadas ou não), para mostrar de novo depois de um erro.
+function faqsDoCorpo(body) {
+  const v = body && body.faqsIa;
+  return (v && typeof v === 'object' ? Object.values(v) : []).slice(0, 6)
+    .map((f) => ({ pergunta: String((f && f.pergunta) || '').slice(0, 200), resposta: String((f && f.resposta) || '').slice(0, 600), usar: f && String(f.usar) === '1' ? '1' : '0' }))
+    .filter((f) => f.pergunta || f.resposta);
+}
+
 // Dúvidas marcadas no formulário (faqsIa[i][usar|pergunta|resposta]).
 function lerFaqsDoForm(body) {
   const v = body && body.faqsIa;
-  const lista = Array.isArray(v) ? v : v && typeof v === 'object' ? Object.values(v) : [];
+  // Revisão I3: sempre Object.values (um índice gigante, faqsIa[4000000000], vira vetor esparso enorme e travaria).
+  const lista = v && typeof v === 'object' ? Object.values(v) : [];
   return E.limparFaqs(lista.filter((f) => f && String(f.usar) === '1'));
 }
 
@@ -88,4 +106,4 @@ async function salvarFaqs(cursoId, faqs, { tx = prisma } = {}) {
   return n;
 }
 
-module.exports = { SYSTEM, exemplos, escrever, lerFaqsDoForm, salvarFaqs, definirCliente };
+module.exports = { SYSTEM, exemplos, escrever, lerFaqsDoForm, faqsDoCorpo, dadosDoCurso, salvarFaqs, definirCliente };
