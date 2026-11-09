@@ -13,7 +13,7 @@ const E = require('./ead-ia-esquema');
 const MODELO = 'claude-opus-5-5';
 const CHAVE_TETO = 'ead-ia:teto-mensal-usd';
 const TETO_PADRAO = 50;
-const EM_ANDAMENTO = ['ROTEIRO_GERANDO', 'ROTEIRO_PRONTO', 'MODULOS_GERANDO'];
+const EM_ANDAMENTO = ['PROPOSTA_GERANDO', 'PROPOSTA_PRONTA', 'ROTEIRO_GERANDO', 'ROTEIRO_PRONTO', 'MODULOS_GERANDO'];
 const MSG_CHAVE = 'Configure a chave da API da Anthropic (ANTHROPIC_API_KEY) no servidor.';
 
 class ErroIa extends Error {
@@ -157,9 +157,10 @@ async function somarCusto(geracaoId, usage) {
 // ─── Geração ───────────────────────────────────────────────────────────────────────────────────
 async function criarGeracao({ pedido, material, criadoPor }) {
   const g = await prisma.geracaoIaEad.create({
-    data: { criadoPor, status: 'ROTEIRO_GERANDO', pedido, materialTexto: material.materialTexto || null, materialPdfs: material.materialPdfs && material.materialPdfs.length ? material.materialPdfs : undefined },
+    // Passo a passo (2026-11): o pedido do passo 1 só tem a ideia, e a IA propõe o resto antes do roteiro.
+    data: { criadoPor, status: pedido.ideia ? 'PROPOSTA_GERANDO' : 'ROTEIRO_GERANDO', pedido, materialTexto: material.materialTexto || null, materialPdfs: material.materialPdfs && material.materialPdfs.length ? material.materialPdfs : undefined },
   });
-  await auditar(criadoPor, 'EAD_IA_PEDIU', g.id, { tema: pedido.tema, destino: pedido.destino && pedido.destino.tipo, nModulos: pedido.nModulos });
+  await auditar(criadoPor, 'EAD_IA_PEDIU', g.id, { tema: pedido.tema || null, ideia: pedido.ideia ? String(pedido.ideia).slice(0, 200) : null, destino: pedido.destino && pedido.destino.tipo, nModulos: pedido.nModulos || null });
   return g;
 }
 
@@ -194,6 +195,67 @@ async function gerarRoteiro(geracaoId, { cliente }) {
     await somarCusto(geracaoId, e.usage);
     await prisma.geracaoIaEad.update({ where: { id: geracaoId }, data: { status: 'ERRO_ROTEIRO', erro: e instanceof ErroIa ? e.message : 'Erro inesperado ao gerar o roteiro.' } });
   }
+}
+
+// ─── Passo 2: a proposta (criação passo a passo, 2026-11) ──────────────────────────────────────
+async function gerarProposta(geracaoId, { cliente }) {
+  const g = await prisma.geracaoIaEad.findUnique({ where: { id: geracaoId } });
+  if (!g || g.status !== 'PROPOSTA_GERANDO') return;
+  const existente = g.pedido.destino && g.pedido.destino.tipo === 'existente';
+  const pedido = [
+    `Ideia de quem pediu: ${g.pedido.ideia}`,
+    existente
+      ? 'Proponha os módulos novos para um curso online que já existe: tema, público, número de módulos (2 a 12) e observações para o roteiro. Os campos nome, descrição, carga horária, preço e parcelas podem repetir o óbvio (não serão usados).'
+      : 'Proponha o curso online: nome curto (até 80 caracteres), descrição de uma ou duas frases para a página de venda, carga horária em horas, público, tema detalhado, número de módulos (2 a 12, o último é o módulo final com cenários), preço sugerido em reais (cursos online da escola costumam ficar entre R$ 29,90 e R$ 99,90) e parcelas no cartão (1 a 12).',
+    'Para carga horária, número de módulos e preço, explique a sugestão numa frase curta e simples (porqueCargaHoraria, porqueModulos, porquePreco). Proponha o curso.',
+  ].join('\n\n');
+  try {
+    const { system, messages } = montarMensagens(g, pedido);
+    const { json, usage } = await chamarClaude(cliente, { system, messages, schema: E.ESQUEMA_PROPOSTA });
+    await somarCusto(geracaoId, usage);
+    const v = E.validarProposta(json);
+    if (!v.ok) {
+      await prisma.geracaoIaEad.updateMany({ where: { id: geracaoId, status: 'PROPOSTA_GERANDO' }, data: { status: 'ERRO_PROPOSTA', erro: v.erro } });
+      return;
+    }
+    await prisma.geracaoIaEad.updateMany({ where: { id: geracaoId, status: 'PROPOSTA_GERANDO' }, data: { status: 'PROPOSTA_PRONTA', pedido: { ...g.pedido, proposta: v.proposta }, erro: null } });
+  } catch (e) {
+    if (!(e instanceof ErroIa)) console.error('[EAD IA] proposta:', e);
+    await somarCusto(geracaoId, e.usage);
+    await prisma.geracaoIaEad.updateMany({ where: { id: geracaoId, status: 'PROPOSTA_GERANDO' }, data: { status: 'ERRO_PROPOSTA', erro: e instanceof ErroIa ? e.message : 'Erro inesperado ao gerar a proposta.' } });
+  }
+}
+
+// "Pedir outra proposta" (ou de novo depois de um erro): conta no teto.
+async function pedirOutraProposta(geracaoId, atorId) {
+  const t = await dentroDoTeto();
+  if (!t.ok) return t;
+  const r = await prisma.geracaoIaEad.updateMany({ where: { id: geracaoId, status: { in: ['PROPOSTA_PRONTA', 'ERRO_PROPOSTA'] } }, data: { status: 'PROPOSTA_GERANDO', erro: null } });
+  if (!r.count) return { ok: false, erro: 'Esta geração não está na proposta.' };
+  await auditar(atorId, 'EAD_IA_OUTRA_PROPOSTA', geracaoId, null);
+  return { ok: true };
+}
+
+// A pessoa conferiu a proposta: grava os campos no pedido (o roteiro usa tema, público, módulos, observações e
+// o destino) e passa ao roteiro. `pedidoNovo` vem já conferido pela rota (mesmas regras do formulário antigo).
+async function confirmarProposta(geracaoId, pedidoNovo, atorId) {
+  const g = await prisma.geracaoIaEad.findUnique({ where: { id: geracaoId } });
+  if (!g || g.status !== 'PROPOSTA_PRONTA') return { ok: false, erro: 'Esta geração não está esperando a proposta.' };
+  const pedido = { ...g.pedido, ...pedidoNovo, ideia: g.pedido.ideia, proposta: g.pedido.proposta };
+  const r = await prisma.geracaoIaEad.updateMany({ where: { id: geracaoId, status: 'PROPOSTA_PRONTA' }, data: { status: 'ROTEIRO_GERANDO', pedido, roteiro: require('@prisma/client').Prisma.DbNull, erro: null } });
+  if (!r.count) return { ok: false, erro: 'Esta geração não está esperando a proposta.' };
+  await auditar(atorId, 'EAD_IA_CONFIRMOU_PROPOSTA', geracaoId, { tema: pedido.tema, nModulos: pedido.nModulos, destino: pedido.destino && pedido.destino.tipo });
+  return { ok: true };
+}
+
+// "← Voltar à proposta" (antes de começar a escrita): o roteiro é descartado; a proposta fica.
+async function voltarParaProposta(geracaoId, atorId) {
+  const g = await prisma.geracaoIaEad.findUnique({ where: { id: geracaoId }, select: { pedido: true, status: true } });
+  if (!g || !g.pedido || !g.pedido.proposta) return { ok: false, erro: 'Esta geração não tem proposta para voltar.' };
+  const r = await prisma.geracaoIaEad.updateMany({ where: { id: geracaoId, status: { in: ['ROTEIRO_PRONTO', 'ERRO_ROTEIRO'] } }, data: { status: 'PROPOSTA_PRONTA', erro: null } });
+  if (!r.count) return { ok: false, erro: 'Só dá para voltar à proposta antes de começar a escrita.' };
+  await auditar(atorId, 'EAD_IA_VOLTOU_PROPOSTA', geracaoId, null);
+  return { ok: true };
 }
 
 // "Gerar outro roteiro" (ou de novo depois de um erro): conta no teto.
@@ -337,7 +399,7 @@ async function tentarDeNovo(geracaoId, ordem, atorId) {
 }
 
 async function cancelar(geracaoId, atorId) {
-  const r = await prisma.geracaoIaEad.updateMany({ where: { id: geracaoId, status: { in: EM_ANDAMENTO.concat('ERRO_ROTEIRO') } }, data: { status: 'CANCELADA', materialPdfs: require('@prisma/client').Prisma.DbNull } });
+  const r = await prisma.geracaoIaEad.updateMany({ where: { id: geracaoId, status: { in: EM_ANDAMENTO.concat('ERRO_ROTEIRO', 'ERRO_PROPOSTA') } }, data: { status: 'CANCELADA', materialPdfs: require('@prisma/client').Prisma.DbNull } });
   if (!r.count) return { ok: false, erro: 'Esta geração já terminou.' };
   await auditar(atorId, 'EAD_IA_CANCELOU', geracaoId, null);
   return { ok: true };
@@ -347,5 +409,5 @@ module.exports = {
   MODELO, REGRAS_SYSTEM, MSG_CHAVE, EM_ANDAMENTO, ErroIa,
   prepararMaterial, montarMensagens, chamarClaude, ehChaveConfigurada, clientePadrao,
   gastoDoMes, tetoMensal, definirTeto, dentroDoTeto, podeComecar,
-  criarGeracao, gerarRoteiro, pedirOutroRoteiro, confirmarRoteiro, gerarModulo, tentarDeNovo, cancelar,
+  criarGeracao, gerarProposta, pedirOutraProposta, confirmarProposta, voltarParaProposta, gerarRoteiro, pedirOutroRoteiro, confirmarRoteiro, gerarModulo, tentarDeNovo, cancelar,
 };

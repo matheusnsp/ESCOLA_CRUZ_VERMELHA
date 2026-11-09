@@ -70,6 +70,11 @@ const terminou = (mods) => mods.length > 0 && mods.every((m) => m.status === 'pr
 
 // Um passo de trabalho; false quando não há o que fazer.
 async function passo(cliente) {
+  // Passo a passo (2026-11): a proposta vem antes de tudo (é rápida e a pessoa está esperando por ela).
+  const propostas = await prisma.geracaoIaEad.findMany({ where: { status: 'PROPOSTA_GERANDO' }, orderBy: { criadoEm: 'asc' }, select: { id: true } });
+  for (const g of propostas) {
+    if (await comMarca(g.id, () => IA.gerarProposta(g.id, { cliente }))) return true;
+  }
   const roteiros = await prisma.geracaoIaEad.findMany({ where: { status: 'ROTEIRO_GERANDO' }, orderBy: { criadoEm: 'asc' }, select: { id: true } });
   for (const g of roteiros) {
     if (await comMarca(g.id, () => IA.gerarRoteiro(g.id, { cliente }))) return true;

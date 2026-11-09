@@ -47,6 +47,31 @@ const ESQUEMA_MODULO = objeto({
   })),
 });
 
+// Criação passo a passo (2026-11): a proposta do curso a partir da ideia (passo 2).
+const ESQUEMA_PROPOSTA = objeto({
+  nome: texto, descricao: texto, cargaHoraria: { type: 'integer' }, publico: texto, tema: texto,
+  nModulos: { type: 'integer' }, precoSugerido: { type: 'number' }, maxParcelas: { type: 'integer' }, observacoes: texto,
+  porqueCargaHoraria: texto, porqueModulos: texto, porquePreco: texto,
+});
+
+// Proposta da IA: números ajustados às faixas do formulário; nome e tema obrigatórios.
+const faixa = (v, min, max, padrao) => { const n = Number(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : padrao; };
+const corta = (v, max) => String(v || '').trim().slice(0, max);
+function validarProposta(json) {
+  const j = json || {};
+  const nome = corta(j.nome, 120); const tema = corta(j.tema, 300);
+  if (!nome || !tema) return { ok: false, erro: 'A proposta da IA veio sem nome ou sem tema. Peça outra proposta.' };
+  return {
+    ok: true,
+    proposta: {
+      nome, tema, descricao: corta(j.descricao, 500), publico: corta(j.publico, 200), observacoes: corta(j.observacoes, 2000),
+      cargaHoraria: Math.round(faixa(j.cargaHoraria, 1, 600, 4)), nModulos: Math.round(faixa(j.nModulos, 2, 12, 4)),
+      precoSugerido: Math.round(faixa(j.precoSugerido, 0, 10000, 0) * 100) / 100, maxParcelas: Math.round(faixa(j.maxParcelas, 1, 12, 1)),
+      porqueCargaHoraria: corta(j.porqueCargaHoraria, 300), porqueModulos: corta(j.porqueModulos, 300), porquePreco: corta(j.porquePreco, 300),
+    },
+  };
+}
+
 // ─── Roteiro ───────────────────────────────────────────────────────────────────────────────────
 const MSG_ROTEIRO = {
   modulos: 'O roteiro precisa de 2 a 12 módulos.',
@@ -169,4 +194,4 @@ const tokensDe = (u) => partes(u).reduce((t, x) => ({
   cache: t.cache + (x.cache_read_input_tokens || 0) + (x.cache_creation_input_tokens || 0),
 }), { entrada: 0, saida: 0, cache: 0 });
 
-module.exports = { ESQUEMA_ROTEIRO, ESQUEMA_MODULO, MSG_ROTEIRO, validarRoteiro, validarModulo, roteiroDoFormulario, custoUsd, tokensDe, PRECO, PRECOS };
+module.exports = { ESQUEMA_PROPOSTA, validarProposta, ESQUEMA_ROTEIRO, ESQUEMA_MODULO, MSG_ROTEIRO, validarRoteiro, validarModulo, roteiroDoFormulario, custoUsd, tokensDe, PRECO, PRECOS };
