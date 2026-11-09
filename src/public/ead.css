@@ -167,7 +167,7 @@ body.ea-pagina { margin: 0; background: var(--bg); }
 .ea-mod-meta { color: var(--mut); font-size: 13px; }
 .ea-mod-pe { margin-top: auto; display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 800; }
 .ea-mod-pe span:last-child { color: var(--r); }
-.ea-selo { font-size: 10.5px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; padding: 5px 9px; background: #fef3c7; color: #92400e; }
+.ea-selo { font-size: 10.5px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; padding: 5px 9px; background: #f1efeb; color: #6b6b6b; }
 .ea-selo.ok { background: #dcfce7; color: #14653a; }
 .ea-mod.final { background: #fff5f5; border-color: #f3c6cb; color: var(--ink); }
 .ea-mod.final .ea-mod-meta { color: var(--mut); }
@@ -290,7 +290,7 @@ button.ea-seguir { border: 0; text-align: left; width: 100%; }
 div.ea-mod { cursor: default; }
 
 /* Etapa 5: dúvidas desta aula (embaixo do cartão da tela) e aviso de resposta na capa. */
-.ea-tela-col { max-width: 860px; margin: 22px auto 0; }
+.ea-tela-col { margin: 22px 0 0; }
 .ea-duvidas { background: #fff; border-radius: 24px; padding: 24px 20px; box-shadow: 0 1px 0 rgba(0,0,0,.04); }
 .ea-duvidas h2 { margin: 0 0 14px; font-size: 26px; letter-spacing: -.04em; font-weight: 800; }
 .ea-duvidas h2 span { color: var(--r); }

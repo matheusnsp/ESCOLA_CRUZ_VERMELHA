@@ -138,3 +138,8 @@ describe('cenário no desenho das perguntas do teste', () => {
     assert.match(regra('.ea-aulabar-mod small'), /white-space:\s*nowrap/);
   });
 });
+
+test('dúvidas da aula com a largura da aula; selo "Rascunho" sem amarelo', () => {
+  assert.doesNotMatch(regra('.ea-tela-col'), /max-width/);
+  assert.doesNotMatch(regra('.ea-selo'), /#fef3c7|#92400e/);
+});
