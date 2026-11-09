@@ -10,6 +10,7 @@
 <% if (typeof canonicalOnline !== 'undefined' && canonicalOnline) { %><link rel="canonical" href="<%= (typeof urlSite !== 'undefined' && urlSite ? urlSite.replace(/\/+$/, '') : '') + canonicalOnline %>"><% } %>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="<%= asset('/ead.css') %>">
 <%# Medição só no curso pago (etapa 8). No link de teste, nunca: Analytics/Pixel gravariam o endereço, que tem o código secreto. %>
 <% if (typeof medir !== 'undefined' && medir) { %>
@@ -28,12 +29,13 @@
   var _links = typeof contaLinks !== 'undefined' && contaLinks ? contaLinks : {};
   var _csrf = typeof csrfToken !== 'undefined' ? csrfToken : '';
 _%>
-<div class="ea-topbar"><div class="ea-wrap"><a href="https://cruzvermelhariodejaneiro.org/" target="_blank" rel="noopener">Cruz Vermelha Brasileira · Rio de Janeiro</a><span>Escola Digital · cursos 100% online</span></div></div>
+<%# Faixa de cima e nome iguais aos do site (2026-11-09). %>
+<div class="ea-topbar"><div class="ea-wrap"><a href="https://cruzvermelhariodejaneiro.org/" target="_blank" rel="noopener"><span class="ea-so-pc">Cruz Vermelha Brasileira · Filial do Estado do Rio de Janeiro</span><span class="ea-so-cel">Cruz Vermelha Brasileira · Rio de Janeiro</span></a><span class="ea-so-pc">Praça da Cruz Vermelha, 10 · Centro · Rio de Janeiro</span></div></div>
 <header class="ea-header">
   <div class="ea-wrap">
     <a class="ea-logo" href="<%= _ed ? '/escola-digital' : '/' %>">
       <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro">
-      <span><b>ESCOLA DIGITAL</b><small>CVB-RJ · CURSOS 100% ONLINE</small></span>
+      <span><b>ESCOLA DE EDUCAÇÃO</b><small>E SAÚDE CVB-RJ</small></span>
     </a>
     <nav class="ea-nav" aria-label="Escola Digital">
       <% if (typeof voltarMenu !== 'undefined' && voltarMenu) { %><a class="ea-pilula ea-pilula-clara" href="<%= base %>">☰ <span class="ea-so-pc">Menu do curso</span><span class="ea-so-cel">Menu</span></a><% } %>

@@ -12,9 +12,10 @@ const locais = (extra = {}) => ({ asset: (u) => u, titulo: 'Curso', base: '/esco
 const topo = (extra) => ejs.renderFile(path.join(V, 'ead-teste', '_topo.ejs'), locais(extra));
 const fim = (extra) => ejs.renderFile(path.join(V, 'ead-teste', '_fim.ejs'), locais(extra));
 
-test('topo: marca "ESCOLA DIGITAL" e o logo vai para /escola-digital (ligada) ou / (desligada)', async () => {
+test('topo: marca igual à do site ("ESCOLA DE EDUCAÇÃO / E SAÚDE CVB-RJ", 2026-11-09) e o logo vai para /escola-digital (ligada) ou / (desligada)', async () => {
   const lig = await topo({ escolaDigital: true });
-  assert.match(lig, /ESCOLA DIGITAL/);
+  assert.match(lig, /ESCOLA DE EDUCAÇÃO/);
+  assert.match(lig, /E SAÚDE CVB-RJ/);
   assert.match(lig, /class="ea-logo" href="\/escola-digital"/);
   assert.match(await topo({ escolaDigital: false }), /class="ea-logo" href="\/"/);
 });
