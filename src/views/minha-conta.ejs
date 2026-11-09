@@ -345,6 +345,7 @@
                 <%
                   var origem = c.origem === 'escola' ? 'Liberado pela ' + c.escola
                              : c.origem === 'cortesia' ? 'Cortesia (cupom)'
+                             : c.origem === 'gratuito' ? 'Gratuito'
                              : 'Comprado';
                   var selo = c.situacao === 'concluido' ? ['pago', 'CONCLUÍDO']
                            : c.situacao === 'pendente' ? ['pendente', 'PAGAMENTO PENDENTE']

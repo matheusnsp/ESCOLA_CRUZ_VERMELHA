@@ -32,7 +32,8 @@ async function meusCursosOnline(usuarioId, agora = new Date()) {
   for (const m of matriculas) {
     if (PAGOS.includes(m.statusPagamento)) {
       const cortesia = m.cupomEad && Number(m.cupomEad.precoFinal) === 0;
-      porCurso.set(m.turma.cursoId, { cursoId: m.turma.cursoId, origem: cortesia ? 'cortesia' : 'comprado', inicio: m.confirmadaEm });
+      const origem = m.confirmadaPor === 'gratuito' ? 'gratuito' : cortesia ? 'cortesia' : 'comprado';
+      porCurso.set(m.turma.cursoId, { cursoId: m.turma.cursoId, origem, inicio: m.confirmadaEm });
     }
   }
   for (const v of vagas) {
