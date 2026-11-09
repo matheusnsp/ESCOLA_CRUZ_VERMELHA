@@ -51,6 +51,7 @@
           <div class="v-user-drop">
             <a href="/minha-conta?sec=inscricoes"><i class="fa-solid fa-graduation-cap"></i> Minhas inscrições</a>
             <% if (typeof contaLinks !== 'undefined' && contaLinks && contaLinks.cursosOnline) { %><a href="/minha-conta?sec=online"><i class="fa-solid fa-laptop"></i> Cursos online</a><% } %>
+            <% if (typeof contaLinks !== 'undefined' && contaLinks && contaLinks.ebooks) { %><a href="/minha-conta?sec=ebooks"><i class="fa-solid fa-book-open"></i> E-books</a><% } %>
             <% if (typeof contaLinks !== 'undefined' && contaLinks && contaLinks.gestor) { %><a href="/minha-escola"><i class="fa-solid fa-school"></i> Minha escola</a><% } %>
             <a href="/minha-conta?sec=dados"><i class="fa-solid fa-id-card"></i> Meus dados</a>
             <a href="/minha-conta?sec=excluir"><i class="fa-solid fa-trash"></i> Excluir conta</a>
@@ -102,6 +103,7 @@
               <span>Olá, <b><%= (usuario.nome || '').split(' ')[0] %></b><small>Sua área do aluno</small></span></p>
             <a href="/minha-conta?sec=inscricoes"><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i> Minhas inscrições</a>
             <% if (typeof contaLinks !== 'undefined' && contaLinks && contaLinks.cursosOnline) { %><a href="/minha-conta?sec=online"><i class="fa-solid fa-laptop" aria-hidden="true"></i> Cursos online</a><% } %>
+            <% if (typeof contaLinks !== 'undefined' && contaLinks && contaLinks.ebooks) { %><a href="/minha-conta?sec=ebooks"><i class="fa-solid fa-book-open" aria-hidden="true"></i> E-books</a><% } %>
             <% if (typeof contaLinks !== 'undefined' && contaLinks && contaLinks.gestor) { %><a href="/minha-escola"><i class="fa-solid fa-school" aria-hidden="true"></i> Minha escola</a><% } %>
             <a href="/minha-conta?sec=dados"><i class="fa-solid fa-id-card" aria-hidden="true"></i> Meus dados</a>
             <form method="POST" action="/logout">

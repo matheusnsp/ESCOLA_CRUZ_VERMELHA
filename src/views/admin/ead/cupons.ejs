@@ -25,13 +25,13 @@
   <div class="adm-box adm-espaco">
     <div class="ead-tabela-rolagem">
       <table class="adm-table">
-        <thead><tr><th>Código</th><th>Desconto</th><th>Curso</th><th>Validade</th><th class="centro">Usos</th><th>Desconto dado</th><th>Situação</th></tr></thead>
+        <thead><tr><th>Código</th><th>Desconto</th><th>Vale para</th><th>Validade</th><th class="centro">Usos</th><th>Desconto dado</th><th>Situação</th></tr></thead>
         <tbody>
           <% lista.forEach(function (c) { %>
             <tr>
               <td><a class="adm-link" href="/ead/cupons/<%= c.id %>"><b><%= c.codigo %></b></a></td>
               <td><%= desconto(c) %></td>
-              <td><%= c.curso || 'Todos os cursos online' %></td>
+              <td><%= c.curso || 'Todos (cursos e e-books)' %></td>
               <td><%= c.validoAte ? 'até ' + dataBR(c.validoAte) : 'sem prazo' %></td>
               <td class="centro"><%= c.usos %> / <%= c.limiteUsos === null ? '∞' : c.limiteUsos %></td>
               <td><%= brl(c.totalDesconto) %></td>

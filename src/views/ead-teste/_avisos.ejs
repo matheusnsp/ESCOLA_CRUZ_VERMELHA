@@ -1,11 +1,12 @@
-<%# Avisos da conta (não bloqueiam o curso). ctx = contexto do aluno logado (routes/ead-teste.js). %>
+<%# Avisos da conta (não bloqueiam o curso). ctx = contexto do aluno logado (routes/ead-teste.js).
+    Desenho igual ao de "Minha conta" do presencial: caixa rosa, ícone, texto e botão vermelho (2026-11-09). %>
 <% if (typeof ctx !== 'undefined' && ctx && (ctx.avisos.senha || ctx.avisos.cadastro)) { %>
   <div class="ea-avisos ea-wrap">
     <% if (ctx.avisos.senha) { %>
-      <a class="ea-aviso" href="/minha-conta?sec=seguranca"><b>Você está com a senha provisória</b> (4 últimos dígitos do documento). <span>Troque agora →</span></a>
+      <div class="ea-aviso"><i class="fa-solid fa-key" aria-hidden="true"></i><p><b>Você está com a senha provisória</b> (os 4 últimos dígitos do documento). Troque por uma senha só sua.</p><a class="ea-aviso-btn" href="/minha-conta?sec=seguranca">Trocar senha</a></div>
     <% } %>
     <% if (ctx.avisos.cadastro) { %>
-      <a class="ea-aviso" href="/completar-dados"><b>Complete seu cadastro</b> para receber o certificado sem pendências. <span>Completar →</span></a>
+      <div class="ea-aviso"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><p><b>Seu cadastro está incompleto.</b> Complete seus dados para receber o certificado sem pendências.</p><a class="ea-aviso-btn" href="/completar-dados">Completar agora</a></div>
     <% } %>
   </div>
 <% } %>

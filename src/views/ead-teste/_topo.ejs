@@ -33,7 +33,7 @@ _%>
 <div class="ea-topbar"><div class="ea-wrap"><a href="https://cruzvermelhariodejaneiro.org/" target="_blank" rel="noopener"><span class="ea-so-pc">Cruz Vermelha Brasileira · Filial do Estado do Rio de Janeiro</span><span class="ea-so-cel">Cruz Vermelha Brasileira · Rio de Janeiro</span> <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a><span class="ea-so-pc">Praça da Cruz Vermelha, 10 · Centro · Rio de Janeiro</span></div></div>
 <%# Cabeçalho igual ao do site (partials/site-header.ejs), com classes ea- (as páginas do curso não carregam o
     CSS do site). O menu do celular é um <details> (sem JS: CSP). "Menu do curso" é a única coisa a mais. %>
-<header class="ea-header">
+<header class="ea-header<%= typeof voltarMenu !== 'undefined' && voltarMenu ? ' ea-header-curso' : '' %>">
   <div class="ea-wrap">
     <a class="ea-logo" href="/">
       <img src="/img/logo-cvb-rj.webp" alt="Cruz Vermelha Brasileira — Rio de Janeiro">
@@ -54,6 +54,7 @@ _%>
           <div class="ea-user-drop">
             <a href="/minha-conta?sec=inscricoes"><i class="fa-solid fa-graduation-cap"></i> Minhas inscrições</a>
             <% if (_links.cursosOnline) { %><a href="/minha-conta?sec=online"><i class="fa-solid fa-laptop"></i> Cursos online</a><% } %>
+            <% if (_links.ebooks) { %><a href="/minha-conta?sec=ebooks"><i class="fa-solid fa-book-open"></i> E-books</a><% } %>
             <% if (_links.gestor) { %><a href="/minha-escola"><i class="fa-solid fa-school"></i> Minha escola</a><% } %>
             <a href="/minha-conta?sec=dados"><i class="fa-solid fa-id-card"></i> Meus dados</a>
             <a href="/minha-conta?sec=excluir"><i class="fa-solid fa-trash"></i> Excluir conta</a>
@@ -81,6 +82,7 @@ _%>
               <p>Olá, <b><%= String(_u.nome || '').split(' ')[0] %></b></p>
               <a href="/minha-conta?sec=inscricoes"><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i> Minhas inscrições</a>
               <% if (_links.cursosOnline) { %><a href="/minha-conta?sec=online"><i class="fa-solid fa-laptop" aria-hidden="true"></i> Cursos online</a><% } %>
+              <% if (_links.ebooks) { %><a href="/minha-conta?sec=ebooks"><i class="fa-solid fa-book-open" aria-hidden="true"></i> E-books</a><% } %>
               <% if (_links.gestor) { %><a href="/minha-escola"><i class="fa-solid fa-school" aria-hidden="true"></i> Minha escola</a><% } %>
               <a href="/minha-conta?sec=dados"><i class="fa-solid fa-id-card" aria-hidden="true"></i> Meus dados</a>
               <form method="POST" action="/logout"><input type="hidden" name="_csrf" value="<%= _csrf %>"><button type="submit"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> Sair</button></form>

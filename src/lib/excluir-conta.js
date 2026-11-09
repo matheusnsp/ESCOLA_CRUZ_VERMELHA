@@ -21,8 +21,12 @@ const comprovanteSaude = require('./comprovante-saude');
 const FANTASMA = { NOT: { statusPagamento: 'PENDENTE', taxaConfirmada: false } };
 
 // Inscrição em andamento: o que impede excluir.
+// E-book pago (2026-11-09, revisão I4) não é "em andamento": a turma online dele nunca encerra e travaria para sempre.
 const EM_ANDAMENTO = {
-  ...FANTASMA,
+  AND: [
+    FANTASMA,
+    { NOT: { statusPagamento: { in: ['PAGO', 'PARCELADO'] }, turma: { curso: { ebook: { isNot: null } } } } },
+  ],
   statusPagamento: { in: ['PENDENTE', 'PAGO', 'PARCELADO'] },
   turma: { status: { not: 'ENCERRADA' } },
 };

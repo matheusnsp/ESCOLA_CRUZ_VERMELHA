@@ -37,11 +37,14 @@ function calcularDesconto(cupom, preco) {
 
 const usosDoCupom = (cupomId) => prisma.cupomMatriculaEad.count({ where: { cupomId, matricula: { statusPagamento: { in: PAGOS } } } });
 
-async function validarCupom(codigo, co) {
+// alvo: o CursoOnline ou (com { ebook: true }) o Ebook — os dois têm id e precoOnline. E-books (2026-11-09): cupom
+// de um curso não vale para e-book e vice-versa; sem curso nem e-book, vale para todos.
+async function validarCupom(codigo, co, { ebook = false } = {}) {
   const c = normalizarCodigo(codigo);
   const cupom = codigoValido(c) ? await prisma.cupomEad.findUnique({ where: { codigo: c } }) : null;
   if (!cupom || !cupom.ativo) return { erro: MSG.naoAchou };
-  if (cupom.cursoOnlineId && cupom.cursoOnlineId !== co.id) return { erro: MSG.outroCurso };
+  if (cupom.cursoOnlineId && (ebook || cupom.cursoOnlineId !== co.id)) return { erro: MSG.outroCurso };
+  if (cupom.ebookId && (!ebook || cupom.ebookId !== co.id)) return { erro: MSG.outroCurso };
   if (cupom.validoAte && fimDoDiaRio(cupom.validoAte) < new Date()) return { erro: MSG.venceu };
   if (cupom.limiteUsos !== null && cupom.limiteUsos !== undefined && await usosDoCupom(cupom.id) >= cupom.limiteUsos) return { erro: MSG.esgotado };
   return { cupom, ...calcularDesconto(cupom, Number(co.precoOnline || 0)) };
@@ -63,10 +66,13 @@ function lerDados(d) {
   const temLimite = d.limiteUsos !== null && d.limiteUsos !== undefined && d.limiteUsos !== '';
   const limiteUsos = temLimite ? Number(d.limiteUsos) : null;
   if (temLimite && !(Number.isInteger(limiteUsos) && limiteUsos >= 1)) return { erro: 'Limite de usos: 1 ou mais.' };
-  const cursoOnlineId = d.cursoOnlineId && ehId(d.cursoOnlineId) ? d.cursoOnlineId : null;
+  // "Vale para" (2026-11-09): alvo = "curso:<id>" | "ebook:<id>" | "" (todos). cursoOnlineId solto ainda vale.
+  const alvo = /^(curso|ebook):(.+)$/.exec(String(d.alvo || ''));
+  const cursoOnlineId = alvo ? (alvo[1] === 'curso' && ehId(alvo[2]) ? alvo[2] : null) : (d.cursoOnlineId && ehId(d.cursoOnlineId) ? d.cursoOnlineId : null);
+  const ebookId = alvo && alvo[1] === 'ebook' && ehId(alvo[2]) ? alvo[2] : null;
   const validoAte = d.validoAte ? new Date(d.validoAte) : null;
   if (validoAte && Number.isNaN(validoAte.getTime())) return { erro: 'Validade inválida.' };
-  return { dados: { codigo, tipo, valor, cursoOnlineId, validoAte, limiteUsos, observacao: String(d.observacao || '').trim().slice(0, 500) || null } };
+  return { dados: { codigo, tipo, valor, cursoOnlineId, ebookId, validoAte, limiteUsos, observacao: String(d.observacao || '').trim().slice(0, 500) || null } };
 }
 
 const repetido = (e) => e && e.code === 'P2002';
@@ -123,7 +129,7 @@ async function listarCupons({ ativos } = {}) {
   const cupons = await prisma.cupomEad.findMany({
     where,
     orderBy: { criadoEm: 'desc' },
-    include: { cursoOnline: { select: { curso: { select: { nome: true } } } } },
+    include: { cursoOnline: { select: { curso: { select: { nome: true } } } }, ebook: { select: { curso: { select: { nome: true } } } } },
   });
   const pagas = cupons.length ? await prisma.cupomMatriculaEad.groupBy({
     by: ['cupomId'],
@@ -134,7 +140,7 @@ async function listarCupons({ ativos } = {}) {
   const porCupom = new Map(pagas.map((p) => [p.cupomId, p]));
   return cupons.map((c) => {
     const p = porCupom.get(c.id);
-    return { ...c, curso: c.cursoOnline ? c.cursoOnline.curso.nome : null, usos: p ? p._count._all : 0, totalDesconto: p ? round2(p._sum.desconto || 0) : 0 };
+    return { ...c, curso: c.cursoOnline ? c.cursoOnline.curso.nome : c.ebook ? `E-book: ${c.ebook.curso.nome}` : null, usos: p ? p._count._all : 0, totalDesconto: p ? round2(p._sum.desconto || 0) : 0 };
   });
 }
 
@@ -157,6 +163,6 @@ async function comprasDoCupom(id) {
 }
 
 module.exports = {
-  TIPOS, MSG, normalizarCodigo, codigoValido, calcularDesconto, validarCupom, usosDoCupom,
+  TIPOS, MSG, lerDados, normalizarCodigo, codigoValido, calcularDesconto, validarCupom, usosDoCupom,
   criarCupom, alterarCupom, ativarCupom, apagarCupom, listarCupons, comprasDoCupom, auditar,
 };

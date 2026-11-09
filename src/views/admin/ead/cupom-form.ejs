@@ -50,10 +50,18 @@
       <% if (travado) { %><input type="hidden" name="tipo" value="<%= v.tipo %>"><% } %>
     </label>
     <label>Desconto (% ou R$)<input type="text" name="valor" inputmode="decimal" required value="<%= v.valor || '' %>" placeholder="10"></label>
-    <label>Curso
-      <select name="cursoOnlineId">
-        <option value="">Todos os cursos online</option>
-        <% cursos.forEach(function (c) { %><option value="<%= c.id %>" <%= v.cursoOnlineId === c.id ? 'selected' : '' %>><%= c.curso.nome %></option><% }) %>
+    <% var _alvo = v.alvo !== undefined ? v.alvo : (v.cursoOnlineId ? 'curso:' + v.cursoOnlineId : ''); var _eb = typeof ebooks !== 'undefined' ? ebooks : []; %>
+    <label>Vale para
+      <select name="alvo">
+        <option value="">Todos os cursos online e e-books</option>
+        <optgroup label="Cursos online">
+          <% cursos.forEach(function (c) { %><option value="curso:<%= c.id %>" <%= _alvo === 'curso:' + c.id ? 'selected' : '' %>><%= c.curso.nome %></option><% }) %>
+        </optgroup>
+        <% if (_eb.length) { %>
+        <optgroup label="E-books">
+          <% _eb.forEach(function (e) { %><option value="ebook:<%= e.id %>" <%= _alvo === 'ebook:' + e.id ? 'selected' : '' %>><%= e.curso.nome %></option><% }) %>
+        </optgroup>
+        <% } %>
       </select>
     </label>
     <label>Vale até (opcional)<input type="date" name="validoAte" value="<%= v.validoAte || '' %>"></label>

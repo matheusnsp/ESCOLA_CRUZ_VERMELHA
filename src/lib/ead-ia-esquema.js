@@ -70,6 +70,8 @@ const corta = (v, max) => String(v || '').trim().slice(0, max);
 const FAQ = objeto({ pergunta: texto, resposta: texto });
 const ESQUEMA_TEXTOS_PRESENCIAL = objeto({ descricao: texto, descricaoLonga: texto, conteudoProgramatico: texto, faqs: lista(FAQ) });
 const ESQUEMA_TEXTOS_ONLINE = objeto({ descricao: texto, faqs: lista(FAQ) });
+// E-book (2026-11-09): descrição curta, texto da página de venda e dúvidas.
+const ESQUEMA_TEXTOS_EBOOK = objeto({ descricao: texto, descricaoLonga: texto, faqs: lista(FAQ) });
 const semAcento = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 // Dúvidas: sem vazias nem repetidas, cortes nos limites, no máximo `max`.
 function limparFaqs(lista, max = 6) {
@@ -87,6 +89,7 @@ function limparFaqs(lista, max = 6) {
 function validarTextos(json, tipo) {
   const j = json || {};
   if (tipo === 'online') return { descricao: corta(j.descricao, 1000), faqs: limparFaqs(j.faqs) };
+  if (tipo === 'ebook') return { descricao: corta(j.descricao, 300), descricaoLonga: corta(j.descricaoLonga, 3000), faqs: limparFaqs(j.faqs) };
   return { descricao: corta(j.descricao, 300), descricaoLonga: corta(j.descricaoLonga, 3000), conteudoProgramatico: String(j.conteudoProgramatico || '').replace(/\r\n/g, '\n').trim().slice(0, 4000), faqs: limparFaqs(j.faqs) };
 }
 
@@ -245,4 +248,4 @@ const tokensDe = (u) => partes(u).reduce((t, x) => ({
 }), { entrada: 0, saida: 0, cache: 0 });
 
 module.exports = {
-  ESQUEMA_TEXTOS_PRESENCIAL, ESQUEMA_TEXTOS_ONLINE, validarTextos, limparFaqs, semAcento, ESQUEMA_PEDIDOS_IMAGENS, validarPedidosImagens, ESQUEMA_PROPOSTA, validarProposta, ESQUEMA_ROTEIRO, ESQUEMA_MODULO, MSG_ROTEIRO, validarRoteiro, validarModulo, roteiroDoFormulario, custoUsd, tokensDe, PRECO, PRECOS };
+  ESQUEMA_TEXTOS_PRESENCIAL, ESQUEMA_TEXTOS_ONLINE, ESQUEMA_TEXTOS_EBOOK, validarTextos, limparFaqs, semAcento, ESQUEMA_PEDIDOS_IMAGENS, validarPedidosImagens, ESQUEMA_PROPOSTA, validarProposta, ESQUEMA_ROTEIRO, ESQUEMA_MODULO, MSG_ROTEIRO, validarRoteiro, validarModulo, roteiroDoFormulario, custoUsd, tokensDe, PRECO, PRECOS };

@@ -10,7 +10,7 @@
 <%- include('_avisos') %>
 <% if (ctx && ctx.duvidasRespondidas && ctx.duvidasRespondidas.length) { var _dr = ctx.duvidasRespondidas; %>
   <div class="ea-avisos ea-wrap">
-    <a class="ea-aviso ea-aviso-ok" href="<%= base %>/tela/<%= _dr[0].telaId %>#duvidas"><b><%= _dr.length === 1 ? 'Sua dúvida foi respondida' : _dr.length + ' dúvidas suas foram respondidas' %></b> pela Escola. <span>Ver a resposta →</span></a>
+    <div class="ea-aviso ea-aviso-ok"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><p><b><%= _dr.length === 1 ? 'Sua dúvida foi respondida' : _dr.length + ' dúvidas suas foram respondidas' %></b> pela Escola.</p><a class="ea-aviso-btn" href="<%= base %>/tela/<%= _dr[0].telaId %>#duvidas">Ver a resposta</a></div>
   </div>
 <% } %>
 <section class="ea-heroi">

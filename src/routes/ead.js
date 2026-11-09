@@ -100,7 +100,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
       const mods = await contagensDosModulos(co.id);
       lista.push({ ...co, nModulos: mods.length, nValidados: mods.filter((m) => m.status === 'VALIDADO').length, nPerguntas: mods.reduce((s, m) => s + m.nPerguntas, 0) });
     }
-    const semEad = await prisma.curso.findMany({ where: { online: null }, select: { id: true, nome: true, ativo: true }, orderBy: { nome: 'asc' } });
+    const semEad = await prisma.curso.findMany({ where: { online: null, ebook: null }, select: { id: true, nome: true, ativo: true }, orderBy: { nome: 'asc' } });
     // Vitrine (2026-11-09): os publicados na ordem do site, para o destaque e o ↑ ↓.
     const vitrinePublicados = await publicadosNaOrdem();
     res.render('admin/ead/cursos', {
@@ -700,11 +700,12 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
   const diaDoCupom = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) ? new Date(`${d}T12:00:00-03:00`) : null);
   const dadosDoCupom = (b) => ({
     codigo: b.codigo, tipo: b.tipo, valor: publicacao.lerPreco(b.valor) ?? NaN,
-    cursoOnlineId: b.cursoOnlineId || null, validoAte: diaDoCupom(b.validoAte), limiteUsos: String(b.limiteUsos || '').trim(),
+    alvo: b.alvo, cursoOnlineId: b.cursoOnlineId || null, validoAte: diaDoCupom(b.validoAte), limiteUsos: String(b.limiteUsos || '').trim(),
     observacao: b.observacao,
   });
   const valoresDoCupom = (c) => ({
     codigo: c.codigo, tipo: c.tipo, valor: Number(c.valor).toLocaleString('pt-BR', { maximumFractionDigits: 2 }), cursoOnlineId: c.cursoOnlineId || '',
+    alvo: c.ebookId ? `ebook:${c.ebookId}` : c.cursoOnlineId ? `curso:${c.cursoOnlineId}` : '',
     validoAte: c.validoAte ? new Date(c.validoAte).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }) : '',
     limiteUsos: c.limiteUsos === null ? '' : String(c.limiteUsos), observacao: c.observacao || '',
   });
@@ -716,7 +717,8 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
   });
 
   async function formCupom(res, { cupom = null, valores = {}, erro = null, compras = [], status = 200, ok = null } = {}) {
-    res.status(status).render('admin/ead/cupom-form', { cupom, valores, erro, ok, compras, cursos: await cursosDoForm(), usos: cupom ? await cupons.usosDoCupom(cupom.id) : 0 });
+    const ebooks = await prisma.ebook.findMany({ select: { id: true, curso: { select: { nome: true } } }, orderBy: { criadoEm: 'asc' } });
+    res.status(status).render('admin/ead/cupom-form', { cupom, valores, erro, ok, compras, cursos: await cursosDoForm(), ebooks, usos: cupom ? await cupons.usosDoCupom(cupom.id) : 0 });
   }
   router.get('/ead/cupons/novo', async (req, res) => formCupom(res, { valores: { tipo: 'PERCENTUAL' } }));
   router.post('/ead/cupons/novo', async (req, res) => {

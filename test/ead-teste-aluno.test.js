@@ -124,6 +124,8 @@ describe('/ead-teste: aluno', { skip: temBanco ? false : 'sem DATABASE_URL local
     assert.doesNotMatch(andamento, /fala 2/); // a fala só aparece depois da escolha
     const d = await prisma.decisaoCenario.findFirst({ where: { cenarioId: cen.id }, include: { opcoes: { orderBy: { ordem: 'asc' } } } });
     const jog = async () => (andamento.match(/name="jogada" value="([^"]+)"/) || [])[1];
+    // "Responder" sem marcar opção (2026-11-09, decisão com bolinhas): volta para a decisão, não conta erro
+    assert.equal((await post(`${base}/cenario/${cen.id}/escolher`, ana, { decisaoId: d.id, opcaoId: '', jogada: await jog() })).status, 302);
     const errada = await post(`${base}/cenario/${cen.id}/escolher`, ana, { decisaoId: d.id, opcaoId: d.opcoes[0].id, jogada: await jog() });
     assert.equal(errada.status, 200);
     const htmlErrada = await errada.text();

@@ -9,7 +9,7 @@
     <i class="fa-solid fa-wand-magic-sparkles"></i>
     <div>
       <b>Escrever com IA</b>
-      <small class="adm-hint">O Claude escreve <%= iaTipo === 'online' ? 'a descrição' : 'a descrição curta, a descrição longa e o conteúdo programático' %><%= _semFaqs ? '' : ' e as dúvidas frequentes' %> no padrão dos outros cursos. Nada é salvo até você clicar em Salvar.<%= _semFaqs ? ' As dúvidas ficam na seção "Dúvidas frequentes", mais abaixo.' : '' %></small>
+      <small class="adm-hint">O Claude escreve <%= iaTipo === 'online' ? 'a descrição' : iaTipo === 'ebook' ? 'a descrição curta e o texto da página (lendo as primeiras páginas do PDF, depois de enviado)' : 'a descrição curta, a descrição longa e o conteúdo programático' %><%= _semFaqs ? '' : ' e as dúvidas frequentes' %> no padrão dos outros cursos. Nada é salvo até você clicar em Salvar.<%= _semFaqs ? ' As dúvidas ficam na seção "Dúvidas frequentes", mais abaixo.' : '' %></small>
     </div>
   </div>
   <label>Ideias para a IA (opcional)

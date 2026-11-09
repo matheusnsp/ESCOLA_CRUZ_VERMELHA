@@ -1,0 +1,18 @@
+<%# "Minha conta → E-books" (2026-11-09). Espera: ebooks (lib/ebook.js meus), vitrine. %>
+<% var _dia = function (d) { return new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }); }; %>
+<% if (!ebooks.length) { %>
+  <div class="ct-vazio"><i class="fa-solid fa-book-open" aria-hidden="true"></i><p>Você ainda não tem e-books.</p><a href="/escola-digital#ebooks">Ver e-books disponíveis</a></div>
+<% } else { %>
+  <ul class="ct-ebooks">
+    <% ebooks.forEach(function (e) { var url = vitrine.urlEbook(e.curso); %>
+      <li class="ct-ebook">
+        <% if (e.curso.imagemUrl) { %><img src="<%= e.curso.imagemUrl %>" alt="" loading="lazy"><% } else { %><span class="ct-ebook-sem"><i class="fa-solid fa-book-open" aria-hidden="true"></i></span><% } %>
+        <div>
+          <b><a href="<%= url %>"><%= e.curso.nome %></a></b>
+          <small><%= e.paginas %> páginas · seu desde <%= _dia(e.desde) %></small>
+          <a class="ct-ebook-baixar" href="<%= url %>/baixar"><i class="fa-solid fa-download" aria-hidden="true"></i> Baixar</a>
+        </div>
+      </li>
+    <% }) %>
+  </ul>
+<% } %>
