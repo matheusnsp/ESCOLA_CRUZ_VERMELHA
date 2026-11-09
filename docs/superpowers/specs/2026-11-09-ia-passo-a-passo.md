@@ -9,7 +9,7 @@ Hoje o "Criar curso com IA" pede tudo num formulário grande. O Matheus quer que
 ## Os 4 passos (barra no topo: 1 Ideia · 2 Proposta · 3 Roteiro · 4 Escrita)
 
 1. **Ideia** (`GET/POST /ead/ia/novo`).
-   - **Campo:** "O que você quer ensinar, e para quem?", de 10 a 1000 caracteres.
+   - **Campo:** "O que você quer ensinar, e para quem?", com pelo menos 10 caracteres e sem limite de tamanho (2026-11-09: pedido do Matheus; vale só o limite do envio do formulário, cerca de 1 MB de texto).
    - **Opcional:** material (até 3 PDF/Word, 20 MB, mais texto colado), como hoje.
    - **Destino:** curso novo (padrão) ou um curso online existente.
    - **Botão "Gerar proposta":** cria a geração com status `PROPOSTA_GERANDO`. Valem o teto e a chave, como hoje.

@@ -522,7 +522,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const ideia = String(b.ideia || '').trim();
     const texto = String(b.texto || '');
     if (ideia.length < 10) return { erro: 'Conte a ideia em pelo menos 10 caracteres (o que ensinar e para quem).' };
-    if (ideia.length > 1000) return { erro: 'Ideia: até 1000 caracteres.' };
+    // Sem limite de tamanho para a ideia (pedido do Matheus, 2026-11-09): vale o limite do envio do formulário.
     if (texto.length > 100000) return { erro: 'Texto colado: até 100 mil caracteres.' };
     if (arquivos.some((f) => !ehMaterial(f))) return { erro: 'Envie só arquivos PDF ou Word (.docx).' };
     if (arquivos.reduce((t, f) => t + f.size, 0) > MAX_BYTES_MATERIAL) return { erro: 'Os arquivos passam de 20 MB.' };
