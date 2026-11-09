@@ -208,8 +208,12 @@ body.ea-pagina { margin: 0; background: var(--bg); }
 
 /* ── etapa 2: aluno logado ── */
 .ea-avisos { display: grid; gap: 8px; padding: 14px 0; }
-.ea-aviso { display: block; background: #fff; border: 1px solid #f3c6cb; border-left: 4px solid var(--r); border-radius: 14px; padding: 12px 16px; color: var(--ink); text-decoration: none; font-size: 14px; line-height: 1.45; }
-.ea-aviso span { color: var(--r); font-weight: 800; white-space: nowrap; }
+.ea-aviso { display: flex; align-items: center; gap: 14px; background: #fff5f5; border: 1px solid #f3c6cb; border-radius: 14px; padding: 12px 14px 12px 18px; color: var(--ink); font-size: 14px; line-height: 1.45; }
+.ea-aviso > i { color: var(--r); font-size: 16px; flex: none; }
+.ea-aviso p { margin: 0; flex: 1; min-width: 0; }
+.ea-aviso-btn { flex: none; background: var(--r); color: #fff; font-weight: 800; font-size: 13px; padding: 10px 16px; border-radius: 10px; text-decoration: none; white-space: nowrap; }
+.ea-aviso-btn:hover { background: var(--r2); }
+@media (max-width: 720px) { .ea-aviso { flex-wrap: wrap; } .ea-aviso p { flex-basis: calc(100% - 30px); } .ea-aviso-btn { width: 100%; text-align: center; } }
 .ea-progresso-grande { display: block; height: 10px; margin: 4px 0 14px; }
 .ea-pilula-bloco { width: 100%; margin-top: 10px; padding: 14px; }
 button.ea-pilula, button.ea-seguir { font-family: inherit; cursor: pointer; }
@@ -313,7 +317,8 @@ div.ea-mod { cursor: default; }
 .ea-duvida-form textarea { width: 100%; box-sizing: border-box; border: 1px solid #d9d4cc; border-radius: 14px; padding: 12px 14px; font: inherit; font-size: 15px; resize: vertical; }
 .ea-duvida-form textarea:focus { outline: 2px solid var(--r); outline-offset: 1px; }
 .ea-duvida-form .ea-pilula { justify-self: start; }
-.ea-aviso.ea-aviso-ok { border-color: #a6f4c5; border-left-color: #12b76a; }
+.ea-aviso.ea-aviso-ok { background: #f0fdf4; border-color: #a6f4c5; }
+.ea-aviso-ok > i { color: #16a369; } .ea-aviso-ok .ea-aviso-btn { background: #16a369; } .ea-aviso-ok .ea-aviso-btn:hover { background: #14653a; }
 
 /* Etapa 6: Minha escola e convite */
 .ea-kicker a { color: inherit; }

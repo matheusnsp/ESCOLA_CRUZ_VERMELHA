@@ -88,3 +88,16 @@ test('CSS: avisos (senha provisória, cadastro) e faixa de teste nas cores do si
     assert.doesNotMatch(r, /#f59e0b|#fcd94d|#fef3c7|#92400e/i, `${sel} sem laranja/amarelo`);
   }
 });
+
+test('avisos da conta no desenho do presencial: ícone, texto e botão vermelho', async () => {
+  const ejs = require('ejs');
+  const html = await ejs.renderFile(path.join(__dirname, '..', 'src', 'views', 'ead-teste', '_avisos.ejs'), { ctx: { avisos: { senha: true, cadastro: true } } });
+  assert.match(html, /class="ea-aviso"[^>]*>\s*<i class="fa-solid fa-key"/);
+  assert.match(html, /<i class="fa-solid fa-triangle-exclamation"/);
+  assert.match(html, /<a class="ea-aviso-btn" href="\/minha-conta\?sec=seguranca">Trocar senha<\/a>/);
+  assert.match(html, /<a class="ea-aviso-btn" href="\/completar-dados">Completar agora<\/a>/);
+  assert.match(regra('.ea-aviso'), /display:\s*flex/);
+  assert.match(regra('.ea-aviso'), /background:\s*#fff5f5/);
+  assert.match(regra('.ea-aviso-btn'), /background:\s*var\(--r\)/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'src', 'views', 'ead-teste', 'capa.ejs'), 'utf8'), /ea-aviso ea-aviso-ok[\s\S]{0,400}ea-aviso-btn[\s\S]{0,120}>Ver a resposta</);
+});
