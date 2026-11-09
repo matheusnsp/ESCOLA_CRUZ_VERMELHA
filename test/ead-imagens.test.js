@@ -118,3 +118,9 @@ test('[modelo] nenhum modelo de imagem na conta: erro explicando', async () => {
   await assert.rejects(img.gerarNaOpenAI('x', { fetch: f }), /nenhum modelo de imagem/i);
   img.esquecerModelo();
 });
+
+test('[modelo] prefere nome normal (sem codinome) entre os modelos da conta', () => {
+  const ids = ['gpt-image-2', 'gpt-image-1-mini', 'gpt-image-1.5', 'gpt-image-2.5-sunburst', 'gpt-image-2.5-flare-2026-09-08', 'gpt-image-2.6-sunburst', 'gpt-image-2-2026-04-21', 'gpt-image-2.6-flare'];
+  assert.equal(img.escolherModelo(ids), 'gpt-image-2');
+  assert.equal(img.escolherModelo(['gpt-image-2.6-flare', 'gpt-image-1-mini']), 'gpt-image-2.6-flare', 'sem nome normal: o mais novo completo');
+});

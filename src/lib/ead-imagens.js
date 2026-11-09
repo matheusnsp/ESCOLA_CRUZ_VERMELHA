@@ -57,6 +57,10 @@ const esquecerModelo = () => { modeloDescoberto = null; };
 const modeloAtual = () => modeloDescoberto || modeloImagem();
 const versao = (id) => Number((String(id).match(/gpt-image-(\d+(?:\.\d+)?)/) || [])[1]) || 0;
 function escolherModelo(ids) {
+  // Primeiro os nomes "normais" (gpt-image-2, gpt-image-1.5), sem codinome (-sunburst, -flare) nem data: os de
+  // codinome costumam ser variantes de teste.
+  const normais = ids.filter((id) => /^gpt-image-\d+(\.\d+)?$/.test(id)).sort((a, b) => versao(b) - versao(a));
+  if (normais.length) return normais[0];
   const gpt = ids.filter((id) => /^gpt-image/.test(id));
   const cheio = gpt.filter((id) => !/mini/.test(id)).sort((a, b) => versao(b) - versao(a) || b.length - a.length);
   if (cheio.length) return cheio[0];
