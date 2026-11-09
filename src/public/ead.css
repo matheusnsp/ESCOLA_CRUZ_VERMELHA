@@ -126,7 +126,7 @@ body.ea-pagina { margin: 0; background: var(--bg); }
 .ea-logo span { border-left: 1px solid var(--ln); padding-left: 16px; line-height: 1.1; }
 .ea-logo b { display: block; font-size: 15px; font-weight: 800; letter-spacing: .01em; }
 .ea-logo small { display: block; font-size: 10.5px; font-weight: 800; color: var(--r); letter-spacing: .1em; margin-top: 3px; }
-.ea-teste { background: #fef3c7; color: #92400e; border-bottom: 1px solid #fcd94d; font-size: 12px; font-weight: 700; padding: 8px 0; text-align: center; }
+.ea-teste { background: #fff5f5; color: var(--r2); border-bottom: 1px solid #f3c6cb; font-size: 12px; font-weight: 700; padding: 8px 0; text-align: center; }
 .ea-main { padding: 20px 0 50px; }
 .ea-rodape { background: #fff; color: var(--ink); font-size: 13.5px; padding: 56px 0 0; border-top: 1px solid var(--ln); }
 
@@ -207,8 +207,8 @@ body.ea-pagina { margin: 0; background: var(--bg); }
 }
 
 /* ── etapa 2: aluno logado ── */
-.ea-avisos { display: grid; gap: 8px; padding-top: 14px; }
-.ea-aviso { display: block; background: #fff; border: 1px solid #fcd94d; border-left: 5px solid #f59e0b; border-radius: 14px; padding: 12px 16px; color: var(--ink); text-decoration: none; font-size: 14px; line-height: 1.45; }
+.ea-avisos { display: grid; gap: 8px; padding: 14px 0; }
+.ea-aviso { display: block; background: #fff; border: 1px solid #f3c6cb; border-left: 4px solid var(--r); border-radius: 14px; padding: 12px 16px; color: var(--ink); text-decoration: none; font-size: 14px; line-height: 1.45; }
 .ea-aviso span { color: var(--r); font-weight: 800; white-space: nowrap; }
 .ea-progresso-grande { display: block; height: 10px; margin: 4px 0 14px; }
 .ea-pilula-bloco { width: 100%; margin-top: 10px; padding: 14px; }

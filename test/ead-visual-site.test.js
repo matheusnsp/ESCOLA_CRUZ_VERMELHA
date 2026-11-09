@@ -80,3 +80,11 @@ test('CSS: cartões dos módulos da mesma linha com a mesma altura (rodapé "Mó
   assert.match(css, /\.ea-modulos > li\s*\{[^}]*display:\s*flex/);
   assert.match(css, /\.ea-modulos > li > \.ea-mod\s*\{[^}]*flex:\s*1/);
 });
+
+test('CSS: avisos (senha provisória, cadastro) e faixa de teste nas cores do site, sem laranja/amarelo', () => {
+  for (const sel of ['.ea-aviso', '.ea-teste']) {
+    const r = regra(sel);
+    assert.ok(r, `regra ${sel} existe`);
+    assert.doesNotMatch(r, /#f59e0b|#fcd94d|#fef3c7|#92400e/i, `${sel} sem laranja/amarelo`);
+  }
+});
