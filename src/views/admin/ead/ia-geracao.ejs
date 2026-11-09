@@ -1,8 +1,13 @@
 <%
   var usd = function (v) { return 'US$ ' + Number(v || 0).toFixed(2); };
-  var STATUS = { ROTEIRO_GERANDO: 'Escrevendo o roteiro…', ROTEIRO_PRONTO: 'Roteiro pronto para revisar', MODULOS_GERANDO: 'Escrevendo os módulos…', CONCLUIDA: 'Concluída', ERRO_ROTEIRO: 'Erro no roteiro', CANCELADA: 'Cancelada' };
+  var STATUS = { PROPOSTA_GERANDO: 'Preparando a proposta…', PROPOSTA_PRONTA: 'Proposta pronta para conferir', ERRO_PROPOSTA: 'Erro na proposta', ROTEIRO_GERANDO: 'Escrevendo o roteiro…', ROTEIRO_PRONTO: 'Roteiro pronto para revisar', MODULOS_GERANDO: 'Escrevendo os módulos…', CONCLUIDA: 'Concluída', ERRO_ROTEIRO: 'Erro no roteiro', CANCELADA: 'Cancelada' };
   var STATUS_MOD = { pendente: 'na fila', gerando: 'escrevendo…', pronto: 'pronto', erro: 'erro' };
-  var andando = ['ROTEIRO_GERANDO', 'MODULOS_GERANDO'].indexOf(g.status) !== -1;
+  var andando = ['PROPOSTA_GERANDO', 'ROTEIRO_GERANDO', 'MODULOS_GERANDO'].indexOf(g.status) !== -1;
+  var passo = /^PROPOSTA|ERRO_PROPOSTA/.test(g.status) ? 2 : /ROTEIRO/.test(g.status) ? 3 : 4;
+  var prop = g.pedido.proposta || null;
+  var vp = valoresProposta || {};
+  var novo = !(g.pedido.destino && g.pedido.destino.tipo === 'existente');
+  var esc1 = function (v) { return v === undefined || v === null ? '' : v; };
   var mods = g.modulos || [];
 %>
 <%- include('../head', { titulo: 'Criar curso com IA' }) %>
@@ -12,14 +17,25 @@
   <h1 class="adm-h1"><%= cursoNome || 'Curso com IA' %></h1>
   <a href="/ead/ia" class="adm-link">← Gerações</a>
 </div>
+<% if (g.pedido.ideia) { %><%- include('_ia-passos', { passo: passo }) %><% } %>
 <%- include('_mensagens') %>
 
 <div class="adm-box adm-box-pad adm-espaco" id="iaEstado" data-estado-url="/ead/ia/<%= g.id %>/estado.json" data-status="<%= g.status %>" data-andando="<%= andando ? '1' : '0' %>" data-assinatura="<%= JSON.stringify([g.status, mods.map(function (m) { return m.status; })]) %>">
   <p><span class="ead-selo <%= g.status === 'CONCLUIDA' ? 'validado' : 'rascunho' %>"><%= STATUS[g.status] || g.status %></span>
-     <span class="adm-mut">Tema: <%= g.pedido.tema %> · custo até agora: <%= usd(g.custoUsd) %> (<%= g.tokensEntrada + g.tokensSaida + g.tokensCache %> tokens)</span></p>
+     <span class="adm-mut"><%= g.pedido.tema ? 'Tema: ' + g.pedido.tema : 'Ideia: ' + (g.pedido.ideia || '') %> · custo até agora: <%= usd(g.custoUsd) %> (<%= g.tokensEntrada + g.tokensSaida + g.tokensCache %> tokens)</span></p>
   <% if (g.erro) { %><p class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= g.erro %></p><% } %>
-  <% if (g.status === 'CONCLUIDA' && co) { %>
-    <p>Pronto: os módulos estão em rascunho em <a class="adm-link" href="/ead/curso/<%= co.id %>"><%= co.curso.nome %></a>. Revise e valide cada um antes de publicar.</p>
+  <% if (g.status === 'PROPOSTA_GERANDO') { %><p class="adm-mut">A IA está lendo a ideia<%= g.pedido.ideia ? '' : '' %> e preparando a proposta. Leva menos de um minuto; a página se atualiza sozinha.</p><% } %>
+  <% if (['PROPOSTA_PRONTA', 'ERRO_PROPOSTA'].indexOf(g.status) !== -1) { %>
+    <form method="POST" action="/ead/ia/<%= g.id %>/proposta-de-novo" class="ead-acoes" data-confirmar="Pedir outra proposta à IA? Custa centavos e conta no teto." data-botao="Pedir outra" data-confirmar-tipo="ok">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="adm-btn adm-btn-out"><i class="fa-solid fa-rotate"></i> <%= g.status === 'ERRO_PROPOSTA' ? 'Tentar de novo' : 'Pedir outra proposta' %></button>
+    </form>
+  <% } %>
+  <% if (['ROTEIRO_PRONTO', 'ERRO_ROTEIRO'].indexOf(g.status) !== -1 && prop) { %>
+    <form method="POST" action="/ead/ia/<%= g.id %>/voltar-proposta" class="ead-acoes">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="adm-btn adm-btn-out">← Voltar à proposta</button>
+    </form>
   <% } %>
   <% if (['ERRO_ROTEIRO', 'ROTEIRO_PRONTO'].indexOf(g.status) !== -1) { %>
     <form method="POST" action="/ead/ia/<%= g.id %>/roteiro-de-novo" class="ead-acoes" data-confirmar="Pedir outro roteiro à IA? Custa outra chamada e conta no teto." data-botao="Pedir outro">
@@ -27,13 +43,48 @@
       <button type="submit" class="adm-btn adm-btn-out"><i class="fa-solid fa-rotate"></i> Gerar outro roteiro</button>
     </form>
   <% } %>
-  <% if (['ROTEIRO_GERANDO', 'ROTEIRO_PRONTO', 'MODULOS_GERANDO', 'ERRO_ROTEIRO'].indexOf(g.status) !== -1) { %>
+  <% if (['PROPOSTA_GERANDO', 'PROPOSTA_PRONTA', 'ERRO_PROPOSTA', 'ROTEIRO_GERANDO', 'ROTEIRO_PRONTO', 'MODULOS_GERANDO', 'ERRO_ROTEIRO'].indexOf(g.status) !== -1) { %>
     <form method="POST" action="/ead/ia/<%= g.id %>/cancelar" class="ead-acoes" data-confirmar="Cancelar a geração? O módulo em andamento termina; o que já foi gravado fica no curso." data-botao="Cancelar geração">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <button type="submit" class="adm-btn adm-btn-out">Cancelar</button>
     </form>
   <% } %>
 </div>
+
+<% if (g.status === 'PROPOSTA_PRONTA' && prop) { %>
+  <form method="POST" action="/ead/ia/<%= g.id %>/proposta" class="adm-box adm-box-pad adm-espaco ia-proposta">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <h2 class="adm-h2 adm-form-h">A proposta da IA</h2>
+    <p class="adm-mut">Sua ideia: “<%= g.pedido.ideia %>”. Confira e mude o que quiser; depois a IA monta o roteiro dos módulos.</p>
+    <div class="adm-form adm-campos">
+      <% if (novo) { %>
+        <label class="full">Nome do curso<input type="text" name="nome" maxlength="120" required value="<%= esc1(vp.nome) %>"></label>
+        <label class="full">Descrição (aparece na página de venda)<input type="text" name="descricao" maxlength="1000" value="<%= esc1(vp.descricao) %>"></label>
+        <label>Carga horária (horas)<input type="number" name="cargaHoraria" min="1" max="600" required value="<%= esc1(vp.cargaHoraria) %>"><% if (prop.porqueCargaHoraria) { %><small class="ia-porque"><%= prop.porqueCargaHoraria %></small><% } %></label>
+        <label>Preço (R$)<input type="text" name="precoOnline" inputmode="decimal" placeholder="49,90" value="<%= esc1(vp.precoOnline) %>"><% if (prop.porquePreco) { %><small class="ia-porque"><%= prop.porquePreco %></small><% } %></label>
+        <label>Parcelas no cartão (máx.)<input type="number" name="maxParcelas" min="1" max="12" value="<%= esc1(vp.maxParcelas) || 1 %>"></label>
+      <% } %>
+      <label>Número de módulos<input type="number" name="nModulos" min="2" max="12" required value="<%= esc1(vp.nModulos) %>"><% if (prop.porqueModulos) { %><small class="ia-porque"><%= prop.porqueModulos %></small><% } %></label>
+      <label class="full">Tema (o que a IA vai cobrir)<input type="text" name="tema" maxlength="300" required value="<%= esc1(vp.tema) %>"></label>
+      <label class="full">Público<input type="text" name="publico" maxlength="200" value="<%= esc1(vp.publico) %>"></label>
+      <label class="full">Observações para a IA<textarea name="observacoes" rows="3" maxlength="2000"><%= esc1(vp.observacoes) %></textarea></label>
+    </div>
+    <button type="submit" class="adm-btn"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar roteiro</button>
+  </form>
+<% } %>
+
+<% if (g.status === 'CONCLUIDA' && co) { %>
+  <div class="adm-box adm-box-pad adm-espaco ia-proximos">
+    <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-list-check"></i> Próximos passos</h2>
+    <ol>
+      <li><b>Revise e valide cada módulo</b> (a IA escreve rascunhos):
+        <ul><% mods.filter(function (m) { return m.moduloId; }).forEach(function (m) { %><li><a class="adm-link" href="/ead/modulo/<%= m.moduloId %>"><%= m.ordem + 1 %>. <%= m.titulo %></a></li><% }) %></ul>
+      </li>
+      <li><b>Confira preço, parcelas e a foto de capa</b> na <a class="adm-link" href="/ead/curso/<%= co.id %>">página do curso <%= co.curso.nome %></a>.</li>
+      <li><b>Publique no site</b> na mesma página (depois de validar os módulos) e, se for o primeiro curso, ligue a <a class="adm-link" href="/ead">Escola Digital</a>.</li>
+    </ol>
+  </div>
+<% } %>
 
 <% if (mods.length) { %>
   <div class="adm-box adm-espaco">

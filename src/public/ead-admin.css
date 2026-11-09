@@ -142,3 +142,15 @@ html[data-tema="escuro"] .ia-roteiro .ia-modulo { border-color: #3a4149; }
 .adm-form select { max-width: 100%; }
 .ead-interruptor { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .ead-interruptor > div { flex: 1 1 320px; min-width: 0; }
+
+/* Criar curso com IA passo a passo (2026-11). */
+.ia-passos { display: flex; gap: 8px; list-style: none; padding: 0; margin: 0 0 16px; flex-wrap: wrap; }
+.ia-passos li { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: #fff; border: 1px solid var(--borda, #e6e1d8); font-weight: 600; font-size: 14px; color: var(--tinta-60, #6b6b6b); }
+.ia-passos li span { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; align-items: center; justify-content: center; background: #efebe4; font-size: 12px; font-weight: 800; }
+.ia-passos li.atual { color: #1d1d1f; border-color: #c8102e; }
+.ia-passos li.atual span { background: #c8102e; color: #fff; }
+.ia-passos li.feito span { background: #1f7a3a; color: #fff; }
+.ia-porque { display: block; margin-top: 4px; font-size: 12.5px; font-weight: 500; color: var(--tinta-60, #6b6b6b); }
+.ia-opcional { margin: 6px 0 14px; }
+.ia-opcional summary { cursor: pointer; font-weight: 700; padding: 8px 0; }
+.ia-proximos ol { margin: 0; padding-left: 20px; display: grid; gap: 10px; }

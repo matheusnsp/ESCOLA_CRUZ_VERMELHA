@@ -340,6 +340,23 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     return { pedido: { destino, tema, publico, nModulos, observacoes }, texto };
   }
 
+  // Passo 1 da criação passo a passo (2026-11): só a ideia, o material e o destino. Devolve { pedido, texto } ou { erro }.
+  async function lerIdeiaIa(b, arquivos) {
+    const ideia = String(b.ideia || '').trim();
+    const texto = String(b.texto || '');
+    if (ideia.length < 10) return { erro: 'Conte a ideia em pelo menos 10 caracteres (o que ensinar e para quem).' };
+    if (ideia.length > 1000) return { erro: 'Ideia: até 1000 caracteres.' };
+    if (texto.length > 100000) return { erro: 'Texto colado: até 100 mil caracteres.' };
+    if (arquivos.some((f) => !ehMaterial(f))) return { erro: 'Envie só arquivos PDF ou Word (.docx).' };
+    if (arquivos.reduce((t, f) => t + f.size, 0) > MAX_BYTES_MATERIAL) return { erro: 'Os arquivos passam de 20 MB.' };
+    let destino = { tipo: 'novo' };
+    if (b.destino === 'existente') {
+      if (!edb.ehId(b.cursoOnlineId) || !(await prisma.cursoOnline.findUnique({ where: { id: b.cursoOnlineId } }))) return { erro: 'Escolha o curso online.' };
+      destino = { tipo: 'existente', cursoOnlineId: b.cursoOnlineId };
+    }
+    return { pedido: { ideia, destino }, texto };
+  }
+
   // As telas nunca leem o material (PDFs em base64 e o texto podem ter dezenas de MB; a página consulta a cada 5 s).
   const COLUNAS_GERACAO = {
     id: true, criadoPor: true, status: true, pedido: true, roteiro: true, cursoOnlineId: true, modulos: true,
@@ -357,7 +374,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
 
   async function formIa(res, { valores = {}, erro = null, status = 200 } = {}) {
     res.status(status).render('admin/ead/ia-form', {
-      valores: { destino: 'novo', nModulos: 6, maxParcelas: 1, ...valores }, cursos: await cursosOnlineParaIa(), erro, chave: ia.ehChaveConfigurada(), msgChave: ia.MSG_CHAVE,
+      valores: { destino: 'novo', ...valores }, cursos: await cursosOnlineParaIa(), erro, chave: ia.ehChaveConfigurada(), msgChave: ia.MSG_CHAVE,
     });
   }
   router.get('/ead/ia/novo', async (req, res) => formIa(res));
@@ -367,7 +384,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const pode = await ia.podeComecar(ator(req));
     if (!pode.ok) return formIa(res, { valores, erro: pode.erro, status: 400 });
     const arquivos = req.files || [];
-    const r = await lerPedidoIa(req.body, arquivos);
+    const r = await lerIdeiaIa(req.body, arquivos);
     if (r.erro) return formIa(res, { valores, erro: r.erro, status: 400 });
     let material;
     try {
@@ -381,10 +398,16 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
   });
 
   const acharGeracao = (id) => (edb.ehId(id) ? prisma.geracaoIaEad.findUnique({ where: { id }, select: COLUNAS_GERACAO }) : null);
-  async function paginaGeracao(res, g, { erro = null, ok = null, roteiro = null, status = 200 } = {}) {
+  async function paginaGeracao(res, g, { erro = null, ok = null, roteiro = null, proposta = null, status = 200 } = {}) {
     const co = g.cursoOnlineId ? await prisma.cursoOnline.findUnique({ where: { id: g.cursoOnlineId }, select: { id: true, curso: { select: { nome: true } } } }) : null;
     const coDestino = !co && g.pedido.destino && g.pedido.destino.cursoOnlineId ? await prisma.cursoOnline.findUnique({ where: { id: g.pedido.destino.cursoOnlineId }, select: { curso: { select: { nome: true } } } }) : null;
-    res.status(status).render('admin/ead/ia-geracao', { g, roteiro: roteiro || g.roteiro, co, cursoNome: co ? co.curso.nome : coDestino ? coDestino.curso.nome : g.pedido.destino && g.pedido.destino.nome, erro, ok });
+    // Passo 2: o formulário da proposta (o que a pessoa digitou depois de um erro, senão a sugestão da IA).
+    const p = g.pedido.proposta || {};
+    const valoresProposta = proposta || {
+      nome: p.nome, descricao: p.descricao, cargaHoraria: p.cargaHoraria, tema: p.tema, publico: p.publico, nModulos: p.nModulos,
+      observacoes: p.observacoes, maxParcelas: p.maxParcelas, precoOnline: p.precoSugerido ? Number(p.precoSugerido).toFixed(2).replace('.', ',') : '',
+    };
+    res.status(status).render('admin/ead/ia-geracao', { g, roteiro: roteiro || g.roteiro, co, cursoNome: co ? co.curso.nome : coDestino ? coDestino.curso.nome : (g.pedido.destino && g.pedido.destino.nome) || p.nome, erro, ok, valoresProposta });
   }
   router.get('/ead/ia/:id', async (req, res) => {
     const g = await acharGeracao(req.params.id);
@@ -404,6 +427,28 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (!r.ok) return paginaGeracao(res, await acharGeracao(g.id), { erro: r.erro, roteiro, status: 400 });
     iaFila.acordar();
     voltar(res, `/ead/ia/${g.id}`, 'ok', 'Roteiro confirmado. Os módulos estão sendo escritos.');
+  });
+  // Passo 2 → 3: a pessoa conferiu a proposta (mesmas regras do formulário antigo) e pede o roteiro.
+  router.post('/ead/ia/:id/proposta', async (req, res) => {
+    const g = await acharGeracao(req.params.id);
+    if (!g) return naoAchou(res);
+    if (g.status !== 'PROPOSTA_PRONTA') return voltar(res, `/ead/ia/${g.id}`, 'erro', 'Esta geração não está esperando a proposta.');
+    const d = g.pedido.destino || {};
+    const r = await lerPedidoIa({ ...req.body, destino: d.tipo, cursoOnlineId: d.cursoOnlineId }, []);
+    if (r.erro) return paginaGeracao(res, g, { erro: r.erro, proposta: req.body, status: 400 });
+    const c = await ia.confirmarProposta(g.id, r.pedido, ator(req));
+    if (!c.ok) return paginaGeracao(res, g, { erro: c.erro, proposta: req.body, status: 400 });
+    iaFila.acordar();
+    voltar(res, `/ead/ia/${g.id}`, 'ok', 'Proposta confirmada. A IA está montando o roteiro.');
+  });
+  router.post('/ead/ia/:id/proposta-de-novo', async (req, res) => {
+    const r = await ia.pedirOutraProposta(req.params.id, ator(req));
+    if (r.ok) iaFila.acordar();
+    voltar(res, `/ead/ia/${req.params.id}`, r.ok ? 'ok' : 'erro', r.ok ? 'Pedimos outra proposta à IA.' : r.erro);
+  });
+  router.post('/ead/ia/:id/voltar-proposta', async (req, res) => {
+    const r = await ia.voltarParaProposta(req.params.id, ator(req));
+    voltar(res, `/ead/ia/${req.params.id}`, r.ok ? 'ok' : 'erro', r.ok ? 'De volta à proposta. Ajuste e gere o roteiro de novo.' : r.erro);
   });
   router.post('/ead/ia/:id/roteiro-de-novo', async (req, res) => {
     const r = await ia.pedirOutroRoteiro(req.params.id, ator(req));
