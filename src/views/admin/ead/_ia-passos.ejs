@@ -1,0 +1,7 @@
+<%# Criar curso com IA passo a passo (2026-11): a barra dos 4 passos. Espera: passo (1 a 4). %>
+<% var _p = typeof passo !== 'undefined' ? passo : 1; var _nomes = ['Ideia', 'Proposta', 'Roteiro', 'Escrita']; %>
+<ol class="ia-passos" aria-label="Passos da criação com IA">
+  <% _nomes.forEach(function (n, i) { var k = i + 1; %>
+    <li class="<%= k < _p ? 'feito' : k === _p ? 'atual' : '' %>"<%- k === _p ? ' aria-current="step"' : '' %>><span><%= k < _p ? '✓' : k %></span> <%= k %> <%= n %></li>
+  <% }) %>
+</ol>

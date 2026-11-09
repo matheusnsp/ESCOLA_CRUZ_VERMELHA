@@ -1,7 +1,7 @@
 <%
   var dataBR = function (d) { return d ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }) : '—'; };
   var usd = function (v) { return 'US$ ' + Number(v || 0).toFixed(2); };
-  var STATUS = { ROTEIRO_GERANDO: 'Escrevendo o roteiro', ROTEIRO_PRONTO: 'Roteiro para revisar', MODULOS_GERANDO: 'Escrevendo os módulos', CONCLUIDA: 'Concluída', ERRO_ROTEIRO: 'Erro no roteiro', CANCELADA: 'Cancelada' };
+  var STATUS = { PROPOSTA_GERANDO: 'Preparando a proposta', PROPOSTA_PRONTA: 'Proposta para conferir', ERRO_PROPOSTA: 'Erro na proposta', ROTEIRO_GERANDO: 'Escrevendo o roteiro', ROTEIRO_PRONTO: 'Roteiro para revisar', MODULOS_GERANDO: 'Escrevendo os módulos', CONCLUIDA: 'Concluída', ERRO_ROTEIRO: 'Erro no roteiro', CANCELADA: 'Cancelada' };
 %>
 <%- include('../head', { titulo: 'Criar curso com IA' }) %>
 <%- include('../header', { ativo: 'ead' }) %>

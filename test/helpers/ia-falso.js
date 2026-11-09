@@ -29,6 +29,17 @@ function moduloBom(m) {
   };
 }
 
+// Proposta do passo 2 (criação passo a passo, 2026-11): o que a IA sugere a partir da ideia.
+function propostaBoa(extra = {}) {
+  return {
+    nome: 'Primeiros Socorros na Creche', descricao: 'Capacitação teórica para quem cuida de crianças pequenas.', cargaHoraria: 4,
+    publico: 'professores e auxiliares de creche', tema: 'Primeiros socorros na creche: engasgo, quedas e como pedir ajuda',
+    nModulos: 4, precoSugerido: 49.9, maxParcelas: 3, observacoes: 'Linguagem simples; exemplos com crianças de 0 a 5 anos.',
+    porqueCargaHoraria: 'O tema cabe em 4 módulos curtos de cerca de 1 hora.', porqueModulos: 'Um módulo por situação e o final com cenários.',
+    porquePreco: 'Na faixa dos cursos online da escola.', ...extra,
+  };
+}
+
 // Cliente falso no formato de client.beta.messages.stream(...).finalMessage(). `respostas` é uma lista de
 // funções (params) => objeto JSON | { stop_reason, ... } | Promise; cada chamada consome a próxima (a última repete).
 function clienteFalso(respostas) {
@@ -53,4 +64,4 @@ function roteiroComum(n = 3) {
   return { modulos: Array.from({ length: n }, (_, i) => ({ titulo: `Módulo ${i + 1}`, minutos: 20, final: false, topicos: [{ titulo: `Tópico ${i + 1}.1` }, { titulo: `Tópico ${i + 1}.2` }, { titulo: `Tópico ${i + 1}.3` }], cenarios: [] })) };
 }
 
-module.exports = { roteiroBom, roteiroComum, moduloBom, clienteFalso, alternativas };
+module.exports = { propostaBoa, roteiroBom, roteiroComum, moduloBom, clienteFalso, alternativas };

@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
-const { roteiroBom, moduloBom, clienteFalso } = require('./helpers/ia-falso');
+const { roteiroBom, moduloBom, clienteFalso, propostaBoa } = require('./helpers/ia-falso');
 
 const temBanco = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');
 
@@ -21,6 +21,7 @@ describe('Painel → Criar curso com IA', { skip: temBanco ? false : 'sem DATABA
   const rot = roteiroBom(3);
   const cli = clienteFalso([(params) => {
     const pedido = params.messages[0].content.at(-1).text;
+    if (/Proponha o curso/.test(pedido)) return propostaBoa(); // passo 2 da criação passo a passo (2026-11)
     const n = Number((pedido.match(/Escreva agora o módulo (\d+)/) || [])[1]);
     if (!n) return roteiroBom(3);
     if (modoFalha && n === 2) return 'quebrado';
@@ -88,6 +89,16 @@ describe('Painel → Criar curso com IA', { skip: temBanco ? false : 'sem DATABA
     return { ...c, ...extra };
   };
   const ultimaGeracao = () => prisma.geracaoIaEad.findFirst({ where: { criadoPor: quem }, orderBy: { criadoEm: 'desc' } });
+  // Passo a passo (2026-11): passo 1 (a ideia) → a IA propõe → passo 2 confirma os campos do formulário antigo.
+  const ateRoteiro = async (campos, arquivos = []) => {
+    const r = await enviar({ ideia: 'Primeiros socorros para professores de escola', destino: campos.destino, cursoOnlineId: campos.cursoOnlineId || '', texto: campos.texto || '' }, arquivos);
+    if (r.status !== 302) return r;
+    await fila.ocioso();
+    const g = await ultimaGeracao();
+    const c = await post(`/ead/ia/${g.id}/proposta`, campos);
+    await fila.ocioso();
+    return { status: c.status === 302 ? 302 : c.status, headers: r.headers, proposta: c };
+  };
 
   test('sem a chave da API: a lista avisa e o pedido é recusado', async () => {
     delete process.env.ANTHROPIC_API_KEY;
@@ -98,22 +109,24 @@ describe('Painel → Criar curso com IA', { skip: temBanco ? false : 'sem DATABA
     process.env.ANTHROPIC_API_KEY = 'chave-falsa-teste';
   });
 
-  test('pedido inválido: tema curto, 13 módulos, arquivo .exe', async () => {
-    assert.match(await (await enviar(pedidoNovo({ tema: 'abc' }))).text(), /Tema: de 5 a 300 caracteres\./);
-    assert.match(await (await enviar(pedidoNovo({ nModulos: '13' }))).text(), /Módulos: de 2 a 12\./);
-    const r = await enviar(pedidoNovo(), [{ nome: 'virus.exe', conteudo: Buffer.from('MZ') }]);
+  test('pedido inválido: ideia curta, arquivo .exe (passo 1); 13 módulos (passo 2)', async () => {
+    assert.match(await (await enviar({ ideia: 'abc', destino: 'novo' })).text(), /Conte a ideia em pelo menos 10 caracteres/);
+    const r = await enviar({ ideia: 'Primeiros socorros na escola', destino: 'novo' }, [{ nome: 'virus.exe', conteudo: Buffer.from('MZ') }]);
     assert.equal(r.status, 400);
     assert.match(await r.text(), /Envie só arquivos PDF ou Word \(\.docx\)\./);
     assert.equal(await prisma.geracaoIaEad.count({ where: { criadoPor: quem } }), 0);
   });
 
-  test('fluxo completo: pedido → roteiro editável → confirmar com módulo renomeado → concluída, com o selo', async () => {
-    const r = await enviar(pedidoNovo(), [docx]);
-    assert.equal(r.status, 302);
+  test('fluxo completo: ideia → proposta → roteiro editável → confirmar com módulo renomeado → concluída, com o selo', async () => {
+    const r1 = await enviar({ ideia: 'Primeiros socorros para professores de escola', destino: 'novo', texto: 'Ligue 192.' }, [docx]);
+    assert.equal(r1.status, 302);
     const g = await ultimaGeracao();
-    assert.equal(r.headers.get('location'), `/ead/ia/${g.id}`);
+    assert.equal(r1.headers.get('location'), `/ead/ia/${g.id}`);
     assert.match(g.materialTexto, /cinco golpes/);
     assert.match(g.materialTexto, /Ligue 192/);
+    await fila.ocioso();
+    assert.match(await (await post(`/ead/ia/${g.id}/proposta`, pedidoNovo({ nModulos: '13' }))).text(), /Módulos: de 2 a 12\./);
+    assert.equal((await post(`/ead/ia/${g.id}/proposta`, pedidoNovo())).status, 302);
     await fila.ocioso();
     const pag = await get(`/ead/ia/${g.id}`);
     assert.match(pag, /name="modulos\[0\]\[titulo\]"/);
@@ -139,9 +152,8 @@ describe('Painel → Criar curso com IA', { skip: temBanco ? false : 'sem DATABA
   });
 
   test('roteiro editado inválido: mensagem e nada muda; módulo com erro: tentar de novo', async () => {
-    const r = await enviar(pedidoNovo({ destino: 'existente', cursoOnlineId: coEx.id, nome: '' }));
+    const r = await ateRoteiro(pedidoNovo({ destino: 'existente', cursoOnlineId: coEx.id, nome: '' }));
     assert.equal(r.status, 302);
-    await fila.ocioso();
     const g = await ultimaGeracao();
     const ruim = roteiroBom(3); ruim.modulos[0].final = true;
     const c = await post(`/ead/ia/${g.id}/confirmar`, roteiroForm(ruim));
