@@ -19,6 +19,7 @@ Roteiro para colocar no ar o curso online. São as etapas 1 a 8, do PR final `ea
      5. `20261109120000_ead_lote`: escolas, lotes e vagas.
      6. `20261110120000_ead_cupom`: cupons e parcelas.
      7. `20261111120000_ead_ia`: criar curso com IA (etapa 9; só se este pacote incluir a etapa 9).
+     8. `20261113120000_ead_ia_imagens`: imagens com IA (pedido do Claude, descrição e selo; só acrescenta colunas). Para gerar, o serviço da secretaria precisa de `OPENAI_API_KEY`.
    - Se aparecer outra migração pendente, **pare** e confira antes de seguir.
    - Todas as migrações do EAD só **acrescentam** tabelas e colunas. O `scripts/checar-migracao-ead.js` confere isso.
 
