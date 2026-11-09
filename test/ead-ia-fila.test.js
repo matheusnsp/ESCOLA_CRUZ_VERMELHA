@@ -254,4 +254,21 @@ describe('fila da geração com IA', { skip: temBanco ? false : 'sem DATABASE_UR
     await prisma.configuracao.delete({ where: { chave: `ead-ia:ocupado:${g.id}` } });
     await IA.cancelar(g.id, 'dev');
   });
+
+  test('[revisão I1] imagens ocupadas (outro serviço ou o botão gerando): o passo não conclui; tenta de novo depois', async () => {
+    const g = await IA.criarGeracao({ pedido: { destino: { tipo: 'existente', cursoOnlineId: co.id }, tema: 'Tema', publico: '', nModulos: 3, observacoes: '' }, material: { materialTexto: null, materialPdfs: [] }, criadoPor: `fila-ocup-${s}` });
+    geracoes.push(g.id);
+    await prisma.geracaoIaEad.update({ where: { id: g.id }, data: { status: 'FOTOS_GERANDO', cursoOnlineId: co.id } });
+    await prisma.configuracao.create({ data: { chave: `ead-ia:imagens-ocupado:curso-online:${co.id}`, valor: `${Date.now()}:outro` } });
+    try {
+      await IA.gerarImagens(g.id, { cliente: clienteFalso([responde()]) });
+      const d = await doBanco(g);
+      assert.equal(d.status, 'FOTOS_GERANDO', 'não concluiu com o aviso de ocupado');
+      assert.equal(d.pedido.avisoImagens, undefined);
+    } finally {
+      await prisma.configuracao.deleteMany({ where: { chave: `ead-ia:imagens-ocupado:curso-online:${co.id}` } });
+    }
+    await IA.gerarImagens(g.id, { cliente: clienteFalso([responde()]) });
+    assert.equal((await doBanco(g)).status, 'CONCLUIDA');
+  });
 });

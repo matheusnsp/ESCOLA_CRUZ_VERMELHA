@@ -120,6 +120,7 @@
 <% var _ci = imagensIa && imagensIa.curso; %>
 <div class="adm-box adm-box-pad adm-espaco ead-imagens-ia">
   <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-wand-magic-sparkles"></i> Imagens com IA</h2>
+  <%- include('_status-imagens', { st: imagensIa && imagensIa.status }) %>
   <div class="ead-img-ia-linha">
     <% if (_ci && _ci.imagemUrl) { %><img src="<%= _ci.imagemUrl %>" alt="Imagem do curso" class="ead-img-ia"><% } else { %><span class="ead-img-ia vazio"><i class="fa-solid fa-image"></i></span><% } %>
     <div>

@@ -56,18 +56,31 @@ describe('painel: imagens com IA', { skip: temBanco ? false : 'sem DATABASE_URL 
     await apagarCursosOnline(prisma, cos);
   });
 
-  test('duplo clique: um só gera; cada alvo com uma imagem e nenhum arquivo a mais', async () => {
+  test('[revisão I4] o botão responde na hora (segundo plano) e a página mostra "Gerando…" e depois o resultado', async () => {
+    let soltar; const segura = new Promise((r) => { soltar = r; });
+    const base = openaiFalso();
+    img.definirFetch(async (...a) => { await segura; return base(...a); });
     const antes = arquivos();
-    const [a, b] = await Promise.all([post(`/ead/curso/${co.id}/imagens-ia`), post(`/ead/curso/${co.id}/imagens-ia`)]);
-    const msgs = [flash(a), flash(b)].join(' | ');
-    assert.match(msgs, /3 imagens geradas\./);
-    assert.match(msgs, /já estão sendo geradas|Nada para preencher/);
-    assert.equal(arquivos(), antes + 3, 'capa + 2 módulos');
+    const t0 = Date.now();
+    const r = await post(`/ead/curso/${co.id}/imagens-ia`);
+    assert.equal(r.status, 302);
+    assert.ok(Date.now() - t0 < 2000, 'não espera as imagens');
+    assert.match(flash(r), /em segundo plano/);
+    assert.match(await get(`/ead/curso/${co.id}`), /Gerando as imagens…/);
+    // duplo clique enquanto gera: não começa outra
+    assert.match(flash(await post(`/ead/curso/${co.id}/imagens-ia`)), /já estão sendo geradas/);
+    soltar();
+    await img.ocioso();
+    img.definirFetch(base);
+    assert.match(await get(`/ead/curso/${co.id}`), /3 imagens geradas\./);
+    assert.equal(arquivos(), antes + 3, 'capa + 2 módulos, sem arquivo a mais');
   });
 
   test('segundo clique: nada para preencher (não chama o Claude)', async () => {
     const n = chamadasClaude;
-    assert.match(flash(await post(`/ead/curso/${co.id}/imagens-ia`)), /Nada para preencher: a capa e os módulos já têm imagem\./);
+    await post(`/ead/curso/${co.id}/imagens-ia`);
+    await img.ocioso();
+    assert.match(await get(`/ead/curso/${co.id}`), /Nada para preencher: a capa e os módulos já têm imagem\./);
     assert.equal(chamadasClaude, n);
   });
 
@@ -80,7 +93,9 @@ describe('painel: imagens com IA', { skip: temBanco ? false : 'sem DATABASE_URL 
     assert.match(pm, /Imagem gerada por IA/);
     assert.match(pm, /Imagem do módulo 1|Imagem do módulo 2/);
     const antes = (await prisma.moduloEad.findUnique({ where: { id: m1.id } })).fotoIntroUrl;
-    assert.match(flash(await post(`/ead/modulo/${m1.id}/foto/gerar-outra`)), /Imagem nova gerada\./);
+    assert.match(flash(await post(`/ead/modulo/${m1.id}/foto/gerar-outra`)), /em segundo plano/);
+    await img.ocioso();
+    assert.match(await get(`/ead/modulo/${m1.id}/editar`), /Imagem nova gerada\./);
     assert.notEqual((await prisma.moduloEad.findUnique({ where: { id: m1.id } })).fotoIntroUrl, antes);
   });
 
@@ -99,6 +114,7 @@ describe('painel: imagens com IA', { skip: temBanco ? false : 'sem DATABASE_URL 
     await IA.definirTeto('0', quem);
     const n = chamadasClaude;
     const r = await post(`/ead/curso/${co.id}/imagens-ia`);
+    await img.ocioso();
     assert.match(flash(r), /teto/i);
     assert.equal(chamadasClaude, n);
     await IA.definirTeto('50', quem);

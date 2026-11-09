@@ -1,0 +1,10 @@
+<%# Imagens com IA (revisão I4): andamento/resultado do trabalho em segundo plano. Espera st = { estado, msg, em } ou null. %>
+<% if (st) { var _h = st.em ? new Date(st.em).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }) : ''; %>
+  <% if (st.estado === 'gerando') { %>
+    <div class="adm-alerta adm-alerta-pendente adm-espaco"><i class="fa-solid fa-spinner fa-spin"></i> <span>Gerando as imagens… (começou às <%= _h %>). Recarregue a página em alguns minutos.</span></div>
+  <% } else if (st.estado === 'ok') { %>
+    <div class="adm-ok adm-espaco"><i class="fa-solid fa-circle-check"></i> <%= st.msg %> <span class="adm-mut">(<%= _h %>)</span></div>
+  <% } else { %>
+    <div class="adm-erro adm-espaco"><i class="fa-solid fa-circle-exclamation"></i> <%= st.msg %> <span class="adm-mut">(<%= _h %>)</span></div>
+  <% } %>
+<% } %>

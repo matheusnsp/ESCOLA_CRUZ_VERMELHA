@@ -59,6 +59,7 @@
     <span class="adm-foto-rot">Foto do curso<% if (c.imagemGeradaPorIa) { %> <span class="adm-badge-ia">Imagem gerada por IA</span><% } %></span>
     <% if (typeof okImagem !== 'undefined' && okImagem) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= okImagem %></div><% } %>
     <% if (typeof erroImagem !== 'undefined' && erroImagem) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erroImagem %></div><% } %>
+    <% if (typeof statusImagem !== 'undefined' && statusImagem && !(typeof okImagem !== 'undefined' && okImagem && statusImagem.estado === 'gerando')) { %><%- include('ead/_status-imagens', { st: statusImagem }) %><% } %>
     <div class="adm-foto-linha">
       <% if (c.imagemUrl) { %>
         <img src="<%= c.imagemUrl %>" alt="Foto atual" class="adm-foto-atual">

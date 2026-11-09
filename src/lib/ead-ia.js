@@ -424,11 +424,15 @@ async function gerarModulo(geracaoId, ordem, { cliente, marca = null }) {
 const AVISO_IMAGENS = 'As imagens não puderam ser geradas; use o botão Gerar imagens com IA na página do curso.';
 async function gerarImagens(geracaoId, { cliente, fetch } = {}) {
   const g = await prisma.geracaoIaEad.findUnique({ where: { id: geracaoId }, select: { cursoOnlineId: true, pedido: true, status: true } });
-  if (!g || g.status !== 'FOTOS_GERANDO') return;
+  if (!g || g.status !== 'FOTOS_GERANDO') return true;
   let aviso = null;
   try {
     if (g.cursoOnlineId) {
-      const r = await require('./ead-imagens').imagensDoCursoOnline(g.cursoOnlineId, { cliente, fetch, custo: (u) => somarCusto(geracaoId, u) });
+      const img = require('./ead-imagens');
+      const r = await img.imagensDoCursoOnline(g.cursoOnlineId, { cliente, fetch, custo: (u) => somarCusto(geracaoId, u) });
+      // Revisão I1: outro trabalho gerando as imagens deste curso (o botão, ou um serviço que caiu no meio e cuja
+      // trava ainda não venceu): não conclui; a fila tenta de novo na próxima volta.
+      if (r.aviso === img.OCUPADO) return false;
       aviso = r.aviso;
     }
   } catch (e) {
@@ -440,6 +444,7 @@ async function gerarImagens(geracaoId, { cliente, fetch } = {}) {
     where: { id: geracaoId, status: 'FOTOS_GERANDO' },
     data: { status: 'CONCLUIDA', materialPdfs: require('@prisma/client').Prisma.DbNull, ...(aviso ? { pedido: { ...g.pedido, avisoImagens: aviso } } : {}) },
   });
+  return true;
 }
 
 // Varredura da fila: o módulo "gerando" de quem sumiu (marca vencida) volta a pendente.

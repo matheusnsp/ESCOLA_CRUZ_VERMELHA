@@ -138,4 +138,43 @@ describe('imagens com IA: banco', { skip: temBanco ? false : 'sem DATABASE_URL l
     await IA.somarCustoAvulso({ input_tokens: 100000, output_tokens: 10000 });
     assert.ok((await IA.gastoDoMes()) > antes);
   });
+
+  test('[revisão I2] imagem gerada em módulo VALIDADO volta o módulo a rascunho (bulk e gerar outra)', async () => {
+    process.env.OPENAI_API_KEY = 'sk-teste';
+    const { co, m1, m2 } = await cursoOnline({ comFotoNoSegundo: false });
+    await prisma.moduloEad.updateMany({ where: { id: { in: [m1.id, m2.id] } }, data: { status: 'VALIDADO', validadoPor: 'dev', validadoEm: new Date() } });
+    await img.imagensDoCursoOnline(co.id, { cliente: claude([m1.id, m2.id]), fetch: openaiFalso(), custo: () => {} });
+    assert.equal((await prisma.moduloEad.findUnique({ where: { id: m1.id } })).status, 'RASCUNHO');
+    assert.ok(await prisma.logAuditoria.count({ where: { acao: 'EAD_INVALIDOU_MODULO', alvoId: m1.id } }));
+    await prisma.moduloEad.update({ where: { id: m2.id }, data: { status: 'VALIDADO' } });
+    assert.deepEqual(await img.gerarOutra({ tipo: 'modulo', id: m2.id }, { fetch: openaiFalso() }), { ok: true });
+    assert.equal((await prisma.moduloEad.findUnique({ where: { id: m2.id } })).status, 'RASCUNHO');
+    await prisma.logAuditoria.deleteMany({ where: { alvoId: { in: [m1.id, m2.id] } } });
+  });
+
+  test('[revisão I3] a trava é renovada enquanto gera (não vence no meio de uma geração longa)', async () => {
+    process.env.OPENAI_API_KEY = 'sk-teste';
+    const { co, m1, m2 } = await cursoOnline({ comFotoNoSegundo: false });
+    img.configurar({ renovarMs: 30, validadeMs: 80 });
+    const vistos = new Set();
+    const rapido = openaiFalso();
+    const lento = async (...a) => {
+      for (let i = 0; i < 6; i++) {
+        await new Promise((r) => setTimeout(r, 30));
+        const t = await prisma.configuracao.findUnique({ where: { chave: `ead-ia:imagens-ocupado:curso-online:${co.id}` } });
+        if (t) vistos.add(t.valor);
+      }
+      return rapido(...a);
+    };
+    try {
+      const corrida = img.imagensDoCursoOnline(co.id, { cliente: claude([m1.id, m2.id]), fetch: lento, custo: () => {} });
+      await new Promise((r) => setTimeout(r, 250)); // passou da validade (80 ms) várias vezes
+      const segunda = await img.imagensDoCursoOnline(co.id, { cliente: claude([m1.id, m2.id]), fetch: openaiFalso(), custo: () => {} });
+      assert.equal(segunda.aviso, img.OCUPADO, 'a segunda não entra: a trava foi renovada ' + JSON.stringify(segunda) + ' vistos=' + vistos.size);
+      await corrida;
+    } finally {
+      img.configurar({ renovarMs: 60000, validadeMs: 180000 });
+    }
+    assert.ok(vistos.size >= 2, `a trava mudou durante a geração (${vistos.size})`);
+  });
 });

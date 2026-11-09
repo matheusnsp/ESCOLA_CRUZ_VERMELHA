@@ -46,11 +46,13 @@
 </form>
 
 <%# Imagens com IA (2026-11-09): selo, descrição do Claude e "Gerar outra" da imagem de abertura. %>
-<% if (!novo && modulo && (modulo.fotoSugestao || modulo.fotoGeradaPorIa)) { %>
+<% var _stImg = typeof statusImagem !== 'undefined' ? statusImagem : null; %>
+<% if (!novo && modulo && (modulo.fotoSugestao || modulo.fotoGeradaPorIa || _stImg)) { %>
 <div class="adm-box adm-box-pad adm-espaco ead-imagens-ia">
+  <%- include('_status-imagens', { st: _stImg }) %>
   <p><b>Imagem de abertura</b><% if (modulo.fotoGeradaPorIa) { %> <span class="ead-selo ia">Imagem gerada por IA</span><% } %></p>
   <% if (modulo.fotoSugestao) { %><p class="adm-mut">Descrição: <%= modulo.fotoSugestao %></p><% } %>
-  <% if (modulo.fotoPedido && process.env.OPENAI_API_KEY) { %>
+  <% if (modulo.fotoPedido && typeof temOpenAI !== 'undefined' && temOpenAI) { %>
     <form method="POST" action="/ead/modulo/<%= modulo.id %>/foto/gerar-outra" class="ead-acoes" data-confirmar="Gerar outra imagem de abertura? A atual é apagada." data-botao="Gerar outra" data-confirmar-tipo="ok">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <button type="submit" class="adm-btn adm-btn-out"><i class="fa-solid fa-rotate"></i> Gerar outra</button>

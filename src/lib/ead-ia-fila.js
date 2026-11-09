@@ -89,7 +89,8 @@ async function passo(cliente) {
   }
   const imagens = await prisma.geracaoIaEad.findMany({ where: { status: 'FOTOS_GERANDO' }, orderBy: { criadoEm: 'asc' }, select: { id: true } });
   for (const g of imagens) {
-    if (await comMarca(chave(g.id), async () => { await IA.gerarImagens(g.id, { cliente }); })) return true;
+    // gerarImagens devolve false quando as imagens do curso estão ocupadas: comMarca solta e a fila segue.
+    if (await comMarca(chave(g.id), () => IA.gerarImagens(g.id, { cliente }))) return true;
   }
   const gs = await prisma.geracaoIaEad.findMany({ where: { status: 'MODULOS_GERANDO' }, orderBy: { criadoEm: 'asc' }, select: { id: true, modulos: true } });
   for (const g of gs) {

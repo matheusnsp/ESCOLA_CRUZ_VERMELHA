@@ -139,28 +139,81 @@ async function gerarEGuardar(p, opts) {
 }
 
 // Uma geração de imagens por alvo por vez (duplo clique; passo da fila + botão). Marca em Configuracao (como a fila
-// da IA): criada no começo, apagada no fim; vence em 15 min (serviço que morreu no meio). Sem transação longa aberta.
-const VALIDADE_TRAVA_MS = 15 * 60 * 1000;
+// da IA): criada no começo, **renovada** a cada `renovarMs` enquanto gera (revisão I3: uma geração longa não perde a
+// trava) e apagada no fim; vence em `validadeMs` sem renovação (serviço que morreu no meio). Sem transação aberta.
+let renovarMs = 60 * 1000;
+let validadeMs = 3 * 60 * 1000;
+const configurar = (o = {}) => { if (o.renovarMs) renovarMs = o.renovarMs; if (o.validadeMs) validadeMs = o.validadeMs; };
 const OCUPADO = 'As imagens já estão sendo geradas. Aguarde um pouco e recarregue a página.';
+const chaveTrava = (nome) => `ead-ia:imagens-ocupado:${nome}`;
+const novoValorTrava = () => `${Date.now()}:${process.pid}-${Math.random().toString(36).slice(2, 10)}`;
+async function travaOcupada(nome) {
+  const atual = await prisma.configuracao.findUnique({ where: { chave: chaveTrava(nome) } }).catch(() => null);
+  return !!atual && Date.now() - (Number(String(atual.valor).split(':')[0]) || 0) < validadeMs;
+}
 async function comTrava(nome, fn, seOcupado) {
-  const chave = `ead-ia:imagens-ocupado:${nome}`;
-  const meu = `${Date.now()}:${process.pid}-${Math.random().toString(36).slice(2, 10)}`;
+  const chave = chaveTrava(nome);
+  let meu = novoValorTrava();
   try {
     await prisma.configuracao.create({ data: { chave, valor: meu } });
   } catch (e) {
     if (e.code !== 'P2002') throw e;
     const atual = await prisma.configuracao.findUnique({ where: { chave } });
     const hora = atual ? Number(String(atual.valor).split(':')[0]) || 0 : 0;
-    if (atual && Date.now() - hora < VALIDADE_TRAVA_MS) return seOcupado;
+    if (atual && Date.now() - hora < validadeMs) return seOcupado;
     const r = await prisma.configuracao.updateMany({ where: { chave, valor: atual ? atual.valor : '' }, data: { valor: meu } });
     if (!r.count) return seOcupado;
   }
+  const timer = setInterval(async () => {
+    const novo = novoValorTrava();
+    const r = await prisma.configuracao.updateMany({ where: { chave, valor: meu }, data: { valor: novo } }).catch(() => ({ count: 0 }));
+    if (r.count === 1) meu = novo;
+  }, renovarMs);
+  timer.unref();
   try {
     return await fn();
   } finally {
+    clearInterval(timer);
     await prisma.configuracao.deleteMany({ where: { chave, valor: meu } }).catch(() => {});
   }
 }
+
+// Revisão I4: os botões do painel não esperam as imagens (atrás do Cloudflare, mais de 100 s vira erro 524). O
+// trabalho roda em segundo plano e o resultado fica em Configuracao `ead-ia:imagens-status:<nome>`, mostrado na
+// página. `ocioso()` espera os trabalhos em andamento (testes).
+const emAndamento = new Set();
+const chaveStatus = (nome) => `ead-ia:imagens-status:${nome}`;
+async function gravarStatus(nome, st) {
+  const valor = JSON.stringify({ ...st, em: new Date().toISOString() });
+  await prisma.configuracao.upsert({ where: { chave: chaveStatus(nome) }, update: { valor }, create: { chave: chaveStatus(nome), valor } }).catch((e) => console.error('[EAD IMAGENS] status:', e.message));
+}
+// fn() devolve { ok, msg }; trava = nome da trava que o trabalho usa (para a página saber se ainda está gerando).
+function emSegundoPlano(nome, trava, fn) {
+  const p = (async () => {
+    await gravarStatus(nome, { estado: 'gerando', trava });
+    let st;
+    try {
+      const r = await fn();
+      st = { estado: r.ok ? 'ok' : 'erro', msg: r.msg };
+    } catch (e) {
+      console.error('[EAD IMAGENS] segundo plano:', e.message);
+      st = { estado: 'erro', msg: 'Não foi possível gerar as imagens agora. Tente de novo em alguns minutos.' };
+    }
+    await gravarStatus(nome, st);
+  })();
+  emAndamento.add(p);
+  p.finally(() => emAndamento.delete(p));
+}
+async function statusDe(nome) {
+  const c = await prisma.configuracao.findUnique({ where: { chave: chaveStatus(nome) } }).catch(() => null);
+  if (!c) return null;
+  let st; try { st = JSON.parse(c.valor); } catch (e) { return null; }
+  if (st.estado === 'gerando' && !(await travaOcupada(st.trava)) && Date.now() - new Date(st.em).getTime() > validadeMs) {
+    return { estado: 'erro', msg: 'A geração das imagens foi interrompida (o servidor reiniciou). Clique de novo para continuar.', em: st.em };
+  }
+  return st;
+}
+const ocioso = async () => { while (emAndamento.size) await Promise.all([...emAndamento]); };
 
 // Curso online: capa e abertura dos módulos, só o que está vazio. { geradas, descricoes, aviso }.
 async function imagensDoCursoOnline(cursoOnlineId, { cliente, fetch, custo = () => {} } = {}) {
@@ -193,9 +246,15 @@ async function imagensDoCursoOnline(cursoOnlineId, { cliente, fetch, custo = () 
     for (const p of pedidos.modulos) {
       descricoes++;
       const url = comChave ? await gerarEGuardar(p, { fetch }) : null;
-      const r = await prisma.moduloEad.updateMany({
-        where: { id: p.moduloId, fotoIntroUrl: null },
-        data: { fotoPedido: p.pedido, fotoSugestao: p.descricao, ...(url ? { fotoIntroUrl: url, fotoGeradaPorIa: true } : {}) },
+      // Revisão I2: imagem nova num módulo validado volta o módulo a rascunho (precisa de revisão), como toda
+      // mudança de conteúdo do módulo.
+      const r = await transacao(async (tx) => {
+        const u = await tx.moduloEad.updateMany({
+          where: { id: p.moduloId, fotoIntroUrl: null },
+          data: { fotoPedido: p.pedido, fotoSugestao: p.descricao, ...(url ? { fotoIntroUrl: url, fotoGeradaPorIa: true } : {}) },
+        });
+        if (url && u.count) await require('./ead-db').invalidarSeValidado(tx, p.moduloId, 'SISTEMA', 'imagem de abertura gerada por IA');
+        return u;
       });
       if (url && r.count) geradas++; else if (url) await removerFotoCurso(url);
     }
@@ -234,7 +293,12 @@ async function gerarOutra({ tipo, id }, opts = {}) {
     const url = await gerarEGuardar({ pedido }, opts);
     if (!url) return { ok: false, erro: 'A OpenAI não conseguiu gerar a imagem. Tente de novo ou envie uma imagem.' };
     const antiga = tipo === 'modulo' ? alvo.fotoIntroUrl : alvo.imagemUrl;
-    if (tipo === 'modulo') await prisma.moduloEad.update({ where: { id }, data: { fotoIntroUrl: url, fotoGeradaPorIa: true } });
+    if (tipo === 'modulo') {
+      await transacao(async (tx) => {
+        await tx.moduloEad.update({ where: { id }, data: { fotoIntroUrl: url, fotoGeradaPorIa: true } });
+        await require('./ead-db').invalidarSeValidado(tx, id, 'SISTEMA', 'imagem de abertura gerada por IA');
+      });
+    }
     else await prisma.curso.update({ where: { id }, data: { imagemUrl: url, imagemGeradaPorIa: true } });
     if (antiga) await removerFotoCurso(antiga).catch(() => {});
     return { ok: true };
@@ -243,5 +307,5 @@ async function gerarOutra({ tipo, id }, opts = {}) {
 
 module.exports = {
   ErroImagem, temOpenAI, modeloImagem, pedirAoClaude, gerarNaOpenAI, gerarComReserva, SYSTEM_PEDIDOS,
-  AVISO_SEM_CHAVE, OCUPADO, definirFetch, definirCliente, contagem, imagensDoCursoOnline, imagemDoCurso, gerarOutra,
+  AVISO_SEM_CHAVE, OCUPADO, definirFetch, definirCliente, configurar, emSegundoPlano, statusDe, ocioso, travaOcupada, contagem, imagensDoCursoOnline, imagemDoCurso, gerarOutra,
 };
