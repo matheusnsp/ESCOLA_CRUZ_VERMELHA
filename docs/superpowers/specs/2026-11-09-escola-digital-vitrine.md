@@ -13,7 +13,13 @@ linhas, mas **linha sem produto não aparece**.
 Junto vem o **curso gratuito**: a secretaria marca "Gratuito", o curso aparece com "Grátis" e o aluno libera
 com um clique, sem pagamento.
 
-Regra fixa (pedido do Matheus): **nunca mostrar vagas ocupadas ou restantes** em nenhum lugar da vitrine.
+Regras fixas (pedido do Matheus):
+
+- **Conta obrigatória**: para fazer um curso (e, nas próximas fases, baixar um e-book ou assistir a um
+  webinário) a pessoa **precisa ter conta e estar logada**, inclusive quando é grátis. A vitrine e a página
+  do produto são públicas (qualquer um vê); liberar, comprar e acessar o conteúdo, só logado. Quem não está
+  logado é levado a "Criar conta" / "Entrar" e volta para o produto depois.
+- **Nunca mostrar vagas ocupadas ou restantes** em nenhum lugar da vitrine.
 
 ## 1. A página `/escola-digital` (site, visual claro)
 
@@ -96,7 +102,8 @@ No servidor (`ead-online.js`), `forma=GRATIS`:
 
 - só vale se o curso está `gratuito` e publicado e a Escola Digital ligada (mesmas regras de hoje); senão
   volta para a capa sem gravar nada;
-- **não pede CPF** (não há cobrança);
+- exige login (`requireLogin`, como a compra): sem conta não libera nada, nem curso grátis;
+- não pede o CPF de novo na hora (não há cobrança; o cadastro da conta já pede CPF ou passaporte);
 - libera como o cupom de 100% já faz (`liberarPorCupom` generalizada): matrícula na turma ONLINE do curso,
   `statusPagamento: 'PAGO'`, valores 0, `confirmadaPor: 'gratuito'`, sem Pagamento, com a trava por aluno e
   turma (duplo clique = uma liberação), auditoria `EAD_GRATIS_LIBEROU`;
@@ -127,7 +134,9 @@ E-books, webinários, "Meus produtos", busca e filtros, categorias por área, av
   mostra "em breve".
 - Secretaria: salvar destaque (e "automático"); ↑ ↓ mudam `ordemVitrine`; marcar Gratuito zera o preço e
   permite publicar sem preço; desmarcar exige preço de novo; cupom não aparece em curso grátis.
-- Liberar grátis: aluno logado libera sem CPF e cai no `/continuar`; duplo POST = uma matrícula e uma
+- Conta obrigatória: visitante (sem login) que faz POST `forma=GRATIS` vai para o login e nada é gravado;
+  a capa do curso grátis para visitante mostra "Criar conta e liberar" e nenhum botão de liberar direto.
+- Liberar grátis: aluno logado libera sem digitar CPF e cai no `/continuar`; duplo POST = uma matrícula e uma
   auditoria; `forma=GRATIS` em curso pago não libera; curso grátis não publicado ou Escola Digital desligada
   não libera; DEV/secretaria não liberam; "Minha conta" mostra "Gratuito".
 - Prints (computador e celular) da vitrine com destaque, linhas e card grátis; da capa grátis; da caixa
