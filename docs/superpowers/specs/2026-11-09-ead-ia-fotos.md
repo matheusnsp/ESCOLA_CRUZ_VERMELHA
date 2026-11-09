@@ -43,25 +43,38 @@ descrição e a lista de módulos (título e tópicos). Devolve, no formato estr
   marcas, rostos de crianças em primeiro plano, sangue ou ferimentos graves (regra no prompt).
 - `descricao`: até 200 caracteres em português, a foto ideal (ex.: "Kit de primeiros socorros aberto sobre a
   bancada da cozinha, com gaze e luvas à vista").
-- O custo entra na geração (curso novo) ou num registro de custo avulso (botão), contando no teto do mês.
+- O custo entra na geração (curso novo) ou no custo avulso do mês (botão), contando no teto do mês.
 
-## 3. O banco (Pexels)
+## 3. O banco (Pexels) e a escolha pelo Claude
+
+Decisão do Matheus: **quem sugere e quem escolhe a foto é o Claude (Anthropic)**; o Pexels só fornece as fotos.
 
 - Variável no Render (serviço da secretaria): `PEXELS_API_KEY`. Busca: `GET https://api.pexels.com/v1/search` com
   `query=<busca>`, `orientation=landscape`, `per_page=15`, `locale=pt-BR`.
-- Escolhe a primeira foto da lista que **ainda não está em uso no mesmo curso** (o id do Pexels vai no nome do
-  arquivo guardado: `pexels-<id>-...`). Baixa o tamanho `large` (≈ 940 px de largura), passa pela mesma
-  compressão das fotos enviadas (`salvarFotoCurso`) e guarda.
-- **Trocar por outra**: busca de novo com a mesma `busca` e pega a próxima foto depois da atual na lista (dá a
-  volta no fim); a foto antiga é apagada do armazenamento.
-- Busca sem resultado: tenta uma vez com as 2 primeiras palavras; sem nada, deixa vazio e mantém a sugestão.
+- Das fotos devolvidas, as **6 primeiras que ainda não estão em uso no mesmo curso** vão para o Claude **olhar**
+  (imagem pequena de cada uma, `src.medium`), junto com o título do módulo (ou o nome do curso) e a descrição da
+  foto ideal. O Claude devolve a lista das fotos **adequadas, da melhor para a pior**, descartando as que têm
+  sangue ou ferimento, criança em destaque, marca aparente, texto em outra língua em destaque ou que não têm a ver
+  com o assunto (esforço `low`; uma chamada por foto a escolher).
+- A melhor é baixada no tamanho `large` (≈ 940 px de largura), passa pela mesma compressão das fotos enviadas
+  (`salvarFotoCurso`) e é guardada. O id do Pexels vai no nome do arquivo (`pexels-<id>-...`). A lista ordenada
+  fica guardada (`fotoOpcoes` / `capaOpcoes`).
+- **Trocar por outra**: usa a próxima da lista ordenada pelo Claude (dá a volta no fim); a foto antiga é apagada
+  do armazenamento. Não chama a IA de novo.
+- Nenhuma adequada (ou busca sem resultado): tenta uma vez a busca com as 2 primeiras palavras; sem nada, deixa
+  vazio e mantém a sugestão.
 - Crédito: o nome do fotógrafo fica guardado e aparece no painel ("Foto: Ana Souza / Pexels"); no site, não.
+- Custo: as chamadas de escolha somam no custo da geração (curso novo) ou no custo avulso do mês (botão), e
+  contam no teto mensal.
 
 ## 4. Dados (migração pequena, só acrescenta colunas)
 
-- `ModuloEad`: `fotoBusca String?`, `fotoSugestao String?`, `fotoCredito String?`.
-- `CursoOnline`: `capaBusca String?`, `capaSugestao String?`, `capaCredito String?` (a foto continua em
-  `Curso.imagemUrl`).
+- `ModuloEad`: `fotoBusca String?`, `fotoSugestao String?`, `fotoCredito String?`, `fotoOpcoes Json?`.
+- `CursoOnline`: `capaBusca String?`, `capaSugestao String?`, `capaCredito String?`, `capaOpcoes Json?` (a foto
+  continua em `Curso.imagemUrl`).
+- `fotoOpcoes`/`capaOpcoes`: a lista ordenada pelo Claude, `[{ id, url, credito }]` (`url` = tamanho `large`).
+- Custo do botão (fora de uma geração): `Configuracao` `ead-ia:custo-avulso:<AAAA-MM>` (US$), somado no gasto do
+  mês.
 
 ## 5. Painel
 
@@ -79,10 +92,12 @@ Fotos nas telas e nos cenários, vídeos, imagens geradas por IA, escolher entre
 ## 7. Testes
 
 Pexels e Claude falsos (nenhum teste chama serviço de verdade):
+- o Claude recebe as fotos candidatas (até 6, sem as já usadas no curso) e a foto gravada é a primeira da lista
+  dele, não a primeira do Pexels; foto que ele descarta nunca é usada;
 - passo "fotos" de um curso novo: capa e módulos com foto, sugestão e crédito gravados, ids do Pexels sem repetir;
   depois CONCLUIDA; erro na IA ou no Pexels → CONCLUIDA mesmo assim, com o aviso;
 - botão em curso existente: só preenche o vazio (foto já posta fica);
-- trocar por outra: pega a próxima da lista e apaga a antiga;
+- trocar por outra: pega a próxima da lista do Claude (sem chamar a IA) e apaga a antiga;
 - sem `PEXELS_API_KEY`: grava só as sugestões, sem chamar o banco;
 - busca sem resultado: tenta a forma curta; sem nada, fica vazio com a sugestão;
 - teto do mês estourado: não chama a IA e avisa.
