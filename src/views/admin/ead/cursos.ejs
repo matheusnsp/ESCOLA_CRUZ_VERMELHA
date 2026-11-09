@@ -21,6 +21,36 @@
   <button type="submit" class="adm-btn <%= escolaDigitalLigada ? 'adm-btn-out' : 'adm-btn-ok' %>"><%= escolaDigitalLigada ? 'Desligar' : 'Ligar a Escola Digital' %></button>
 </form>
 
+<%# Vitrine da Escola Digital (2026-11-09): o curso em destaque no topo e a ordem das linhas. %>
+<% if (vitrinePublicados.length) { %>
+<div class="adm-box adm-box-pad adm-espaco ead-vitrine">
+  <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-table-cells-large"></i> Vitrine</h2>
+  <form method="POST" action="/ead/escola-digital/destaque" class="adm-form c1 ead-vitrine-destaque">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Destaque (o curso grande no topo da página)
+      <select name="cursoOnlineId">
+        <option value="">— automático (o primeiro da ordem) —</option>
+        <% vitrinePublicados.forEach(function (c) { %><option value="<%= c.id %>"<%= c.id === destaqueId ? ' selected' : '' %>><%= c.curso.nome %></option><% }) %>
+      </select>
+    </label>
+    <button type="submit" class="adm-btn adm-btn-out">Salvar destaque</button>
+  </form>
+  <p class="adm-mut">Ordem dos cursos na vitrine:</p>
+  <ol class="ead-vitrine-ordem">
+    <% vitrinePublicados.forEach(function (c, i) { %>
+      <li>
+        <span><%= c.curso.nome %><% if (c.gratuito) { %> <span class="ead-selo validado">Grátis</span><% } %></span>
+        <span class="ead-vitrine-setas">
+          <form method="POST" action="/ead/escola-digital/ordem/<%= c.id %>/subir"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="adm-btn adm-btn-out" aria-label="Subir <%= c.curso.nome %>"<%= i === 0 ? ' disabled' : '' %>>↑</button></form>
+          <form method="POST" action="/ead/escola-digital/ordem/<%= c.id %>/descer"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="adm-btn adm-btn-out" aria-label="Descer <%= c.curso.nome %>"<%= i === vitrinePublicados.length - 1 ? ' disabled' : '' %>>↓</button></form>
+        </span>
+      </li>
+    <% }) %>
+  </ol>
+  <% if (escolaDigitalLigada) { %><a class="adm-link" href="<%= (process.env.APP_URL || 'https://escola.cruzvermelhariodejaneiro.org').replace(/\/+$/, '') %>/escola-digital" target="_blank" rel="noopener">Ver a vitrine no site ↗</a><% } %>
+</div>
+<% } %>
+
 <div class="adm-box adm-espaco">
   <% if (!lista.length) { %>
     <p class="ead-vazio">Nenhum curso online ainda. Ative o EAD num curso abaixo.</p>

@@ -99,7 +99,37 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
       lista.push({ ...co, nModulos: mods.length, nValidados: mods.filter((m) => m.status === 'VALIDADO').length, nPerguntas: mods.reduce((s, m) => s + m.nPerguntas, 0) });
     }
     const semEad = await prisma.curso.findMany({ where: { online: null }, select: { id: true, nome: true, ativo: true }, orderBy: { nome: 'asc' } });
-    res.render('admin/ead/cursos', { lista, semEad, escolaDigitalLigada: await escolaDigital.estaLigada(), algumPublicado: lista.some((c) => c.publicado), ...flash(req) });
+    // Vitrine (2026-11-09): os publicados na ordem do site, para o destaque e o ↑ ↓.
+    const vitrinePublicados = await publicadosNaOrdem();
+    res.render('admin/ead/cursos', {
+      lista, semEad, escolaDigitalLigada: await escolaDigital.estaLigada(), algumPublicado: lista.some((c) => c.publicado),
+      vitrinePublicados, destaqueId: await escolaDigital.lerDestaque(), ...flash(req),
+    });
+  });
+
+  const publicadosNaOrdem = () => prisma.cursoOnline.findMany({
+    where: { publicado: true }, orderBy: [{ ordemVitrine: 'asc' }, { curso: { nome: 'asc' } }],
+    select: { id: true, ordemVitrine: true, gratuito: true, curso: { select: { nome: true } } },
+  });
+
+  // Vitrine da Escola Digital (2026-11-09): curso em destaque (vazio = automático, o primeiro da ordem).
+  router.post('/ead/escola-digital/destaque', async (req, res) => {
+    const r = await escolaDigital.definirDestaque(String(req.body.cursoOnlineId || '').trim() || null, req);
+    if (r.erro) return voltar(res, '/ead', 'erro', r.erro);
+    require('../lib/cache-rapido').limparTudo();
+    voltar(res, '/ead', 'ok', 'Destaque salvo.');
+  });
+
+  // ↑ ↓ na ordem da vitrine: renumera 0..n-1 e troca com o vizinho.
+  router.post('/ead/escola-digital/ordem/:id/:dir', async (req, res) => {
+    const lista = await publicadosNaOrdem();
+    const i = lista.findIndex((c) => c.id === req.params.id);
+    const j = req.params.dir === 'subir' ? i - 1 : req.params.dir === 'descer' ? i + 1 : -1;
+    if (i < 0 || j < 0 || j >= lista.length) return voltar(res, '/ead', 'erro', 'Não dá para mover esse curso.');
+    [lista[i], lista[j]] = [lista[j], lista[i]];
+    await prisma.$transaction(lista.map((c, k) => prisma.cursoOnline.update({ where: { id: c.id }, data: { ordemVitrine: k } })));
+    require('../lib/cache-rapido').limparTudo();
+    voltar(res, '/ead', 'ok', 'Ordem da vitrine salva.');
   });
 
   // Escola Digital (2026-11): liga/desliga a aba dos cursos online no site.
@@ -684,11 +714,26 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
   router.post('/ead/curso/:id/preco', async (req, res) => {
     const co = await acharCursoOnline(req.params.id);
     if (!co) return naoAchou(res);
+    if (co.gratuito) return voltar(res, `/ead/curso/${co.id}`, 'erro', 'Desmarque "Curso gratuito" para definir um preço.');
     const preco = publicacao.lerPreco(req.body.precoOnline);
     if (preco === null) return voltar(res, comDigitado(`/ead/curso/${co.id}`, { precoOnline: req.body.precoOnline }), 'erro', 'Preço: um valor em reais maior que zero (ex.: 49,90).');
     await prisma.cursoOnline.update({ where: { id: co.id }, data: { precoOnline: preco } });
     await auditar(req, 'EAD_PRECO', 'CursoOnline', co.id, { de: co.precoOnline === null ? null : Number(co.precoOnline), para: preco });
     voltar(res, `/ead/curso/${co.id}`, 'ok', 'Preço salvo.');
+  });
+
+  // Vitrine (2026-11-09): curso gratuito. Marcado: preço 0, só à vista; desmarcado: sem preço (digita de novo).
+  router.post('/ead/curso/:id/gratuito', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co) return naoAchou(res);
+    const gratuito = req.body.gratuito === '1';
+    if (gratuito && (await prisma.cupomEad.count({ where: { cursoOnlineId: co.id, ativo: true } }))) {
+      return voltar(res, `/ead/curso/${co.id}`, 'erro', 'Este curso tem cupom ativo. Desative os cupons antes de marcar como gratuito.');
+    }
+    await prisma.cursoOnline.update({ where: { id: co.id }, data: gratuito ? { gratuito: true, precoOnline: 0, maxParcelas: 1 } : { gratuito: false, precoOnline: null } });
+    await auditar(req, 'EAD_GRATUITO', 'CursoOnline', co.id, { gratuito });
+    require('../lib/cache-rapido').limparTudo();
+    voltar(res, `/ead/curso/${co.id}`, 'ok', gratuito ? 'Curso marcado como gratuito.' : 'Curso deixou de ser gratuito: defina o preço.');
   });
 
   // Etapa 7: máximo de parcelas no cartão (1 = só à vista). Os juros do Únicopag ficam com o aluno.
@@ -714,7 +759,9 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const modulos = await prisma.moduloEad.findMany({ where: { cursoOnlineId: co.id }, select: { titulo: true, status: true } });
     const pend = publicacao.podePublicar({ ...co, modulos });
     if (pend.length) return voltar(res, `/ead/curso/${co.id}`, 'erro', 'Ainda não dá para publicar: ' + pend.join(' '));
-    await prisma.cursoOnline.update({ where: { id: co.id }, data: { publicado: true } });
+    // Vitrine (2026-11-09): quem acabou de ser publicado entra no fim da ordem.
+    const ultimo = await prisma.cursoOnline.aggregate({ where: { publicado: true }, _max: { ordemVitrine: true } });
+    await prisma.cursoOnline.update({ where: { id: co.id }, data: { publicado: true, ordemVitrine: (ultimo._max.ordemVitrine ?? -1) + 1 } });
     await auditar(req, 'EAD_PUBLICOU', 'CursoOnline', co.id, { precoOnline: Number(co.precoOnline) });
     voltar(res, `/ead/curso/${co.id}`, 'ok', 'Curso publicado no site.');
   });
