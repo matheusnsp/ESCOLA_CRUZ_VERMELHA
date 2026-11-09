@@ -13,7 +13,7 @@ const E = require('./ead-ia-esquema');
 const MODELO = 'claude-opus-5-5';
 const CHAVE_TETO = 'ead-ia:teto-mensal-usd';
 const TETO_PADRAO = 50;
-const EM_ANDAMENTO = ['PROPOSTA_GERANDO', 'PROPOSTA_PRONTA', 'ROTEIRO_GERANDO', 'ROTEIRO_PRONTO', 'MODULOS_GERANDO'];
+const EM_ANDAMENTO = ['PROPOSTA_GERANDO', 'PROPOSTA_PRONTA', 'ROTEIRO_GERANDO', 'ROTEIRO_PRONTO', 'MODULOS_GERANDO', 'FOTOS_GERANDO'];
 const MSG_CHAVE = 'Configure a chave da API da Anthropic (ANTHROPIC_API_KEY) no servidor.';
 
 class ErroIa extends Error {
@@ -419,6 +419,29 @@ async function gerarModulo(geracaoId, ordem, { cliente, marca = null }) {
   return true;
 }
 
+// Imagens com IA (2026-11-09): capa e abertura dos módulos, no fim da geração. Nunca trava: em qualquer erro (ou
+// curso apagado) conclui assim mesmo, com o aviso em pedido.avisoImagens.
+const AVISO_IMAGENS = 'As imagens não puderam ser geradas; use o botão Gerar imagens com IA na página do curso.';
+async function gerarImagens(geracaoId, { cliente, fetch } = {}) {
+  const g = await prisma.geracaoIaEad.findUnique({ where: { id: geracaoId }, select: { cursoOnlineId: true, pedido: true, status: true } });
+  if (!g || g.status !== 'FOTOS_GERANDO') return;
+  let aviso = null;
+  try {
+    if (g.cursoOnlineId) {
+      const r = await require('./ead-imagens').imagensDoCursoOnline(g.cursoOnlineId, { cliente, fetch, custo: (u) => somarCusto(geracaoId, u) });
+      aviso = r.aviso;
+    }
+  } catch (e) {
+    if (e.usage) await somarCusto(geracaoId, e.usage).catch(() => {});
+    console.error('[EAD IA] imagens:', e.message);
+    aviso = AVISO_IMAGENS;
+  }
+  await prisma.geracaoIaEad.updateMany({
+    where: { id: geracaoId, status: 'FOTOS_GERANDO' },
+    data: { status: 'CONCLUIDA', materialPdfs: require('@prisma/client').Prisma.DbNull, ...(aviso ? { pedido: { ...g.pedido, avisoImagens: aviso } } : {}) },
+  });
+}
+
 // Varredura da fila: o módulo "gerando" de quem sumiu (marca vencida) volta a pendente.
 async function devolverModulo(geracaoId, ordem) {
   return mudarModulo(geracaoId, ordem, (m) => {
@@ -450,5 +473,5 @@ module.exports = {
   MODELO, REGRAS_SYSTEM, MSG_CHAVE, EM_ANDAMENTO, ErroIa,
   prepararMaterial, montarMensagens, chamarClaude, ehChaveConfigurada, clientePadrao,
   gastoDoMes, somarCustoAvulso, mesRio, tetoMensal, definirTeto, dentroDoTeto, podeComecar,
-  criarGeracao, gerarProposta, pedirOutraProposta, confirmarProposta, voltarParaProposta, gerarRoteiro, pedirOutroRoteiro, confirmarRoteiro, gerarModulo, devolverModulo, tentarDeNovo, cancelar,
+  criarGeracao, gerarProposta, pedirOutraProposta, confirmarProposta, voltarParaProposta, gerarRoteiro, pedirOutroRoteiro, confirmarRoteiro, gerarModulo, devolverModulo, gerarImagens, AVISO_IMAGENS, tentarDeNovo, cancelar,
 };

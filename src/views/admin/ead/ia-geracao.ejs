@@ -1,8 +1,8 @@
 <%
   var usd = function (v) { return 'US$ ' + Number(v || 0).toFixed(2); };
-  var STATUS = { PROPOSTA_GERANDO: 'Preparando a proposta…', PROPOSTA_PRONTA: 'Proposta pronta para conferir', ERRO_PROPOSTA: 'Erro na proposta', ROTEIRO_GERANDO: 'Escrevendo o roteiro…', ROTEIRO_PRONTO: 'Roteiro pronto para revisar', MODULOS_GERANDO: 'Escrevendo os módulos…', CONCLUIDA: 'Concluída', ERRO_ROTEIRO: 'Erro no roteiro', CANCELADA: 'Cancelada' };
+  var STATUS = { PROPOSTA_GERANDO: 'Preparando a proposta…', PROPOSTA_PRONTA: 'Proposta pronta para conferir', ERRO_PROPOSTA: 'Erro na proposta', ROTEIRO_GERANDO: 'Escrevendo o roteiro…', ROTEIRO_PRONTO: 'Roteiro pronto para revisar', MODULOS_GERANDO: 'Escrevendo os módulos…', FOTOS_GERANDO: 'Gerando as imagens…', CONCLUIDA: 'Concluída', ERRO_ROTEIRO: 'Erro no roteiro', CANCELADA: 'Cancelada' };
   var STATUS_MOD = { pendente: 'na fila', gerando: 'escrevendo…', pronto: 'pronto', erro: 'erro' };
-  var andando = ['PROPOSTA_GERANDO', 'ROTEIRO_GERANDO', 'MODULOS_GERANDO'].indexOf(g.status) !== -1;
+  var andando = ['PROPOSTA_GERANDO', 'ROTEIRO_GERANDO', 'MODULOS_GERANDO', 'FOTOS_GERANDO'].indexOf(g.status) !== -1;
   var passo = /^PROPOSTA|ERRO_PROPOSTA/.test(g.status) ? 2 : /ROTEIRO/.test(g.status) ? 3 : g.status === 'CONCLUIDA' ? 5 : 4;
   var prop = g.pedido.proposta || null;
   var vp = valoresProposta || {};
@@ -43,7 +43,7 @@
       <button type="submit" class="adm-btn adm-btn-out"><i class="fa-solid fa-rotate"></i> Gerar outro roteiro</button>
     </form>
   <% } %>
-  <% if (['PROPOSTA_GERANDO', 'PROPOSTA_PRONTA', 'ERRO_PROPOSTA', 'ROTEIRO_GERANDO', 'ROTEIRO_PRONTO', 'MODULOS_GERANDO', 'ERRO_ROTEIRO'].indexOf(g.status) !== -1) { %>
+  <% if (['PROPOSTA_GERANDO', 'PROPOSTA_PRONTA', 'ERRO_PROPOSTA', 'ROTEIRO_GERANDO', 'ROTEIRO_PRONTO', 'MODULOS_GERANDO', 'FOTOS_GERANDO', 'ERRO_ROTEIRO'].indexOf(g.status) !== -1) { %>
     <form method="POST" action="/ead/ia/<%= g.id %>/cancelar" class="ead-acoes" data-confirmar="Cancelar a geração? O módulo em andamento termina; o que já foi gravado fica no curso." data-botao="Cancelar geração">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <button type="submit" class="adm-btn adm-btn-out">Cancelar</button>
@@ -73,6 +73,9 @@
   </form>
 <% } %>
 
+<% if (g.status === 'CONCLUIDA' && g.pedido.avisoImagens) { %>
+  <div class="adm-alerta adm-alerta-pendente adm-espaco"><i class="fa-solid fa-image"></i> <span><%= g.pedido.avisoImagens %></span></div>
+<% } %>
 <% if (g.status === 'CONCLUIDA' && co) { %>
   <div class="adm-box adm-box-pad adm-espaco ia-proximos">
     <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-list-check"></i> Próximos passos</h2>

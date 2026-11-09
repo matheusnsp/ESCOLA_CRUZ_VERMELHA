@@ -148,4 +148,16 @@ describe('painel: criação com IA passo a passo', { skip: temBanco ? false : 's
     assert.match(t, /<li class="feito"><span>✓<\/span> 4 Escrita/, 'concluída: os 4 passos com ✓');
     assert.match(t, /href="\/ead\/modulo\/[0-9a-f-]{36}"/);
   });
+
+  test('[imagens] página mostra "Gerando as imagens…" e, concluída com aviso, o aviso', async () => {
+    const g = await prisma.geracaoIaEad.findUnique({ where: { id: gid } });
+    try {
+      await prisma.geracaoIaEad.update({ where: { id: gid }, data: { status: 'FOTOS_GERANDO' } });
+      assert.match(await get(`/ead/ia/${gid}`), /Gerando as imagens…/);
+      await prisma.geracaoIaEad.update({ where: { id: gid }, data: { status: 'CONCLUIDA', pedido: { ...g.pedido, avisoImagens: 'As imagens não puderam ser geradas; use o botão Gerar imagens com IA na página do curso.' } } });
+      assert.match(await get(`/ead/ia/${gid}`), /As imagens não puderam ser geradas/);
+    } finally {
+      await prisma.geracaoIaEad.update({ where: { id: gid }, data: { status: g.status, pedido: g.pedido } });
+    }
+  });
 });
