@@ -380,8 +380,10 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const nome = `curso:${co.cursoId}`;
     if (await imagensLib.travaOcupada(nome)) return voltar(res, volta, 'erro', imagensLib.OCUPADO);
     const quem = ator(req);
+    const pedido = String((req.body && req.body.pedido) || '').trim();
     imagensLib.emSegundoPlano(nome, nome, async () => {
-      const r = await imagensLib.imagemDoCurso(co.cursoId, { custo: (u) => ia.somarCustoAvulso(u) });
+      // Pedido escrito pela pessoa: vai direto para a OpenAI; sem pedido, o Claude escreve.
+      const r = pedido ? await imagensLib.gerarOutra({ tipo: 'curso', id: co.cursoId, pedido }) : await imagensLib.imagemDoCurso(co.cursoId, { custo: (u) => ia.somarCustoAvulso(u) });
       if (r.ok) await prisma.logAuditoria.create({ data: { atorId: quem, acao: 'CURSO_IMAGEM_IA', alvoTipo: 'Curso', alvoId: co.cursoId } }).catch(() => {});
       return { ok: r.ok, msg: r.ok ? 'Imagem do curso gerada.' : r.erro };
     });
@@ -452,11 +454,30 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (!co) return naoAchou(res);
     const volta = `/ead/curso/${co.id}`;
     if (await imagensLib.travaOcupada(`curso:${co.cursoId}`)) return voltar(res, volta, 'erro', imagensLib.OCUPADO);
+    const pedido = String((req.body && req.body.pedido) || ''); // pedido escrito/editado pela pessoa (opcional)
     imagensLib.emSegundoPlano(`curso-online:${co.id}`, `curso:${co.cursoId}`, async () => {
-      const r = await imagensLib.gerarOutra({ tipo: 'curso', id: co.cursoId });
+      const r = await imagensLib.gerarOutra({ tipo: 'curso', id: co.cursoId, pedido: pedido });
       return { ok: r.ok, msg: r.ok ? 'Imagem nova gerada.' : r.erro };
     });
     voltar(res, volta, 'ok', 'Gerando outra imagem em segundo plano (cerca de 1 minuto). Recarregue a página para ver.');
+  });
+
+  // "Escrever pedido com o Claude": devolve o pedido (JSON) para a pessoa editar; não gera a imagem.
+  router.post('/ead/imagens/pedido', async (req, res) => {
+    if (!ia.ehChaveConfigurada()) return res.json({ ok: false, erro: ia.MSG_CHAVE });
+    const t = await ia.dentroDoTeto();
+    if (!t.ok) return res.json({ ok: false, erro: t.erro });
+    const tipo = req.body.tipo === 'modulo' ? 'modulo' : 'curso';
+    if (!edb.ehId(req.body.id)) return res.json({ ok: false, erro: 'Não encontrado.' });
+    try {
+      const r = await imagensLib.sugerirPedido({ tipo, id: req.body.id });
+      await ia.somarCustoAvulso(r.usage).catch(() => {});
+      return res.json({ ok: true, pedido: r.pedido, descricao: r.descricao });
+    } catch (e) {
+      if (e.usage) await ia.somarCustoAvulso(e.usage).catch(() => {});
+      console.error('[EAD IMAGENS] pedido:', e.message);
+      return res.json({ ok: false, erro: e instanceof imagensLib.ErroImagem ? e.message : 'O Claude não conseguiu escrever o pedido agora. Tente de novo.' });
+    }
   });
 
   router.post('/ead/modulo/:id/foto/gerar-outra', async (req, res) => {
@@ -464,8 +485,9 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (!m) return naoAchou(res);
     const volta = `/ead/modulo/${m.id}/editar`;
     if (await imagensLib.travaOcupada(`modulo:${m.id}`)) return voltar(res, volta, 'erro', imagensLib.OCUPADO);
+    const pedido = String((req.body && req.body.pedido) || '');
     imagensLib.emSegundoPlano(`modulo:${m.id}`, `modulo:${m.id}`, async () => {
-      const r = await imagensLib.gerarOutra({ tipo: 'modulo', id: m.id });
+      const r = await imagensLib.gerarOutra({ tipo: 'modulo', id: m.id, pedido });
       return { ok: r.ok, msg: r.ok ? 'Imagem nova gerada.' : r.erro };
     });
     voltar(res, volta, 'ok', 'Gerando outra imagem em segundo plano (cerca de 1 minuto). Recarregue a página para ver.');

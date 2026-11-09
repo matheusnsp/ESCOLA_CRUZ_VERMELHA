@@ -1936,3 +1936,7 @@ a.mr-num:hover { border-color: var(--linha); }
 .ia-duvidas { display: grid; gap: 10px; margin: 0 0 16px; padding: 14px 16px; border: 1px dashed var(--linha); border-radius: var(--r-s); background: #fbf9ff; }
 .ia-duvidas-form { display: grid; gap: 8px; }
 .ia-duvidas-bt, .ia-duvidas-form > button { justify-self: start; }
+.ead-pedido-img { display: grid; gap: 8px; margin-top: 8px; }
+.ead-pedido-img textarea, .adm-pedido-img textarea { width: 100%; font: inherit; font-size: 14px; border: 1px solid var(--linha); border-radius: var(--r-s); padding: 10px 12px; box-sizing: border-box; background: var(--campo); color: var(--tinta); }
+.ead-pedido-img > button { justify-self: start; }
+.adm-pedido-img { display: grid; gap: 4px; margin-top: 10px; font-size: 14px; }

@@ -76,6 +76,11 @@
         <% } %>
         <% if (!novo && typeof temOpenAI !== 'undefined' && temOpenAI) { %>
           <%# Envia o formulário de baixo (fora deste, que é multipart): o Claude escreve o pedido, a OpenAI gera. %>
+          <label class="adm-pedido-img">Pedido da imagem <small class="adm-hint">(opcional: em branco, o Claude escreve; pode editar ou escrever o seu, em português)</small>
+            <textarea name="pedido" id="pedidoCursoPres" form="formImagemIa" rows="3" maxlength="1000" placeholder="Ex.: instrutora ensinando RCP num manequim, sala de aula, luz natural"><%= c.imagemPedido || '' %></textarea>
+          </label>
+          <button type="button" class="adm-btn adm-btn-neutro ia-pedido-bt" data-url="/cursos/<%= c.id %>/imagem-pedido-ia" data-tipo="curso" data-id="<%= c.id %>" data-alvo="pedidoCursoPres"><i class="fa-solid fa-pen-nib"></i> Escrever pedido com o Claude</button>
+          <p class="ia-textos-msg" id="pedidoCursoPres-msg" role="status" hidden></p>
           <button type="submit" form="formImagemIa" class="adm-btn adm-btn-neutro adm-btn-ia"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar imagem com IA</button>
         <% } %>
         <% if (c.imagemSugestao) { %><small class="adm-hint">Descrição da imagem: <%= c.imagemSugestao %></small><% } %>
@@ -254,4 +259,5 @@
 <% } %>
 
 <script src="<%= asset('/js/ia-textos.js') %>"></script>
+<script src="<%= asset('/js/imagem-pedido.js') %>"></script>
 <%- include('foot') %>

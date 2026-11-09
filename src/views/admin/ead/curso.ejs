@@ -126,11 +126,17 @@
     <div>
       <p><b>Imagem do curso</b><% if (_ci && _ci.imagemGeradaPorIa) { %> <span class="ead-selo ia">Imagem gerada por IA</span><% } %></p>
       <% if (_ci && _ci.imagemSugestao) { %><p class="adm-mut">Descrição: <%= _ci.imagemSugestao %></p><% } %>
-      <% if (_ci && _ci.imagemPedido && imagensIa.temOpenAI) { %>
-        <form method="POST" action="/ead/curso/<%= co.id %>/capa/gerar-outra" class="ead-acoes" data-confirmar="Gerar outra imagem para o curso? A atual é apagada." data-botao="Gerar outra" data-confirmar-tipo="ok">
+      <% if (_ci && imagensIa.temOpenAI) { %>
+        <form method="POST" action="/ead/curso/<%= co.id %>/capa/gerar-outra" class="ead-pedido-img" data-confirmar="Gerar a imagem do curso com este pedido? A atual é apagada." data-botao="Gerar" data-confirmar-tipo="ok">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-          <button type="submit" class="adm-btn adm-btn-out"><i class="fa-solid fa-rotate"></i> Gerar outra</button>
+          <label>Pedido da imagem <small class="adm-mut">(edite ou escreva o seu, pode ser em português)</small>
+            <textarea name="pedido" id="pedidoCapa" rows="3" maxlength="1000" placeholder="Ex.: professora organizando um kit de primeiros socorros numa mesa da escola, luz natural"><%= _ci.imagemPedido || '' %></textarea>
+          </label>
+          <button type="button" class="adm-btn adm-btn-neutro ia-pedido-bt" data-url="/ead/imagens/pedido" data-tipo="curso" data-id="<%= _ci.id %>" data-alvo="pedidoCapa"><i class="fa-solid fa-pen-nib"></i> Escrever pedido com o Claude</button>
+          <p class="ia-textos-msg" id="pedidoCapa-msg" role="status" hidden></p>
+          <button type="submit" class="adm-btn adm-btn-out"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar com este pedido</button>
         </form>
+
       <% } %>
     </div>
   </div>
@@ -192,4 +198,5 @@
   <button type="submit" class="adm-btn adm-btn-perigo"><i class="fa-solid fa-trash"></i> Desativar EAD e apagar conteúdo</button>
 </form>
 
+<script src="<%= asset('/js/imagem-pedido.js') %>"></script>
 <%- include('../foot') %>

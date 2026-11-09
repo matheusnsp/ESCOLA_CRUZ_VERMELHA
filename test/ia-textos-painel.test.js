@@ -138,4 +138,16 @@ describe('painel: escrever com IA (curso online)', { skip: temBanco ? false : 's
     assert.ok(faqs.some((f) => f.pergunta === 'Pergunta 7?'));
     assert.ok(!faqs.some((f) => f.pergunta === 'Pergunta 8?'));
   });
+
+  test('[pedido] "Dados do curso": gerar a imagem com um pedido escrito pela pessoa', async () => {
+    const co = await prisma.cursoOnline.findUnique({ where: { id: cos[0] } });
+    assert.match(await get(`/ead/curso/${co.id}/dados`), /<textarea[^>]*name="pedido"[^>]*form="formImagemCursoIa"|<textarea[^>]*form="formImagemCursoIa"[^>]*name="pedido"/);
+    const f = openaiFalso();
+    img.definirFetch(f);
+    assert.equal((await post(`/ead/curso/${co.id}/imagem-curso-ia`, { pedido: 'Mãe montando um kit de primeiros socorros na cozinha' })).status, 302);
+    await img.ocioso();
+    assert.ok(f.chamadas[0].body.prompt.startsWith('Mãe montando um kit de primeiros socorros na cozinha'));
+    assert.equal((await prisma.curso.findUnique({ where: { id: co.cursoId } })).imagemPedido, 'Mãe montando um kit de primeiros socorros na cozinha');
+    img.definirFetch(openaiFalso());
+  });
 });
