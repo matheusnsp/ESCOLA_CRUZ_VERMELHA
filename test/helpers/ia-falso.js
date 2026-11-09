@@ -36,7 +36,8 @@ function propostaBoa(extra = {}) {
     publico: 'professores e auxiliares de creche', tema: 'Primeiros socorros na creche: engasgo, quedas e como pedir ajuda',
     nModulos: 4, precoSugerido: 49.9, maxParcelas: 3, observacoes: 'Linguagem simples; exemplos com crianças de 0 a 5 anos.',
     porqueCargaHoraria: 'O tema cabe em 4 módulos curtos de cerca de 1 hora.', porqueModulos: 'Um módulo por situação e o final com cenários.',
-    porquePreco: 'Na faixa dos cursos online da escola.', ...extra,
+    porquePreco: 'Na faixa dos cursos online da escola.',
+    faqs: [1, 2, 3, 4, 5, 6].map((i) => ({ pergunta: `Dúvida da proposta ${i}?`, resposta: `Resposta da proposta ${i}.` })), ...extra,
   };
 }
 

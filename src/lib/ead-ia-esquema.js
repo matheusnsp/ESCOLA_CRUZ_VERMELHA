@@ -52,6 +52,8 @@ const ESQUEMA_PROPOSTA = objeto({
   nome: texto, descricao: texto, cargaHoraria: { type: 'integer' }, publico: texto, tema: texto,
   nModulos: { type: 'integer' }, precoSugerido: { type: 'number' }, maxParcelas: { type: 'integer' }, observacoes: texto,
   porqueCargaHoraria: texto, porqueModulos: texto, porquePreco: texto,
+  // Escrever com IA (2026-11-09): as dúvidas frequentes do curso vêm na proposta e entram no curso ao criar.
+  faqs: lista(objeto({ pergunta: texto, resposta: texto })),
 });
 
 // Proposta da IA: números ajustados às faixas do formulário; nome e tema obrigatórios.
@@ -64,6 +66,30 @@ const ESQUEMA_PEDIDOS_IMAGENS = objeto({
 
 const faixa = (v, min, max, padrao) => { const n = Number(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : padrao; };
 const corta = (v, max) => String(v || '').trim().slice(0, max);
+// Escrever com IA (2026-11-09): textos do curso (presencial e só online) e as dúvidas frequentes.
+const FAQ = objeto({ pergunta: texto, resposta: texto });
+const ESQUEMA_TEXTOS_PRESENCIAL = objeto({ descricao: texto, descricaoLonga: texto, conteudoProgramatico: texto, faqs: lista(FAQ) });
+const ESQUEMA_TEXTOS_ONLINE = objeto({ descricao: texto, faqs: lista(FAQ) });
+const semAcento = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+// Dúvidas: sem vazias nem repetidas, cortes nos limites, no máximo `max`.
+function limparFaqs(lista, max = 6) {
+  const vistas = new Set();
+  const r = [];
+  for (const f of Array.isArray(lista) ? lista : []) {
+    const pergunta = corta(f && f.pergunta, 200); const resposta = corta(f && f.resposta, 600);
+    if (!pergunta || !resposta || vistas.has(semAcento(pergunta))) continue;
+    vistas.add(semAcento(pergunta));
+    r.push({ pergunta, resposta });
+    if (r.length >= max) break;
+  }
+  return r;
+}
+function validarTextos(json, tipo) {
+  const j = json || {};
+  if (tipo === 'online') return { descricao: corta(j.descricao, 1000), faqs: limparFaqs(j.faqs) };
+  return { descricao: corta(j.descricao, 300), descricaoLonga: corta(j.descricaoLonga, 3000), conteudoProgramatico: String(j.conteudoProgramatico || '').replace(/\r\n/g, '\n').trim().slice(0, 4000), faqs: limparFaqs(j.faqs) };
+}
+
 function validarPedidosImagens(json, moduloIds) {
   const limpo = (x) => ({ pedido: corta(x.pedido, 600), pedidoCurto: corta(x.pedidoCurto, 200), descricao: corta(x.descricao, 200) });
   if (!json || !json.capa || !corta(json.capa.pedido, 600)) return { ok: false, erro: 'A IA não devolveu o pedido da imagem da capa.' };
@@ -86,6 +112,7 @@ function validarProposta(json) {
       cargaHoraria: Math.round(faixa(j.cargaHoraria, 1, 600, 4)), nModulos: Math.round(faixa(j.nModulos, 2, 12, 4)),
       precoSugerido: Math.round(faixa(j.precoSugerido, 0, 10000, 0) * 100) / 100, maxParcelas: Math.round(faixa(j.maxParcelas, 1, 12, 1)),
       porqueCargaHoraria: corta(j.porqueCargaHoraria, 300), porqueModulos: corta(j.porqueModulos, 300), porquePreco: corta(j.porquePreco, 300),
+      faqs: limparFaqs(j.faqs),
     },
   };
 }
@@ -213,4 +240,4 @@ const tokensDe = (u) => partes(u).reduce((t, x) => ({
 }), { entrada: 0, saida: 0, cache: 0 });
 
 module.exports = {
-  ESQUEMA_PEDIDOS_IMAGENS, validarPedidosImagens, ESQUEMA_PROPOSTA, validarProposta, ESQUEMA_ROTEIRO, ESQUEMA_MODULO, MSG_ROTEIRO, validarRoteiro, validarModulo, roteiroDoFormulario, custoUsd, tokensDe, PRECO, PRECOS };
+  ESQUEMA_TEXTOS_PRESENCIAL, ESQUEMA_TEXTOS_ONLINE, validarTextos, limparFaqs, semAcento, ESQUEMA_PEDIDOS_IMAGENS, validarPedidosImagens, ESQUEMA_PROPOSTA, validarProposta, ESQUEMA_ROTEIRO, ESQUEMA_MODULO, MSG_ROTEIRO, validarRoteiro, validarModulo, roteiroDoFormulario, custoUsd, tokensDe, PRECO, PRECOS };

@@ -160,4 +160,44 @@ describe('painel: criação com IA passo a passo', { skip: temBanco ? false : 's
       await prisma.geracaoIaEad.update({ where: { id: gid }, data: { status: g.status, pedido: g.pedido } });
     }
   });
+
+  test('[dúvidas] o passo 2 mostra as dúvidas da proposta com caixinhas; confirmar guarda só as marcadas', async () => {
+    const IA = require('../src/lib/ead-ia');
+    const g = await IA.criarGeracao({ pedido: { ideia: 'Primeiros socorros para pais de bebês', destino: { tipo: 'novo' } }, material: { materialTexto: null, materialPdfs: [] }, criadoPor: `${quem}-faq` });
+    try {
+      await fila.acordar(); await fila.ocioso();
+      const t = await get(`/ead/ia/${g.id}`);
+      assert.match(t, /name="faqsIa\[0\]\[usar\]"[^>]*checked/);
+      assert.match(t, /Dúvida da proposta 6\?/);
+      const r = await post(`/ead/ia/${g.id}/proposta`, { nome: `Curso Faq Passo ${s}`, descricao: 'd', cargaHoraria: '4', precoOnline: '39,90', maxParcelas: '1', tema: 'Tema da creche', publico: 'p', nModulos: '3', observacoes: '',
+        'faqsIa[0][usar]': '1', 'faqsIa[0][pergunta]': 'Dúvida da proposta 1?', 'faqsIa[0][resposta]': 'R1',
+        'faqsIa[1][pergunta]': 'Desmarcada?', 'faqsIa[1][resposta]': 'R2',
+        'faqsIa[2][usar]': '1', 'faqsIa[2][pergunta]': 'Editada pela pessoa?', 'faqsIa[2][resposta]': 'R3' });
+      assert.equal(r.status, 302);
+      const d = await prisma.geracaoIaEad.findUnique({ where: { id: g.id } });
+      assert.deepEqual(d.pedido.faqs.map((f) => f.pergunta), ['Dúvida da proposta 1?', 'Editada pela pessoa?']);
+    } finally {
+      await fila.ocioso();
+      await IA.cancelar(g.id, quem).catch(() => {});
+      await prisma.geracaoIaEad.delete({ where: { id: g.id } }).catch(() => {});
+    }
+  });
+
+  test('[revisão I1] erro no formulário da proposta: as dúvidas desmarcadas voltam desmarcadas', async () => {
+    const IA = require('../src/lib/ead-ia');
+    const g = await IA.criarGeracao({ pedido: { ideia: 'Primeiros socorros para avós', destino: { tipo: 'novo' } }, material: { materialTexto: null, materialPdfs: [] }, criadoPor: `${quem}-i1` });
+    try {
+      await fila.acordar(); await fila.ocioso();
+      const r = await post(`/ead/ia/${g.id}/proposta`, { nome: `Curso I1 ${s}`, descricao: 'd', cargaHoraria: '4', precoOnline: '39,90', maxParcelas: '1', tema: 'Tema', publico: 'p', nModulos: '99', observacoes: '',
+        'faqsIa[0][usar]': '1', 'faqsIa[0][pergunta]': 'Fica marcada?', 'faqsIa[0][resposta]': 'R',
+        'faqsIa[1][pergunta]': 'Fica desmarcada?', 'faqsIa[1][resposta]': 'R' });
+      assert.equal(r.status, 400);
+      const t = await r.text();
+      assert.match(t, /name="faqsIa\[0\]\[usar\]" value="1" checked/);
+      assert.match(t, /name="faqsIa\[1\]\[usar\]" value="1">/);
+    } finally {
+      await IA.cancelar(g.id, quem).catch(() => {});
+      await prisma.geracaoIaEad.delete({ where: { id: g.id } }).catch(() => {});
+    }
+  });
 });

@@ -22,6 +22,11 @@ describe('validarProposta', () => {
     assert.equal(E.validarProposta(propostaBoa({ nome: ' ' })).ok, false);
     assert.equal(E.validarProposta(propostaBoa({ tema: '' })).ok, false);
   });
+  test('[dúvidas] a proposta traz até 6 dúvidas limpas', () => {
+    const r = E.validarProposta(propostaBoa({ faqs: [...propostaBoa().faqs, { pergunta: 'Sétima?', resposta: 'x' }, { pergunta: 'Dúvida da proposta 1?', resposta: 'repetida' }] }));
+    assert.equal(r.proposta.faqs.length, 6);
+    assert.equal(E.validarProposta(propostaBoa({ faqs: undefined })).proposta.faqs.length, 0);
+  });
   test('o esquema da API fecha os objetos e lista os campos', () => {
     assert.equal(E.ESQUEMA_PROPOSTA.additionalProperties, false);
     assert.deepEqual(E.ESQUEMA_PROPOSTA.required.sort(), Object.keys(E.ESQUEMA_PROPOSTA.properties).sort());
@@ -113,5 +118,44 @@ describe('proposta no banco e na fila', { skip: temBanco ? false : 'sem DATABASE
     await fila.acordar(); await fila.ocioso();
     const r = await IA.podeComecar(`${quem}-unica`);
     assert.equal(r.ok, false);
+  });
+
+  test('[dúvidas] confirmar a proposta guarda as dúvidas; confirmar o roteiro grava no curso novo', async () => {
+    const g = await nova();
+    await fila.acordar(); await fila.ocioso();
+    const faqs = [1, 2, 3, 4].map((i) => ({ pergunta: `Confirmada ${i}?`, resposta: `R ${i}.` }));
+    const pedido = { tema: 'Tema', publico: 'p', nModulos: 4, observacoes: '', faqs, destino: { tipo: 'novo', nome: `Curso Faq Prop ${s}`, descricao: 'd', cargaHoraria: 4, precoOnline: 39.9, maxParcelas: 1 } };
+    assert.deepEqual(await IA.confirmarProposta(g.id, pedido, quem), { ok: true });
+    assert.equal((await prisma.geracaoIaEad.findUnique({ where: { id: g.id } })).pedido.faqs.length, 4);
+    await fila.acordar(); await fila.ocioso();
+    const r = await IA.confirmarRoteiro(g.id, roteiroBom(4), quem);
+    assert.equal(r.ok, true, r.erro);
+    await IA.cancelar(g.id, quem);
+    const co = await prisma.cursoOnline.findUnique({ where: { id: r.cursoOnlineId }, include: { curso: { include: { faqs: { orderBy: { ordem: 'asc' } } } } } });
+    try {
+      assert.deepEqual(co.curso.faqs.map((f) => f.pergunta), faqs.map((f) => f.pergunta));
+    } finally {
+      await require('./helpers/painel-ead').apagarCursosOnline(prisma, [co.id]).catch(() => {});
+    }
+  });
+
+  test('[dúvidas] curso existente que já tem uma das perguntas: grava só as novas', async () => {
+    const c = await prisma.curso.create({ data: { nome: `Curso Faq Exist ${s}`, cargaHoraria: 2, precoAvista: 0, precoCheio: 0, valorParcela: 0, ativo: false } });
+    const co = await prisma.cursoOnline.create({ data: { cursoId: c.id } });
+    await prisma.faqCurso.create({ data: { cursoId: c.id, pergunta: 'Confirmada 1?', resposta: 'já existia', ordem: 0 } });
+    try {
+      const g = await nova({ tipo: 'existente', cursoOnlineId: co.id });
+      await fila.acordar(); await fila.ocioso();
+      const faqs = [1, 2, 3].map((i) => ({ pergunta: `Confirmada ${i}?`, resposta: `R ${i}.` }));
+      assert.deepEqual(await IA.confirmarProposta(g.id, { tema: 'Tema', publico: 'p', nModulos: 4, observacoes: '', faqs, destino: { tipo: 'existente', cursoOnlineId: co.id } }, quem), { ok: true });
+      await fila.acordar(); await fila.ocioso();
+      const r = await IA.confirmarRoteiro(g.id, roteiroBom(4), quem);
+      assert.equal(r.ok, true, r.erro);
+      await IA.cancelar(g.id, quem);
+      const lista = await prisma.faqCurso.findMany({ where: { cursoId: c.id }, orderBy: { ordem: 'asc' } });
+      assert.deepEqual(lista.map((f) => f.pergunta), ['Confirmada 1?', 'Confirmada 2?', 'Confirmada 3?']);
+    } finally {
+      await require('./helpers/painel-ead').apagarCursosOnline(prisma, [co.id]).catch(() => {});
+    }
   });
 });

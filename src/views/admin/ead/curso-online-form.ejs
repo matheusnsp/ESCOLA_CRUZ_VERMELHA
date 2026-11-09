@@ -27,15 +27,52 @@
     <label class="full">Descrição (aparece no catálogo e na página do curso)
       <textarea name="descricao" rows="4" maxlength="1000"><%= v.descricao || '' %></textarea>
     </label>
-    <label class="full">Foto (JPG, PNG ou WEBP, até 3 MB)
+    <%- include('../_ia-textos', { iaUrl: '/ead/ia-textos', iaTipo: 'online', iaCursoId: novo ? '' : co.cursoId, iaSemFaqs: !novo, iaFaqsIniciais: typeof faqsIniciais !== 'undefined' ? faqsIniciais : [] }) %>
+    <label class="full">Foto (JPG, PNG ou WEBP, até 3 MB)<% if (v.imagemGeradaPorIa) { %> <span class="ead-selo ia">Imagem gerada por IA</span><% } %>
       <input type="file" name="foto" accept="image/jpeg,image/png,image/webp">
     </label>
+    <% if (!novo && typeof statusImagem !== 'undefined') { %><div class="full"><%- include('_status-imagens', { st: statusImagem }) %></div><% } %>
     <% if (v.imagemUrl) { %>
       <div class="full"><img src="<%= v.imagemUrl %>" alt="" style="max-width:220px;border-radius:10px;display:block;margin-bottom:6px">
         <label class="check"><input type="checkbox" name="removerFoto"> Remover a foto</label></div>
     <% } %>
+    <% if (!novo && typeof temOpenAI !== 'undefined' && temOpenAI) { %>
+      <div class="full"><button type="submit" form="formImagemCursoIa" class="adm-btn adm-btn-neutro"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar imagem com IA</button>
+        <% if (v.imagemSugestao) { %><small class="adm-hint">Descrição da imagem: <%= v.imagemSugestao %></small><% } %></div>
+    <% } %>
   </div>
   <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> <%= novo ? 'Criar curso' : 'Salvar' %></button>
 </form>
+<% if (!novo) { var _faqs = typeof faqs !== 'undefined' ? faqs : []; %>
+<div id="duvidas" class="adm-box adm-box-pad adm-espaco">
+  <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-circle-question"></i> Dúvidas frequentes</h2>
+  <p class="adm-mut">Aparecem em sanfona na página de venda do curso.</p>
+  <%- include('../_ia-duvidas', { iaUrl: '/ead/ia-textos', iaTipo: 'online', iaCursoId: co.cursoId, salvarUrl: '/ead/curso/' + co.id + '/faqs-ia' }) %>
+  <% if (_faqs.length) { %>
+    <div class="adm-itens">
+      <% _faqs.forEach(function (f) { %>
+        <div class="adm-item">
+          <div class="adm-item-txt"><strong><%= f.pergunta %></strong><div><%= f.resposta %></div></div>
+          <form method="POST" action="/ead/curso/<%= co.id %>/faqs/<%= f.id %>/remover" data-confirmar="Remover esta dúvida?">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="adm-mini danger" title="Remover"><i class="fa-solid fa-trash"></i></button>
+          </form>
+        </div>
+      <% }) %>
+    </div>
+  <% } else { %><p class="adm-mut">Nenhuma dúvida cadastrada ainda. Use "Escrever com IA" ou adicione abaixo.</p><% } %>
+  <form method="POST" action="/ead/curso/<%= co.id %>/faqs" class="adm-form c1">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Pergunta <input type="text" name="pergunta" required maxlength="200"></label>
+    <label>Resposta <textarea name="resposta" required rows="3" maxlength="600"></textarea></label>
+    <button type="submit" class="adm-btn adm-btn-out">Adicionar dúvida</button>
+  </form>
+</div>
+<form id="formImagemCursoIa" method="POST" action="/ead/curso/<%= co.id %>/imagem-curso-ia" hidden
+      data-confirmar="<%= v.imagemUrl ? 'Trocar a imagem atual por uma gerada pela IA? A atual é apagada. Leva cerca de 1 minuto.' : 'Gerar a imagem do curso com IA? Leva cerca de 1 minuto.' %>" data-botao="Gerar imagem" data-confirmar-tipo="ok">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+</form>
+<% } %>
+<script src="<%= asset('/js/ia-textos.js') %>"></script>
 
 <%- include('../foot') %>

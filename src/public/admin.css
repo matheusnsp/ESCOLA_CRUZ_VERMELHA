@@ -1917,3 +1917,22 @@ a.mr-num:hover { border-color: var(--linha); }
 /* Imagens com IA (2026-11-09): selo e botão no formulário do curso */
 .adm-badge-ia { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: #efe7ff; color: #5b2bbf; font-size: 11px; font-weight: 700; vertical-align: middle; }
 .adm-btn-ia { margin-top: 8px; width: auto; align-self: flex-start; justify-self: start; }
+
+/* Escrever com IA (2026-11-09) */
+.ia-textos { border: 1px dashed var(--linha); border-radius: var(--r-s); padding: 14px 16px; display: grid; gap: 10px; background: #fbf9ff; }
+.ia-textos-cab { display: flex; gap: 10px; align-items: flex-start; }
+.ia-textos-cab > i { color: #5b2bbf; margin-top: 3px; }
+.ia-textos-bt { justify-self: start; }
+.ia-textos-msg { margin: 0; color: #1e7a4d; font-weight: 600; }
+.ia-textos-msg.erro { color: var(--vermelho); }
+.ia-faqs { display: grid; gap: 8px; }
+.ia-faq { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: start; padding: 10px; border: 1px solid var(--linha); border-radius: var(--r-s); background: #fff; }
+.ia-faq textarea { grid-column: 2; }
+.ia-faq input[type="text"], .ia-faq textarea { width: 100%; font: inherit; font-size: 14px; color: var(--tinta); background: var(--campo); border: 1px solid var(--linha); border-radius: var(--r-s); padding: 10px 12px; box-sizing: border-box; }
+.ia-faq textarea { resize: vertical; }
+.ia-faq input[type="text"]:focus, .ia-faq textarea:focus { outline: none; border-color: var(--vermelho); }
+.ia-faq .check { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; padding-top: 10px; }
+.ia-faqs[hidden], .ia-duvidas-form[hidden] { display: none; }
+.ia-duvidas { display: grid; gap: 10px; margin: 0 0 16px; padding: 14px 16px; border: 1px dashed var(--linha); border-radius: var(--r-s); background: #fbf9ff; }
+.ia-duvidas-form { display: grid; gap: 8px; }
+.ia-duvidas-bt, .ia-duvidas-form > button { justify-self: start; }

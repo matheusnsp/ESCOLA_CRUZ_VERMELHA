@@ -1056,13 +1056,16 @@ function lerCursoDoForm(body) {
 }
 
 router.post('/cursos', requirePermissao('cursos:criar'), uploadFoto, async (req, res) => {
-  if (req.uploadErro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: req.body, escolaridades: ESCOLARIDADES, erro: req.uploadErro });
+  // Revisão I2: depois de um erro, as dúvidas sugeridas pela IA voltam no formulário.
+  const faqsIniciais = require('../lib/ia-textos').faqsDoCorpo(req.body);
+  if (req.uploadErro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: req.body, escolaridades: ESCOLARIDADES, erro: req.uploadErro, faqsIniciais });
   const { dados, erro } = lerCursoDoForm(req.body);
-  if (erro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: req.body, escolaridades: ESCOLARIDADES, erro });
+  if (erro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: req.body, escolaridades: ESCOLARIDADES, erro, faqsIniciais });
   dados.imagemUrl = req.file ? await salvarFotoCurso(req.file) : null;
   const curso = await prisma.curso.create({ data: dados });
   await extras.salvarExtra('curso', curso.id, extrasCursoDoForm(req.body));
   await salvarAssinaturasDoCurso(curso.id, req.body, req);
+  await require('../lib/ia-textos').salvarFaqs(curso.id, require('../lib/ia-textos').lerFaqsDoForm(req.body)); // dúvidas escritas com IA e marcadas
   await auditar(req, 'CRIOU_CURSO', 'Curso', curso.id, { nome: curso.nome });
   res.redirect('/cursos?ok=Curso criado.');
 });
@@ -1096,12 +1099,48 @@ router.post('/cursos/:id/faqs', requirePermissao('cursos:gerenciar'), async (req
   res.redirect(`/cursos/${curso.id}/editar#duvidas`);
 });
 
+// As dúvidas marcadas de "Escrever dúvidas com IA" (seção de dúvidas do curso), gravadas direto (2026-11-09).
+router.post('/cursos/:id/faqs-ia', requirePermissao('cursos:gerenciar'), async (req, res) => {
+  const curso = await prisma.curso.findUnique({ where: { id: req.params.id }, select: { id: true } }).catch(() => null);
+  if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
+  const txt = require('../lib/ia-textos');
+  const n = await txt.salvarFaqs(curso.id, txt.lerFaqsDoForm(req.body));
+  if (n) await auditar(req, 'ADICIONOU_FAQ', 'Curso', curso.id, { porIa: true, quantas: n });
+  res.redirect(`/cursos/${curso.id}/editar${n ? '' : '?erroFaq=' + encodeURIComponent('Nenhuma dúvida marcada (ou todas já existiam).')}#duvidas`);
+});
+
 router.post('/cursos/:id/faqs/:faqId/remover', requirePermissao('cursos:gerenciar'), async (req, res) => {
   const faq = await prisma.faqCurso.findUnique({ where: { id: req.params.faqId } });
   if (!faq || faq.cursoId !== req.params.id) return res.status(404).render('admin/erro', { mensagem: 'Duvida nao encontrada.' });
   await prisma.faqCurso.delete({ where: { id: faq.id } });
   await auditar(req, 'REMOVEU_FAQ', 'Curso', req.params.id, { pergunta: faq.pergunta });
   res.redirect(`/cursos/${req.params.id}/editar#duvidas`);
+});
+
+// Escrever com IA (2026-11-09): o Claude escreve resumo, texto completo, conteúdo programático e dúvidas no padrão
+// dos outros cursos; a página só preenche os campos (nada é salvo). JSON { ok, textos } ou { ok:false, erro }.
+router.post('/cursos/ia-textos', requirePermissao('cursos:criar', 'cursos:gerenciar'), async (req, res) => {
+  const ia = require('../lib/ead-ia');
+  if (!ia.ehChaveConfigurada()) return res.json({ ok: false, erro: ia.MSG_CHAVE });
+  const t = await ia.dentroDoTeto();
+  if (!t.ok) return res.json({ ok: false, erro: t.erro });
+  const b = req.body || {};
+  const cursoId = /^[0-9a-f-]{36}$/i.test(String(b.cursoId || '')) ? b.cursoId : null;
+  const txt = require('../lib/ia-textos');
+  // "Escrever dúvidas com IA" na seção de dúvidas: os dados vêm do banco (com as dúvidas que o curso já tem).
+  const dados = b.soDuvidas === '1' && cursoId ? await txt.dadosDoCurso(cursoId)
+    : { nome: b.nome, cargaHoraria: b.cargaHoraria, escolaridade: b.escolaridadeMinima, categoria: b.categoria, descricao: b.descricao, descricaoLonga: b.descricaoLonga, conteudoProgramatico: b.conteudoProgramatico };
+  if (!dados) return res.json({ ok: false, erro: 'Curso não encontrado.' });
+  try {
+    const r = await txt.escrever({ tipo: 'presencial', ideias: b.ideias, cursoId, dados });
+    await ia.somarCustoAvulso(r.usage);
+    await auditar(req, 'IA_TEXTOS_CURSO', 'Curso', cursoId || 'novo', { tipo: 'presencial' });
+    return res.json({ ok: true, textos: r.textos });
+  } catch (e) {
+    if (e.usage) await ia.somarCustoAvulso(e.usage).catch(() => {});
+    console.error('[IA TEXTOS]', e.message);
+    return res.json({ ok: false, erro: 'A IA não conseguiu escrever agora. Tente de novo em alguns instantes.' });
+  }
 });
 
 router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, async (req, res) => {
@@ -1131,6 +1170,7 @@ router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, asy
   if (dados.nome) await eadAcesso.guardarEnderecoAntigo(req.params.id, existe.nome, dados.nome); // links antigos do curso online
   await extras.salvarExtra('curso', req.params.id, extrasCursoDoForm(req.body));
   await salvarAssinaturasDoCurso(req.params.id, req.body, req);
+  await require('../lib/ia-textos').salvarFaqs(req.params.id, require('../lib/ia-textos').lerFaqsDoForm(req.body));
   await auditar(req, 'EDITOU_CURSO', 'Curso', req.params.id, { nome: dados.nome });
   res.redirect('/cursos?ok=Curso atualizado.');
 });

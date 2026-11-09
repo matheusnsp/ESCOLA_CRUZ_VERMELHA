@@ -152,5 +152,20 @@
       </li>
     <% }) %>
   </ol>
+  <% if (typeof faqs !== 'undefined' && faqs.length) { %>
+  <%# Escrever com IA (2026-11-09): dúvidas frequentes do curso, em sanfona (texto sempre escapado). %>
+  <section class="ea-faq" aria-labelledby="faq-titulo">
+    <p class="ea-kicker">Antes de começar</p>
+    <h2 class="ea-secao-h" id="faq-titulo">Dúvidas frequentes<span>.</span></h2>
+    <div class="ea-faq-lista">
+      <% faqs.forEach(function (f) { %>
+        <details class="ea-faq-item">
+          <summary><%= f.pergunta %></summary>
+          <p><%= f.resposta %></p>
+        </details>
+      <% }) %>
+    </div>
+  </section>
+  <% } %>
 </main>
 <%- include('_fim') %>
