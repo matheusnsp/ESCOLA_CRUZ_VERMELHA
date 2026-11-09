@@ -1,0 +1,18 @@
+<%# Card da vitrine da Escola Digital (2026-11-09). Espera: curso (de montarVitrine: online.{preco,gratis,maxParcelas}, jaTem), vitrine. Nunca mostra vagas. %>
+<li class="ed-card">
+  <a href="<%= vitrine.urlOnline(curso) %>" class="ed-card-link">
+    <span class="ed-capa<%= curso.imagemUrl ? '' : ' ed-capa-sem' %>">
+      <% if (curso.imagemUrl) { %><img src="<%= curso.imagemUrl %>" alt="" loading="lazy"><% } else { %><i class="fa-solid fa-kit-medical" aria-hidden="true"></i><% } %>
+      <% if (curso.online.gratis && !curso.jaTem) { %><span class="ed-selo ed-selo-gratis">Grátis</span><% } %>
+    </span>
+    <span class="ed-card-corpo">
+      <b class="ed-card-nome"><%= curso.nome %></b>
+      <span class="ed-card-info"><i class="fa-regular fa-clock" aria-hidden="true"></i> <%= curso.cargaHoraria %> h · 100% online</span>
+      <span class="ed-card-preco">
+        <% if (curso.jaTem) { %><span class="ed-ja-tem"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Você já tem</span>
+        <% } else if (curso.online.gratis) { %><b>Grátis</b>
+        <% } else { %><b><%= vitrine.reais(curso.online.preco) %></b><% if (curso.online.maxParcelas > 1) { %> <small>ou <%= curso.online.maxParcelas %>× no cartão</small><% } %><% } %>
+      </span>
+    </span>
+  </a>
+</li>

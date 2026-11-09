@@ -57,9 +57,9 @@ async function gravarCupom(db, matriculaId, v) {
   return db.cupomMatriculaEad.upsert({ where: { matriculaId }, update: dados, create: { matriculaId, ...dados } });
 }
 
-// Cupom de 100%: matrícula paga com R$ 0, sem Pagamento e sem gateway. A trava por aluno e turma faz o
-// duplo clique virar uma liberação só (uma auditoria só).
-async function liberarPorCupom(alunoId, turmaId, v) {
+// Sem pagamento (cupom de 100% ou curso gratuito): matrícula paga com R$ 0, sem Pagamento e sem gateway. A trava
+// por aluno e turma faz o duplo clique virar uma liberação só (uma auditoria só). v = validação do cupom ou null.
+async function liberarSemPagamento(alunoId, turmaId, { confirmadaPor, v = null }) {
   return transacao(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`compra:${alunoId}:${turmaId}`}))`;
     const existente = await tx.matricula.findUnique({ where: { alunoId_turmaId: { alunoId, turmaId } } });
@@ -67,13 +67,13 @@ async function liberarPorCupom(alunoId, turmaId, v) {
     const agora = new Date();
     const dados = {
       plano: 'A_VISTA', forma: 'PIX', valorCurso: 0, valorTaxaMatricula: 0, statusPagamento: 'PAGO',
-      taxaConfirmada: true, taxaConfirmadaEm: agora, taxaConfirmadaPor: `cupom:${v.cupom.codigo}`,
-      confirmadaEm: agora, confirmadaPor: `cupom:${v.cupom.codigo}`,
+      taxaConfirmada: true, taxaConfirmadaEm: agora, taxaConfirmadaPor: confirmadaPor,
+      confirmadaEm: agora, confirmadaPor,
     };
     const matricula = existente
       ? await tx.matricula.update({ where: { id: existente.id }, data: dados })
       : await tx.matricula.create({ data: { ...dados, alunoId, turmaId } });
-    await gravarCupom(tx, matricula.id, v);
+    if (v) await gravarCupom(tx, matricula.id, v);
     // Cobranças de antes (PIX/cartão) não servem mais: o curso foi liberado de graça.
     await tx.pagamento.updateMany({ where: { matriculaId: matricula.id, status: 'PENDENTE' }, data: { status: 'CANCELADO' } });
     return { matricula, nova: true };
@@ -92,6 +92,17 @@ router.post(['/online/:cursoId/comprar', '/escola-digital/:cursoId/comprar'], re
   // Não publicado: só quem já está no meio de um pagamento pode terminá-lo.
   if (!co.publicado && acesso.situacao !== 'pendente') return acesso.situacao === 'sem' ? next() : res.redirect(base);
   if (acesso.liberado) return res.redirect(`${base}/continuar`);
+  // Curso gratuito (vitrine 2026-11-09): libera com um clique, só com conta (requireLogin acima), sem CPF nem cupom.
+  if (co.gratuito) {
+    if (String(req.body.forma || '') !== 'GRATIS' || !co.publicado || !(await escolaDigital.estaLigada())) return res.redirect(base);
+    const turma = await turmaOnline(co);
+    const r = await liberarSemPagamento(req.session.usuarioId, turma.id, { confirmadaPor: 'gratuito' });
+    if (r.nova) {
+      await prisma.logAuditoria.create({ data: { atorId: req.session.usuarioId, acao: 'EAD_GRATIS_LIBEROU', alvoTipo: 'CursoOnline', alvoId: co.id, detalhe: { matriculaId: r.matricula.id } } })
+        .catch((e) => console.error('[EAD] auditoria grátis:', e.message));
+    }
+    return res.redirect(`${base}/continuar`);
+  }
   const preco = co.precoOnline === null ? null : Number(co.precoOnline);
   if (!preco || preco <= 0) return res.redirect(base);
   const forma = String(req.body.forma || '');
@@ -114,7 +125,7 @@ router.post(['/online/:cursoId/comprar', '/escola-digital/:cursoId/comprar'], re
 
   const turma = await turmaOnline(co);
   if (forma === 'CUPOM') {
-    const r = await liberarPorCupom(req.session.usuarioId, turma.id, v);
+    const r = await liberarSemPagamento(req.session.usuarioId, turma.id, { confirmadaPor: `cupom:${v.cupom.codigo}`, v });
     if (r.nova) await cupons.auditar(req.session.usuarioId, 'EAD_CUPOM_LIBEROU', v.cupom.id, { matriculaId: r.matricula.id, cursoOnlineId: co.id });
     return res.redirect(`${base}/continuar`);
   }

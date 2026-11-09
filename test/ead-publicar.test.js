@@ -14,13 +14,13 @@ describe('podePublicar', () => {
   const ok = { precoOnline: 49.9, modulos: [{ titulo: 'A', status: 'VALIDADO' }] };
   test('tudo certo ⇒ sem pendências', () => assert.deepEqual(podePublicar(ok), []));
   test('sem preço (null ou 0)', () => {
-    assert.deepEqual(podePublicar({ ...ok, precoOnline: null }), ['Defina o preço do curso online.']);
-    assert.deepEqual(podePublicar({ ...ok, precoOnline: 0 }), ['Defina o preço do curso online.']);
+    assert.deepEqual(podePublicar({ ...ok, precoOnline: null }), ['Defina o preço do curso online (ou marque Gratuito).']);
+    assert.deepEqual(podePublicar({ ...ok, precoOnline: 0 }), ['Defina o preço do curso online (ou marque Gratuito).']);
   });
   test('sem módulos', () => assert.deepEqual(podePublicar({ ...ok, modulos: [] }), ['O curso não tem módulos.']));
   test('módulo em rascunho, um por linha, junto com o preço', () => {
     assert.deepEqual(podePublicar({ precoOnline: null, modulos: [{ titulo: 'A', status: 'VALIDADO' }, { titulo: 'B', status: 'RASCUNHO' }] }),
-      ['Defina o preço do curso online.', 'Módulo "B" em rascunho.']);
+      ['Defina o preço do curso online (ou marque Gratuito).', 'Módulo "B" em rascunho.']);
   });
 });
 
@@ -97,7 +97,7 @@ describe('painel: publicar e site', { skip: temBanco ? false : 'sem DATABASE_URL
   test('site: selo e caixa só com o curso publicado', async () => {
     const { cursosOnlinePublicados } = require('../src/lib/ead-publicacao');
     const mapa = await cursosOnlinePublicados();
-    assert.equal(mapa.get(curso.id), 49.9);
+    assert.deepEqual(mapa.get(curso.id), { preco: 49.9, gratis: false });
     const vitrine = require('../src/lib/vitrine');
     const locais = { vitrine, taxaExibicao: () => 0, cfgMap: {}, urlCurso: vitrine.urlCurso };
     const cartao = (online) => ejs.renderFile(path.join(__dirname, '..', 'src', 'views', 'partials', 'v-card-cat.ejs'), { ...locais, curso: { ...curso, turmas: [], online } });

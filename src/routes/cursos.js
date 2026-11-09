@@ -231,8 +231,11 @@ router.get('/duvidas', (req, res) => res.redirect(302, '/#duvidas'));
 // Escola Digital CVB-RJ (2026-11): a aba dos cursos online. Desligada no painel, não existe (404).
 router.get('/escola-digital', (req, res, next) => (async () => {
   if (!(await escolaDigital.estaLigada())) return next();
-  const cursos = await catalogo(res, 'escola-digital', () => escolaDigital.cursosDaEscolaDigital());
-  res.render('escola-digital', { cursos, vitrine, taxaExibicao, cfgMap: {} });
+  const lista = await catalogo(res, 'escola-digital', () => escolaDigital.cursosDaEscolaDigital());
+  // Vitrine (2026-11-09): o que depende de quem vê ("Continue", "Você já tem") fica fora do cache.
+  const usuario = req.session && req.session.usuarioId ? { id: req.session.usuarioId, papel: req.session.papel } : null;
+  const v = await require('../lib/escola-digital-vitrine').montarVitrine(lista, usuario);
+  res.render('escola-digital', { ...v, vitrine });
 })().catch(next));
 
 router.get('/cursos', async (req, res) => {

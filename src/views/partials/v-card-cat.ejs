@@ -50,8 +50,8 @@
       <div class="v-preco">
         <% if (_soOnline) { %>
           <small>Curso online</small>
-          <b><%= vitrine.reais(curso.online.preco) %></b>
-          <em>Pagamento único, PIX ou cartão</em>
+          <b><%= curso.online.gratis ? 'Grátis' : vitrine.reais(curso.online.preco) %></b>
+          <em><%= curso.online.gratis ? 'Crie sua conta e comece' : 'Pagamento único, PIX ou cartão' %></em>
         <% } else { %>
           <small>Matrícula à vista</small>
           <b><%= vitrine.reais(curso.precoAvista) %></b>

@@ -42,12 +42,16 @@
           <p>O pagamento foi cancelado ou devolvido, então o curso e o certificado ficam fechados. Para voltar a estudar, faça uma nova compra.</p>
         <% } else { %>
           <p class="ea-kicker">Curso online</p>
-          <% if (compra.cupom) { %>
+          <% if (compra.gratuito) { %>
+          <h2>Grátis<span style="color:var(--r)">.</span></h2>
+          <% } else if (compra.cupom) { %>
           <h2><s><%= brl(compra.cupom.precoCheio) %></s> <%= compra.gratis ? 'Grátis' : brl(compra.cupom.precoFinal) %><span style="color:var(--r)">.</span></h2>
           <% } else { %>
           <h2><%= compra.preco !== null ? brl(compra.preco) : 'Em breve' %><span style="color:var(--r)">.</span></h2>
           <% } %>
-          <% if (compra.gratis) { %>
+          <% if (compra.gratuito) { %>
+          <p>Curso gratuito: crie sua conta (ou entre) e comece. Acesso pelo celular, no seu ritmo, com certificado ao concluir. Capacitação teórica, sem prática em manequim.</p>
+          <% } else if (compra.gratis) { %>
           <p>Cortesia com o cupom. Acesso pelo celular, no seu ritmo, com certificado ao concluir. Capacitação teórica, sem prática em manequim.</p>
           <% } else if (compra.maxParcelas > 1) { %>
           <p class="ea-obs">À vista no PIX ou em até <%= compra.maxParcelas %>x no cartão.</p>
@@ -57,7 +61,19 @@
           <% } %>
         <% } %>
         <% if (compra.erro) { %><p class="ea-obs" role="alert"><b><%= compra.erro %></b></p><% } %>
-        <% if (compra.preco !== null && (co.publicado || compra.situacao === 'pendente')) { %>
+        <% if (compra.gratuito && co.publicado) { %>
+          <%# Vitrine (2026-11-09): curso gratuito, um clique, só com conta. Sem cupom, sem PIX/cartão. %>
+          <% if (compra.logado) { %>
+          <form method="POST" action="<%= compra.comprarUrl %>" class="ea-compra">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <input type="hidden" name="forma" value="GRATIS">
+            <button type="submit" class="ea-pilula ea-pilula-red">Quero estudar · Grátis</button>
+          </form>
+          <% } else { %>
+          <a class="ea-pilula ea-pilula-red" href="<%= base %>/criar-conta">Criar conta e liberar</a>
+          <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/continuar">Já tenho conta</a>
+          <% } %>
+        <% } else if (!compra.gratuito && compra.preco !== null && (co.publicado || compra.situacao === 'pendente')) { %>
           <%# Etapa 7: cupom. GET na própria capa (?cupom=), o mesmo link serve para campanhas. %>
           <% if (compra.cupom) { %>
           <p class="ea-obs ea-cupom-ok">Cupom <%= compra.cupom.codigo %> aplicado: <%= brl(compra.cupom.desconto) %> de desconto. <a href="<%= base %>?cupom=">tirar</a></p>

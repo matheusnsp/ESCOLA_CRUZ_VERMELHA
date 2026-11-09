@@ -82,11 +82,11 @@ const ehSoOnline = async (cursoId) => (await idsSoOnline()).has(cursoId);
 async function cursosSoOnlinePublicados() {
   try {
     const lista = await prisma.cursoOnline.findMany({
-      where: { somenteOnline: true, publicado: true, precoOnline: { gt: 0 } },
+      where: { somenteOnline: true, publicado: true, OR: [{ gratuito: true }, { precoOnline: { gt: 0 } }] }, // grátis entra (vitrine 2026-11-09)
       include: { curso: { select: { id: true, nome: true, descricao: true, imagemUrl: true, cargaHoraria: true, escolaridadeMinima: true } } },
       orderBy: { curso: { nome: 'asc' } },
     });
-    return lista.map((co) => ({ ...co.curso, turmas: [], online: { preco: Number(co.precoOnline), somenteOnline: true } }));
+    return lista.map((co) => ({ ...co.curso, turmas: [], online: { preco: co.gratuito ? 0 : Number(co.precoOnline), gratis: co.gratuito, somenteOnline: true } }));
   } catch (e) {
     console.error('[EAD] catálogo de cursos só online:', e.message);
     return [];

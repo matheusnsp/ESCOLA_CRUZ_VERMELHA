@@ -176,7 +176,7 @@ async function cupomDaCapa(req, co, m) {
     const cm = await prisma.cupomMatriculaEad.findUnique({ where: { matriculaId: m.id }, include: { cupom: { select: { codigo: true } } } });
     codigo = cm ? cm.cupom.codigo : '';
   }
-  if (!codigo || co.precoOnline === null || co.precoOnline === undefined) return { cupom: null, erroCupom: null };
+  if (!codigo || co.gratuito || co.precoOnline === null || co.precoOnline === undefined) return { cupom: null, erroCupom: null };
   if (req.cupomBloqueado) return { cupom: null, erroCupom: MSG_TENTATIVAS };
   const v = await cupons.validarCupom(codigo, co);
   // Só o código errado digitado/trazido agora conta para o limite (a compra com cupom inválido volta para cá).
@@ -190,8 +190,10 @@ async function compraDaCapa(req, co, base) {
   const m = a.matricula;
   const { cupom, erroCupom } = await cupomDaCapa(req, co, m);
   return {
-    situacao: a.situacao,
-    preco: co.precoOnline === null || co.precoOnline === undefined ? null : Number(co.precoOnline),
+    // Curso gratuito: pagamento pendente ou inscrição cancelada de antes não importam, a capa oferece liberar.
+    situacao: co.gratuito && ['pendente', 'cancelado'].includes(a.situacao) ? 'sem' : a.situacao,
+    gratuito: !!co.gratuito,
+    preco: co.gratuito ? 0 : co.precoOnline === null || co.precoOnline === undefined ? null : Number(co.precoOnline),
     comprarUrl: `${base}/comprar`,
     retornoUrl: m && a.situacao === 'pendente' ? urlRetorno(m.id, { pix: m.forma === 'PIX', etapa: 'curso' }) : null,
     logado: !!alunoDaSessao(req),
