@@ -29,8 +29,9 @@ Rules for every prompt (repeat them inside each prompt):
 - the same visual style across all images of the course: define one style and apply it to every prompt.`;
 
 // curso: { nome, descricao, categoria }; modulos: [{ id, titulo, topicos: [titulo] }] (vazio no curso presencial).
-async function pedirAoClaude({ curso, modulos = [] }, { cliente }) {
+async function pedirAoClaude({ curso, modulos = [] }, opts = {}) {
   const IA = require('./ead-ia');
+  const cliente = clienteDe(opts);
   const lista = modulos.map((m, i) => `${i + 1}. [moduloId: ${m.id}] ${m.titulo}${m.topicos && m.topicos.length ? `: ${m.topicos.join('; ')}` : ''}`).join('\n');
   const texto = [
     `Curso: ${curso.nome}`,
@@ -105,6 +106,9 @@ const { salvarFotoCurso, removerFotoCurso } = require('./upload');
 const AVISO_SEM_CHAVE = 'Sem chave da OpenAI: as descrições do Claude estão em cada módulo, envie as imagens.';
 let fetchFixo = null; // testes fixam um fetch falso (definirFetch)
 const definirFetch = (f) => { fetchFixo = f || null; };
+let clienteFixo = null; // e um cliente do Claude falso (definirCliente); senão, o cliente padrão da etapa 9
+const definirCliente = (c) => { clienteFixo = c || null; };
+const clienteDe = (o) => (o && o.cliente) || clienteFixo || require('./ead-ia').clientePadrao();
 const fetchDe = (o) => (o && o.fetch) || fetchFixo || globalThis.fetch;
 
 // Contadores (sem limite: o painel só mostra quantas foram geradas).
@@ -239,5 +243,5 @@ async function gerarOutra({ tipo, id }, opts = {}) {
 
 module.exports = {
   ErroImagem, temOpenAI, modeloImagem, pedirAoClaude, gerarNaOpenAI, gerarComReserva, SYSTEM_PEDIDOS,
-  AVISO_SEM_CHAVE, OCUPADO, definirFetch, contagem, imagensDoCursoOnline, imagemDoCurso, gerarOutra,
+  AVISO_SEM_CHAVE, OCUPADO, definirFetch, definirCliente, contagem, imagensDoCursoOnline, imagemDoCurso, gerarOutra,
 };

@@ -16,6 +16,7 @@
 
 <div class="adm-box adm-box-pad adm-espaco">
   <p><b>Gasto deste mês:</b> <%= usd(gasto) %> de <%= usd(teto) %> (teto mensal)</p>
+  <p><b>Imagens geradas com IA:</b> <%= imagens.mes %> neste mês · <%= imagens.total %> no total <span class="adm-mut">(cobradas na conta da OpenAI)</span></p>
   <form method="POST" action="/ead/ia/teto" class="ead-acoes">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label class="adm-mut">Teto mensal (US$) <input type="number" name="teto" min="0" max="1000" step="1" value="<%= teto %>" style="width:7em"></label>

@@ -116,6 +116,30 @@
   </div>
 </div>
 
+<%# Imagens com IA (2026-11-09): o Claude escreve o pedido, a OpenAI gera. Só preenche o que está vazio. %>
+<% var _ci = imagensIa && imagensIa.curso; %>
+<div class="adm-box adm-box-pad adm-espaco ead-imagens-ia">
+  <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-wand-magic-sparkles"></i> Imagens com IA</h2>
+  <div class="ead-img-ia-linha">
+    <% if (_ci && _ci.imagemUrl) { %><img src="<%= _ci.imagemUrl %>" alt="Imagem do curso" class="ead-img-ia"><% } else { %><span class="ead-img-ia vazio"><i class="fa-solid fa-image"></i></span><% } %>
+    <div>
+      <p><b>Imagem do curso</b><% if (_ci && _ci.imagemGeradaPorIa) { %> <span class="ead-selo ia">Imagem gerada por IA</span><% } %></p>
+      <% if (_ci && _ci.imagemSugestao) { %><p class="adm-mut">Descrição: <%= _ci.imagemSugestao %></p><% } %>
+      <% if (_ci && _ci.imagemPedido && imagensIa.temOpenAI) { %>
+        <form method="POST" action="/ead/curso/<%= co.id %>/capa/gerar-outra" class="ead-acoes" data-confirmar="Gerar outra imagem para o curso? A atual é apagada." data-botao="Gerar outra" data-confirmar-tipo="ok">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="adm-btn adm-btn-out"><i class="fa-solid fa-rotate"></i> Gerar outra</button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+  <p class="adm-mut">Gera a imagem do curso e a de abertura de cada módulo que ainda não tem imagem. Nunca troca uma imagem que você enviou. O Claude escreve o pedido e a OpenAI desenha<%= imagensIa && imagensIa.temOpenAI ? '' : ' (sem a chave da OpenAI, só as descrições ficam gravadas)' %>.</p>
+  <form method="POST" action="/ead/curso/<%= co.id %>/imagens-ia" class="ead-acoes" data-confirmar="Gerar as imagens que faltam com IA? Leva de 1 a 5 minutos; não feche a página." data-botao="Gerar imagens" data-confirmar-tipo="ok">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button type="submit" class="adm-btn"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar imagens com IA</button>
+  </form>
+</div>
+
 <div class="adm-box adm-box-pad adm-espaco">
   <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-link"></i> Link de teste</h2>
   <p class="adm-mut">Abre o curso no site como o aluno verá, sem login, pelo celular. Não aparece no menu, no Google nem no sitemap; só quem tiver o link entra. Mostra também os módulos em rascunho.</p>

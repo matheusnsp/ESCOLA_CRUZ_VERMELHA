@@ -21,6 +21,17 @@ Em **Online → Cursos online → Criar curso com IA**, em 4 passos:
 
 Tudo conta no teto mensal de gasto da IA.
 
+## Imagens com IA
+
+A imagem do curso e a de abertura de cada módulo podem ser geradas por IA: o **Claude** escreve o pedido de cada imagem (foto realista, sem texto, sem sangue, sem rosto de criança em destaque e **sem o símbolo da Cruz Vermelha**, que é protegido por lei) e a **OpenAI** desenha. Tudo é guardado em WebP.
+- **Curso novo com IA:** as imagens são geradas no fim, no passo "Gerando as imagens…". Se der erro, o curso conclui mesmo assim e a página avisa.
+- **Curso que já existe:** na página do curso online, **Gerar imagens com IA**. Preenche só o que está vazio; nunca troca uma imagem que você enviou.
+- **Curso presencial:** em Cursos → editar, **Gerar imagem com IA** (só a imagem do curso; troca a atual, pedindo confirmação).
+- **Gerar outra:** ao lado de cada imagem gerada, gera uma nova com o mesmo pedido e apaga a anterior.
+- **Enviar a sua:** o envio de foto de sempre; a imagem enviada perde o selo "Imagem gerada por IA".
+- **Contagem:** em Online → Criar curso com IA, "Imagens geradas com IA: N neste mês · M no total". Não há limite; cada imagem custa cerca de US$ 0,04 a 0,07 na conta da OpenAI.
+- **Configuração:** a chave `OPENAI_API_KEY` no Render (serviço da secretaria). Sem ela, o botão do curso online só grava as descrições, para você enviar as imagens.
+
 ## 2. Escrever o conteúdo
 
 Na página do curso (**Abrir**):

@@ -8,6 +8,7 @@
 
 const express = require('express');
 const escolaDigital = require('../lib/escola-digital');
+const imagensLib = require('../lib/ead-imagens');
 const prisma = require('../db');
 const asyncHandler = require('../lib/asyncHandler');
 const ead = require('../lib/ead');
@@ -169,7 +170,12 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
       aviso: publicacao.avisoPublicado({ ...co, modulos }),
       urlCurso: `${urlSite}${require('../lib/vitrine').urlOnline(co.curso)}`,
     };
-    res.render('admin/ead/curso', { co, modulos, ead, venda, dadosCurso, linkTeste: codigo ? `${urlSite}/ead-teste/${codigo}` : null, erroForm: null, ...flash(req) });
+    // Imagens com IA (2026-11-09): a imagem do curso (capa) com selo, descrição e "Gerar outra".
+    const imagensIa = {
+      curso: await prisma.curso.findUnique({ where: { id: co.cursoId }, select: { id: true, imagemUrl: true, imagemPedido: true, imagemSugestao: true, imagemGeradaPorIa: true } }),
+      temOpenAI: imagensLib.temOpenAI(),
+    };
+    res.render('admin/ead/curso', { co, modulos, ead, venda, dadosCurso, imagensIa, linkTeste: codigo ? `${urlSite}/ead-teste/${codigo}` : null, erroForm: null, ...flash(req) });
   });
 
   router.post('/ead/curso/:id', async (req, res) => {
@@ -316,6 +322,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (req.file) imagemUrl = await salvarFotoCurso(req.file);
     else if (req.body.removerFoto) imagemUrl = null;
     const r = await cursoSoOnline.editarCursoOnline(co.id, { ...valores, ...(imagemUrl !== undefined ? { imagemUrl } : {}) });
+    if (r.ok && imagemUrl !== undefined) await prisma.curso.update({ where: { id: co.cursoId }, data: { imagemGeradaPorIa: false } }); // imagem própria
     if (!r.ok) {
       if (imagemUrl) await removerFotoCurso(imagemUrl);
       return res.status(400).render('admin/ead/curso-online-form', { co, valores, erro: r.erro });
@@ -323,6 +330,45 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     if (imagemUrl !== undefined && atual.imagemUrl) await removerFotoCurso(atual.imagemUrl);
     await auditar(req, 'EAD_EDITOU_CURSO_ONLINE', 'CursoOnline', co.id, { cursoId: co.cursoId });
     voltar(res, `/ead/curso/${co.id}`, 'ok', 'Dados do curso salvos.');
+  });
+
+  // ─── Imagens com IA (2026-11-09): o Claude escreve o pedido, a OpenAI gera (lib/ead-imagens.js) ─────────────
+  router.post('/ead/curso/:id/imagens-ia', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co) return naoAchou(res);
+    const volta = `/ead/curso/${co.id}`;
+    if (!ia.ehChaveConfigurada()) return voltar(res, volta, 'erro', ia.MSG_CHAVE);
+    const t = await ia.dentroDoTeto();
+    if (!t.ok) return voltar(res, volta, 'erro', t.erro);
+    let r;
+    try {
+      r = await imagensLib.imagensDoCursoOnline(co.id, { custo: (u) => ia.somarCustoAvulso(u) });
+    } catch (e) {
+      if (e.usage) await ia.somarCustoAvulso(e.usage).catch(() => {});
+      console.error('[EAD IMAGENS] botão:', e.message);
+      return voltar(res, volta, 'erro', 'Não foi possível gerar as imagens agora. Tente de novo em alguns minutos.');
+    }
+    await auditar(req, 'EAD_IMAGENS_IA', 'CursoOnline', co.id, { geradas: r.geradas, descricoes: r.descricoes });
+    if (r.aviso) return voltar(res, volta, r.geradas ? 'ok' : 'erro', r.geradas ? `${r.geradas} ${r.geradas === 1 ? 'imagem gerada' : 'imagens geradas'}. ${r.aviso}` : r.aviso);
+    if (!r.descricoes) return voltar(res, volta, 'ok', 'Nada para preencher: a capa e os módulos já têm imagem.');
+    if (!r.geradas) return voltar(res, volta, 'erro', 'A OpenAI não conseguiu gerar as imagens. As descrições ficaram em cada módulo; tente de novo ou envie as imagens.');
+    voltar(res, volta, 'ok', `${r.geradas} ${r.geradas === 1 ? 'imagem gerada' : 'imagens geradas'}.`);
+  });
+
+  router.post('/ead/curso/:id/capa/gerar-outra', async (req, res) => {
+    const co = await acharCursoOnline(req.params.id);
+    if (!co) return naoAchou(res);
+    const r = await imagensLib.gerarOutra({ tipo: 'curso', id: co.cursoId });
+    if (r.ok) await auditar(req, 'EAD_IMAGEM_OUTRA', 'Curso', co.cursoId, null);
+    voltar(res, `/ead/curso/${co.id}`, r.ok ? 'ok' : 'erro', r.ok ? 'Imagem nova gerada.' : r.erro);
+  });
+
+  router.post('/ead/modulo/:id/foto/gerar-outra', async (req, res) => {
+    const m = edb.ehId(req.params.id) ? await prisma.moduloEad.findUnique({ where: { id: req.params.id }, select: { id: true } }) : null;
+    if (!m) return naoAchou(res);
+    const r = await imagensLib.gerarOutra({ tipo: 'modulo', id: m.id });
+    if (r.ok) await auditar(req, 'EAD_IMAGEM_OUTRA', 'ModuloEad', m.id, null);
+    voltar(res, `/ead/modulo/${m.id}/editar`, r.ok ? 'ok' : 'erro', r.ok ? 'Imagem nova gerada.' : r.erro);
   });
 
   // ─── Criar curso com IA (etapa 9) ──────────────────────────────────────────────────────────────
@@ -398,7 +444,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const cos = new Map((await prisma.cursoOnline.findMany({ where: { id: { in: lista.map((g) => g.cursoOnlineId || (g.pedido.destino && g.pedido.destino.cursoOnlineId)).filter(Boolean) } }, select: { id: true, curso: { select: { nome: true } } } })).map((c) => [c.id, c.curso.nome]));
     res.render('admin/ead/ia-lista', {
       lista: lista.map((g) => ({ ...g, quem: nomes.get(g.criadoPor) || 'Dev', cursoNome: cos.get(g.cursoOnlineId || (g.pedido.destino && g.pedido.destino.cursoOnlineId)) || (g.pedido.destino && g.pedido.destino.nome) || '—' })),
-      gasto: await ia.gastoDoMes(), teto: await ia.tetoMensal(), chave: ia.ehChaveConfigurada(), msgChave: ia.MSG_CHAVE, ...flash(req),
+      gasto: await ia.gastoDoMes(), teto: await ia.tetoMensal(), imagens: await imagensLib.contagem(), chave: ia.ehChaveConfigurada(), msgChave: ia.MSG_CHAVE, ...flash(req),
     });
   });
 
@@ -855,7 +901,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     const { final, ...dados } = r.data;
     const fotoNova = req.file ? await salvarFotoCurso(req.file) : null;
     const tirarFoto = req.body.removerFoto === 'on';
-    if (fotoNova || tirarFoto) dados.fotoIntroUrl = fotoNova;
+    if (fotoNova || tirarFoto) { dados.fotoIntroUrl = fotoNova; dados.fotoGeradaPorIa = false; } // imagem própria: sem o selo de IA
     try {
       await escrever(req, modulo.id, 'o próprio módulo', async (tx) => {
         await tx.moduloEad.update({ where: { id: modulo.id }, data: dados });
