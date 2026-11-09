@@ -7,7 +7,7 @@
 <%- include('partials/site-header', { menuAtivo: 'escola-digital' }) %>
 <%
   var _linha = function (id, kicker, titulo, itens) { return { id: id, kicker: kicker, titulo: titulo, itens: itens }; };
-  var _linhas = [_linha('cursos', 'Cursos online', 'Cursos online', cursos)];
+  var _linhas = [_linha('cursos', 'No seu ritmo, com certificado', 'Cursos online', cursos)];
   if (gratuitos.length) _linhas.push(_linha('gratuitos', 'Para começar', 'Gratuitos', gratuitos));
 %>
 <main class="ed-main">

@@ -82,7 +82,7 @@
         <input type="text" name="precoOnline" inputmode="decimal" placeholder="49,90" required<%= co.gratuito ? ' disabled' : '' %>
                value="<%= co.gratuito ? 'Grátis' : digitado.precoOnline !== undefined ? digitado.precoOnline : co.precoOnline === null ? '' : Number(co.precoOnline).toFixed(2).replace('.', ',') %>">
       </label>
-      <p class="adm-mut">Cobrança única, por PIX ou cartão, sem taxa de inscrição.</p>
+      <p class="adm-mut"><%= co.gratuito ? 'Curso gratuito: o aluno não paga nada.' : 'Cobrança única, por PIX ou cartão, sem taxa de inscrição.' %></p>
       <% if (!co.gratuito) { %><button type="submit" class="adm-btn adm-btn-out">Salvar preço</button><% } %>
     </form>
     <form method="POST" action="/ead/curso/<%= co.id %>/parcelas" class="adm-form c1 ead-venda-preco">

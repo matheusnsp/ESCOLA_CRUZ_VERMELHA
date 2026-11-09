@@ -945,7 +945,7 @@ html.v-menu-aberto .v-acoes .v-so-pc, html.v-menu-aberto .v-acoes .v-user { disp
 .ed-hero { position: relative; color: #fff; min-height: 460px; display: flex; align-items: flex-end; padding: 40px 0 52px;
   background: linear-gradient(90deg, rgba(10,10,10,.92) 0%, rgba(10,10,10,.68) 48%, rgba(10,10,10,.12) 100%), var(--ed-foto, url(/img/capa.webp)) center 35% / cover; }
 .ed-hero-sem { background: linear-gradient(120deg, var(--v-red2) 0%, var(--v-red) 55%, #ff4b5c 100%); }
-.ed-hero .v-wrap { width: 100%; }
+.ed-hero > .v-wrap { flex: none; }
 .ed-hero .v-trilha a, .ed-hero .v-trilha span, .ed-hero .v-trilha i { color: rgba(255,255,255,.8); }
 .ed-tag { display: inline-flex; align-items: center; gap: 10px; margin: 22px 0 0; font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
 .ed-tag::before { content: ""; width: 30px; height: 2px; background: var(--v-red); }
