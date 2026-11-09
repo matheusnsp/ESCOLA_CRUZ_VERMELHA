@@ -82,3 +82,39 @@ test('temOpenAI: depende da chave', () => {
   process.env.OPENAI_API_KEY = 'sk-x';
   assert.equal(img.temOpenAI(), true);
 });
+
+test('[modelo] "does not exist": descobre o modelo de imagem da conta (/v1/models), tenta de novo e guarda', async () => {
+  process.env.OPENAI_API_KEY = 'sk-teste';
+  delete process.env.OPENAI_IMAGE_MODEL;
+  img.esquecerModelo();
+  const naoExiste = () => ({ status: 400, json: { error: { message: "The model 'gpt-image-1' does not exist.", code: 'model_not_found' } } });
+  const modelos = () => ({ status: 200, json: { data: [{ id: 'gpt-4o' }, { id: 'dall-e-3' }, { id: 'gpt-image-1.5' }, { id: 'gpt-image-1-mini' }] } });
+  const ok = () => ({ status: 200, json: { data: [{ b64_json: PNG_1X1 }] } });
+  const f = openaiFalso([naoExiste, modelos, ok, ok]);
+  assert.ok(await img.gerarNaOpenAI('x', { fetch: f }));
+  assert.equal(f.chamadas[1].url, 'https://api.openai.com/v1/models');
+  assert.equal(f.chamadas[2].body.model, 'gpt-image-1.5', 'o gpt-image mais novo (não o mini)');
+  await img.gerarNaOpenAI('y', { fetch: f });
+  assert.equal(f.chamadas[3].body.model, 'gpt-image-1.5', 'guardou: não consulta de novo');
+  assert.equal(f.chamadas.length, 4);
+  img.esquecerModelo();
+});
+
+test('[modelo] só dall-e-3 na conta: usa com o tamanho e a qualidade dele', async () => {
+  process.env.OPENAI_API_KEY = 'sk-teste';
+  img.esquecerModelo();
+  const naoExiste = () => ({ status: 404, json: { error: { message: "The model 'gpt-image-1' does not exist.", code: 'model_not_found' } } });
+  const f = openaiFalso([naoExiste, () => ({ status: 200, json: { data: [{ id: 'dall-e-3' }, { id: 'whisper-1' }] } }), () => ({ status: 200, json: { data: [{ b64_json: PNG_1X1 }] } })]);
+  assert.ok(await img.gerarNaOpenAI('x', { fetch: f }));
+  assert.deepEqual(f.chamadas[2].body, { model: 'dall-e-3', prompt: 'x', size: '1792x1024', quality: 'standard', n: 1, response_format: 'b64_json' });
+  img.esquecerModelo();
+});
+
+test('[modelo] nenhum modelo de imagem na conta: erro explicando', async () => {
+  process.env.OPENAI_API_KEY = 'sk-teste';
+  img.esquecerModelo();
+  const naoExiste = () => ({ status: 400, json: { error: { message: "The model 'gpt-image-1' does not exist." } } });
+  const f = openaiFalso([naoExiste, () => ({ status: 200, json: { data: [{ id: 'gpt-4o' }] } })]);
+  await assert.rejects(img.gerarNaOpenAI('x', { fetch: f }), /nenhum modelo de imagem/i);
+  img.esquecerModelo();
+});

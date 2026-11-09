@@ -50,31 +50,62 @@ async function pedirAoClaude({ curso, modulos = [] }, opts = {}) {
   return { pedidos: v.pedidos, usage };
 }
 
+// Modelo de imagem: OPENAI_IMAGE_MODEL ou gpt-image-1. Se a conta não tiver esse modelo ("does not exist"), o
+// sistema consulta a lista de modelos da chave (/v1/models), escolhe o de imagem mais novo e guarda (2026-11-09).
+let modeloDescoberto = null;
+const esquecerModelo = () => { modeloDescoberto = null; };
+const modeloAtual = () => modeloDescoberto || modeloImagem();
+const versao = (id) => Number((String(id).match(/gpt-image-(\d+(?:\.\d+)?)/) || [])[1]) || 0;
+function escolherModelo(ids) {
+  const gpt = ids.filter((id) => /^gpt-image/.test(id));
+  const cheio = gpt.filter((id) => !/mini/.test(id)).sort((a, b) => versao(b) - versao(a) || b.length - a.length);
+  if (cheio.length) return cheio[0];
+  if (gpt.length) return gpt.sort((a, b) => versao(b) - versao(a))[0];
+  return ids.includes('dall-e-3') ? 'dall-e-3' : null;
+}
+// dall-e-3 tem tamanhos e qualidades próprios.
+const corpo = (model, prompt) => (/^dall-e/.test(model)
+  ? { model, prompt, size: '1792x1024', quality: 'standard', n: 1, response_format: 'b64_json' }
+  : { model, prompt, size: '1536x1024', quality: 'medium', n: 1 });
+const naoExiste = (status, corpoResp) => (status === 400 || status === 404)
+  && /does not exist|model_not_found/i.test(JSON.stringify((corpoResp && corpoResp.error) || ''));
+
 // Gera uma imagem na OpenAI e devolve o Buffer (PNG). Lança ErroImagem em qualquer falha.
 async function gerarNaOpenAI(prompt, { fetch = globalThis.fetch, timeoutMs = TIMEOUT_MS } = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    let r;
+  const auth = { Authorization: `Bearer ${String(process.env.OPENAI_API_KEY || '').trim()}` };
+  const chamar = async (url, opts) => {
     try {
-      r = await fetch(URL_OPENAI, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${String(process.env.OPENAI_API_KEY || '').trim()}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: modeloImagem(), prompt, size: '1536x1024', quality: 'medium', n: 1 }),
-        signal: ctrl.signal,
-      });
+      return await fetch(url, { ...opts, signal: ctrl.signal });
     } catch (e) {
       throw new ErroImagem(e.name === 'AbortError' ? 'A OpenAI demorou demais para gerar a imagem.' : `Não foi possível falar com a OpenAI: ${e.message}`);
     }
-    const corpo = await r.json().catch(() => null);
+  };
+  try {
+    let model = modeloAtual();
+    let r = await chamar(URL_OPENAI, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify(corpo(model, prompt)) });
+    let resp = await r.json().catch(() => null);
+    if (!r.ok && naoExiste(r.status, resp)) {
+      const lista = await chamar('https://api.openai.com/v1/models', { method: 'GET', headers: auth });
+      const dados = await lista.json().catch(() => null);
+      const novo = escolherModelo(((dados && dados.data) || []).map((m) => m.id));
+      if (!novo) throw new ErroImagem(`A sua conta da OpenAI não tem nenhum modelo de imagem disponível (o modelo "${model}" não existe para esta chave). Veja em platform.openai.com se o projeto da chave tem acesso a modelos de imagem.`);
+      if (novo !== model) {
+        console.log(`[EAD IMAGENS] Modelo "${model}" não existe nesta conta; usando "${novo}".`);
+        modeloDescoberto = novo; model = novo;
+        r = await chamar(URL_OPENAI, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify(corpo(model, prompt)) });
+        resp = await r.json().catch(() => null);
+      }
+    }
     if (!r.ok) {
-      const msg = corpo && corpo.error ? corpo.error.message || corpo.error.code : `HTTP ${r.status}`;
+      const msg = resp && resp.error ? resp.error.message || resp.error.code : `HTTP ${r.status}`;
       throw new ErroImagem(`A OpenAI recusou ou falhou (${r.status}): ${msg}`);
     }
-    const item = corpo && Array.isArray(corpo.data) ? corpo.data[0] : null;
+    const item = resp && Array.isArray(resp.data) ? resp.data[0] : null;
     if (item && item.b64_json) return Buffer.from(item.b64_json, 'base64');
     if (item && item.url) {
-      const d = await fetch(item.url, { signal: ctrl.signal }).catch((e) => { throw new ErroImagem(`Não foi possível baixar a imagem: ${e.message}`); });
+      const d = await chamar(item.url, { method: 'GET' });
       if (!d.ok) throw new ErroImagem(`Não foi possível baixar a imagem (${d.status}).`);
       const buf = Buffer.from(await d.arrayBuffer());
       if (buf.length) return buf;
@@ -85,7 +116,6 @@ async function gerarNaOpenAI(prompt, { fetch = globalThis.fetch, timeoutMs = TIM
   }
 }
 
-// Tenta o pedido; se falhar, o pedido curto; as duas falham → null (o alvo fica vazio, com a descrição).
 // opts.erros (lista, opcional) recebe o motivo de cada falha, para a tela mostrar o que a OpenAI respondeu.
 async function gerarComReserva({ pedido, pedidoCurto }, opts = {}) {
   for (const p of [pedido, pedidoCurto].filter(Boolean)) {
@@ -314,6 +344,6 @@ async function gerarOutra({ tipo, id }, opts = {}) {
 }
 
 module.exports = {
-  ErroImagem, temOpenAI, modeloImagem, pedirAoClaude, gerarNaOpenAI, gerarComReserva, SYSTEM_PEDIDOS,
+  ErroImagem, temOpenAI, modeloImagem, esquecerModelo, escolherModelo, pedirAoClaude, gerarNaOpenAI, gerarComReserva, SYSTEM_PEDIDOS,
   AVISO_SEM_CHAVE, OCUPADO, msgFalha, definirFetch, definirCliente, configurar, emSegundoPlano, statusDe, ocioso, travaOcupada, contagem, imagensDoCursoOnline, imagemDoCurso, gerarOutra,
 };
