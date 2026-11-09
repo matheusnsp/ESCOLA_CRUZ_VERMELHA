@@ -48,21 +48,26 @@
       <% } else if (estado === 'andamento') { %>
         <p class="ea-kicker">Decisão <%= nDecisao %> de <%= total %></p>
         <h1 class="ea-enunciado"><%= decisao.pergunta %></h1>
-        <form method="POST" action="<%= base %>/cenario/<%= cenario.id %>/escolher" class="ea-opcoes">
+        <%# Mesmo desenho das perguntas do teste (pergunta.ejs): caixas com bolinha e "Responder" (2026-11-09). %>
+        <form method="POST" action="<%= base %>/cenario/<%= cenario.id %>/escolher">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <input type="hidden" name="decisaoId" value="<%= decisao.id %>">
           <input type="hidden" name="jogada" value="<%= jogada %>">
-          <% decisao.opcoes.forEach(function (o) { %>
-            <button type="submit" name="opcaoId" value="<%= o.id %>" class="ea-opcao"><%= o.texto %></button>
-          <% }) %>
+          <p class="ea-obs">Escolha uma resposta.</p>
+          <div class="ea-alts">
+            <% decisao.opcoes.forEach(function (o) { %>
+              <label class="ea-alt"><input type="radio" name="opcaoId" value="<%= o.id %>" required><span><%= o.texto %></span></label>
+            <% }) %>
+          </div>
+          <button type="submit" class="ea-pilula ea-pilula-red ea-pilula-bloco">Responder</button>
         </form>
 
       <% } else if (estado === 'escolha') { %>
         <p class="ea-kicker">Decisão <%= nDecisao %> de <%= total %></p>
         <h1 class="ea-enunciado"><%= decisao.pergunta %></h1>
-        <div class="ea-opcoes">
-          <% decisao.opcoes.forEach(function (o) { var esta = o.id === escolha.opcao.id; %>
-            <span class="ea-opcao <%= esta ? (escolha.certa ? 'certa' : 'errada') : 'apagada' %>"><%= o.texto %></span>
+        <div class="ea-alts">
+          <% decisao.opcoes.forEach(function (o) { var esta = o.id === escolha.opcao.id; var cls = esta ? (escolha.certa ? 'certa' : 'errada') : ''; %>
+            <div class="ea-alt<%= cls ? ' ' + cls : '' %>"><span class="ea-alt-marca" aria-hidden="true"><%= esta ? (escolha.certa ? '✓' : '✕') : '' %></span><span><%= o.texto %><% if (esta) { %> <small>(sua resposta)</small><% } %></span></div>
           <% }) %>
         </div>
         <div class="ea-instrutor <%= escolha.certa ? 'ok' : 'nao' %>" role="status">

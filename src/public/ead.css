@@ -33,7 +33,7 @@
 .ea-aulabar-menu { padding: 10px 14px; }
 @media (max-width: 819px) { .ea-aulabar { display: grid; grid-template-columns: 1fr auto; } .ea-progresso { grid-column: 1 / -1; grid-row: 2; } }
 .ea-aulabar-num { font-size: 30px; font-weight: 900; letter-spacing: -.06em; color: var(--r); line-height: 1; }
-.ea-aulabar-mod small { display: block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--mut); }
+.ea-aulabar-mod small { display: block; white-space: nowrap; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--mut); }
 .ea-aulabar-mod strong { display: block; font-size: 16px; font-weight: 800; letter-spacing: -.02em; }
 .ea-progresso { display: flex; flex-direction: column; gap: 6px; flex: 1 1 160px; font-size: 12.5px; color: var(--mut); }
 .ea-progresso b { color: var(--ink); }
@@ -265,13 +265,8 @@ button.ea-seguir { border: 0; text-align: left; width: 100%; }
 .ea-cena p:not(.ea-kicker) { margin: 0; font-size: 16px; line-height: 1.6; }
 .ea-cena img { width: 100%; max-height: 240px; object-fit: cover; border-radius: 14px; margin-bottom: 12px; display: block; }
 .ea-cena .ea-video-quadro { margin-top: 14px; border-radius: 14px; overflow: hidden; }
-.ea-opcoes { display: grid; gap: 10px; margin: 16px 0 20px; }
-.ea-opcao { display: block; width: 100%; text-align: center; font: 800 18px 'Inter', system-ui; letter-spacing: .04em; padding: 18px; border-radius: 16px; border: 2px solid var(--r); background: #fff; color: var(--r2); cursor: pointer; }
-button.ea-opcao:hover { background: #fff1f2; }
-.ea-opcao.certa { background: #f0fdf4; border-color: #16a369; color: #14653a; }
-.ea-opcao.errada { background: #fff1f2; }
-.ea-opcao.apagada { opacity: .35; }
-.ea-instrutor { border-radius: 18px; padding: 16px 18px; margin-bottom: 18px; background: #fff8e6; border-left: 5px solid #d99a06; }
+.ea-instrutor { border-radius: 18px; padding: 16px 18px; margin-bottom: 18px; background: #fff1f2; border-left: 5px solid var(--r); }
+.ea-instrutor strong { color: var(--r2); } .ea-instrutor.ok strong { color: #14653a; }
 .ea-instrutor.ok { background: #f0fdf4; border-color: #16a369; }
 .ea-instrutor p { margin: 6px 0 0; line-height: 1.55; font-size: 15.5px; }
 .ea-placar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 14px; }

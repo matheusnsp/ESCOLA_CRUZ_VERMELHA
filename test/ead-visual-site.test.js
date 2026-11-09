@@ -110,3 +110,31 @@ test('header: links do menu não quebram; com "Menu do curso" o menu vai para o 
   assert.match(regra('.ea-menu'), /white-space:\s*nowrap/);
   assert.match(css, /@media \(max-width: 1280px\) \{\s*\.ea-header-curso \.ea-menu, \.ea-header-curso \.ea-acao-pc \{ display: none; \}\s*\.ea-header-curso \.ea-gaveta \{ display: block; \}/);
 });
+
+describe('cenário no desenho das perguntas do teste', () => {
+  const ejs = require('ejs');
+  const base = { asset: (u) => u, eadModo: 'pago', base: '/b', csrfToken: 'x', numero: 8, total: 3, agora: new Date(), proximoCenario: null, ctx: null,
+    cenario: { id: 'c1', titulo: 'Pânico', tempoSugeridoSeg: 180, cena: 'cena', fotoUrl: null, videoUrl: null },
+    feito: { iniciadoEm: new Date(), decisaoAtual: 0 }, emAndamento: true, jogada: 'j1',
+    decisao: { id: 'd1', pergunta: 'O que fazer?', opcoes: [{ id: 'o1', texto: 'Certa' }, { id: 'o2', texto: 'Errada' }, { id: 'o3', texto: 'Outra' }] } };
+  const render = (x) => ejs.renderFile(path.join(__dirname, '..', 'src', 'views', 'ead-teste', 'cenario.ejs'), { ...base, ...x });
+  test('decisão: caixas com bolinha (radio opcaoId) e botão "Responder"', async () => {
+    const html = await render({ escolha: null });
+    assert.equal((html.match(/<label class="ea-alt"><input type="radio" name="opcaoId" value="o\d" required>/g) || []).length, 3);
+    assert.match(html, /<button type="submit" class="ea-pilula ea-pilula-red ea-pilula-bloco">Responder<\/button>/);
+    assert.doesNotMatch(html, /ea-opcao/);
+  });
+  test('depois de responder: ✕ rosa na escolhida errada, as outras normais', async () => {
+    const html = await render({ escolha: { opcao: { id: 'o2', feedback: 'Não.' }, certa: false, fechou: false } });
+    assert.match(html, /<div class="ea-alt errada"><span class="ea-alt-marca" aria-hidden="true">✕<\/span><span>Errada <small>\(sua resposta\)<\/small>/);
+    assert.match(html, /<div class="ea-alt"><span class="ea-alt-marca" aria-hidden="true"><\/span><span>Certa<\/span>/);
+    assert.doesNotMatch(html, /ea-opcao/);
+    const ok = await render({ escolha: { opcao: { id: 'o1', feedback: 'Isso.' }, certa: true, fechou: false } });
+    assert.match(ok, /<div class="ea-alt certa"><span class="ea-alt-marca" aria-hidden="true">✓<\/span><span>Certa <small>\(sua resposta\)<\/small>/);
+  });
+  test('CSS: sem .ea-opcao, instrutor sem amarelo, rótulo do topo não quebra', () => {
+    assert.doesNotMatch(css, /\.ea-opcao/);
+    assert.doesNotMatch(regra('.ea-instrutor'), /#fff8e6|#d99a06/);
+    assert.match(regra('.ea-aulabar-mod small'), /white-space:\s*nowrap/);
+  });
+});
