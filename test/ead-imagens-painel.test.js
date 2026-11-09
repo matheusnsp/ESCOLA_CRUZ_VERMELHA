@@ -139,4 +139,21 @@ describe('painel: imagens com IA', { skip: temBanco ? false : 'sem DATABASE_URL 
     assert.equal((await prisma.moduloEad.findUnique({ where: { id: m1.id } })).fotoPedido, 'Escrito por mim: bebê dormindo no berço, luz suave');
     assert.equal(chamadasClaude, n, 'pedido escrito pela pessoa não passa pelo Claude');
   });
+
+  test('[pedido pelo Claude] rota devolve o pedido escrito (JSON) e soma o custo; a página tem o botão e o JS', async () => {
+    const pm = await get(`/ead/modulo/${m1.id}/editar`);
+    assert.match(pm, /class="[^"]*ia-pedido-bt[^"]*"[^>]*data-url="\/ead\/imagens\/pedido"/);
+    assert.match(pm, /<script[^>]+src="[^"]*imagem-pedido[^"]*\.js/);
+    const antes = await IA.gastoDoMes();
+    const j = await (await post('/ead/imagens/pedido', { tipo: 'modulo', id: m1.id })).json();
+    assert.equal(j.ok, true, j.erro);
+    assert.ok(j.pedido);
+    assert.ok((await IA.gastoDoMes()) > antes);
+    await IA.definirTeto('0', quem);
+    const n = chamadasClaude;
+    const j2 = await (await post('/ead/imagens/pedido', { tipo: 'curso', id: c.id })).json();
+    assert.equal(j2.ok, false);
+    assert.equal(chamadasClaude, n);
+    await IA.definirTeto('50', quem);
+  });
 });

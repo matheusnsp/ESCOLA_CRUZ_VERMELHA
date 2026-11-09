@@ -462,6 +462,24 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     voltar(res, volta, 'ok', 'Gerando outra imagem em segundo plano (cerca de 1 minuto). Recarregue a página para ver.');
   });
 
+  // "Escrever pedido com o Claude": devolve o pedido (JSON) para a pessoa editar; não gera a imagem.
+  router.post('/ead/imagens/pedido', async (req, res) => {
+    if (!ia.ehChaveConfigurada()) return res.json({ ok: false, erro: ia.MSG_CHAVE });
+    const t = await ia.dentroDoTeto();
+    if (!t.ok) return res.json({ ok: false, erro: t.erro });
+    const tipo = req.body.tipo === 'modulo' ? 'modulo' : 'curso';
+    if (!edb.ehId(req.body.id)) return res.json({ ok: false, erro: 'Não encontrado.' });
+    try {
+      const r = await imagensLib.sugerirPedido({ tipo, id: req.body.id });
+      await ia.somarCustoAvulso(r.usage).catch(() => {});
+      return res.json({ ok: true, pedido: r.pedido, descricao: r.descricao });
+    } catch (e) {
+      if (e.usage) await ia.somarCustoAvulso(e.usage).catch(() => {});
+      console.error('[EAD IMAGENS] pedido:', e.message);
+      return res.json({ ok: false, erro: e instanceof imagensLib.ErroImagem ? e.message : 'O Claude não conseguiu escrever o pedido agora. Tente de novo.' });
+    }
+  });
+
   router.post('/ead/modulo/:id/foto/gerar-outra', async (req, res) => {
     const m = edb.ehId(req.params.id) ? await prisma.moduloEad.findUnique({ where: { id: req.params.id }, select: { id: true } }) : null;
     if (!m) return naoAchou(res);

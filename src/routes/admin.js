@@ -1175,6 +1175,24 @@ router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, asy
   res.redirect('/cursos?ok=Curso atualizado.');
 });
 
+// "Escrever pedido com o Claude" para a imagem do curso presencial: devolve o pedido (JSON), sem gerar a imagem.
+router.post('/cursos/:id/imagem-pedido-ia', requirePermissao('cursos:gerenciar'), async (req, res) => {
+  const ia = require('../lib/ead-ia');
+  const img = require('../lib/ead-imagens');
+  if (!ia.ehChaveConfigurada()) return res.json({ ok: false, erro: ia.MSG_CHAVE });
+  const t = await ia.dentroDoTeto();
+  if (!t.ok) return res.json({ ok: false, erro: t.erro });
+  try {
+    const r = await img.sugerirPedido({ tipo: 'curso', id: req.params.id });
+    await ia.somarCustoAvulso(r.usage).catch(() => {});
+    return res.json({ ok: true, pedido: r.pedido, descricao: r.descricao });
+  } catch (e) {
+    if (e.usage) await ia.somarCustoAvulso(e.usage).catch(() => {});
+    console.error('[IMAGEM IA] pedido:', e.message);
+    return res.json({ ok: false, erro: e instanceof img.ErroImagem ? e.message : 'O Claude não conseguiu escrever o pedido agora. Tente de novo.' });
+  }
+});
+
 // Imagens com IA (2026-11-09): a imagem do curso presencial. O Claude escreve o pedido, a OpenAI gera (WebP); a
 // imagem anterior é apagada depois de gravar a nova.
 router.post('/cursos/:id/imagem-ia', requirePermissao('cursos:gerenciar'), async (req, res) => {

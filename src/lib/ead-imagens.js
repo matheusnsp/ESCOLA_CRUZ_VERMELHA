@@ -322,6 +322,24 @@ async function imagemDoCurso(cursoId, { cliente, fetch, custo = () => {} } = {})
 }
 
 // "Gerar outra": mesmo pedido, imagem nova; a antiga é apagada. tipo 'curso' (id do Curso) ou 'modulo'.
+// "Escrever pedido com o Claude" (2026-11-09): o Claude escreve o pedido de UM alvo (curso ou módulo) e devolve,
+// sem gerar a imagem nem gravar nada; a pessoa edita e confirma em "Gerar com este pedido". { pedido, descricao, usage }.
+async function sugerirPedido({ tipo, id }, opts = {}) {
+  if (tipo === 'modulo') {
+    const m = await prisma.moduloEad.findUnique({ where: { id }, include: { topicos: { orderBy: { ordem: 'asc' }, select: { titulo: true } }, cursoOnline: { include: { curso: true } } } });
+    if (!m) throw new ErroImagem('Módulo não encontrado.');
+    const c = m.cursoOnline.curso;
+    const { pedidos, usage } = await pedirAoClaude({ curso: { nome: c.nome, descricao: c.descricao }, modulos: [{ id: m.id, titulo: m.titulo, topicos: m.topicos.map((t) => t.titulo) }] }, opts);
+    const p = pedidos.modulos[0] || pedidos.capa;
+    return { pedido: p.pedido, descricao: p.descricao, usage };
+  }
+  const c = await prisma.curso.findUnique({ where: { id } });
+  if (!c) throw new ErroImagem('Curso não encontrado.');
+  const ex = await require('./extras').lerExtra('curso', c.id).catch(() => ({}));
+  const { pedidos, usage } = await pedirAoClaude({ curso: { nome: c.nome, descricao: c.descricao, categoria: (ex && ex.categoria) || null } }, opts);
+  return { pedido: pedidos.capa.pedido, descricao: pedidos.capa.descricao, usage };
+}
+
 // pedidoNovo (opcional): o pedido escrito ou editado pela pessoa (até 1000 caracteres). É guardado e usado no lugar
 // do anterior; a descrição antiga do Claude sai (não vale para o pedido novo).
 async function gerarOutra({ tipo, id, pedido: pedidoNovo }, opts = {}) {
@@ -357,5 +375,5 @@ async function gerarOutra({ tipo, id, pedido: pedidoNovo }, opts = {}) {
 
 module.exports = {
   ErroImagem, temOpenAI, modeloImagem, esquecerModelo, escolherModelo, pedirAoClaude, gerarNaOpenAI, gerarComReserva, SYSTEM_PEDIDOS,
-  AVISO_SEM_CHAVE, OCUPADO, msgFalha, REGRAS_IMAGEM, definirFetch, definirCliente, configurar, emSegundoPlano, statusDe, ocioso, travaOcupada, contagem, imagensDoCursoOnline, imagemDoCurso, gerarOutra,
+  AVISO_SEM_CHAVE, OCUPADO, msgFalha, REGRAS_IMAGEM, definirFetch, definirCliente, configurar, emSegundoPlano, statusDe, ocioso, travaOcupada, contagem, imagensDoCursoOnline, imagemDoCurso, gerarOutra, sugerirPedido,
 };

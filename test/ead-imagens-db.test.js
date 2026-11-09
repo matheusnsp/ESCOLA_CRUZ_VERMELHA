@@ -209,4 +209,20 @@ describe('imagens com IA: banco', { skip: temBanco ? false : 'sem DATABASE_URL l
     await img.gerarOutra({ tipo: 'modulo', id: m2.id, pedido: 'x'.repeat(1500) }, { fetch: openaiFalso() });
     assert.equal((await prisma.moduloEad.findUnique({ where: { id: m2.id } })).fotoPedido.length, 1000);
   });
+
+  test('[pedido pelo Claude] sugerirPedido escreve o pedido de um alvo (curso ou módulo) sem gerar imagem', async () => {
+    process.env.OPENAI_API_KEY = 'sk-teste';
+    const { c, m1 } = await cursoOnline({ comFotoNoSegundo: false });
+    let textoPedido = '';
+    const cli = clienteFalso([(params) => { textoPedido = params.messages[0].content.at(-1).text; return pedidosImagensBons([m1.id]); }]);
+    const f = openaiFalso();
+    const rm = await img.sugerirPedido({ tipo: 'modulo', id: m1.id }, { cliente: cli });
+    assert.equal(rm.pedido, 'Realistic photo for module 1, no text');
+    assert.equal(rm.descricao, 'Imagem do módulo 1');
+    assert.match(textoPedido, /Montar o kit/);
+    const rc = await img.sugerirPedido({ tipo: 'curso', id: c.id }, { cliente: clienteFalso([() => pedidosImagensBons([])]) });
+    assert.match(rc.pedido, /first aid kit/);
+    assert.equal(f.chamadas.length, 0, 'não chama a OpenAI');
+    assert.equal((await prisma.moduloEad.findUnique({ where: { id: m1.id } })).fotoIntroUrl, null, 'nada é gerado nem gravado');
+  });
 });

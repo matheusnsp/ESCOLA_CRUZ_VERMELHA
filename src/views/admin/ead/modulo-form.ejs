@@ -57,12 +57,16 @@
     <form method="POST" action="/ead/modulo/<%= modulo.id %>/foto/gerar-outra" class="ead-pedido-img" data-confirmar="Gerar a imagem de abertura com este pedido? A atual é apagada." data-botao="Gerar" data-confirmar-tipo="ok">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <label>Pedido da imagem <small class="adm-mut">(edite ou escreva o seu, pode ser em português)</small>
-        <textarea name="pedido" rows="3" maxlength="1000" placeholder="Ex.: pessoas aprendendo a manobra de desengasgo num boneco, luz natural"><%= modulo.fotoPedido || '' %></textarea>
+        <textarea name="pedido" id="pedidoModulo" rows="3" maxlength="1000" placeholder="Ex.: pessoas aprendendo a manobra de desengasgo num boneco, luz natural"><%= modulo.fotoPedido || '' %></textarea>
       </label>
-      <button type="submit" class="adm-btn adm-btn-out"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar com este pedido</button>
+      <button type="button" class="adm-btn adm-btn-neutro ia-pedido-bt" data-url="/ead/imagens/pedido" data-tipo="modulo" data-id="<%= modulo.id %>" data-alvo="pedidoModulo"><i class="fa-solid fa-pen-nib"></i> Escrever pedido com o Claude</button>
+          <p class="ia-textos-msg" id="pedidoModulo-msg" role="status" hidden></p>
+          <button type="submit" class="adm-btn adm-btn-out"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar com este pedido</button>
     </form>
+
   <% } %>
 </div>
 <% } %>
 
+<script src="<%= asset('/js/imagem-pedido.js') %>"></script>
 <%- include('../foot') %>
