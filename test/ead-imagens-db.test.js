@@ -201,7 +201,7 @@ describe('imagens com IA: banco', { skip: temBanco ? false : 'sem DATABASE_URL l
     const prompt = f.chamadas[0].body.prompt;
     assert.ok(prompt.startsWith(meu));
     assert.match(prompt, /Red Cross/);
-    assert.match(prompt, /no text/i);
+    assert.match(prompt, /no written text/i);
     const d = await prisma.moduloEad.findUnique({ where: { id: m2.id } });
     assert.equal(d.fotoPedido, meu);
     assert.equal(d.fotoSugestao, null, 'a descrição antiga do Claude não vale para o pedido novo');

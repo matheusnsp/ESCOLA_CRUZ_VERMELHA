@@ -23,7 +23,7 @@ Tudo conta no teto mensal de gasto da IA.
 
 ## Imagens com IA
 
-A imagem do curso e a de abertura de cada módulo podem ser geradas por IA: o **Claude** escreve o pedido de cada imagem (foto realista, sem texto, sem sangue, sem rosto de criança em destaque e **sem o símbolo da Cruz Vermelha**, que é protegido por lei) e a **OpenAI** desenha. Tudo é guardado em WebP.
+A imagem do curso e a de abertura de cada módulo podem ser geradas por IA: o **Claude** escreve o pedido de cada imagem (foto realista na **identidade da Cruz Vermelha**: vermelho e branco, a cruz vermelha liberada, instrutores de camisa branca com a cruz; sem texto escrito, sem outras marcas, sem sangue e sem rosto de criança em destaque) e a **OpenAI** desenha. Tudo é guardado em WebP.
 - **Curso novo com IA:** as imagens são geradas no fim, no passo "Gerando as imagens…". Se der erro, o curso conclui mesmo assim e a página avisa.
 - **Curso que já existe:** na página do curso online, **Gerar imagens com IA**. Preenche só o que está vazio; nunca troca uma imagem que você enviou.
 - **Curso presencial:** em Cursos → editar, **Gerar imagem com IA** (só a imagem do curso; troca a atual, pedindo confirmação).

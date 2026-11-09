@@ -65,7 +65,7 @@ test('validarPedidosImagens: corta nos limites, descarta módulo desconhecido, e
   assert.equal(E.validarPedidosImagens({ modulos: [] }, []).ok, false);
 });
 
-test('pedirAoClaude: esforço baixo e regras (sem texto, sem o símbolo da Cruz Vermelha) no system', async () => {
+test('pedirAoClaude: esforço baixo e regras (sem texto escrito, identidade da Cruz Vermelha) no system', async () => {
   const cli = clienteFalso([() => pedidosImagensBons(['m1'])]);
   const r = await img.pedirAoClaude({ curso: { nome: 'Kit', descricao: 'd', categoria: null }, modulos: [{ id: 'm1', titulo: 'Montar', topicos: ['a'] }] }, { cliente: cli });
   assert.equal(r.pedidos.modulos[0].moduloId, 'm1');
@@ -73,7 +73,7 @@ test('pedirAoClaude: esforço baixo e regras (sem texto, sem o símbolo da Cruz 
   assert.equal(p.output_config.effort, 'low');
   const sys = JSON.stringify(p.system);
   assert.match(sys, /Red Cross/);
-  assert.match(sys, /no text/i);
+  assert.match(sys, /no written text/i);
 });
 
 test('temOpenAI: depende da chave', () => {
@@ -117,4 +117,13 @@ test('[modelo] nenhum modelo de imagem na conta: erro explicando', async () => {
   const f = openaiFalso([naoExiste, () => ({ status: 200, json: { data: [{ id: 'gpt-4o' }] } })]);
   await assert.rejects(img.gerarNaOpenAI('x', { fetch: f }), /nenhum modelo de imagem/i);
   img.esquecerModelo();
+});
+
+test('[identidade] as regras seguem a identidade da Cruz Vermelha (cruz vermelha liberada, sem texto nem outras marcas)', () => {
+  for (const t of [img.SYSTEM_PEDIDOS, img.REGRAS_IMAGEM]) {
+    assert.match(t, /Cruz Vermelha Brasileira/);
+    assert.match(t, /red cross on white (is allowed|may appear)/i);
+    assert.doesNotMatch(t, /never the Red Cross emblem|green or white cross/i);
+    assert.match(t, /no (written )?text/i);
+  }
 });

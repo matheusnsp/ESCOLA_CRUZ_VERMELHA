@@ -22,9 +22,9 @@ For each image return:
 - "descricao": what the image shows, in Brazilian Portuguese (max 200 characters).
 Rules for every prompt (repeat them inside each prompt):
 - realistic photography, natural light, horizontal framing, empty space on the left side;
-- no text, no letters, no numbers, no logos, no brands anywhere in the image;
+- no written text, letters or numbers, and no other brands or logos anywhere in the image;
 - no blood, no wounds, no people in pain or distress; no child face in the foreground (children only from behind, far away, or hands);
-- never the Red Cross emblem (a red cross on white is protected by law): first-aid kits with a green or white cross, or no cross at all;
+- follow the visual identity of the Cruz Vermelha Brasileira (Brazilian Red Cross) and its school website: red and white palette; the red cross on white may appear (instructors in white polo shirts with the red cross and red trousers, first-aid kits with a red cross, a Red Cross classroom); warm, professional, realistic style like the school site photos;
 - Brazilian people with natural diversity and Brazilian settings (school, home, workplace) when it fits;
 - the same visual style across all images of the course: define one style and apply it to every prompt.`;
 
@@ -165,9 +165,10 @@ async function contagem() {
 const msgFalha = (erros) => `A OpenAI não conseguiu gerar a imagem${erros && erros.length ? `: ${String(erros[erros.length - 1]).slice(0, 300)}` : ''}. Tente de novo ou envie uma imagem.`;
 
 // Gera (com reserva) e guarda em WebP; null se a OpenAI não gerou.
-// Regras de segurança acrescentadas no fim de todo pedido (2026-11-09), inclusive o escrito pela pessoa: foto sem
-// texto/logotipo, sem sangue, sem rosto de criança em destaque e nunca o emblema da Cruz Vermelha (protegido por lei).
-const REGRAS_IMAGEM = 'Rules: realistic photography, horizontal framing; no text, letters, numbers, logos or brands; no blood, wounds or people in distress; no child face in the foreground; never the Red Cross emblem (a red cross on white) — use a green or white cross on first-aid kits, or no cross.';
+// Regras acrescentadas no fim de todo pedido (2026-11-09), inclusive o escrito pela pessoa. Os cursos são da
+// própria Cruz Vermelha: as imagens seguem a identidade do site e da instituição (vermelho e branco, a cruz vermelha
+// liberada), sem texto escrito nem outras marcas, sem sangue e sem rosto de criança em destaque.
+const REGRAS_IMAGEM = 'Rules: realistic photography, horizontal framing; follow the visual identity of the Cruz Vermelha Brasileira (Brazilian Red Cross) and its school: red and white palette, the red cross on white is allowed (instructors in white shirts with the red cross and red trousers, first-aid kits with a red cross); no written text, letters or numbers and no other brands; no blood, wounds or people in distress; no child face in the foreground.';
 const comRegras = (t) => (t ? `${t}\n\n${REGRAS_IMAGEM}` : t);
 
 async function gerarEGuardar(p, opts) {
