@@ -3,7 +3,7 @@
   var STATUS = { PROPOSTA_GERANDO: 'Preparando a proposta…', PROPOSTA_PRONTA: 'Proposta pronta para conferir', ERRO_PROPOSTA: 'Erro na proposta', ROTEIRO_GERANDO: 'Escrevendo o roteiro…', ROTEIRO_PRONTO: 'Roteiro pronto para revisar', MODULOS_GERANDO: 'Escrevendo os módulos…', CONCLUIDA: 'Concluída', ERRO_ROTEIRO: 'Erro no roteiro', CANCELADA: 'Cancelada' };
   var STATUS_MOD = { pendente: 'na fila', gerando: 'escrevendo…', pronto: 'pronto', erro: 'erro' };
   var andando = ['PROPOSTA_GERANDO', 'ROTEIRO_GERANDO', 'MODULOS_GERANDO'].indexOf(g.status) !== -1;
-  var passo = /^PROPOSTA|ERRO_PROPOSTA/.test(g.status) ? 2 : /ROTEIRO/.test(g.status) ? 3 : 4;
+  var passo = /^PROPOSTA|ERRO_PROPOSTA/.test(g.status) ? 2 : /ROTEIRO/.test(g.status) ? 3 : g.status === 'CONCLUIDA' ? 5 : 4;
   var prop = g.pedido.proposta || null;
   var vp = valoresProposta || {};
   var novo = !(g.pedido.destino && g.pedido.destino.tipo === 'existente');

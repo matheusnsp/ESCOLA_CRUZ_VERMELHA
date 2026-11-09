@@ -11,6 +11,16 @@ O curso online pode nascer de dois jeitos:
 
 O endereço do curso no site é o nome dele, dentro da Escola Digital: `/escola-digital/nome-do-curso` (os endereços antigos `/online/...` continuam abrindo). Se você renomear o curso, o endereço muda junto, e o endereço antigo (dos e-mails já enviados e dos links de campanha) continua levando ao curso. Dois cursos online não podem ter o mesmo endereço: o painel recusa o nome igual ou parecido.
 
+## Atalho: criar o curso com IA
+
+Em **Online → Cursos online → Criar curso com IA**, em 4 passos:
+1. **Ideia:** escreva o que quer ensinar e para quem. Se quiser, anexe PDF ou Word ou cole um texto.
+2. **Proposta:** a IA sugere nome, descrição, carga horária, preço, parcelas, tema, público e número de módulos, cada um com o porquê. Confira, mude o que quiser e clique em **Gerar roteiro**. Se não gostar, use **Pedir outra proposta**.
+3. **Roteiro:** ajuste os módulos e tópicos. Dá para **voltar à proposta**.
+4. **Escrita:** a IA escreve os módulos em rascunho. No fim, **Próximos passos** leva a cada módulo para revisar e validar.
+
+Tudo conta no teto mensal de gasto da IA.
+
 ## 2. Escrever o conteúdo
 
 Na página do curso (**Abrir**):

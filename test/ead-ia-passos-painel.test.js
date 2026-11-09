@@ -108,6 +108,7 @@ describe('painel: criação com IA passo a passo', { skip: temBanco ? false : 's
     assert.equal((await prisma.geracaoIaEad.findUnique({ where: { id: gid } })).status, 'CONCLUIDA');
     const t = await get(`/ead/ia/${gid}`);
     assert.match(t, /Próximos passos/);
+    assert.match(t, /<li class="feito"><span>✓<\/span> 4 Escrita/, 'concluída: os 4 passos com ✓');
     assert.match(t, /href="\/ead\/modulo\/[0-9a-f-]{36}"/);
   });
 });
