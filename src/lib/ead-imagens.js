@@ -165,8 +165,13 @@ async function contagem() {
 const msgFalha = (erros) => `A OpenAI não conseguiu gerar a imagem${erros && erros.length ? `: ${String(erros[erros.length - 1]).slice(0, 300)}` : ''}. Tente de novo ou envie uma imagem.`;
 
 // Gera (com reserva) e guarda em WebP; null se a OpenAI não gerou.
+// Regras de segurança acrescentadas no fim de todo pedido (2026-11-09), inclusive o escrito pela pessoa: foto sem
+// texto/logotipo, sem sangue, sem rosto de criança em destaque e nunca o emblema da Cruz Vermelha (protegido por lei).
+const REGRAS_IMAGEM = 'Rules: realistic photography, horizontal framing; no text, letters, numbers, logos or brands; no blood, wounds or people in distress; no child face in the foreground; never the Red Cross emblem (a red cross on white) — use a green or white cross on first-aid kits, or no cross.';
+const comRegras = (t) => (t ? `${t}\n\n${REGRAS_IMAGEM}` : t);
+
 async function gerarEGuardar(p, opts) {
-  const buf = await gerarComReserva(p, { fetch: fetchDe(opts), erros: opts && opts.erros });
+  const buf = await gerarComReserva({ pedido: comRegras(p.pedido), pedidoCurto: comRegras(p.pedidoCurto) }, { fetch: fetchDe(opts), erros: opts && opts.erros });
   if (!buf) return null;
   const url = await salvarFotoCurso({ buffer: buf, mimetype: 'image/png' });
   await contarImagem();
@@ -317,7 +322,9 @@ async function imagemDoCurso(cursoId, { cliente, fetch, custo = () => {} } = {})
 }
 
 // "Gerar outra": mesmo pedido, imagem nova; a antiga é apagada. tipo 'curso' (id do Curso) ou 'modulo'.
-async function gerarOutra({ tipo, id }, opts = {}) {
+// pedidoNovo (opcional): o pedido escrito ou editado pela pessoa (até 1000 caracteres). É guardado e usado no lugar
+// do anterior; a descrição antiga do Claude sai (não vale para o pedido novo).
+async function gerarOutra({ tipo, id, pedido: pedidoNovo }, opts = {}) {
   const semPedido = { ok: false, erro: 'Ainda não há pedido de imagem: use Gerar imagens com IA.' };
   if (!temOpenAI()) return { ok: false, erro: 'Sem chave da OpenAI: configure OPENAI_API_KEY no Render para gerar imagens.' };
   return comTrava(`${tipo}:${id}`, async () => {
@@ -325,7 +332,12 @@ async function gerarOutra({ tipo, id }, opts = {}) {
       ? await prisma.moduloEad.findUnique({ where: { id }, select: { fotoPedido: true, fotoIntroUrl: true } })
       : await prisma.curso.findUnique({ where: { id }, select: { imagemPedido: true, imagemUrl: true } });
     if (!alvo) return { ok: false, erro: 'Não encontrado.' };
-    const pedido = tipo === 'modulo' ? alvo.fotoPedido : alvo.imagemPedido;
+    const escrito = String(pedidoNovo || '').trim().slice(0, 1000);
+    if (escrito) {
+      if (tipo === 'modulo') await prisma.moduloEad.update({ where: { id }, data: { fotoPedido: escrito, fotoSugestao: null } });
+      else await prisma.curso.update({ where: { id }, data: { imagemPedido: escrito, imagemSugestao: null } });
+    }
+    const pedido = escrito || (tipo === 'modulo' ? alvo.fotoPedido : alvo.imagemPedido);
     if (!pedido) return semPedido;
     const erros = [];
     const url = await gerarEGuardar({ pedido }, { ...opts, erros });
@@ -345,5 +357,5 @@ async function gerarOutra({ tipo, id }, opts = {}) {
 
 module.exports = {
   ErroImagem, temOpenAI, modeloImagem, esquecerModelo, escolherModelo, pedirAoClaude, gerarNaOpenAI, gerarComReserva, SYSTEM_PEDIDOS,
-  AVISO_SEM_CHAVE, OCUPADO, msgFalha, definirFetch, definirCliente, configurar, emSegundoPlano, statusDe, ocioso, travaOcupada, contagem, imagensDoCursoOnline, imagemDoCurso, gerarOutra,
+  AVISO_SEM_CHAVE, OCUPADO, msgFalha, REGRAS_IMAGEM, definirFetch, definirCliente, configurar, emSegundoPlano, statusDe, ocioso, travaOcupada, contagem, imagensDoCursoOnline, imagemDoCurso, gerarOutra,
 };

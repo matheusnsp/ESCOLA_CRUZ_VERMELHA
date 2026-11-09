@@ -126,7 +126,7 @@ describe('imagens com IA: banco', { skip: temBanco ? false : 'sem DATABASE_URL l
     const antes = (await prisma.moduloEad.findUnique({ where: { id: m1.id } })).fotoIntroUrl;
     const f = openaiFalso();
     assert.deepEqual(await img.gerarOutra({ tipo: 'modulo', id: m1.id }, { fetch: f }), { ok: true });
-    assert.equal(f.chamadas[0].body.prompt, 'Realistic photo for module 1, no text');
+    assert.ok(f.chamadas[0].body.prompt.startsWith('Realistic photo for module 1, no text'), 'usa o pedido guardado (com as regras no fim)');
     const depois = (await prisma.moduloEad.findUnique({ where: { id: m1.id } })).fotoIntroUrl;
     assert.notEqual(depois, antes);
     assert.equal(existe(antes), false);
@@ -190,5 +190,23 @@ describe('imagens com IA: banco', { skip: temBanco ? false : 'sem DATABASE_URL l
     const b = await img.imagensDoCursoOnline(co.id, { cliente: claude([m1.id, m2.id]), fetch: openaiFalso([recusa]), custo: () => {} });
     assert.equal(b.geradas, 0);
     assert.match(b.motivo || '', /organization must be verified/);
+  });
+
+  test('[pedido] gerar com um pedido escrito pela pessoa: guarda, usa e acrescenta as regras de segurança', async () => {
+    process.env.OPENAI_API_KEY = 'sk-teste';
+    const { m2 } = await cursoOnline({ comFotoNoSegundo: false }); // m2 sem pedido nenhum ainda
+    const f = openaiFalso();
+    const meu = 'Sala de aula com professoras praticando primeiros socorros, luz da manhã';
+    assert.deepEqual(await img.gerarOutra({ tipo: 'modulo', id: m2.id, pedido: `  ${meu}  ` }, { fetch: f }), { ok: true });
+    const prompt = f.chamadas[0].body.prompt;
+    assert.ok(prompt.startsWith(meu));
+    assert.match(prompt, /Red Cross/);
+    assert.match(prompt, /no text/i);
+    const d = await prisma.moduloEad.findUnique({ where: { id: m2.id } });
+    assert.equal(d.fotoPedido, meu);
+    assert.equal(d.fotoSugestao, null, 'a descrição antiga do Claude não vale para o pedido novo');
+    assert.ok(d.fotoIntroUrl);
+    await img.gerarOutra({ tipo: 'modulo', id: m2.id, pedido: 'x'.repeat(1500) }, { fetch: openaiFalso() });
+    assert.equal((await prisma.moduloEad.findUnique({ where: { id: m2.id } })).fotoPedido.length, 1000);
   });
 });

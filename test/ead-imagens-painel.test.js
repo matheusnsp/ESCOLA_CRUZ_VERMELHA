@@ -124,4 +124,19 @@ describe('painel: imagens com IA', { skip: temBanco ? false : 'sem DATABASE_URL 
     const { mes, total } = await img.contagem();
     assert.match(await get('/ead/ia'), new RegExp(`Imagens geradas com IA:(</b>)? ${mes} neste mês · ${total} no total`));
   });
+
+  test('[pedido] páginas têm o campo "Pedido da imagem" preenchido; gerar com o pedido editado usa o texto (sem chamar o Claude)', async () => {
+    const pm = await get(`/ead/modulo/${m1.id}/editar`);
+    assert.match(pm, /<textarea[^>]*name="pedido"/);
+    assert.match(await get(`/ead/curso/${co.id}`), /<textarea[^>]*name="pedido"[^>]*>Realistic photo, Brazilian|<textarea[^>]*name="pedido"[^>]*>[^<]*first aid kit/);
+    const n = chamadasClaude;
+    const f = openaiFalso();
+    img.definirFetch(f);
+    const r = await post(`/ead/modulo/${m1.id}/foto/gerar-outra`, { pedido: 'Escrito por mim: bebê dormindo no berço, luz suave' });
+    assert.equal(r.status, 302);
+    await img.ocioso();
+    assert.ok(f.chamadas[0].body.prompt.startsWith('Escrito por mim: bebê dormindo no berço, luz suave'));
+    assert.equal((await prisma.moduloEad.findUnique({ where: { id: m1.id } })).fotoPedido, 'Escrito por mim: bebê dormindo no berço, luz suave');
+    assert.equal(chamadasClaude, n, 'pedido escrito pela pessoa não passa pelo Claude');
+  });
 });

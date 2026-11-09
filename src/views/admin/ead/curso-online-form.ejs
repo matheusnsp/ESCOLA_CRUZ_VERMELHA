@@ -37,7 +37,11 @@
         <label class="check"><input type="checkbox" name="removerFoto"> Remover a foto</label></div>
     <% } %>
     <% if (!novo && typeof temOpenAI !== 'undefined' && temOpenAI) { %>
-      <div class="full"><button type="submit" form="formImagemCursoIa" class="adm-btn adm-btn-neutro"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar imagem com IA</button>
+      <div class="full ead-pedido-img">
+        <label>Pedido da imagem <small class="adm-mut">(opcional: em branco, o Claude escreve; pode editar ou escrever o seu, em português)</small>
+          <textarea name="pedido" form="formImagemCursoIa" rows="3" maxlength="1000" placeholder="Ex.: mãe montando um kit de primeiros socorros na cozinha, luz natural"><%= v.imagemPedido || '' %></textarea>
+        </label>
+        <button type="submit" form="formImagemCursoIa" class="adm-btn adm-btn-neutro"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar imagem com IA</button>
         <% if (v.imagemSugestao) { %><small class="adm-hint">Descrição da imagem: <%= v.imagemSugestao %></small><% } %></div>
     <% } %>
   </div>

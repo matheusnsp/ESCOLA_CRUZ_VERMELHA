@@ -1189,10 +1189,11 @@ router.post('/cursos/:id/imagem-ia', requirePermissao('cursos:gerenciar'), async
   if (await img.travaOcupada(nome)) return volta('erro', img.OCUPADO);
   const atorId = req.session.usuarioId;
   // Em segundo plano (revisão I4: atrás do Cloudflare, mais de 100 s vira erro 524); o formulário mostra o andamento.
+  const pedido = String((req.body && req.body.pedido) || '').trim(); // pedido escrito/editado pela pessoa (opcional)
   img.emSegundoPlano(nome, nome, async () => {
     let r;
     try {
-      r = await img.imagemDoCurso(req.params.id, { custo: (u) => ia.somarCustoAvulso(u) });
+      r = pedido ? await img.gerarOutra({ tipo: 'curso', id: req.params.id, pedido }) : await img.imagemDoCurso(req.params.id, { custo: (u) => ia.somarCustoAvulso(u) });
     } catch (e) {
       if (e.usage) await ia.somarCustoAvulso(e.usage).catch(() => {});
       throw e;
