@@ -37,8 +37,9 @@ const _planoBody = typeof plano !== 'undefined' ? plano : '';
 
 // Voltou com erro de validação → o aluno já tinha aceitado o contrato,
 // então reabre direto no passo de pagamento.
-// Abre direto no passo do pagamento depois de um erro ou de aplicar/tirar cupom (o cupom fica nesse passo).
-const _abrirNoPagamento = !!erro || !!(typeof cupomInfo !== 'undefined' && cupomInfo && (cupomInfo.cupom || cupomInfo.erro));
+// Abre direto no passo do pagamento depois de um erro ou quando a pessoa acabou de aplicar ou tirar um cupom
+// (cupomInfo.pediu: veio ?cupom= na URL, mesmo vazio). Cupom só guardado na sessão não pula o contrato.
+const _abrirNoPagamento = !!erro || !!(typeof cupomInfo !== 'undefined' && cupomInfo && cupomInfo.pediu);
 
 // ── Passos ───────────────────────────────────────────────────────────────
 // À vista / passaporte → contrato, pagamento                       = 2
