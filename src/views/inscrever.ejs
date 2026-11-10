@@ -37,7 +37,8 @@ const _planoBody = typeof plano !== 'undefined' ? plano : '';
 
 // Voltou com erro de validação → o aluno já tinha aceitado o contrato,
 // então reabre direto no passo de pagamento.
-const _abrirNoPagamento = !!erro;
+// Abre direto no passo do pagamento depois de um erro ou de aplicar/tirar cupom (o cupom fica nesse passo).
+const _abrirNoPagamento = !!erro || !!(typeof cupomInfo !== 'undefined' && cupomInfo && (cupomInfo.cupom || cupomInfo.erro));
 
 // ── Passos ───────────────────────────────────────────────────────────────
 // À vista / passaporte → contrato, pagamento                       = 2
@@ -100,24 +101,6 @@ const _trilha = _totalPassos === 2
            ETAPA 1 — contrato e escolha do plano na mesma tela
            ══════════════════════════════════════════════════════════════════ -->
       <% if (etapaAtual === 'escolha') { %>
-      <% var _cp = typeof cupomInfo !== 'undefined' && cupomInfo ? cupomInfo : { cupom: null, codigo: '', erro: null }; var _desc = Number(aVista.desconto || 0); %>
-      <!-- ───────────────── Cupom de desconto (2026-11-09): só no valor do curso ───────────────── -->
-      <div class="chk-cupom" id="cupom">
-        <% if (_cp.cupom) { %>
-          <p class="chk-cupom-ok"><i class="fa-solid fa-ticket" aria-hidden="true"></i> Cupom <b><%= _cp.codigo %></b> aplicado: <%= formatBRL(_desc) %> de desconto no curso. <a href="/inscrever/<%= turma.id %>?cupom=#cupom">tirar</a></p>
-        <% } else { %>
-          <form method="GET" action="/inscrever/<%= turma.id %>#cupom" class="chk-cupom-form">
-            <label for="chkCupom">Tem cupom?</label>
-            <span class="chk-cupom-linha">
-              <input id="chkCupom" type="text" name="cupom" maxlength="40" autocomplete="off" autocapitalize="characters" placeholder="CÓDIGO" value="<%= _cp.erro ? _cp.codigo : '' %>">
-              <button type="submit" class="chk-btn chk-btn-claro">Aplicar</button>
-            </span>
-            <% if (_cp.erro) { %><p class="chk-cupom-erro" role="alert"><%= _cp.erro %> <a href="/inscrever/<%= turma.id %>?cupom=#cupom">tirar</a></p><% } %>
-            <small>O desconto vale no valor do curso; a taxa de inscrição continua a mesma.</small>
-          </form>
-        <% } %>
-      </div>
-
       <!-- ───────────────── PASSO A: contrato ───────────────── -->
       <div id="passoContrato" <% if (_abrirNoPagamento) { %>hidden<% } %>>
         <div class="chk-cab anima" style="--d:0">
@@ -314,6 +297,25 @@ const _trilha = _totalPassos === 2
         <button id="btnVoltarContrato" type="button" class="chk-link">
           <i class="fa-solid fa-arrow-left"></i> Rever o contrato
         </button>
+
+      <% var _cp = typeof cupomInfo !== 'undefined' && cupomInfo ? cupomInfo : { cupom: null, codigo: '', erro: null }; var _desc = Number(aVista.desconto || 0); %>
+      <!-- ───────────────── Cupom de desconto (2026-11-09): só no valor do curso. Fica no passo do pagamento, não no contrato. ───────────────── -->
+      <div class="chk-cupom" id="cupom">
+        <% if (_cp.cupom) { %>
+          <p class="chk-cupom-ok"><i class="fa-solid fa-ticket" aria-hidden="true"></i> Cupom <b><%= _cp.codigo %></b> aplicado: <%= formatBRL(_desc) %> de desconto no curso. <a href="/inscrever/<%= turma.id %>?cupom=#cupom">tirar</a></p>
+        <% } else { %>
+          <form method="GET" action="/inscrever/<%= turma.id %>#cupom" class="chk-cupom-form">
+            <label for="chkCupom">Tem cupom?</label>
+            <span class="chk-cupom-linha">
+              <input id="chkCupom" type="text" name="cupom" maxlength="40" autocomplete="off" autocapitalize="characters" placeholder="CÓDIGO" value="<%= _cp.erro ? _cp.codigo : '' %>">
+              <button type="submit" class="chk-btn chk-btn-claro">Aplicar</button>
+            </span>
+            <% if (_cp.erro) { %><p class="chk-cupom-erro" role="alert"><%= _cp.erro %> <a href="/inscrever/<%= turma.id %>?cupom=#cupom">tirar</a></p><% } %>
+            <small>O desconto vale no valor do curso; a taxa de inscrição continua a mesma.</small>
+          </form>
+        <% } %>
+      </div>
+
 
         <div class="chk-aviso chk-aviso-ok">
           <i class="fa-solid fa-circle-check"></i>

@@ -29,7 +29,7 @@
       <div class="v-preco">
         <small>Matrícula à vista</small>
         <b><%= vitrine.reais(curso.precoAvista) %></b>
-        <% if (_taxa > 0) { %><em>+ <%= vitrine.reais(_taxa) %> de taxa de inscrição</em><% } %>
+        <em><%= _taxa > 0 ? '+ ' + vitrine.reais(_taxa) + ' de taxa de inscrição' : 'Inscrição grátis' %></em>
       </div>
       <span class="v-seta" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></span>
     </div>
