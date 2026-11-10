@@ -41,7 +41,7 @@
             <div>
               <small>Matrícula à vista</small>
               <strong><%= vitrine.reais(destaque.precoAvista) %></strong>
-              <% if (_tx > 0) { %><em>+ <%= vitrine.reais(_tx) %> de taxa de inscrição</em><% } %>
+              <em><%= _tx > 0 ? '+ ' + vitrine.reais(_tx) + ' de taxa de inscrição' : 'Inscrição grátis' %></em>
             </div>
             <div class="v-data" aria-label="Início em <%= _d.dia %> de <%= _d.mes %>"><b><%= _d.dia %></b><span><%= _d.mes %></span></div>
           </div>

@@ -88,7 +88,7 @@ _%>
             <div class="v-preco">
               <small>Matrícula à vista</small>
               <b><%= vitrine.reais(c.precoAvista) %></b>
-              <% if (tx > 0) { %><em>+ <%= vitrine.reais(tx) %> de taxa de inscrição</em><% } %>
+              <em><%= tx > 0 ? '+ ' + vitrine.reais(tx) + ' de taxa de inscrição' : 'Inscrição grátis' %></em>
             </div>
             <a class="v-btn v-btn-red v-ag-btn" href="/inscrever/<%= t.id %>">Inscrever-se <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
           </article>

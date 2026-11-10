@@ -28,6 +28,14 @@ var whats = 'https://wa.me/5521999922864?text=' + encodeURIComponent('Olá! Quer
 function dataLonga(d) {
   return new Date(d).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' });
 }
+// Título do card da turma: a data já está no quadrado vermelho, então aqui vai o dia da semana e
+// quantos encontros ("Quinta-feira · 1 encontro"), sem repetir a data por extenso.
+function tituloTurma(t) {
+  var dia = new Date(t.inicioPrevisto).toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'America/Sao_Paulo' });
+  dia = dia.charAt(0).toUpperCase() + dia.slice(1);
+  var n = t.aulas ? t.aulas.length : 0;
+  return n ? dia + ' · ' + n + (n === 1 ? ' encontro' : ' encontros') : dia;
+}
 %>
 
 <main>
@@ -57,7 +65,7 @@ function dataLonga(d) {
           <div class="v-curso-turma">
             <div class="v-data"><b><%= d.dia %></b><span><%= d.mes %></span></div>
             <div>
-              <strong>Previsto para <%= dataLonga(prox.inicioPrevisto) %></strong>
+              <strong><%= tituloTurma(prox) %></strong>
               <% if (prox.aulas && prox.aulas.length) { %><em><i class="fa-regular fa-clock" aria-hidden="true"></i> <%= prox.aulas[0].horario %></em><% } %>
             </div>
           </div>
@@ -80,7 +88,7 @@ function dataLonga(d) {
           <div>
             <small>Matrícula à vista</small>
             <strong><%= vitrine.reais(curso.precoAvista) %></strong>
-            <% if (taxa > 0) { %><em>+ <%= vitrine.reais(taxa) %> de taxa de inscrição</em><% } %>
+            <em><%= taxa > 0 ? '+ ' + vitrine.reais(taxa) + ' de taxa de inscrição' : 'Inscrição grátis' %></em>
           </div>
         </div>
 
@@ -131,7 +139,7 @@ function dataLonga(d) {
                 <div class="v-turma">
                   <div class="v-data"><b><%= dt.dia %></b><span><%= dt.mes %></span></div>
                   <div class="v-turma-txt">
-                    <strong>Previsto para <%= dataLonga(t.inicioPrevisto) %></strong>
+                    <strong><%= tituloTurma(t) %></strong>
                     <span><%= t.aulas && t.aulas.length ? t.aulas[0].horario + ' · ' : '' %>Praça da Cruz Vermelha, 10 · Centro</span>
                   </div>
                   <a class="v-btn v-btn-red" href="/inscrever/<%= t.id %>">Inscrever-se <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
