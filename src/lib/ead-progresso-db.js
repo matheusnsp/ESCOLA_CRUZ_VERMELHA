@@ -41,11 +41,13 @@ async function carregarCursoParaAluno(cursoOnlineId) {
 }
 
 async function garantirAlunoCurso(usuarioId, cursoOnlineId) {
-  return prisma.alunoCursoEad.upsert({
+  const ac = await prisma.alunoCursoEad.upsert({
     where: { usuarioId_cursoOnlineId: { usuarioId, cursoOnlineId } },
     update: {},
     create: { usuarioId, cursoOnlineId },
   });
+  require('./cache-rapido').limparLinks(usuarioId); // o link "Cursos online" do menu aparece na hora
+  return ac;
 }
 
 async function carregarProgresso(alunoCursoId) {

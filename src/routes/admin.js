@@ -792,6 +792,9 @@ router.get('/', async (req, res) => {
   const diaSP = hojeSPStr();
   const inicioMes = new Date(`${diaSP.slice(0, 8)}01T00:00:00-03:00`);
   const inicioSemana = new Date(inicioHoje.getTime() - 6 * 86400000);
+  // Não dependem do resto: começam agora e são esperadas lá embaixo (eram 2 idas ao banco em sequência).
+  const lotesMesPromessa = somasDosLotes({ inicioMes });
+  const comprovantesPromessa = comprovanteSaude.contarParaConferir().catch(() => 0);
   const mr = await mrPromessa;
   // Quem veio da matrícula rápida e já foi encaixado conta uma vez só: pela data em que pagou no site.
   const semRapida = mr.ok && mr.matriculaIds.length ? { id: { notIn: mr.matriculaIds } } : {};
@@ -833,7 +836,7 @@ router.get('/', async (req, res) => {
   ]);
   const pagProximas = await pagamentosPorTurma(proximasTurmas.map((t) => t.id));
   proximasTurmas.forEach((t) => { t.pag = pagProximas[t.id]; });
-  const lotesMes = await somasDosLotes({ inicioMes });
+  const lotesMes = await lotesMesPromessa;
   const recebidoMes = lotesMes.recebidoMes + cursoPagoMes.reduce((t, m) => t + Number(m.valorCurso), 0)
     + taxaSoMes.reduce((t, m) => t + (Number(m.valorTaxaMatricula) || 100), 0)
     + (mr.ok ? mr.recebidoMes : 0);
@@ -845,7 +848,7 @@ router.get('/', async (req, res) => {
     ...(mr.ok ? mr.recentes.slice(0, 6).map((r) => ({ tipo: 'rapida', quando: r.quando, r })) : []),
   ].sort((x, y) => y.quando - x.quando).slice(0, 6);
 
-  const comprovantesParaConferir = await comprovanteSaude.contarParaConferir().catch(() => 0);
+  const comprovantesParaConferir = await comprovantesPromessa;
 
   res.render('admin/dashboard', {
     comprovantesParaConferir,

@@ -327,13 +327,20 @@ siteAluno.use((req, res, next) => require('./lib/escola-digital').estaLigada().t
 siteAluno.use((req, res, next) => {
   const id = req.session && req.session.papel === 'ALUNO' ? req.session.usuarioId : null;
   if (!id) return next();
+  // Guardado por 2 min (lib/cache-rapido.js): eram 3 contagens no banco em toda página do aluno logado.
+  const guardado = cacheRapido.linksGuardados(id);
+  if (guardado) { res.locals.contaLinks = guardado; return next(); }
   Promise.all([
     // A compra de e-book também é matrícula na turma ONLINE: não conta como curso online.
     prisma.alunoCursoEad.count({ where: { usuarioId: id } }).then((n) => n || prisma.matricula.count({ where: { alunoId: id, turma: { status: 'ONLINE', curso: { ebook: null } } } })).catch(() => 0),
     prisma.gestorEscolaEad.count({ where: { usuarioId: id } }).catch(() => 0),
     // E-books (2026-11-09): o grátis já baixado ou o pago.
     prisma.acessoEbook.count({ where: { usuarioId: id } }).then((n) => n || prisma.matricula.count({ where: { alunoId: id, statusPagamento: { in: ['PAGO', 'PARCELADO'] }, turma: { status: 'ONLINE', curso: { ebook: { isNot: null } } } } })).catch(() => 0),
-  ]).then(([cursos, gestor, e]) => { res.locals.contaLinks = { cursosOnline: cursos > 0, gestor: gestor > 0, ebooks: e > 0 }; next(); }, () => next());
+  ]).then(([cursos, gestor, e]) => {
+    res.locals.contaLinks = { cursosOnline: cursos > 0, gestor: gestor > 0, ebooks: e > 0 };
+    cacheRapido.guardarLinks(id, res.locals.contaLinks);
+    next();
+  }, () => next());
 });
 siteAluno.use(require('./routes/ebooks')); // e-books da Escola Digital (2026-11-09), antes de /escola-digital/<curso>
 siteAluno.use(require('./routes/ead-online'));

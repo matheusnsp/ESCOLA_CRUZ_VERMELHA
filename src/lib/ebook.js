@@ -124,6 +124,7 @@ async function registrarDownload(usuarioId, ebook) {
     await tx.downloadEbook.create({ data: { ebookId: ebook.id, usuarioId } });
     if (ebook.gratuito) {
       await tx.acessoEbook.upsert({ where: { ebookId_usuarioId: { ebookId: ebook.id, usuarioId } }, update: {}, create: { ebookId: ebook.id, usuarioId } });
+      require('./cache-rapido').limparLinks(usuarioId); // o link "E-books" do menu aparece na hora
     }
     return { ok: true };
   });
