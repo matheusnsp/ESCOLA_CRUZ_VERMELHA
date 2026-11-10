@@ -53,7 +53,8 @@
     <% var _alvo = v.alvo !== undefined ? v.alvo : (v.cursoOnlineId ? 'curso:' + v.cursoOnlineId : ''); var _eb = typeof ebooks !== 'undefined' ? ebooks : []; var _pr = typeof presenciais !== 'undefined' ? presenciais : []; %>
     <label>Vale para
       <select name="alvo">
-        <option value="">Todos os cursos online e e-books</option>
+        <option value="tudo" <%= _alvo === 'tudo' ? 'selected' : '' %>>Tudo: cursos online, e-books e presenciais</option>
+        <option value="">Todos os cursos online e e-books (não vale no presencial)</option>
         <optgroup label="Cursos online">
           <% cursos.forEach(function (c) { %><option value="curso:<%= c.id %>" <%= _alvo === 'curso:' + c.id ? 'selected' : '' %>><%= c.curso.nome %></option><% }) %>
         </optgroup>

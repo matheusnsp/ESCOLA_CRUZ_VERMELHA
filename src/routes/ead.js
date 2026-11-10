@@ -705,7 +705,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
   });
   const valoresDoCupom = (c) => ({
     codigo: c.codigo, tipo: c.tipo, valor: Number(c.valor).toLocaleString('pt-BR', { maximumFractionDigits: 2 }), cursoOnlineId: c.cursoOnlineId || '',
-    alvo: c.ebookId ? `ebook:${c.ebookId}` : c.cursoOnlineId ? `curso:${c.cursoOnlineId}` : c.cursoId ? `presencial:${c.cursoId}` : c.todosPresenciais ? 'presenciais' : '',
+    alvo: c.ebookId ? `ebook:${c.ebookId}` : c.cursoOnlineId ? `curso:${c.cursoOnlineId}` : c.cursoId ? `presencial:${c.cursoId}` : c.todosPresenciais ? 'presenciais' : c.valeTudo ? 'tudo' : '',
     validoAte: c.validoAte ? new Date(c.validoAte).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }) : '',
     limiteUsos: c.limiteUsos === null ? '' : String(c.limiteUsos), observacao: c.observacao || '',
   });

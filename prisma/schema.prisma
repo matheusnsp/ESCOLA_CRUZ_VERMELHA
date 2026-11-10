@@ -672,6 +672,8 @@ model CupomEad {
   cursoId          String?
   curso            Curso?           @relation(fields: [cursoId], references: [id], onDelete: Restrict)
   todosPresenciais Boolean          @default(false)
+  // "Tudo" (2026-11-10): vale em qualquer produto — cursos online, e-books e presenciais.
+  valeTudo         Boolean          @default(false)
   compras       CupomMatriculaEad[]
 }
 
