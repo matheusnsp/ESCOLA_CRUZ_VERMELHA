@@ -1,0 +1,112 @@
+<%- include('head', { titulo: 'Suspeitos' }) %>
+<%- include('header', { ativo: 'suspeitos' }) %>
+<%#
+  Aba "Suspeitos" (só Dev): as tentativas de pagamento em rajada (LogAuditoria RAJADA_PAGAMENTO, gravada
+  por lib/cobranca-guarda.js quando a matrícula estoura o limite ou o gateway fica sem responder).
+  Daqui dá para banir (rota /alunos/:id/banir, pelo modal global com o motivo já preenchido) ou desbanir.
+  O card do Painel da secretaria leva só à ficha do aluno; esta página é a visão completa, para o Dev.
+%>
+<%
+  const dataHora = (d) => new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const diaMes = (d) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' });
+  const inicioTurma = (d) => (d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '');
+%>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Configurações</h1>
+</div>
+<%- include('abas-config', { aba: 'suspeitos' }) %>
+
+<% if (flash) { %>
+  <div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= flash %></div>
+<% } %>
+
+<p class="adm-mut">
+  Matrículas em que alguém apertou "Pagar" muitas vezes seguidas (mais de 5 cobranças em 15 min) ou insistiu
+  com o gateway sem resposta. Cada linha é um aviso; a mesma matrícula gera no máximo um a cada 15 min.
+</p>
+
+<form method="GET" action="/suspeitos" class="adm-filtros">
+  <label class="adm-campo">
+    <span>Período</span>
+    <select name="dias">
+      <% for (const d of [7, 30, 90, 365]) { %>
+        <option value="<%= d %>" <%= dias === d ? 'selected' : '' %>>Últimos <%= d %> dias</option>
+      <% } %>
+    </select>
+  </label>
+  <button type="submit" class="adm-btn-neutro">
+    <i class="fa-solid fa-filter"></i> Filtrar
+  </button>
+</form>
+
+<div class="adm-box">
+<% if (!suspeitos.length) { %>
+  <div class="adm-vazio">Nenhuma tentativa de pagamento em rajada nos últimos <%= dias %> dias.</div>
+<% } else { %>
+  <table class="adm-table adm-table-cards">
+    <thead>
+      <tr>
+        <th>Quando</th>
+        <th>Aluno</th>
+        <th>Curso / turma</th>
+        <th>Tentativas</th>
+        <th>Janela</th>
+        <th>Gateway sem resposta</th>
+        <th>IP</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+    <% for (const s of suspeitos) { %>
+      <tr>
+        <td class="adm-mut"><%= dataHora(s.criadoEm) %></td>
+        <td>
+          <% if (s.aluno) { %>
+            <a href="/alunos/<%= s.aluno.id %>/matriculas"><strong><%= s.aluno.nome %></strong></a><br>
+            <small class="adm-mut"><%= s.aluno.email %></small>
+          <% } else { %>
+            <span class="adm-mut">Matrícula não encontrada</span>
+          <% } %>
+        </td>
+        <td>
+          <%= s.curso || '—' %>
+          <% if (s.turmaInicio) { %><br><small class="adm-mut">Turma de <%= inicioTurma(s.turmaInicio) %></small><% } %>
+        </td>
+        <td><strong><%= s.tentativas %></strong></td>
+        <td><%= s.janelaMin %> min</td>
+        <td><%= s.semResposta ? 'Sim' : 'Não' %></td>
+        <td class="adm-mut"><%= s.ip || '—' %></td>
+        <td class="adm-acoes">
+          <% if (s.aluno && !s.aluno.bloqueioTotal) { %>
+            <form method="POST" action="/alunos/<%= s.aluno.id %>/banir" style="display:inline"
+              data-confirmar="Banir <%= s.aluno.nome.split(' ')[0] %>? Cancela todas as inscrições ativas e bloqueia o acesso ao site."
+              data-motivo="Motivo do banimento"
+              data-motivo-valor="Tentativas de pagamento em rajada em <%= diaMes(s.criadoEm) %>"
+              data-botao="Banir">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="voltar" value="suspeitos">
+              <button type="submit" class="adm-mini adm-mini-perigo" title="Banir">
+                <i class="fa-solid fa-ban"></i>
+              </button>
+            </form>
+          <% } else if (s.aluno) { %>
+            <span class="adm-mut">Banido(a)</span>
+            <form method="POST" action="/alunos/<%= s.aluno.id %>/desbanir" style="display:inline"
+              data-confirmar="Desbanir <%= s.aluno.nome.split(' ')[0] %>?" data-confirmar-tipo="ok" data-botao="Desbanir">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="voltar" value="suspeitos">
+              <button type="submit" class="adm-mini" style="color:#16a34a;border:none;background:none;cursor:pointer;" title="Desbanir">
+                <i class="fa-solid fa-lock-open"></i>
+              </button>
+            </form>
+          <% } %>
+        </td>
+      </tr>
+    <% } %>
+    </tbody>
+  </table>
+<% } %>
+</div>
+
+<%- include('foot') %>

@@ -63,7 +63,7 @@
   <% } %>
     <% if (admPapel === 'DEV') { %>
       <%# Admin e Ban viraram abas de Configurações (abas-config.ejs) %>
-      <a href="/dev/usuarios" class="<%= ['dev-usuarios', 'banimentos'].includes(secaoAtiva) ? 'on' : '' %>"><i class="fa-solid fa-gear"></i> Configurações</a>
+      <a href="/dev/usuarios" class="<%= ['dev-usuarios', 'banimentos', 'suspeitos'].includes(secaoAtiva) ? 'on' : '' %>"><i class="fa-solid fa-gear"></i> Configurações</a>
     <% } %>
   </nav>
 
@@ -92,6 +92,7 @@
      O formulário pede com atributos:
        data-confirmar="pergunta"          obrigatório
        data-motivo="Motivo do estorno"    mostra um campo de motivo obrigatório (vai em name="motivo")
+       data-motivo-valor="texto"          motivo já preenchido (a pessoa pode mudar; Suspeitos usa)
        data-contabil                      mostra "Pago fora da Únicopag (só contábil)" (name="apenasContabil")
        data-botao="Estornar"              texto do botão de confirmar -->
 <div class="adm-modal-overlay" id="admConfirma" aria-hidden="true">
@@ -142,7 +143,7 @@
       atual = f;
       txt.textContent = f.dataset.confirmar;
       var pedeMotivo = 'motivo' in f.dataset;
-      motivoRot.hidden = !pedeMotivo; erro.hidden = true; motivo.value = '';
+      motivoRot.hidden = !pedeMotivo; erro.hidden = true; motivo.value = f.dataset.motivoValor || '';
       motivoTit.textContent = f.dataset.motivo || 'Motivo';
       contabilRot.hidden = !('contabil' in f.dataset); contabil.checked = false;
       sim.textContent = f.dataset.botao || 'Confirmar';

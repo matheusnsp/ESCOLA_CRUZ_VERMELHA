@@ -1881,6 +1881,12 @@ a.mr-num:hover { border-color: var(--linha); }
 .cs-recusar input[type=text] { flex: 1 1 260px; min-width: 0; padding: 8px 10px; border: 1px solid var(--linha); border-radius: 8px; font: inherit; font-size: 13.5px; background: var(--card); color: var(--tinta); }
 .adm-alerta-comprovante { margin: 0 0 16px; background: var(--alerta-bg); color: var(--alerta-tx); text-decoration: none; align-items: center; }
 .adm-alerta-comprovante span { flex: 1; }
+/* Tentativas de pagamento em rajada (Painel e ficha do aluno; lib/cobranca-guarda.js) */
+.adm-alerta-rajada { margin: 0 0 16px; background: var(--erro-bg); color: var(--erro-tx); }
+.adm-rajada-lista { margin: 4px 0 0; padding-left: 18px; font-weight: 500; }
+.adm-rajada-lista a { color: inherit; text-decoration: underline; }
+.adm-rajada { color: var(--erro-tx); font-weight: 600; }
+.adm-mini-perigo { color: var(--erro-tx); } /* botão Banir da aba Suspeitos */
 .cs-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px; border-radius: 8px; border: 1px solid var(--linha); background: var(--campo); color: var(--tinta); font: inherit; font-size: 13px; font-weight: 700; text-decoration: none; cursor: pointer; }
 .cs-btn:hover { border-color: var(--tinta); }
 .cs-btn-recusar { color: var(--erro-tx); }

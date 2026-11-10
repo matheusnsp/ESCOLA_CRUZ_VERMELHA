@@ -36,6 +36,20 @@
   </a>
 <% } %>
 
+<% if (typeof rajadas !== 'undefined' && rajadas && rajadas.total && podeAlunos) { %>
+  <div class="adm-alerta adm-alerta-rajada" role="status">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <div>
+      <span>Pagamento: <%= rajadas.total %> tentativa<%= rajadas.total > 1 ? 's' : '' %> em rajada em 24 h</span>
+      <ul class="adm-rajada-lista">
+        <% rajadas.alunos.forEach(function (a) { %>
+          <li><a href="/alunos/<%= a.id %>/matriculas"><%= a.nome %></a><% if (a.vezes > 1) { %> (<%= a.vezes %>×)<% } %></li>
+        <% }) %>
+      </ul>
+    </div>
+  </div>
+<% } %>
+
 <!-- ═══ O dia em números ═════════════════════════════════════════════════ -->
 <div class="adm-cards <%= podeDinheiro ? 'c3' : (podePend ? 'c2' : 'c1') %>">
   <<%= podeMatriculas ? 'a' : 'div' %><% if (podeMatriculas) { %> href="/inscricoes"<% } %> class="adm-stat <%= podeMatriculas ? 'adm-stat-clicavel' : '' %>">

@@ -121,7 +121,7 @@ router.post(P('/comprar'), requireLogin, limiteCupom, comEbook(async (req, res, 
   const matricula = await compra.matriculaDaCompra(usuarioId, turma.id, forma, valor);
   if (['PAGO', 'PARCELADO'].includes(matricula.statusPagamento)) return res.redirect(base);
   await compra.gravarCupom(prisma, matricula.id, v);
-  const cobranca = await iniciarCobrancaAVista({ matricula, nomeCurso: `${ebook.curso.nome} (e-book)`, total: valor, forma, aluno: quem, origem: lerOrigem(req) });
+  const cobranca = await iniciarCobrancaAVista({ matricula, nomeCurso: `${ebook.curso.nome} (e-book)`, total: valor, forma, aluno: quem, origem: lerOrigem(req), ip: req.ip, alunoId: usuarioId });
   if (cobranca.erro) return res.redirect(`${base}?erro=pagamento`);
   return res.redirect(cobranca.redirect);
 }));
