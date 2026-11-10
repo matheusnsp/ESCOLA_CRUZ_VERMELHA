@@ -17,6 +17,10 @@ const MAX_ENTRADAS = 500;
 
 const catalogo = new Map(); // chave -> { em, valor: Promise }
 const bans = new Map();     // usuarioId -> { em, bloqueado }
+// Links do menu da conta do aluno (cursos online, gestor, e-books): 3 contagens em TODA página de quem
+// está logado. Guardadas por 2 min; comprar curso online/e-book ou virar gestor limpa a entrada na hora.
+const TTL_LINKS_MS = 2 * 60 * 1000;
+const linksConta = new Map(); // usuarioId -> { em, valor }
 
 function aparar(mapa) {
   if (mapa.size <= MAX_ENTRADAS) return;
@@ -76,9 +80,24 @@ function guardarBan(usuarioId, bloqueado) {
   aparar(bans);
 }
 
+function linksGuardados(usuarioId) {
+  const achado = linksConta.get(usuarioId);
+  return achado && Date.now() - achado.em < TTL_LINKS_MS ? achado.valor : null;
+}
+
+function guardarLinks(usuarioId, valor) {
+  linksConta.set(usuarioId, { em: Date.now(), valor });
+  aparar(linksConta);
+}
+
+function limparLinks(usuarioId) {
+  linksConta.delete(String(usuarioId));
+}
+
 function limparTudo() {
   catalogo.clear();
   bans.clear();
+  linksConta.clear();
 }
 
-module.exports = { doCatalogo, banGuardado, guardarBan, limparTudo, TTL_CATALOGO_MS, TTL_BAN_MS };
+module.exports = { doCatalogo, banGuardado, guardarBan, linksGuardados, guardarLinks, limparLinks, limparTudo, TTL_CATALOGO_MS, TTL_BAN_MS, TTL_LINKS_MS };

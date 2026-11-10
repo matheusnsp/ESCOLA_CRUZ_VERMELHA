@@ -563,10 +563,21 @@ async function situacaoSaude(curso, alunoId, query = {}) {
 }
 
 router.get('/inscrever/:turmaId', requireLogin, limiteCupom, async (req, res) => {
-  const turma = await prisma.turma.findUnique({
-    where: { id: req.params.turmaId },
-    include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
-  });
+  // Turma, matrícula existente e documento do aluno não dependem um do outro: uma ida só ao banco
+  // (eram três em sequência; cada ida ao Supabase custa caro a partir do Render).
+  const [turma, jaInscrito, aluno] = await Promise.all([
+    prisma.turma.findUnique({
+      where: { id: req.params.turmaId },
+      include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
+    }),
+    prisma.matricula.findUnique({
+      where: { alunoId_turmaId: { alunoId: req.session.usuarioId, turmaId: req.params.turmaId } },
+    }),
+    prisma.usuario.findUnique({
+      where: { id: req.session.usuarioId },
+      select: { tipoDocumento: true },
+    }),
+  ]);
 
   if (turmaCongelada(turma))
     return res.status(409).render('erro', { mensagem: 'Esta turma está pausada pela escola e não recebe inscrições agora. Veja as outras turmas do curso ou fale com a secretaria. Quem já está inscrito continua com a vaga garantida.' });
@@ -575,9 +586,6 @@ router.get('/inscrever/:turmaId', requireLogin, limiteCupom, async (req, res) =>
   if (!podeInscrever)
     return res.status(404).render('erro', { mensagem: 'Turma não encontrada ou não está aberta.' });
 
-  const jaInscrito = await prisma.matricula.findUnique({
-    where: { alunoId_turmaId: { alunoId: req.session.usuarioId, turmaId: turma.id } },
-  });
   // 💡 matrícula fantasma (nunca pagou nada): não bloqueia. A pessoa vê a tela
   // normal de novo (contrato + escolha de plano) e, ao reenviar o formulário,
   // criarOuRetomarMatricula reaproveita este mesmo registro.
@@ -601,22 +609,25 @@ router.get('/inscrever/:turmaId', requireLogin, limiteCupom, async (req, res) =>
     return res.render('erro', { mensagem: 'Você já está inscrito nesta turma. Veja em "Minha conta".' });
   }
 
-  const aluno = await prisma.usuario.findUnique({
-    where: { id: req.session.usuarioId },
-    select: { tipoDocumento: true },
-  });
   const ehPassaporte = aluno?.tipoDocumento === 'PASSAPORTE';
 
   const cupomInfo = await cupomDaInscricao(req, turma.curso);
-  const aVista = await calcularValores(turma.curso, 'A_VISTA', req.session.usuarioId, { cupom: cupomInfo.cupom });
 
   // Parcelamento só é oferecido a quem tem CPF/CNPJ (gateway) e quando o
   // curso de fato tem mais de 1 parcela configurada. Curso de graça pelo cupom: só à vista (a taxa).
+  // À vista, parcelado e situação de saúde calculados juntos (eram até 4 idas ao banco em sequência);
+  // o parcelado só é mostrado se o curso não saiu de graça pelo cupom.
+  const numParcelas = Number(turma.curso.parcelas) || 1;
+  const ofereceParcelado = !ehPassaporte && numParcelas > 1;
+  const [aVista, parceladoCalc, saude] = await Promise.all([
+    calcularValores(turma.curso, 'A_VISTA', req.session.usuarioId, { cupom: cupomInfo.cupom }),
+    ofereceParcelado ? calcularValores(turma.curso, 'PARCELADO', req.session.usuarioId, { cupom: cupomInfo.cupom }) : null,
+    situacaoSaude(turma.curso, req.session.usuarioId, req.query),
+  ]);
   let parcelado = null;
   let parceladoComJuros = null;
-  const numParcelas = Number(turma.curso.parcelas) || 1;
-  if (!ehPassaporte && numParcelas > 1 && Number(aVista.valorCurso) > 0) {
-    parcelado = await calcularValores(turma.curso, 'PARCELADO', req.session.usuarioId, { cupom: cupomInfo.cupom });
+  if (ofereceParcelado && Number(aVista.valorCurso) > 0) {
+    parcelado = parceladoCalc;
     parceladoComJuros = await montarParceladoComJuros(parcelado, numParcelas);
   }
 
@@ -624,7 +635,7 @@ router.get('/inscrever/:turmaId', requireLogin, limiteCupom, async (req, res) =>
     turma, curso: turma.curso, formatBRL,
     aVista, parcelado, parceladoComJuros, cupomInfo,
     ehPassaporte,
-    saude: await situacaoSaude(turma.curso, req.session.usuarioId, req.query),
+    saude,
     etapaAtual: 'escolha',
     erro: req.query.erro === 'expirado'
       ? 'O tempo para concluir o pagamento acabou. A cobrança foi cancelada — você pode começar de novo.'

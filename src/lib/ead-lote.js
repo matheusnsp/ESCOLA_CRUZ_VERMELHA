@@ -50,6 +50,7 @@ async function ligarGestor(escola, pessoa) {
   const c = await contaParaPessoa(pessoa);
   if (!c.ok) return c;
   await prisma.gestorEscolaEad.upsert({ where: { escolaId_usuarioId: { escolaId: escola.id, usuarioId: c.usuario.id } }, update: {}, create: { escolaId: escola.id, usuarioId: c.usuario.id } });
+  require('./cache-rapido').limparLinks(c.usuario.id); // o link "Minha escola" do menu aparece na hora
   await avisarGestor(c.usuario, escola, c.nova ? c.senhaInicial : undefined);
   return { ok: true, usuario: c.usuario };
 }
@@ -110,6 +111,7 @@ async function criarLote({ escola, cursoOnlineId, vagas, validoAte, valor, forma
       await tx.gestorEscolaEad.upsert({ where: { escolaId_usuarioId: { escolaId: e.id, usuarioId: c.usuario.id } }, update: {}, create: { escolaId: e.id, usuarioId: c.usuario.id } });
       return { lote: l, esc: e };
     }));
+    require('./cache-rapido').limparLinks(c.usuario.id); // o link "Minha escola" do menu aparece na hora
   } catch (e) {
     if (c.nova) await prisma.usuario.delete({ where: { id: c.usuario.id } }).catch(() => {});
     console.error('[EAD] criar lote:', e.message);

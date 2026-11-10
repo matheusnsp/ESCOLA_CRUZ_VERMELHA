@@ -160,17 +160,25 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
   // 💡 NOVO — anexa o ponto de retomada em cada matrícula (null quando não há).
   const matriculasComRetomada = matriculas.map((m) => ({ ...m, retomada: calcularRetomada(m) }));
 
+  // As quatro leituras não dependem uma da outra: em paralelo (eram 4 idas ao banco em sequência).
+  const [cursosOnline, ebooks, saude, avisosTurma] = await Promise.all([
+    require('../lib/ead-meus-cursos').meusCursosOnline(usuario.id).catch((e) => { console.error('[Minha conta] cursos online:', e.message); return []; }),
+    require('../lib/ebook').meus(usuario.id).catch((e) => { console.error('[Minha conta] e-books:', e.message); return []; }),
+    saudeDaConta(usuario.id, matriculas, req.query),
+    avisosDeBoasVindas(matriculas),
+  ]);
+
   res.render('minha-conta', {
     usuario,
     sec,
     // O curso online (turma ONLINE) tem a aba própria "Cursos online" (etapa 7); as inscrições ficam só com o presencial.
     matriculas: matriculasComRetomada.filter((m) => m.turma.status !== 'ONLINE'),
     urlOnline: require('../lib/vitrine').urlOnline,
-    cursosOnline: await require('../lib/ead-meus-cursos').meusCursosOnline(usuario.id).catch((e) => { console.error('[Minha conta] cursos online:', e.message); return []; }),
-    ebooks: await require('../lib/ebook').meus(usuario.id).catch((e) => { console.error('[Minha conta] e-books:', e.message); return []; }),
+    cursosOnline,
+    ebooks,
     vitrine: require('../lib/vitrine'),
-    saude: await saudeDaConta(usuario.id, matriculas, req.query),
-    avisosTurma: await avisosDeBoasVindas(matriculas),
+    saude,
+    avisosTurma,
     matriculasAtivas,
     docMascarado: usuario.cpfCnpj ? mascarar(usuario.cpfCnpj) : usuario.passaporte ? usuario.passaporte : '—',
     formatBRL,
