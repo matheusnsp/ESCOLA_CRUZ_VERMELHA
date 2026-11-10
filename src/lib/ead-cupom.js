@@ -50,9 +50,12 @@ async function validarCupom(codigo, co, { ebook = false, presencial = false, pre
   const c = normalizarCodigo(codigo);
   const cupom = codigoValido(c) ? await prisma.cupomEad.findUnique({ where: { codigo: c } }) : null;
   if (!cupom || !cupom.ativo) return { erro: MSG.naoAchou };
-  if (presencial ? !valeNoPresencial(cupom, co) : ehDoPresencial(cupom)) return { erro: MSG.outroCurso };
-  if (cupom.cursoOnlineId && (ebook || presencial || cupom.cursoOnlineId !== co.id)) return { erro: MSG.outroCurso };
-  if (cupom.ebookId && (!ebook || cupom.ebookId !== co.id)) return { erro: MSG.outroCurso };
+  // "Tudo" (2026-11-10): vale em qualquer produto; só as regras de validade e de limite se aplicam.
+  if (!cupom.valeTudo) {
+    if (presencial ? !valeNoPresencial(cupom, co) : ehDoPresencial(cupom)) return { erro: MSG.outroCurso };
+    if (cupom.cursoOnlineId && (ebook || presencial || cupom.cursoOnlineId !== co.id)) return { erro: MSG.outroCurso };
+    if (cupom.ebookId && (!ebook || cupom.ebookId !== co.id)) return { erro: MSG.outroCurso };
+  }
   if (cupom.validoAte && fimDoDiaRio(cupom.validoAte) < new Date()) return { erro: MSG.venceu };
   if (cupom.limiteUsos !== null && cupom.limiteUsos !== undefined && await usosDoCupom(cupom.id) >= cupom.limiteUsos) return { erro: MSG.esgotado };
   return { cupom, ...calcularDesconto(cupom, Number(presencial ? preco || 0 : co.precoOnline || 0)) };
@@ -81,9 +84,11 @@ function lerDados(d) {
   const ebookId = alvo && alvo[1] === 'ebook' && ehId(alvo[2]) ? alvo[2] : null;
   const cursoId = alvo && alvo[1] === 'presencial' && ehId(alvo[2]) ? alvo[2] : null;
   const todosPresenciais = d.alvo === 'presenciais';
+  // "tudo" (2026-11-10): sem alvo nenhum e com valeTudo; o resto fica vazio.
+  const valeTudo = d.alvo === 'tudo';
   const validoAte = d.validoAte ? new Date(d.validoAte) : null;
   if (validoAte && Number.isNaN(validoAte.getTime())) return { erro: 'Validade inválida.' };
-  return { dados: { codigo, tipo, valor, cursoOnlineId, ebookId, cursoId, todosPresenciais, validoAte, limiteUsos, observacao: String(d.observacao || '').trim().slice(0, 500) || null } };
+  return { dados: { codigo, tipo, valor, cursoOnlineId, ebookId, cursoId, todosPresenciais, valeTudo, validoAte, limiteUsos, observacao: String(d.observacao || '').trim().slice(0, 500) || null } };
 }
 
 const repetido = (e) => e && e.code === 'P2002';
@@ -110,7 +115,7 @@ async function alterarCupom(id, d, atorId) {
   if (temCompra && (r.dados.codigo !== atual.codigo || r.dados.tipo !== atual.tipo)) return { erro: 'Este cupom já foi usado: o código e o tipo não mudam.' };
   // Revisão do cupom presencial (I2): usado, o valor e o "Vale para" também ficam (as inscrições guardam o desconto).
   const mesmoAlvo = (a, b) => (a.cursoOnlineId || null) === (b.cursoOnlineId || null) && (a.ebookId || null) === (b.ebookId || null)
-    && (a.cursoId || null) === (b.cursoId || null) && !!a.todosPresenciais === !!b.todosPresenciais;
+    && (a.cursoId || null) === (b.cursoId || null) && !!a.todosPresenciais === !!b.todosPresenciais && !!a.valeTudo === !!b.valeTudo;
   if (temCompra && (Number(r.dados.valor) !== Number(atual.valor) || !mesmoAlvo(r.dados, atual))) return { erro: 'Este cupom já foi usado: o desconto e o "Vale para" não mudam. Crie outro cupom.' };
   try {
     const cupom = await prisma.cupomEad.update({ where: { id }, data: r.dados });
@@ -155,7 +160,7 @@ async function listarCupons({ ativos } = {}) {
   const porCupom = new Map(pagas.map((p) => [p.cupomId, p]));
   return cupons.map((c) => {
     const p = porCupom.get(c.id);
-    const rotulo = c.cursoOnline ? c.cursoOnline.curso.nome : c.ebook ? `E-book: ${c.ebook.curso.nome}` : c.curso ? `Presencial: ${c.curso.nome}` : c.todosPresenciais ? 'Todos os cursos presenciais' : null;
+    const rotulo = c.cursoOnline ? c.cursoOnline.curso.nome : c.ebook ? `E-book: ${c.ebook.curso.nome}` : c.curso ? `Presencial: ${c.curso.nome}` : c.todosPresenciais ? 'Todos os cursos presenciais' : c.valeTudo ? 'Tudo (online, e-books e presenciais)' : null;
     return { ...c, curso: rotulo, usos: p ? p._count._all : 0, totalDesconto: p ? round2(p._sum.desconto || 0) : 0 };
   });
 }
