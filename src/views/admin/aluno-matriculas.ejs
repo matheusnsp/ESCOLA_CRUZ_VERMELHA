@@ -138,6 +138,16 @@
                 }) %>
               </small>
 
+              <!-- TENTATIVAS DE PAGAMENTO EM RAJADA (lib/cobranca-guarda.js) -->
+              <% ((typeof rajadas !== 'undefined' && rajadas[m.id]) || []).forEach(function (r) { %>
+                <br>
+                <small class="adm-rajada">
+                  <i class="fa-solid fa-triangle-exclamation"></i>
+                  Tentativas de pagamento em rajada em <%= new Date(r.criadoEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' }) %>
+                  (<%= r.tentativas %> em <%= r.janelaMin %> min)
+                </small>
+              <% }) %>
+
               <!-- DIAS / HORÁRIO -->
               <% if (m.turma.diasSemana || m.turma.horario) { %>
 

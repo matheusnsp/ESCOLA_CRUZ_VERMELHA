@@ -7,11 +7,18 @@
 //   PIX:     reaproveita o QR dos últimos 30 min (cada clique gerava uma cobrança nova, e cada uma é
 //            pagável); senão cria o Pagamento PENDENTE e chama o gateway. Se o gateway falhar, espera um
 //            pouco pela ref (o webhook pode gravá-la por fora) antes de cancelar.
+//
+// Proteção contra rajadas (lib/cobranca-guarda.js): o reaproveitamento do QR, o limite de tentativas
+// por matrícula e o disjuntor do gateway ficam em podeCobrar; a criação passa pela trava por matrícula
+// (criarCobrancaTravada), para dois cliques simultâneos virarem um só Pagamento. Recusa volta como
+// { erro, status: 429 }, para a rota responder com o mesmo status.
 
 const prisma = require('../db');
+const { podeCobrar, criarCobrancaTravada, aguardarPagamento } = require('./cobranca-guarda');
 
 const JANELA_PIX_MS = 30 * 60 * 1000;
 const TENTATIVAS_ESPERA = 15;
+const ERRO_PIX = 'Houve um problema ao processar o pagamento. Tente novamente.';
 
 function urlRetorno(matriculaId, { pix = false, etapa = 'curso' } = {}) {
   return `/inscricao/retorno?matriculaId=${matriculaId}`
@@ -20,30 +27,31 @@ function urlRetorno(matriculaId, { pix = false, etapa = 'curso' } = {}) {
 
 const criarTransacaoPadrao = (...args) => require('./unicopag').criarTransacao(...args);
 
-async function iniciarCobrancaAVista({ matricula, nomeCurso, total, forma, aluno, origem, criarTransacao = criarTransacaoPadrao, esperaMs = 2000 }) {
+async function iniciarCobrancaAVista({ matricula, nomeCurso, total, forma, aluno, origem, criarTransacao = criarTransacaoPadrao, esperaMs = 2000, ip = null, alunoId = null }) {
   const retornoPix = () => ({ redirect: urlRetorno(matricula.id, { pix: true, etapa: 'curso' }) });
   if (forma === 'CREDITO') return { redirect: urlRetorno(matricula.id, { pix: false, etapa: 'curso' }) };
 
-  const pixRecente = await prisma.pagamento.findFirst({
-    where: {
-      matriculaId: matricula.id,
-      tipo: 'CURSO',
-      status: 'PENDENTE',
-      metodo: 'PIX',
-      valor: total, // QR de outro valor (cupom aplicado ou tirado, preço mudado) não serve: gera outro
-      pixQrCode: { not: null },
-      criadoEm: { gt: new Date(Date.now() - JANELA_PIX_MS) },
-    },
-    orderBy: { criadoEm: 'desc' },
-  });
-  if (pixRecente) {
-    console.log(`[PIX] Reaproveitando QR existente (${pixRecente.id}) da matrícula ${matricula.id}.`);
+  // QR de outro valor (cupom aplicado ou tirado, preço mudado) não serve: gera outro.
+  const guarda = await podeCobrar({ matriculaId: matricula.id, tipo: 'CURSO', metodo: 'PIX', valor: total, ip, alunoId: alunoId || matricula.alunoId });
+  if (guarda.reaproveitar) {
+    console.log(`[PIX] Reaproveitando QR existente (${guarda.reaproveitar.id}) da matrícula ${matricula.id}.`);
     return retornoPix();
   }
+  if (!guarda.ok) return { erro: guarda.msg, status: 429 };
 
-  const pagamentoPendente = await prisma.pagamento.create({
-    data: { matriculaId: matricula.id, tipo: 'CURSO', gateway: 'unicopag', metodo: 'PIX', valor: total, status: 'PENDENTE' },
+  const criado = await criarCobrancaTravada({
+    matriculaId: matricula.id, tipo: 'CURSO', metodo: 'PIX', gateway: 'unicopag', valor: total, ip, alunoId: alunoId || matricula.alunoId,
   });
+  if (!criado.ok) {
+    if (criado.motivo === 'limite') return { erro: criado.msg, status: 429 };
+    // Outro pedido da mesma matrícula está no meio (duplo clique): espera o QR dele e leva à mesma
+    // tela; se ele falhou, mostra o erro que ele mostraria.
+    if (!criado.pagamento) return { erro: ERRO_PIX };
+    const atual = await aguardarPagamento(criado.pagamento.id, { intervaloMs: esperaMs });
+    if (atual && atual.status === 'PENDENTE') return retornoPix();
+    return { erro: ERRO_PIX };
+  }
+  const pagamentoPendente = criado.pagamento;
 
   try {
     const resultadoGateway = await criarTransacao({
@@ -82,7 +90,7 @@ async function iniciarCobrancaAVista({ matricula, nomeCurso, total, forma, aluno
     }
     if (pagamentoAtual?.gatewayRef) return retornoPix();
     await prisma.pagamento.updateMany({ where: { id: pagamentoPendente.id, status: 'PENDENTE' }, data: { status: 'CANCELADO' } });
-    return { erro: 'Houve um problema ao processar o pagamento. Tente novamente.' };
+    return { erro: ERRO_PIX };
   }
 }
 

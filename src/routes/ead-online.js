@@ -137,6 +137,7 @@ router.post(['/online/:cursoId/comprar', '/escola-digital/:cursoId/comprar'], re
   await gravarCupom(prisma, matricula.id, v);
   const cobranca = await iniciarCobrancaAVista({
     matricula, nomeCurso: `${co.curso.nome} (curso online)`, total: valor, forma, aluno, origem: lerOrigem(req),
+    ip: req.ip, alunoId: req.session.usuarioId,
   });
   if (cobranca.erro) return res.redirect(`${base}?erro=pagamento`);
   return res.redirect(cobranca.redirect);

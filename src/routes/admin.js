@@ -19,6 +19,7 @@ const { semSoOnline, ehSoOnline } = require('../lib/ead-curso-online');
 const { somasDosLotes } = require('../lib/ead-lote');
 const MSG_SO_ONLINE = 'Este curso existe só online: não tem turma presencial.';
 const comprovanteSaude = require('../lib/comprovante-saude');
+const cobrancaGuarda = require('../lib/cobranca-guarda');
 const prisma = require('../db');
 const { verificarSenha, hashSenha } = require('../lib/password');
 const { criarCodigo2fa, codigo2faRecente, verificarCodigo2fa, consumirToken, criarTokenDesbloqueio, verificarTokenDesbloqueio, criarTokenReset, verificarTokenReset } = require('../lib/tokens');
@@ -676,6 +677,8 @@ router.get('/', async (req, res) => {
   }).catch(() => ({ ok: false }));
   const visitasPromessa = visitasSite.resumo().catch(() => null); // visitantes sem login (lib/visitas.js)
   const visitasAlunosPromessa = visitasSite.resumoAlunos().catch(() => null); // alunos logados no site, por dia
+  // Tentativas de pagamento em rajada nas últimas 24 h (lib/cobranca-guarda.js), para o aviso no topo.
+  const rajadasPromessa = cobrancaGuarda.rajadasDoDia().catch(() => ({ total: 0, alunos: [] }));
 
   const cincoMinAtras = new Date(
     Date.now() - 5 * 60 * 1000
@@ -852,6 +855,7 @@ router.get('/', async (req, res) => {
 
   res.render('admin/dashboard', {
     comprovantesParaConferir,
+    rajadas: await rajadasPromessa,
 
     stats: {
       totalCursos,
@@ -3101,6 +3105,7 @@ router.get('/alunos/:id/matriculas', requirePermissao('aluno:gerenciar', 'painel
   res.render('admin/aluno-matriculas', {
     aluno,
     matriculas,
+    rajadas: await cobrancaGuarda.rajadasDasMatriculas(matriculas.map((m) => m.id)).catch(() => ({})),
     comprovante: await comprovanteSaude.daPessoa(aluno.id),
     formatBRL,
     statusBadge,
@@ -3621,12 +3626,30 @@ router.get('/banimentos', requireDev, async (req, res) => {
   });
 });
 
+// Aba "Suspeitos" (só Dev): as tentativas de pagamento em rajada (LogAuditoria RAJADA_PAGAMENTO,
+// gravada por lib/cobranca-guarda.js), para decidir se a pessoa deve ser banida. Últimos 90 dias
+// por padrão; ?dias= muda a janela (1 a 365).
+router.get('/suspeitos', requireDev, async (req, res) => {
+  const pedido = parseInt(req.query.dias, 10);
+  const dias = Number.isFinite(pedido) ? Math.min(Math.max(pedido, 1), 365) : 90;
+  const suspeitos = await cobrancaGuarda.listarSuspeitos({ dias });
+  res.render('admin/suspeitos', {
+    suspeitos,
+    dias,
+    flash: req.query.ok || null,
+    ativo: 'suspeitos',
+  });
+});
+
+// Banir/Desbanir voltam para a página de onde vieram: Banimentos (padrão) ou Suspeitos.
+const voltaBanimento = (req) => (req.body.voltar === 'suspeitos' ? '/suspeitos' : '/banimentos');
+
 router.post('/alunos/:id/banir', requireDev, async (req, res) => {
   const aluno = await prisma.usuario.findUnique({ where: { id: req.params.id } });
   if (!aluno || aluno.papel !== 'ALUNO')
     return res.status(404).render('admin/erro', { mensagem: 'Aluno não encontrado.' });
   if (aluno.bloqueioTotal)
-    return res.redirect('/banimentos?ok=' + encodeURIComponent('Aluno já está banido.'));
+    return res.redirect(voltaBanimento(req) + '?ok=' + encodeURIComponent('Aluno já está banido.'));
 
   const motivo = String(req.body.motivo || '').trim() || 'Não informado';
 
@@ -3668,7 +3691,7 @@ router.post('/alunos/:id/banir', requireDev, async (req, res) => {
 `;
 
   await auditar(req, 'BANIU_ALUNO', 'Usuario', aluno.id, { motivo });
-  res.redirect('/banimentos?ok=' + encodeURIComponent(`${aluno.nome.split(' ')[0]} foi banido.`));
+  res.redirect(voltaBanimento(req) + '?ok=' + encodeURIComponent(`${aluno.nome.split(' ')[0]} foi banido.`));
 });
 
 router.post('/alunos/:id/desbanir', requireDev, async (req, res) => {
@@ -3676,7 +3699,7 @@ router.post('/alunos/:id/desbanir', requireDev, async (req, res) => {
   if (!aluno || aluno.papel !== 'ALUNO')
     return res.status(404).render('admin/erro', { mensagem: 'Aluno não encontrado.' });
   if (!aluno.bloqueioTotal)
-    return res.redirect('/banimentos?ok=' + encodeURIComponent('Aluno não está banido.'));
+    return res.redirect(voltaBanimento(req) + '?ok=' + encodeURIComponent('Aluno não está banido.'));
 
   await prisma.usuario.update({
     where: { id: aluno.id },
@@ -3684,7 +3707,7 @@ router.post('/alunos/:id/desbanir', requireDev, async (req, res) => {
   });
 
   await auditar(req, 'DESBANIU_ALUNO', 'Usuario', aluno.id, {});
-  res.redirect('/banimentos?ok=' + encodeURIComponent(`${aluno.nome.split(' ')[0]} foi desbanido.`));
+  res.redirect(voltaBanimento(req) + '?ok=' + encodeURIComponent(`${aluno.nome.split(' ')[0]} foi desbanido.`));
 });
 
 const clientesSSE = new Set();
