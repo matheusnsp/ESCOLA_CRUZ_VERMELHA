@@ -40,9 +40,31 @@ async function obterTaxaMatricula(curso, alunoId) {
   return base; // POR_CURSO
 }
 
-// Monta os valores de uma matricula (sem persistir).
-async function calcularValores(curso, plano, alunoId) {
-  const valorCurso = valorCursoPorPlano(curso, plano);
+// Cupom do presencial (2026-11-09; spec 2026-11-09-cupom-presencial.md): o cupom gravado na matrícula, se ele vale
+// para este curso (transferida para outro curso, o cupom do antigo não vale). Validade e limite já foram conferidos
+// quando a matrícula ganhou o desconto: o que foi concedido continua.
+// Revisão I2: vale o desconto GRAVADO (o valor de quando a inscrição foi feita), não o do cupom de agora.
+async function cupomDaMatricula(matriculaId, curso) {
+  if (!matriculaId) return null;
+  const cm = await prisma.cupomMatriculaEad.findUnique({ where: { matriculaId }, include: { cupom: true } }).catch(() => null);
+  return cm && require('./ead-cupom').valeNoPresencial(cm.cupom, curso) ? { ...cm.cupom, descontoGravado: Number(cm.desconto) } : null;
+}
+
+// Monta os valores de uma matricula (sem persistir). opts.cupom (validado agora) ou opts.matriculaId (o gravado):
+// o desconto entra só no valor do curso; a taxa de inscrição não muda. desconto = quanto saiu do curso.
+async function calcularValores(curso, plano, alunoId, { cupom = null, matriculaId = null } = {}) {
+  let valorCurso = new Prisma.Decimal(valorCursoPorPlano(curso, plano));
+  let desconto = ZERO;
+  const c = cupom || (await cupomDaMatricula(matriculaId, curso));
+  if (c && c.descontoGravado !== undefined) {
+    const d = Math.min(Math.max(c.descontoGravado, 0), Number(valorCurso));
+    desconto = new Prisma.Decimal(d);
+    valorCurso = new Prisma.Decimal(Math.round((Number(valorCurso) - d) * 100) / 100);
+  } else if (c) {
+    const d = require('./ead-cupom').calcularDesconto(c, Number(valorCurso));
+    desconto = new Prisma.Decimal(d.desconto);
+    valorCurso = new Prisma.Decimal(d.precoFinal);
+  }
   const valorTaxaMatricula = await obterTaxaMatricula(curso, alunoId);
   const total = new Prisma.Decimal(valorCurso).add(valorTaxaMatricula);
 
@@ -54,7 +76,7 @@ async function calcularValores(curso, plano, alunoId) {
     valorParcela = total.div(parcelas);
   }
 
-  return { valorCurso, valorTaxaMatricula, total, valorParcela };
+  return { valorCurso, valorTaxaMatricula, total, valorParcela, desconto, cupom: c };
 }
 
 // Formata um Decimal/numero como moeda BRL.
@@ -113,7 +135,9 @@ function valorCursoSemTaxa(m) {
   const curso = m && m.turma && m.turma.curso;
   if (curso) {
     const preco = Number(valorCursoPorPlano(curso, m.plano === 'PARCELADO' ? 'PARCELADO' : 'A_VISTA'));
-    if (Number.isFinite(preco) && preco > 0) return preco;
+    // Cupom do presencial (2026-11-09): o desconto gravado sai do curso (as consultas incluem m.cupomEad).
+    const desconto = m.cupomEad ? Number(m.cupomEad.desconto) || 0 : 0;
+    if (Number.isFinite(preco) && preco > 0) return Math.max(0, Math.round((preco - desconto) * 100) / 100);
   }
   return Math.max(0, (Number(m.valorCurso) || 0) - (Number(m.valorTaxaMatricula) || 0));
 }

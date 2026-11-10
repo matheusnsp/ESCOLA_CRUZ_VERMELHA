@@ -999,3 +999,21 @@
   .chk-saude-priv { font-size: 12px; line-height: 1.5; color: var(--tinta-40); margin: 12px 0 0; }
   .chk-saude-priv i { margin-right: 5px; }
   .chk-saude-priv a { color: var(--tinta-60); }
+
+/* Cupom de desconto (2026-11-09): só no valor do curso. */
+.chk-cupom { margin: 0 0 18px; padding: 14px 16px; border: 1px dashed var(--borda, #dcdfe4); border-radius: var(--r-s, 12px); background: var(--branco, #fff); }
+.chk-cupom-form { display: grid; gap: 8px; }
+.chk-cupom-form label { font-weight: 700; font-size: 14px; }
+.chk-cupom-linha { display: flex; gap: 8px; }
+.chk-cupom-linha input { flex: 1; min-width: 0; padding: 12px 14px; border: 1px solid var(--borda, #dcdfe4); border-radius: var(--r-s, 12px); font: inherit; text-transform: uppercase; }
+.chk-cupom-linha .chk-btn { flex: none; padding: 12px 18px; }
+.chk-btn-claro { background: var(--branco, #fff); color: var(--tinta, #0b0c0e); border: 1px solid var(--borda, #dcdfe4); }
+.chk-btn-claro:hover:not(:disabled) { background: var(--neve, #f4f5f7); }
+.chk-cupom-form small { color: var(--tinta-60, #565d66); font-size: 12.5px; }
+.chk-cupom-erro { margin: 0; color: var(--cruz, #cc0000); font-weight: 700; font-size: 13.5px; }
+.chk-cupom-ok { margin: 0; color: #0a5c43; font-weight: 600; font-size: 14px; }
+.chk-cupom-ok i { color: var(--ok, #12b76a); margin-right: 4px; }
+.chk-cupom a, .chk-cupom-ok a { color: inherit; text-decoration: underline; font-weight: 600; }
+.chk-resumo s { color: var(--tinta-40, #8a929c); font-weight: 600; margin-right: 4px; }
+.chk-cupom-linha .chk-btn { flex: 0 0 auto; width: auto; min-width: 0; }
+.chk-cupom-linha input { width: 0; }

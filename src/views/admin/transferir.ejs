@@ -79,7 +79,8 @@
         <option value="<%= t.id %>"
                 data-preco-avista="<%= t.curso.precoAvista %>"
                 data-preco-cheio="<%= t.curso.precoCheio %>"
-                data-taxa="<%= t.curso.taxaMatricula != null ? t.curso.taxaMatricula : 100 %>">
+                data-taxa="<%= t.curso.taxaMatricula != null ? t.curso.taxaMatricula : 100 %>"
+                data-desconto="<%= typeof descontoNoCurso === 'function' ? descontoNoCurso(t.curso) : 0 %>">
           <%= t.curso.nome %> — <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %> (<%= rotuloTurma(t.status) %>)<%= t.cursoId === m.turma.cursoId ? ' · mesmo curso' : ' · outro curso' %>
         </option>
       <% }) %>
@@ -120,7 +121,8 @@
 
     if (!opt.value) { aviso.textContent = ''; return; }
 
-    const precoCurso = plano === 'A_VISTA' ? Number(opt.dataset.precoAvista) : Number(opt.dataset.precoCheio);
+    // Cupom do presencial gravado: sai do curso de destino quando vale nele (data-desconto).
+    const precoCurso = Math.max(0, (plano === 'A_VISTA' ? Number(opt.dataset.precoAvista) : Number(opt.dataset.precoCheio)) - (Number(opt.dataset.desconto) || 0));
     const taxa  = Number(opt.dataset.taxa);
     const preco = precoCurso + taxa; // soma a taxa pra ficar na mesma base do valorAtual (curso + taxa)
     const diff  = Math.round((preco - valorAtual) * 100) / 100;

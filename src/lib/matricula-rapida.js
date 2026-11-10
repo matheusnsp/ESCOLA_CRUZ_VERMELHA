@@ -544,7 +544,7 @@ async function ligarComEscola(pessoa, pago, m) {
   }
 
   const taxa = pago.valorTotal || pago.valor;
-  const valores = await calcularValores(m.turma.curso, m.plano === 'PARCELADO' ? 'PARCELADO' : 'A_VISTA', m.alunoId);
+  const valores = await calcularValores(m.turma.curso, m.plano === 'PARCELADO' ? 'PARCELADO' : 'A_VISTA', m.alunoId, { matriculaId: m.id });
   const cursoOnline = online.some((pg) => pg.tipo === 'CURSO');
   // valorCurso (o curso) é o anotado e o dos lançamentos de curso à mão; a matrícula guarda o TOTAL
   // (curso + taxa), como toda matrícula da escola (routes/cursos.js grava valorCurso: total).

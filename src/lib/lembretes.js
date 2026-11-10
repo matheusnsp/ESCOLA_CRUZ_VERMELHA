@@ -54,7 +54,7 @@ function formatarData(d) {
 // o juro incide só sobre o curso; a taxa já foi paga e fica de fora.
 async function montarValores(matricula) {
   const curso = matricula.turma.curso;
-  const valores = await calcularValores(curso, 'PARCELADO', matricula.alunoId);
+  const valores = await calcularValores(curso, 'PARCELADO', matricula.alunoId, { matriculaId: matricula.id });
   const numParcelas = Number(curso.parcelas) || 1;
   const amountCentavos = Math.round(parseFloat(valores.valorCurso) * 100);
 
@@ -399,7 +399,8 @@ async function enviarLembreteAvulso(matriculaId) {
     const valores = await calcularValores(
       m.turma.curso,
       m.plano === 'PARCELADO' ? 'PARCELADO' : 'A_VISTA',
-      m.alunoId
+      m.alunoId,
+      { matriculaId: m.id }
     );
     const taxa = Number(valores.valorTaxaMatricula);
     await enviarLembreteInscricaoIncompleta(m.aluno.email, primeiroNome, {
