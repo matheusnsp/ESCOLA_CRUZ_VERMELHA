@@ -125,7 +125,7 @@ async function cupomDaInscricao(req, curso, { doEnvio = false } = {}) {
   if (req.session && pediu && !doEnvio) req.session.cupomPresencial = undefined;
   if (!codigo) return { cupom: null, codigo: '', erro: null, pediu };
   if (req.cupomBloqueado) return { cupom: null, codigo, erro: MSG_TENTATIVAS, pediu };
-  const v = await cupons.validarCupom(codigo, curso, { presencial: true, preco: Number(curso.precoAvista) });
+  const v = await cupons.validarCupom(codigo, curso, { presencial: true, preco: Number(curso.precoAvista), alunoId: req.session && req.session.usuarioId });
   if (v.erro) { if (pediu) registrarFalhaCupom(req); return { cupom: null, codigo, erro: v.erro, pediu }; }
   if (req.session) req.session.cupomPresencial = { curso: curso.id, codigo: v.cupom.codigo };
   return { cupom: v.cupom, codigo: v.cupom.codigo, erro: null, pediu };

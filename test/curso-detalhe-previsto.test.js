@@ -37,9 +37,11 @@ describe('página do curso: "Previsto"', { skip: temBanco ? false : 'sem DATABAS
     await prisma.curso.delete({ where: { id: curso.id } });
   });
 
-  test('próxima turma: "Previsto para" e contagem "Previsto em"; sem "Início em" nem "Começa em"', async () => {
+  // 2026-11-10 (e018642): o título do card virou o dia da semana ("Quinta-feira"); a data fica no quadrado vermelho.
+  test('próxima turma: título com o dia da semana, sem repetir a data; contagem "Previsto em"; sem "Início em" nem "Começa em"', async () => {
     const html = await (await fetch(site + vitrine.urlCurso(curso))).text();
-    assert.match(html, /<strong>Previsto para \d{1,2} de [a-zç]+ de \d{4}<\/strong>/);
+    assert.match(html, /<strong>(Segunda|Terça|Quarta|Quinta|Sexta)-feira|<strong>(Sábado|Domingo)/);
+    assert.doesNotMatch(html, /<strong>Previsto para \d/);
     assert.match(html, /<span class="v-contagem-rot">Previsto em<\/span>/);
     assert.doesNotMatch(html, /Início em|Começa em/);
   });

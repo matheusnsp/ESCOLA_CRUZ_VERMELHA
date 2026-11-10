@@ -270,6 +270,16 @@ async function aplicarStatus(pagamento, { status, payload, tx, origem = 'webhook
         dadosMatricula.valorCurso = Number(pagamento.valor);
         await prisma.cupomMatriculaEad.deleteMany({ where: { matriculaId: m.id, NOT: { precoFinal: pagamento.valor } } });
       }
+      // Presencial à vista (2026-11-10): um PIX antigo de outro valor (gerado antes de pôr ou tirar o cupom) pode ser o
+      // pago. A matrícula registra o que foi pago de verdade (curso + taxa) e o cupom só fica se o valor for o dele.
+      if (!online && m.plano === 'A_VISTA' && Number(pagamento.valor) !== Number(m.valorCurso)) {
+        dadosMatricula.valorCurso = Number(pagamento.valor);
+        const cm = await prisma.cupomMatriculaEad.findUnique({ where: { matriculaId: m.id } });
+        if (cm && Math.round((Number(cm.precoFinal) + Number(m.valorTaxaMatricula || 0)) * 100) !== Math.round(Number(pagamento.valor) * 100)) {
+          await prisma.cupomMatriculaEad.delete({ where: { matriculaId: m.id } });
+        }
+        console.warn(`[${quem.log}] Matrícula ${m.id}: pago ${pagamento.valor}, esperado ${m.valorCurso} (PIX antigo de outro valor).`);
+      }
 
       if (m?.plano === 'PARCELADO') {
         const totalComJuros = Number(tx.amount_total ?? payload.amount_total ?? 0) / 100;

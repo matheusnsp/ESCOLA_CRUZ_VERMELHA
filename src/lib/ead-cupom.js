@@ -36,17 +36,29 @@ function calcularDesconto(cupom, preco) {
 }
 
 const usosDoCupom = (cupomId) => prisma.cupomMatriculaEad.count({ where: { cupomId, matricula: { statusPagamento: { in: PAGOS } } } });
+// Para o limite (2026-11-10): conta também quem já pagou a taxa e vai pagar o curso depois (parcelado), que já tem o
+// desconto garantido; tentativas abandonadas (nada pago) não contam. As inscrições do próprio aluno não contam.
+const usosParaLimite = (cupomId, alunoId = null) => prisma.cupomMatriculaEad.count({
+  where: {
+    cupomId,
+    matricula: {
+      OR: [{ statusPagamento: { in: PAGOS } }, { statusPagamento: 'PENDENTE', taxaConfirmada: true }],
+      ...(alunoId ? { NOT: { alunoId } } : {}),
+    },
+  },
+});
 
 // alvo: o CursoOnline ou (com { ebook: true }) o Ebook — os dois têm id e precoOnline. E-books (2026-11-09): cupom
 // de um curso não vale para e-book e vice-versa; sem curso nem e-book, vale para todos.
 // Presencial (2026-11-09): alvo = o Curso, com { presencial: true, preco } (o valor do curso no plano escolhido).
 // Vale o cupom daquele curso (cursoId) ou o de todos os presenciais; o cupom "todos" do online não vale aqui.
 function valeNoPresencial(cupom, curso) {
-  return !!cupom && (cupom.todosPresenciais || (!!cupom.cursoId && cupom.cursoId === curso.id));
+  // "Tudo" (2026-11-10) também vale no presencial: sem isto, o desconto gravado sumia nas etapas seguintes.
+  return !!cupom && (cupom.valeTudo || cupom.todosPresenciais || (!!cupom.cursoId && cupom.cursoId === curso.id));
 }
 const ehDoPresencial = (cupom) => !!(cupom.cursoId || cupom.todosPresenciais);
 
-async function validarCupom(codigo, co, { ebook = false, presencial = false, preco = null } = {}) {
+async function validarCupom(codigo, co, { ebook = false, presencial = false, preco = null, alunoId = null } = {}) {
   const c = normalizarCodigo(codigo);
   const cupom = codigoValido(c) ? await prisma.cupomEad.findUnique({ where: { codigo: c } }) : null;
   if (!cupom || !cupom.ativo) return { erro: MSG.naoAchou };
@@ -57,7 +69,7 @@ async function validarCupom(codigo, co, { ebook = false, presencial = false, pre
     if (cupom.ebookId && (!ebook || cupom.ebookId !== co.id)) return { erro: MSG.outroCurso };
   }
   if (cupom.validoAte && fimDoDiaRio(cupom.validoAte) < new Date()) return { erro: MSG.venceu };
-  if (cupom.limiteUsos !== null && cupom.limiteUsos !== undefined && await usosDoCupom(cupom.id) >= cupom.limiteUsos) return { erro: MSG.esgotado };
+  if (cupom.limiteUsos !== null && cupom.limiteUsos !== undefined && await usosParaLimite(cupom.id, alunoId) >= cupom.limiteUsos) return { erro: MSG.esgotado };
   return { cupom, ...calcularDesconto(cupom, Number(presencial ? preco || 0 : co.precoOnline || 0)) };
 }
 
