@@ -8,12 +8,10 @@ const prisma = require('../db');
 
 const TIPO_RESET = 'RESET_SENHA';
 const TIPO_VERIFICACAO = 'VERIFICACAO_EMAIL';
-const TIPO_2FA = 'LOGIN_2FA';
 const TIPO_DESBLOQUEIO = 'DESBLOQUEIO_ADMIN';
 
 const VALIDADE_RESET_MS = 60 * 60 * 1000; // 1 hora
 const VALIDADE_VERIFICACAO_MS = 24 * 60 * 60 * 1000; // 24 horas
-const VALIDADE_2FA_MS = 10 * 60 * 1000; // 10 minutos
 const VALIDADE_DESBLOQUEIO_MS = 60 * 60 * 1000; // 1 hora
 
 function hashToken(tokenEmTextoPuro) {
@@ -64,49 +62,6 @@ async function consumirToken(tokenId) {
   });
 }
 
-// --- Código de verificação em 2 etapas (2FA) por e-mail ---
-// Código numérico de 6 dígitos. Guardamos só o hash; expira em 10 min; uso único.
-async function criarCodigo2fa(usuarioId) {
-  const codigo = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
-  await prisma.tokenAuth.updateMany({
-    where: { usuarioId, tipo: TIPO_2FA, usadoEm: null },
-    data: { usadoEm: new Date() },
-  });
-  await prisma.tokenAuth.create({
-    data: {
-      usuarioId,
-      tipo: TIPO_2FA,
-      tokenHash: hashToken(codigo),
-      expiraEm: new Date(Date.now() + VALIDADE_2FA_MS),
-    },
-  });
-  return codigo;
-}
-
-// Já existe um código válido, ainda não usado, criado há menos de `ms`? (Evita mandar um segundo
-// e-mail quando o formulário de login é enviado duas vezes seguidas.)
-async function codigo2faRecente(usuarioId, ms) {
-  const achado = await prisma.tokenAuth.findFirst({
-    where: { usuarioId, tipo: TIPO_2FA, usadoEm: null, expiraEm: { gt: new Date() }, criadoEm: { gt: new Date(Date.now() - ms) } },
-    select: { id: true },
-  });
-  return !!achado;
-}
-
-// Verifica o código informado para um usuário específico (escopo por usuarioId).
-async function verificarCodigo2fa(usuarioId, codigo) {
-  if (!usuarioId || !codigo) return null;
-  return prisma.tokenAuth.findFirst({
-    where: {
-      usuarioId,
-      tipo: TIPO_2FA,
-      tokenHash: hashToken(String(codigo).trim()),
-      usadoEm: null,
-      expiraEm: { gt: new Date() },
-    },
-  });
-}
-
 // --- Atalhos por tipo ---
 
 const criarTokenReset = (usuarioId) => criarToken(usuarioId, TIPO_RESET, VALIDADE_RESET_MS);
@@ -126,9 +81,6 @@ module.exports = {
   verificarTokenReset,
   criarTokenVerificacao,
   verificarTokenVerificacao,
-  criarCodigo2fa,
-  codigo2faRecente,
-  verificarCodigo2fa,
   criarTokenDesbloqueio,
   verificarTokenDesbloqueio,
 };

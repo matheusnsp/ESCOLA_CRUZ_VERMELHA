@@ -69,8 +69,6 @@ const CABECALHO = `
 // propósito, ciente disso. Em produção sem a flag, fica só uma linha dizendo
 // o que foi enviado e pra quem, sem o conteúdo sensível.
 //
-// O código 2FA da secretaria NUNCA é espelhado, nem em desenvolvimento —
-// ver a nota em enviarCodigo2fa mais abaixo.
 // ─────────────────────────────────────────────────────────────────────────
 const EMAIL_DEBUG = process.env.EMAIL_DEBUG === '1'
   || process.env.NODE_ENV !== 'production';
@@ -197,29 +195,6 @@ async function enviarEmailConfirmacao(email, nome, link) {
   await enviar(email, 'Bem-vindo — confirme seu e-mail | Escola CVB-RJ', html, 'Boas-vindas + confirmação de e-mail', link);
 }
 
-/**
- * Código 2FA da secretaria.
- *
- * ⚠️ O CÓDIGO NÃO VAI PRO TERMINAL — nem em desenvolvimento. Ele é o segundo
- * fator do login administrativo: quem enxerga o log do servidor passaria a
- * ter os dois fatores (senha vazada + código impresso), e o 2FA deixaria de
- * proteger qualquer coisa. Por isso o último argumento é null, e a descrição
- * diz apenas QUE um código foi enviado, nunca QUAL.
- *
- * Pra testar o login da secretaria, pegue o código na caixa de entrada.
- */
-async function enviarCodigo2fa(email, nome, codigo) {
-  const html = `
-    <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;">
-      ${CABECALHO}
-      <h3 style="margin-bottom:16px;">Código de acesso à secretaria</h3>
-      <p>Olá, <strong>${nome}</strong>!</p>
-      <p>Use o código abaixo para concluir o login no painel da secretaria:</p>
-      <div style="font-size:34px;font-weight:800;letter-spacing:8px;color:#0b1220;background:#f5f6f9;border:1px solid #e7ebf2;border-radius:12px;padding:18px 0;text-align:center;margin:22px 0;">${codigo}</div>
-      <p style="color:#718096;font-size:13px;">O código expira em 10 minutos. Se não foi você que tentou entrar, troque sua senha imediatamente.</p>
-    </div>`;
-  await enviar(email, 'Seu código de acesso — Secretaria CVB-RJ', html, 'Código 2FA da secretaria (código não exibido por segurança)', null);
-}
 
 async function enviarAlertaLoginSecretaria(email, nome, quando, ip) {
   const html = `
@@ -741,7 +716,6 @@ module.exports = {
   enviarBoasVindasTurma,
   enviarEmailResetSenha,
   enviarEmailConfirmacao,
-  enviarCodigo2fa,
   enviarAlertaLoginSecretaria,
   enviarLinkDesbloqueio,
   enviarLembretePagamentoPendente,
