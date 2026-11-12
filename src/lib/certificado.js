@@ -21,24 +21,28 @@ const PADRAO_ASSINANTE = { nome: 'AMANDA FERRARI PENZA', cargo: 'Coordenadora de
 const PADROES = { livro: '1' };
 
 async function lerAjustes() {
-  const cfgs = await prisma.configuracao.findMany({ where: { chave: { in: ['cert_assinantes', 'cert_livro_atual', 'cert_coordenador_nome', 'cert_coordenador_cargo'] } } });
+  const cfgs = await prisma.configuracao.findMany({ where: { chave: { in: ['cert_assinantes', 'cert_livro_atual', 'cert_coordenador_nome', 'cert_coordenador_cargo', 'cert_assinatura_online'] } } });
   const m = Object.fromEntries(cfgs.map((c) => [c.chave, c.valor]));
   let assinantes = [];
   try { assinantes = JSON.parse(m.cert_assinantes || '[]'); } catch (e) { assinantes = []; }
   // As posições são fixas (a0…a5): as turmas e os cursos guardam a escolha pela posição, então uma
   // linha apagada fica vazia em vez de puxar as de baixo.
   assinantes = (Array.isArray(assinantes) ? assinantes : []).slice(0, MAX_ASSINANTES)
-    .map((a) => ({ nome: String(a && a.nome || '').trim().slice(0, 80), cargo: String(a && a.cargo || '').trim().slice(0, 80) }));
+    .map((a) => ({ nome: String(a && a.nome || '').trim().slice(0, 80), cargo: String(a && a.cargo || '').trim().slice(0, 80), imagemUrl: imagemValida(a && a.imagemUrl) }));
   if (!assinantes.some((a) => a.nome)) {
     assinantes = [{ nome: (m.cert_coordenador_nome || '').trim() || PADRAO_ASSINANTE.nome, cargo: (m.cert_coordenador_cargo || '').trim() || PADRAO_ASSINANTE.cargo }];
   }
-  return { assinantes, livro: Math.max(1, parseInt(m.cert_livro_atual, 10) || 1) };
+  // Certificado online (2026-11-12): 'com' = linha para assinar (e a assinatura escaneada, se houver); 'sem' = só nome e cargo.
+  return { assinantes, livro: Math.max(1, parseInt(m.cert_livro_atual, 10) || 1), assinaturaOnline: m.cert_assinatura_online === 'sem' ? 'sem' : 'com' };
 }
+
+// Imagem da assinatura escaneada: só endereço do nosso armazenamento (/uploads/… ou https://…).
+const imagemValida = (u) => (typeof u === 'string' && /^(\/uploads\/[\w.-]+|https:\/\/\S+)$/.test(u.trim()) ? u.trim().slice(0, 500) : null);
 
 // v.assinantes: [{ nome, cargo }] na ordem das linhas do formulário (linha sem nome fica vazia).
 async function salvarAjustes(v) {
   const assinantes = (v.assinantes || []).slice(0, MAX_ASSINANTES)
-    .map((a) => ({ nome: String(a && a.nome || '').trim().slice(0, 80), cargo: String(a && a.nome && a.cargo || '').trim().slice(0, 80) }));
+    .map((a) => ({ nome: String(a && a.nome || '').trim().slice(0, 80), cargo: String(a && a.nome && a.cargo || '').trim().slice(0, 80), imagemUrl: a && a.nome ? imagemValida(a.imagemUrl) : null }));
   while (assinantes.length && !assinantes[assinantes.length - 1].nome) assinantes.pop();
   const salvar = async (chave, valor) => valor
     ? prisma.configuracao.upsert({ where: { chave }, update: { valor }, create: { chave, valor } })
@@ -46,6 +50,7 @@ async function salvarAjustes(v) {
   await salvar('cert_assinantes', assinantes.length ? JSON.stringify(assinantes) : null);
   const livro = String(Math.max(1, parseInt(v.livro, 10) || 1));
   await salvar('cert_livro_atual', livro === PADROES.livro ? null : livro);
+  await salvar('cert_assinatura_online', v.assinaturaOnline === 'sem' ? 'sem' : null);
   await prisma.configuracao.deleteMany({ where: { chave: { in: ['cert_coordenador_nome', 'cert_coordenador_cargo'] } } });
 }
 

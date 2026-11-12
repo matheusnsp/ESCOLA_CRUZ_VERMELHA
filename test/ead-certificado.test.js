@@ -166,3 +166,35 @@ describe('emitirCertificadoEad', { skip: temBanco ? false : 'sem DATABASE_URL lo
     assert.equal(recebidos.length, 1);
   });
 });
+
+// 2026-11-12: certificado online "com assinatura" (linha + imagem escaneada, se houver) ou "sem assinatura" (só nome
+// e cargo). A escolha e as imagens ficam em painel → Modelos.
+describe('assinatura do certificado online: com ou sem', () => {
+  const ejs = require('ejs');
+  const path = require('path');
+  const documentoAluno = () => null;
+  const lista = [{ nome: 'ALESSANDRA', cargo: 'Coordenadora', imagemUrl: '/uploads/ass-alessandra.webp' }, { nome: 'LUIZ', cargo: 'Presidente' }];
+  const dados = (assinaturaOnline) => dadosCertificadoEad({
+    usuario: { nome: 'Ana', genero: 'Feminino' }, curso: { nome: 'PS', cargaHoraria: 3 }, modulos: [],
+    numero: { livro: 1, registro: 1, emitidoEm: new Date('2026-11-12T15:00:00Z') }, concluidoEm: new Date('2026-11-12T14:00:00Z'),
+    ajustes: { assinantes: lista, livro: 1, assinaturaOnline }, documentoAluno,
+  });
+  const render = (d) => ejs.renderFile(path.join(__dirname, '..', 'src', 'views', 'admin', 'certificado-imprimir.ejs'), {
+    lista: [{ id: 'x', ...d, verificacao: null }], turma: { curso: { nome: 'PS' } }, avisoRedacao: null, barraAluno: null, asset: (u) => u, csrfToken: 'x',
+  });
+  test('com assinatura (padrão): linha e a imagem de quem tem', async () => {
+    const d = dados(undefined);
+    assert.equal(d.assinaturaOnline, 'com');
+    assert.equal(d.assinaturas[0].imagemUrl, '/uploads/ass-alessandra.webp');
+    const html = await render(d);
+    assert.equal((html.match(/class="cert-linha"/g) || []).length, 2);
+    assert.match(html, /<img class="cert-assinatura-img" src="\/uploads\/ass-alessandra\.webp" alt="">/);
+  });
+  test('sem assinatura: só nome e cargo, sem linha nem imagem', async () => {
+    const d = dados('sem');
+    const html = await render(d);
+    assert.doesNotMatch(html, /class="cert-linha"/);
+    assert.doesNotMatch(html, /cert-assinatura-img/);
+    assert.match(html, /ALESSANDRA/);
+  });
+});

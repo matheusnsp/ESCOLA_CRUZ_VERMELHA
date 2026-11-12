@@ -91,3 +91,10 @@ body { background: #e9e6e1; font-family: Arimo, Arial, Helvetica, sans-serif; co
 .cert-assinaturas.n3 b { font-size: 3.8mm; }
 .cert-assinaturas.n3 small, .cert-assinaturas.n4 small { font-size: 2.7mm; }
 .cert-frente .cert-assinaturas.n3, .cert-frente .cert-assinaturas.n4 { bottom: 37mm; }
+
+/* Assinatura escaneada (2026-11-12): fica em cima da linha, sem empurrar o bloco (sai para cima, no espaço livre). */
+.cert-assinaturas > div { position: relative; }
+.cert-assinatura-img { position: absolute; left: 50%; bottom: calc(100% - 3mm); transform: translateX(-50%); max-width: 60mm; max-height: 15mm; object-fit: contain; }
+.cert-assinaturas.n3 .cert-assinatura-img, .cert-assinaturas.n4 .cert-assinatura-img { max-width: 48mm; max-height: 13mm; }
+/* Sem assinatura: sem a linha, o nome fica um pouco mais perto do texto. */
+.cert-assinaturas.sem-linha b { margin-top: 0; }

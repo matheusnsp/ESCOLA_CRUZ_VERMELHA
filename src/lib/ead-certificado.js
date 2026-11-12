@@ -29,13 +29,13 @@ function assinaturasDoCurso(curso, ajustes) {
     for (const chave of cert.escolhaDoCurso(curso)) {
       if (chave === 'instrutor') continue;
       const a = ajustes.assinantes[Number(chave.slice(1))];
-      if (a && a.nome) lista.push({ nome: a.nome, cargo: a.cargo });
+      if (a && a.nome) lista.push(a);
     }
   }
-  if (!lista.length) {
-    for (const a of ajustes.assinantes.filter((x) => x && x.nome).slice(0, COORDENACAO)) lista.push({ nome: a.nome, cargo: a.cargo });
-  }
-  return lista.slice(0, MAX_NO_CERTIFICADO);
+  if (!lista.length) lista.push(...ajustes.assinantes.filter((x) => x && x.nome).slice(0, COORDENACAO));
+  // Com assinatura: a imagem escaneada vai junto (se houver); sem assinatura: só nome e cargo.
+  const com = ajustes.assinaturaOnline !== 'sem';
+  return lista.slice(0, MAX_NO_CERTIFICADO).map((a) => ({ nome: a.nome, cargo: a.cargo, ...(com && a.imagemUrl ? { imagemUrl: a.imagemUrl } : {}) }));
 }
 
 // Tudo o que o modelo imprime para o aluno do curso online, no formato de dadosDoCertificado + online.
@@ -55,6 +55,7 @@ function dadosCertificadoEad({ usuario, curso, modulos, numero, concluidoEm, aju
     concluidoEm: concluido,
     emitidoEm: cert.emitidoEm(numero.emitidoEm || new Date()),
     assinaturas: assinaturasDoCurso(curso, ajustes),
+    assinaturaOnline: ajustes.assinaturaOnline === 'sem' ? 'sem' : 'com',
     instrutorNome: '',
     instrutorRegistro: '',
     livro: numero.livro,

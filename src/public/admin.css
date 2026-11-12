@@ -1954,3 +1954,11 @@ a.mr-num:hover { border-color: var(--linha); }
 .ead-ebook-linha small { color: var(--mut, #888); }
 .ead-ebook-linha:hover b { text-decoration: underline; }
 .ead-ebook-capa-previa { width: 140px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 10px; display: block; margin-bottom: 6px; }
+/* Assinatura escaneada em Modelos (2026-11-12): miniatura + "remover" + arquivo, na linha da pessoa. */
+.adm-assin-linha { grid-template-columns: 28px 1fr 1fr minmax(180px, 1fr); }
+.adm-assin-img { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.adm-assin-img img { height: 32px; max-width: 110px; object-fit: contain; background: #fff; border: 1px solid var(--linha); border-radius: 6px; padding: 2px; }
+.adm-assin-img input[type=file] { font-size: 12px; max-width: 100%; }
+.adm-assin-modo { border: 1px solid var(--linha); border-radius: var(--r-s, 10px); padding: 12px 14px; display: grid; gap: 8px; }
+.adm-assin-modo legend { font-weight: 700; padding: 0 6px; }
+@media (max-width: 620px) { .adm-assin-linha { grid-template-columns: 22px 1fr; } .adm-assin-linha input[name$="[cargo]"], .adm-assin-img { grid-column: 2; } }

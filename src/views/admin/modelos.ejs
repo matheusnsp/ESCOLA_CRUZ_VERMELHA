@@ -8,7 +8,7 @@
 
 <% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
 
-<form method="POST" action="/modelos" class="adm-form adm-box">
+<form method="POST" action="/modelos?_csrf=<%= csrfToken %>" class="adm-form adm-box" enctype="multipart/form-data">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
   <input type="hidden" name="voltar" value="<%= voltar %>">
 
@@ -38,10 +38,20 @@
           <span class="adm-assin-num"><%= i + 1 %></span>
           <input type="text" name="assinantes[<%= i %>][nome]" maxlength="80" value="<%= a.nome || '' %>" placeholder="<%= i === 0 ? 'Ex.: AMANDA FERRARI PENZA' : i === 1 ? 'Ex.: nome do(a) Presidente' : 'Nome' %>" aria-label="Nome <%= i + 1 %>">
           <input type="text" name="assinantes[<%= i %>][cargo]" maxlength="80" value="<%= a.cargo || '' %>" placeholder="<%= i === 0 ? 'Coordenadora de Cursos Livres' : i === 1 ? 'Presidente' : i === 2 ? 'Coordenação do Voluntariado' : 'Cargo' %>" aria-label="Cargo <%= i + 1 %>">
+          <span class="adm-assin-img">
+            <% if (a.imagemUrl) { %><img src="<%= a.imagemUrl %>" alt="Assinatura de <%= a.nome %>"><label class="check"><input type="checkbox" name="assinantes[<%= i %>][removerImg]" value="1"> remover</label><% } %>
+            <input type="file" name="assinaturaImg<%= i %>" accept="image/png,image/jpeg,image/webp" aria-label="Assinatura escaneada <%= i + 1 %>">
+          </span>
         </div>
       <% } %>
     </div>
   </div>
+  <fieldset class="full adm-assin-modo">
+    <legend>Certificado online: assinatura</legend>
+    <label class="check"><input type="radio" name="assinaturaOnline" value="com" <%= ajustes.assinaturaOnline !== 'sem' ? 'checked' : '' %>> <b>Com assinatura</b> — a linha para assinar e, em cima dela, a assinatura escaneada de quem tiver (o arquivo ao lado de cada nome)</label>
+    <label class="check"><input type="radio" name="assinaturaOnline" value="sem" <%= ajustes.assinaturaOnline === 'sem' ? 'checked' : '' %>> <b>Sem assinatura</b> — só o nome e o cargo (a autenticidade fica no código de verificação e no QR)</label>
+    <small class="adm-hint">O certificado online sai com as 3 primeiras pessoas da lista. Assinatura escaneada: PNG com fundo transparente (ou branco), até 2 MB; só envie com a autorização da pessoa. O certificado presencial não muda (é impresso e assinado à mão).</small>
+  </fieldset>
   <label>Livro em uso
     <input type="number" name="livro" min="1" value="<%= ajustes.livro %>">
     <small class="adm-hint">Certificados novos recebem este livro e o próximo registro da sequência dele. Os já emitidos mantêm o número.</small>
