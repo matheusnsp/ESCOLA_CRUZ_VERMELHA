@@ -6,7 +6,6 @@
 // ============================================================
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const crypto = require('crypto');
 const matriculaRapida = require('../lib/matricula-rapida');
 const visitasSite = require('../lib/visitas');
 const financeiroContas = require('../lib/financeiro-contas');
@@ -22,8 +21,8 @@ const comprovanteSaude = require('../lib/comprovante-saude');
 const cobrancaGuarda = require('../lib/cobranca-guarda');
 const prisma = require('../db');
 const { verificarSenha, hashSenha } = require('../lib/password');
-const { criarCodigo2fa, codigo2faRecente, verificarCodigo2fa, consumirToken, criarTokenDesbloqueio, verificarTokenDesbloqueio, criarTokenReset, verificarTokenReset } = require('../lib/tokens');
-const { enviarCodigo2fa, enviarAlertaLoginSecretaria, enviarLinkDesbloqueio, enviarEmailResetSenha, enviarComprovanteRecusado } = require('../lib/email');
+const { consumirToken, criarTokenDesbloqueio, verificarTokenDesbloqueio, criarTokenReset, verificarTokenReset } = require('../lib/tokens');
+const { enviarAlertaLoginSecretaria, enviarLinkDesbloqueio, enviarEmailResetSenha, enviarComprovanteRecusado } = require('../lib/email');
 const { ESCOLARIDADES: ESCOLARIDADES_ALUNO, SITUACOES_ESCOLARIDADE, GENEROS, UFS } = require('../lib/validation');
 const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
 const { formatBRL, calcularValores, lerConfigMatricula, faltaReceber, cursoJaPago } = require('../lib/matricula');
@@ -198,8 +197,6 @@ const ESCOLARIDADES = ['', 'Ensino Fundamental', 'Ensino Médio', 'Ensino Superi
 // sozinha; ninguém a cria ou edita à mão (um status postado fora desta lista é ignorado).
 const STATUS_TURMA = ['ABERTA', 'CONFIRMADA', 'CONGELADA', 'CANCELADA', 'ENCERRADA'];
 
-const DEVICE_2FA_COOKIE = 'cvbrj_admin_2fa';
-
 function hojeSPStr() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 }
@@ -212,60 +209,15 @@ function hojeSPStr() {
 // Render/Heroku/Docker sem TZ definida), a meia-noite do Node cai as 21h de
 // Brasilia do dia anterior, deslocando o contador "alunosHoje" em 3 horas.
 // O Brasil nao usa mais horario de verao desde 2019, entao o offset fixo
-// "-03:00" e seguro aqui (diferente do calculo de expiracao do cookie 2FA
-// em msAteMeiaNoiteSP, que usa outra abordagem por outro motivo).
+// "-03:00" e seguro aqui.
 function inicioDoDiaSP() {
   const diaSP = hojeSPStr(); // ex.: "2026-08-21"
   return new Date(`${diaSP}T00:00:00-03:00`);
 }
 
-function assinarDispositivo(usuarioId, dia) {
-  const segredo = process.env.SESSION_SECRET || 'troque-este-segredo';
-  return crypto.createHmac('sha256', segredo).update(`${usuarioId}:${dia}`).digest('hex');
-}
-
-function lerCookies(req) {
-  const header = req.headers.cookie;
-  const out = {};
-  if (!header) return out;
-  header.split(';').forEach((par) => {
-    const idx = par.indexOf('=');
-    if (idx === -1) return;
-    out[par.slice(0, idx).trim()] = decodeURIComponent(par.slice(idx + 1).trim());
-  });
-  return out;
-}
-
-function dispositivoConfirmadoHoje(req, usuarioId) {
-  const val = lerCookies(req)[DEVICE_2FA_COOKIE];
-  if (!val) return false;
-  const [uid, dia, assinatura] = val.split('.');
-  if (uid !== usuarioId || dia !== hojeSPStr()) return false;
-  return assinatura === assinarDispositivo(usuarioId, dia);
-}
-
-function msAteMeiaNoiteSP() {
-  const agora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-  const meia = new Date(agora);
-  meia.setHours(24, 0, 0, 0);
-  return meia.getTime() - agora.getTime();
-}
-
-function marcarDispositivoConfirmado(res, usuarioId) {
-  const dia = hojeSPStr();
-  const valor = `${usuarioId}.${dia}.${assinarDispositivo(usuarioId, dia)}`;
-  res.cookie(DEVICE_2FA_COOKIE, valor, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: msAteMeiaNoiteSP(),
-  });
-}
-
 const MAX_FALHAS = 5;                          
 const STRIKE_DURACOES_MIN = [15, 30, 60];      
 const MAX_STRIKES_TEMP = STRIKE_DURACOES_MIN.length; 
-const PENDENTE_2FA_MS = 10 * 60 * 1000;        
 
 const ADMIN_URL = process.env.ADMIN_URL
   || (process.env.ADMIN_PORT ? `http://localhost:${process.env.ADMIN_PORT}` : null)
@@ -274,40 +226,12 @@ const ADMIN_URL = process.env.ADMIN_URL
         : 'http://localhost:3001');
 
 const loginAdminLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 8, standardHeaders: true, legacyHeaders: false });
-const codigo2faLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 8, standardHeaders: true, legacyHeaders: false });
-const reenvioLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 4, standardHeaders: true, legacyHeaders: false });
 const desbloqueioLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false });
 
 async function enviarDesbloqueio(usuario) {
   const token = await criarTokenDesbloqueio(usuario.id);
   const link = `${ADMIN_URL}/desbloquear?token=${token}`;
   await enviarLinkDesbloqueio(usuario.email, usuario.nome, link);
-}
-
-function mascararEmail(e) {
-  const [u, d] = String(e || '').split('@');
-  if (!d) return e || '';
-  const ini = u.slice(0, 2);
-  return `${ini}${'*'.repeat(Math.max(1, u.length - ini.length))}@${d}`;
-}
-
-// Um código por vez. Clique duplo em "Entrar" (ou Enter + clique) mandava dois e-mails, e o segundo
-// código anulava o primeiro: quem digitava o do primeiro e-mail via "código inválido". Agora:
-//   - dois pedidos ao mesmo tempo para a mesma pessoa esperam o mesmo envio (trava em memória);
-//   - se já saiu um código válido há menos de 1 min, não manda outro (devolve false).
-// "Reenviar código" passa forcar: true e sempre manda um novo (tem limite próprio de tentativas).
-const JANELA_2FA_MS = 60 * 1000;
-const enviando2fa = new Map();
-function dispararCodigo2fa(pend, { forcar = false } = {}) {
-  if (enviando2fa.has(pend.id)) return enviando2fa.get(pend.id).then(() => false);
-  const envio = (async () => {
-    if (!forcar && await codigo2faRecente(pend.id, JANELA_2FA_MS)) return false;
-    const codigo = await criarCodigo2fa(pend.id);
-    await enviarCodigo2fa(pend.email, pend.nome, codigo);
-    return true;
-  })().finally(() => enviando2fa.delete(pend.id));
-  enviando2fa.set(pend.id, envio);
-  return envio;
 }
 
 async function logSeguranca(req, acao, usuarioId, detalhe) {
@@ -419,67 +343,12 @@ router.post('/login', loginAdminLimiter, async (req, res) => {
       await prisma.usuario.update({ where: { id: usuario.id }, data: { loginFalhas: 0, bloqueadoAte: null, loginStrikes: 0 } });
     }
 
-    if (dispositivoConfirmadoHoje(req, usuario.id)) {
-      return logarComoAdmin(req, res, usuario);
-    }
-
-    req.session.pendingAdmin2fa = { id: usuario.id, email: usuario.email, nome: usuario.nome, em: Date.now() };
-    const enviou = await dispararCodigo2fa(req.session.pendingAdmin2fa);
-    return req.session.save((e) => {
-      if (e) { return res.status(500).render('admin/erro', { mensagem: 'Erro ao iniciar o login.' }); }
-      return res.redirect(enviou ? '/login/2fa' : '/login/2fa?jaEnviado=1');
-    });
+    // Login só com e-mail e senha (o código de 6 dígitos por e-mail foi retirado em 11/2026).
+    return logarComoAdmin(req, res, usuario);
   } catch (err) {
     console.error('Erro no login administrativo:', err);
     return res.status(500).render('admin/erro', { mensagem: 'Erro ao processar o login.' });
   }
-});
-
-router.get('/login/2fa', (req, res) => {
-  const pend = req.session.pendingAdmin2fa;
-  if (!pend) return res.redirect('/login');
-  const sucesso = req.query.reenviado ? 'Enviamos um novo codigo para o seu e-mail.'
-    : req.query.jaEnviado ? 'Ja enviamos um codigo ha menos de 1 minuto. Use o do ultimo e-mail recebido.' : null;
-  res.render('admin/login-2fa', { erro: null, sucesso, emailMasc: mascararEmail(pend.email) });
-});
-
-router.post('/login/2fa', codigo2faLimiter, async (req, res) => {
-  const pend = req.session.pendingAdmin2fa;
-  if (!pend) return res.redirect('/login');
-
-  if (Date.now() - pend.em > PENDENTE_2FA_MS) {
-    delete req.session.pendingAdmin2fa;
-    return res.status(401).render('admin/login', { erro: 'Tempo esgotado. Faca login novamente.' });
-  }
-
-  const codigo = String(req.body.codigo || '').replace(/\D/g, '');
-  const registro = await verificarCodigo2fa(pend.id, codigo);
-  if (!registro) {
-    await logSeguranca(req, 'LOGIN_2FA_FALHO', pend.id, { email: pend.email, motivo: 'codigo_invalido' });
-    return res.status(401).render('admin/login-2fa', { erro: 'Codigo invalido ou expirado.', sucesso: null, emailMasc: mascararEmail(pend.email) });
-  }
-  await consumirToken(registro.id);
-
-  const usuario = await prisma.usuario.findUnique({ where: { id: pend.id } });
-  if (!usuario || !PAPEIS_ADMIN.includes(usuario.papel)) {
-    delete req.session.pendingAdmin2fa;
-    return res.redirect('/login');
-  }
-
-  marcarDispositivoConfirmado(res, usuario.id);
-  return logarComoAdmin(req, res, usuario);
-});
-
-router.post('/login/2fa/reenviar', reenvioLimiter, async (req, res) => {
-  const pend = req.session.pendingAdmin2fa;
-  if (!pend) return res.redirect('/login');
-  pend.em = Date.now(); 
-  try {
-    await dispararCodigo2fa(pend, { forcar: true });
-  } catch (e) {
-    console.error('Erro ao reenviar codigo 2FA:', e);
-  }
-  return req.session.save(() => res.redirect('/login/2fa?reenviado=1'));
 });
 
 router.post('/desbloquear/solicitar', desbloqueioLimiter, async (req, res) => {
