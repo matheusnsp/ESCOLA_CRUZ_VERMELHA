@@ -1583,7 +1583,6 @@ router.get('/modelos', requirePermissao('turmas:gerenciar'), async (req, res) =>
   res.render('admin/modelos', {
     modelo: await boasVindas.lerModelo(),
     padroes: boasVindas.PADROES,
-    ajustes: await certificado.lerAjustes(),
     voltar: VOLTAR_MODELOS.test(String(req.query.voltar || '')) ? req.query.voltar : '/turmas',
     ok: req.query.ok || null,
   });
@@ -1596,9 +1595,20 @@ const uploadAssinaturas = require('multer')({
 }).fields([0, 1, 2, 3, 4, 5].map((i) => ({ name: `assinaturaImg${i}`, maxCount: 1 })));
 const receberAssinaturas = (req, res, next) => uploadAssinaturas(req, res, (err) => { if (err) req.uploadErro = 'Imagem de assinatura grande demais (até 2 MB).'; next(); });
 
-router.post('/modelos', requirePermissao('turmas:gerenciar'), receberAssinaturas, async (req, res) => {
-  if (req.uploadErro) return res.redirect('/modelos?ok=' + encodeURIComponent(req.uploadErro));
+router.post('/modelos', requirePermissao('turmas:gerenciar'), async (req, res) => {
   await boasVindas.salvarModelo({ texto: req.body.texto, doacao: req.body.doacao, local: req.body.local });
+  await auditar(req, 'EDITOU_MODELOS', 'Configuracao', null, null);
+  const voltar = VOLTAR_MODELOS.test(String(req.body.voltar || '')) ? req.body.voltar : '';
+  res.redirect('/modelos?ok=' + encodeURIComponent('Modelos salvos.') + (voltar ? '&voltar=' + encodeURIComponent(voltar) : ''));
+});
+
+// ---------- Certificados (2026-11-12): quem assina, assinatura escaneada, com/sem assinatura no online, livro, prévia ----------
+router.get('/certificados', requirePermissao('turmas:gerenciar'), async (req, res) => {
+  res.render('admin/certificados', { ajustes: await certificado.lerAjustes(), ok: req.query.ok || null, erro: req.query.erro || null });
+});
+
+router.post('/certificados', requirePermissao('turmas:gerenciar'), receberAssinaturas, async (req, res) => {
+  if (req.uploadErro) return res.redirect('/certificados?erro=' + encodeURIComponent(req.uploadErro));
   // Imagem nova substitui a de antes; "remover" tira; sem nada, fica a que já estava.
   const atuais = (await certificado.lerAjustes()).assinantes;
   const linhas = Object.values(req.body.assinantes || {});
@@ -1614,9 +1624,14 @@ router.post('/modelos', requirePermissao('turmas:gerenciar'), receberAssinaturas
   }
   await certificado.salvarAjustes({ assinantes: linhas, livro: req.body.livro, assinaturaOnline: req.body.assinaturaOnline });
   for (const u of apagar) await removerFotoCurso(u).catch(() => {});
-  await auditar(req, 'EDITOU_MODELOS', 'Configuracao', null, null);
-  const voltar = VOLTAR_MODELOS.test(String(req.body.voltar || '')) ? req.body.voltar : '';
-  res.redirect('/modelos?ok=' + encodeURIComponent('Modelos salvos.') + (voltar ? '&voltar=' + encodeURIComponent(voltar) : ''));
+  await auditar(req, 'EDITOU_CERTIFICADOS', 'Configuracao', null, { assinaturaOnline: req.body.assinaturaOnline === 'sem' ? 'sem' : 'com' });
+  res.redirect('/certificados?ok=' + encodeURIComponent('Certificados salvos.'));
+});
+
+// Prévia: o modelo do certificado online com um aluno de exemplo e as assinaturas atuais (na página, num iframe).
+router.get('/certificados/previa', requirePermissao('turmas:gerenciar'), async (req, res) => {
+  const d = require('../lib/ead-certificado').exemploCertificadoEad(await certificado.lerAjustes());
+  res.render('admin/certificado-imprimir', { lista: [{ id: 'exemplo', ...d, verificacao: null }], turma: { curso: { nome: d.curso } }, avisoRedacao: null, barraAluno: null, previaPainel: true });
 });
 
 // ---------- Pesquisa de satisfação (lib/pesquisa.js) ----------

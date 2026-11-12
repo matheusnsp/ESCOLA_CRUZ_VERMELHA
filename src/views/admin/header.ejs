@@ -23,6 +23,7 @@
     <a href="/ead/escolas" class="<%= secaoAtiva === 'escolas' ? 'on' : '' %>"><i class="fa-solid fa-school"></i> Escolas</a>
     <a href="/ead/cupons" class="<%= secaoAtiva === 'cupons' ? 'on' : '' %>"><i class="fa-solid fa-ticket"></i> Cupons</a>
     <a href="/ead/duvidas" class="<%= secaoAtiva === 'duvidas' ? 'on' : '' %>"><i class="fa-solid fa-comments"></i> Dúvidas<% if (typeof duvidasAguardando === 'number' && duvidasAguardando > 0) { %> <span class="adm-badge" title="Aguardando resposta"><%= duvidasAguardando %></span><% } %></a>
+    <% if (pode('turmas:gerenciar')) { %><a href="/certificados" class="<%= secaoAtiva === 'certificados' ? 'on' : '' %>"><i class="fa-solid fa-award"></i> Certificados</a><% } %>
   <% } else { %>
     <a href="/" class="<%= secaoAtiva === 'home' ? 'on' : '' %>"><i class="fa-solid fa-gauge"></i> Painel</a>
     <a href="/cursos" class="<%= secaoAtiva === 'cursos' ? 'on' : '' %>"><i class="fa-solid fa-book"></i> Cursos</a>
@@ -45,6 +46,7 @@
       <a href="/pendentes" class="<%= secaoAtiva === 'pendentes' ? 'on' : '' %>"><i class="fa-solid fa-hourglass-half"></i> Pendentes</a>
     <% } %>
     <a href="/alunos" class="<%= secaoAtiva === 'alunos' ? 'on' : '' %>"><i class="fa-solid fa-user-graduate"></i> Alunos</a>
+    <% if (pode('turmas:gerenciar')) { %><a href="/certificados" class="<%= secaoAtiva === 'certificados' ? 'on' : '' %>"><i class="fa-solid fa-award"></i> Certificados</a><% } %>
     <% if (pode('aluno:gerenciar')) { %>
       <a href="/comprovantes-saude" class="<%= secaoAtiva === 'comprovantes' ? 'on' : '' %>"><i class="fa-solid fa-user-doctor"></i> Comprovantes</a>
     <% } %>

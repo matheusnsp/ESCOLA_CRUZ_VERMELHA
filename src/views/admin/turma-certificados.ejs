@@ -21,7 +21,7 @@
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
   <div class="adm-box-head">
     <h2 class="adm-h2"><i class="fa-solid fa-signature"></i> Assinaturas deste certificado</h2>
-    <a href="/modelos?voltar=/turmas/<%= turma.id %>/certificados" class="adm-link">Editar a lista de quem assina</a>
+    <a href="/certificados" class="adm-link">Editar a lista de quem assina</a>
   </div>
   <div class="adm-cert-assin-corpo">
     <p class="adm-hint">Marque quem assina (até <%= maxNoCertificado %>). A ordem é a da lista.
@@ -97,7 +97,7 @@
     </table>
     <p class="adm-hint adm-cert-dica">Abre numa aba nova, já no tamanho A4 deitado: cada aluno tem frente e verso. Na impressora, escolha
       <b>frente e verso</b> virando pela <b>borda curta</b>. O Livro <%= ajustes.livro %> e o registro são gerados na primeira impressão e mantidos depois.
-      <a href="/modelos?voltar=/turmas/<%= turma.id %>/certificados">Ajustes do certificado</a>.</p>
+      <a href="/certificados">Ajustes do certificado</a>.</p>
   <% } %>
 </form>
 

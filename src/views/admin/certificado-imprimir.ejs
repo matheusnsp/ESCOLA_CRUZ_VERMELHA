@@ -22,6 +22,8 @@
     </div>
     <button type="button" id="certImprimir">Baixar PDF / imprimir</button>
   </header>
+<% } else if (typeof previaPainel !== 'undefined' && previaPainel) { -%>
+  <%# Prévia na aba Certificados do painel (iframe): sem barra. %>
 <% } else { -%>
   <header class="cert-barra">
     <div>

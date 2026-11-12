@@ -121,4 +121,15 @@ async function previaCertificadoEad(alunoCursoId, { documentoAluno } = {}) {
   return { dados: { ...dados, teste: true }, verificacao: null };
 }
 
-module.exports = { dadosCertificadoEad, assinaturasDoCurso, dataRio, emitirCertificadoEad, previaCertificadoEad };
+// Aba "Certificados" do painel (2026-11-12): um certificado de exemplo, com as assinaturas e a escolha atuais, para ver
+// como vai ficar antes de algum aluno baixar. Marcado como teste (sem livro/registro).
+function exemploCertificadoEad(ajustes) {
+  const dados = dadosCertificadoEad({
+    usuario: { nome: 'Aluno Exemplo', genero: null }, curso: { nome: 'Primeiros Socorros Básicos', cargaHoraria: 4 },
+    modulos: [{ titulo: 'Antes de tudo', final: false }, { titulo: 'Parada cardíaca', final: false }, { titulo: 'Engasgo', final: false }, { titulo: 'Juntando tudo', final: true }],
+    numero: { livro: null, registro: null, emitidoEm: new Date() }, concluidoEm: new Date(), ajustes, documentoAluno: () => null,
+  });
+  return { ...dados, teste: true };
+}
+
+module.exports = { dadosCertificadoEad, assinaturasDoCurso, dataRio, emitirCertificadoEad, previaCertificadoEad, exemploCertificadoEad };

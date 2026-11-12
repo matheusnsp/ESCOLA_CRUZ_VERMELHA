@@ -1962,3 +1962,18 @@ a.mr-num:hover { border-color: var(--linha); }
 .adm-assin-modo { border: 1px solid var(--linha); border-radius: var(--r-s, 10px); padding: 12px 14px; display: grid; gap: 8px; }
 .adm-assin-modo legend { font-weight: 700; padding: 0 6px; }
 @media (max-width: 620px) { .adm-assin-linha { grid-template-columns: 22px 1fr; } .adm-assin-linha input[name$="[cargo]"], .adm-assin-img { grid-column: 2; } }
+
+/* Aba Certificados (2026-11-12) */
+.adm-cert-cartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.adm-cert-cartao { border: 1px solid var(--linha); border-radius: var(--r-s, 10px); padding: 12px; display: grid; gap: 8px; }
+.adm-cert-cartao.no-online { border-color: #e0a3a3; }
+.adm-cert-cartao label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
+.adm-cert-cartao-topo { display: flex; align-items: center; justify-content: space-between; }
+.adm-cert-selo { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #b3261e; background: #fdecea; border-radius: 999px; padding: 2px 8px; }
+.adm-cert-assinatura { display: grid; gap: 6px; border-top: 1px dashed var(--linha); padding-top: 8px; }
+.adm-cert-assinatura img { height: 52px; max-width: 100%; object-fit: contain; object-position: left; background: #fff; border: 1px solid var(--linha); border-radius: 6px; padding: 4px; }
+.adm-cert-cartao label.check { display: flex; align-items: center; gap: 6px; font-weight: 400; }
+.adm-cert-sem { font-size: 13px; color: var(--mut); }
+.adm-cert-enviar input[type=file] { font-size: 12px; font-weight: 400; max-width: 100%; }
+.adm-cert-previa { margin-top: 16px; }
+.adm-cert-iframe { width: 100%; aspect-ratio: 297 / 420; max-height: 1100px; border: 1px solid var(--linha); border-radius: var(--r-s, 10px); background: #fff; }
