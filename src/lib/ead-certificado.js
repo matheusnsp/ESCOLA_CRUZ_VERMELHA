@@ -19,17 +19,21 @@ function dataRio(d) {
   return new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(d));
 }
 
-// Assinaturas do curso, sem o instrutor (o online não tem turma). Sem escolha válida: a primeira da lista.
+// Assinaturas do curso, sem o instrutor (o online não tem turma). Sem escolha própria do curso (ou só o instrutor):
+// a coordenação da Escola, as duas primeiras pessoas de "Quem assina" (painel → Modelos) — 2026-11-12.
+const COORDENACAO = 2;
 function assinaturasDoCurso(curso, ajustes) {
   const lista = [];
-  for (const chave of cert.escolhaDoCurso(curso)) {
-    if (chave === 'instrutor') continue;
-    const a = ajustes.assinantes[Number(chave.slice(1))];
-    if (a && a.nome) lista.push({ nome: a.nome, cargo: a.cargo });
+  const escolheu = Array.isArray(curso && curso.certAssinaturas) && curso.certAssinaturas.length;
+  if (escolheu) {
+    for (const chave of cert.escolhaDoCurso(curso)) {
+      if (chave === 'instrutor') continue;
+      const a = ajustes.assinantes[Number(chave.slice(1))];
+      if (a && a.nome) lista.push({ nome: a.nome, cargo: a.cargo });
+    }
   }
   if (!lista.length) {
-    const primeira = ajustes.assinantes.find((a) => a && a.nome);
-    if (primeira) lista.push({ nome: primeira.nome, cargo: primeira.cargo });
+    for (const a of ajustes.assinantes.filter((x) => x && x.nome).slice(0, COORDENACAO)) lista.push({ nome: a.nome, cargo: a.cargo });
   }
   return lista.slice(0, MAX_NO_CERTIFICADO);
 }

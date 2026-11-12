@@ -44,10 +44,18 @@ describe('dadosCertificadoEad', () => {
     assert.match(d.emitidoEm, /^Rio de Janeiro, 05 de Novembro de 2026\.$/);
     assert.deepEqual(d.conteudo, ['Antes de tudo', 'Engasgo', 'Juntando tudo']);
   });
-  test('assinaturas sem instrutor; sem escolha válida, a primeira da lista', () => {
+  test('assinaturas: a escolha do curso, sem o instrutor', () => {
     assert.deepEqual(dadosCertificadoEad(base).assinaturas, [{ nome: 'BRUNO', cargo: 'Presidente' }]);
-    const s = dadosCertificadoEad({ ...base, curso: { ...base.curso, certAssinaturas: ['instrutor'] } });
-    assert.deepEqual(s.assinaturas, [{ nome: 'AMANDA', cargo: 'Coordenadora' }]);
+  });
+  // 2026-11-12 (pedido do Matheus): o certificado online sai com a coordenação da Escola, as duas primeiras pessoas
+  // de "Quem assina" (painel → Modelos), quando o curso não escolheu outras.
+  test('sem escolha (ou só o instrutor): as duas primeiras da lista, a coordenação da Escola', () => {
+    const coord = { assinantes: [{ nome: 'ALESSANDRA RACHEL GOMES DA SILVA', cargo: 'Coordenadora da Escola' }, { nome: 'MÁRCIO ROMERO', cargo: 'Coordenador da Escola' }, { nome: 'OUTRA', cargo: 'Presidente' }], livro: 3 };
+    const esperado = [{ nome: 'ALESSANDRA RACHEL GOMES DA SILVA', cargo: 'Coordenadora da Escola' }, { nome: 'MÁRCIO ROMERO', cargo: 'Coordenador da Escola' }];
+    assert.deepEqual(dadosCertificadoEad({ ...base, ajustes: coord, curso: { nome: 'X', cargaHoraria: 3 } }).assinaturas, esperado);
+    assert.deepEqual(dadosCertificadoEad({ ...base, ajustes: coord, curso: { ...base.curso, certAssinaturas: ['instrutor'] } }).assinaturas, esperado);
+    // só uma pessoa cadastrada: sai só ela
+    assert.deepEqual(dadosCertificadoEad({ ...base, ajustes: { assinantes: [coord.assinantes[0]], livro: 3 }, curso: { nome: 'X', cargaHoraria: 3 } }).assinaturas, [esperado[0]]);
   });
   test('nome no certificado do curso (extras) e sem documento', () => {
     const d = dadosCertificadoEad({ ...base, curso: { ...base.curso, nomeCertificado: 'Primeiros Socorros (Lei Lucas)' }, usuario: { nome: 'Sem Doc', genero: null } });
