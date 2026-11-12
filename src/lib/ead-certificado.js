@@ -20,8 +20,8 @@ function dataRio(d) {
 }
 
 // Assinaturas do curso, sem o instrutor (o online não tem turma). Sem escolha própria do curso (ou só o instrutor):
-// a coordenação da Escola, as duas primeiras pessoas de "Quem assina" (painel → Modelos) — 2026-11-12.
-const COORDENACAO = 2;
+// as três primeiras pessoas de "Quem assina" (painel → Modelos): a coordenação e a presidência — 2026-11-12.
+const COORDENACAO = 3;
 function assinaturasDoCurso(curso, ajustes) {
   const lista = [];
   const escolheu = Array.isArray(curso && curso.certAssinaturas) && curso.certAssinaturas.length;

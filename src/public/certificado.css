@@ -83,3 +83,11 @@ body { background: #e9e6e1; font-family: Arimo, Arial, Helvetica, sans-serif; co
 @media screen and (max-width: 520px) { .cert-pagina { zoom: .38; } }
 @media screen and (max-width: 420px) { .cert-pagina { zoom: .32; } }
 @media screen and (max-width: 360px) { .cert-pagina { zoom: .28; } }
+
+/* 3 ou 4 assinaturas (2026-11-12): nome sem quebrar de linha (a quebra empurrava o bloco para cima da ressalva do
+   curso online); o bloco fica entre a ressalva e o QR, sem encostar nos dois. */
+.cert-assinaturas.n3 > div { font-size: 3.6mm; }
+.cert-assinaturas.n3 b, .cert-assinaturas.n4 b { white-space: nowrap; }
+.cert-assinaturas.n3 b { font-size: 3.8mm; }
+.cert-assinaturas.n3 small, .cert-assinaturas.n4 small { font-size: 2.7mm; }
+.cert-frente .cert-assinaturas.n3, .cert-frente .cert-assinaturas.n4 { bottom: 37mm; }

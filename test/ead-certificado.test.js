@@ -47,15 +47,20 @@ describe('dadosCertificadoEad', () => {
   test('assinaturas: a escolha do curso, sem o instrutor', () => {
     assert.deepEqual(dadosCertificadoEad(base).assinaturas, [{ nome: 'BRUNO', cargo: 'Presidente' }]);
   });
-  // 2026-11-12 (pedido do Matheus): o certificado online sai com a coordenação da Escola, as duas primeiras pessoas
-  // de "Quem assina" (painel → Modelos), quando o curso não escolheu outras.
-  test('sem escolha (ou só o instrutor): as duas primeiras da lista, a coordenação da Escola', () => {
-    const coord = { assinantes: [{ nome: 'ALESSANDRA RACHEL GOMES DA SILVA', cargo: 'Coordenadora da Escola' }, { nome: 'MÁRCIO ROMERO', cargo: 'Coordenador da Escola' }, { nome: 'OUTRA', cargo: 'Presidente' }], livro: 3 };
-    const esperado = [{ nome: 'ALESSANDRA RACHEL GOMES DA SILVA', cargo: 'Coordenadora da Escola' }, { nome: 'MÁRCIO ROMERO', cargo: 'Coordenador da Escola' }];
-    assert.deepEqual(dadosCertificadoEad({ ...base, ajustes: coord, curso: { nome: 'X', cargaHoraria: 3 } }).assinaturas, esperado);
-    assert.deepEqual(dadosCertificadoEad({ ...base, ajustes: coord, curso: { ...base.curso, certAssinaturas: ['instrutor'] } }).assinaturas, esperado);
+  // 2026-11-12 (pedido do Matheus): o certificado online sai com as três primeiras pessoas de "Quem assina"
+  // (painel → Modelos): Alessandra (coordenação), Luiz Carlos (Presidente) e Márcio (Coordenador Estadual).
+  test('sem escolha (ou só o instrutor): as três primeiras da lista', () => {
+    const lista = [
+      { nome: 'Alessandra Rachel Gomes da Silva', cargo: 'Coordenadora da Escola' },
+      { nome: 'Luiz Carlos dos Santos', cargo: 'Presidente' },
+      { nome: 'Márcio Romero', cargo: 'Coordenador Estadual de Educação e Saúde' },
+      { nome: 'Outra Pessoa', cargo: 'Outro cargo' },
+    ];
+    const coord = { assinantes: lista, livro: 3 };
+    assert.deepEqual(dadosCertificadoEad({ ...base, ajustes: coord, curso: { nome: 'X', cargaHoraria: 3 } }).assinaturas, lista.slice(0, 3));
+    assert.deepEqual(dadosCertificadoEad({ ...base, ajustes: coord, curso: { ...base.curso, certAssinaturas: ['instrutor'] } }).assinaturas, lista.slice(0, 3));
     // só uma pessoa cadastrada: sai só ela
-    assert.deepEqual(dadosCertificadoEad({ ...base, ajustes: { assinantes: [coord.assinantes[0]], livro: 3 }, curso: { nome: 'X', cargaHoraria: 3 } }).assinaturas, [esperado[0]]);
+    assert.deepEqual(dadosCertificadoEad({ ...base, ajustes: { assinantes: [lista[0]], livro: 3 }, curso: { nome: 'X', cargaHoraria: 3 } }).assinaturas, [lista[0]]);
   });
   test('nome no certificado do curso (extras) e sem documento', () => {
     const d = dadosCertificadoEad({ ...base, curso: { ...base.curso, nomeCertificado: 'Primeiros Socorros (Lei Lucas)' }, usuario: { nome: 'Sem Doc', genero: null } });
