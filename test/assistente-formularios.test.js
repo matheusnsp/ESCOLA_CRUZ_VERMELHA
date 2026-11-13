@@ -123,3 +123,26 @@ test('formulário: campos que chegam como texto JSON também valem (ferramenta s
   assert.equal(r.evento.campos.nome, 'Curso Texto');
   assert.equal(r.evento.campos.precoAvista, '180.00');
 });
+
+test('pequenos ajustes: editar um curso que não existe dá erro; sem banco não precisa', async () => {
+  const f = require('../src/lib/assistente-ferramentas');
+  const r = await f.executarFormulario('preencher_curso', { campos: { precoAvista: 500 }, editarCursoId: 'nao-e-id' }, { pode: () => true });
+  assert.equal(r.resultado.preparado, false);
+  assert.ok(r.resultado.erros.editarCursoId);
+  assert.ok(f.DEFINICOES_FORMULARIO.find((d) => d.name === 'preencher_curso').input_schema.properties.editarCursoId);
+  assert.ok(f.DEFINICOES_FORMULARIO.find((d) => d.name === 'preencher_turma').input_schema.properties.editarTurmaId);
+});
+
+const temBancoEd = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');
+test('pequenos ajustes: editar curso/turma existente leva o endereço da edição no evento', { skip: temBancoEd ? false : 'sem banco local' }, async () => {
+  const f = require('../src/lib/assistente-ferramentas');
+  const prisma = require('../src/db');
+  const t = await prisma.turma.findFirst({ where: { status: { in: ['ABERTA', 'CONFIRMADA'] } }, include: { curso: true } });
+  if (!t) return;
+  const r = await f.executarFormulario('preencher_curso', { campos: { precoAvista: 500 }, editarCursoId: t.cursoId }, { pode: () => true });
+  assert.deepEqual(r.evento.editar, { id: t.cursoId, caminho: `/cursos/${t.cursoId}/editar`, nome: t.curso.nome });
+  const r2 = await f.executarFormulario('preencher_turma', { campos: { vagas: 25 }, editarTurmaId: t.id }, { pode: () => true });
+  assert.equal(r2.evento.editar.caminho, `/turmas/${t.id}/editar`);
+  const r3 = await f.executarFormulario('preencher_curso', { campos: { nome: 'Novo' } }, { pode: () => true });
+  assert.equal(r3.evento.editar, undefined);
+});

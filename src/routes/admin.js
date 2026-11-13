@@ -509,13 +509,14 @@ router.post('/assistente/mensagem', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
   let fechou = false;
-  res.on('close', () => { fechou = true; });
+  const parar = new AbortController(); // aba fechada no meio: o assistente para de chamar a API
+  res.on('close', () => { fechou = true; if (!res.writableEnded) parar.abort(); });
   const emitir = (e) => { if (!fechou) res.write(JSON.stringify(e) + '\n'); };
   try {
     const b = req.body || {};
     await assistente.responder({
       mensagens: b.mensagens, pagina: b.pagina, usuarioId: req.session.usuarioId, papel: req.session.papel,
-      pode: res.locals.pode, documentoAluno: req.app.locals.documentoAluno, emitir,
+      pode: res.locals.pode, documentoAluno: req.app.locals.documentoAluno, emitir, sinal: parar.signal,
     });
   } catch (e) {
     console.error('[ASSISTENTE] rota:', e.message);

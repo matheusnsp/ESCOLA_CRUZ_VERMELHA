@@ -237,7 +237,8 @@
     var c = el('div', 'adm-assist-cartao');
     var cabC = el('div', 'adm-assist-cartao-tit');
     cabC.appendChild(icone(prop.formulario === 'turma' ? 'fa-calendar-plus' : 'fa-file-pen'));
-    cabC.appendChild(document.createTextNode(prop.formulario === 'turma' ? ' Formulário de turma' : ' Formulário de curso'));
+    var nomeForm = prop.formulario === 'turma' ? 'turma' : 'curso';
+    cabC.appendChild(document.createTextNode(prop.editar ? ' Editar ' + nomeForm + ': ' + prop.editar.nome : (nomeForm === 'turma' ? ' Nova turma' : ' Novo curso')));
     c.appendChild(cabC);
     var dl = el('dl');
     var rot = ROTULOS[prop.formulario] || {};
@@ -252,7 +253,7 @@
     });
     c.appendChild(dl);
     var acoes = el('div', 'adm-assist-cartao-acoes');
-    var f = acharFormulario(prop.formulario);
+    var f = acharFormulario(prop);
     if (f) {
       var b = el('button', 'adm-btn adm-assist-preencher'); b.type = 'button';
       b.appendChild(icone('fa-pen-to-square')); b.appendChild(document.createTextNode(' Preencher na tela'));
@@ -263,11 +264,11 @@
       });
       acoes.appendChild(b);
     } else {
-      var d = DESTINO[prop.formulario];
+      var d = destino(prop);
       var a = el('a', 'adm-btn adm-assist-abrir'); a.href = d.caminho;
       a.appendChild(icone('fa-arrow-up-right-from-square')); a.appendChild(document.createTextNode(' ' + d.rotulo));
       a.addEventListener('click', function () {
-        gravar(CHAVE_PREENCHER, { formulario: prop.formulario, campos: prop.campos, caminho: d.caminho, criadoEm: Date.now() });
+        gravar(CHAVE_PREENCHER, { formulario: prop.formulario, campos: prop.campos, editar: prop.editar, caminho: d.caminho, criadoEm: Date.now() });
       });
       acoes.appendChild(a);
     }
@@ -290,7 +291,19 @@
   }
 
   // ---------- preencher formulários ----------
-  function acharFormulario(tipo) {
+  // Onde a proposta vale: edição de um curso/turma -> só na tela de edição DELE; senão -> só em Novo curso / Nova turma.
+  // (Antes, qualquer formulário na tela servia: "mude o preço do Socorrista" podia cair num curso novo ou em outro curso.)
+  function destino(prop) {
+    if (prop.editar && /^\/(cursos|turmas)\/[0-9a-f-]{36}\/editar$/i.test(prop.editar.caminho)) {
+      return { caminho: prop.editar.caminho, rotulo: 'Abrir a edição de ' + prop.editar.nome + ' e preencher' };
+    }
+    return DESTINO[prop.formulario] || DESTINO.curso;
+  }
+  function acharFormulario(prop) {
+    if (location.pathname !== destino(prop).caminho) return null;
+    return formularioDaTela(prop.formulario);
+  }
+  function formularioDaTela(tipo) {
     var c = tipo === 'turma' ? document.querySelector('form [name=cursoId]') : document.querySelector('form [name=cargaHoraria]');
     var f = c && c.form;
     if (!f) return null;
@@ -407,7 +420,7 @@
       if (!ev || !ev.tipo) return;
       if (ev.tipo === 'texto') { parcial += ev.texto || ''; status.lastChild.textContent = ' Escrevendo…'; mostrarParcial(); }
       else if (ev.tipo === 'ferramenta') { status.lastChild.textContent = ' ' + (NOMES_FERRAMENTAS[ev.nome] || 'Consultando…'); }
-      else if (ev.tipo === 'preencher') { propostas.push({ formulario: ev.formulario, campos: ev.campos || {}, cursoNome: ev.cursoNome }); }
+      else if (ev.tipo === 'preencher') { propostas.push({ formulario: ev.formulario, campos: ev.campos || {}, cursoNome: ev.cursoNome, editar: ev.editar }); }
       else if (ev.tipo === 'resposta') { final = String(ev.texto || ''); }
       else if (ev.tipo === 'erro') { erro = ev.mensagem || 'O assistente está fora do ar agora. Tente de novo em instantes.'; }
       rolarFim();
@@ -478,7 +491,7 @@
   if (pendente) {
     gravar(CHAVE_PREENCHER, null); // uso único
     var valido = pendente.caminho === location.pathname && typeof pendente.criadoEm === 'number' && Date.now() - pendente.criadoEm < VALIDADE_PREENCHER;
-    var fAlvo = valido && acharFormulario(pendente.formulario);
+    var fAlvo = valido && acharFormulario(pendente);
     if (fAlvo) {
       abrir(botao);
       var r = preencher(fAlvo, pendente);

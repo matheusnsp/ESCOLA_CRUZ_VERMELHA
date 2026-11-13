@@ -209,6 +209,19 @@ describe('tela do assistente', { skip: chromium ? false : 'sem Playwright' }, ()
     await p.context().close();
   });
 
+  test('pequenos ajustes: proposta de EDIÇÃO fora da página leva à edição, não ao Novo curso', async () => {
+    const id = '11111111-2222-3333-4444-555555555555';
+    respostas = [[{ tipo: 'preencher', formulario: 'curso', campos: { precoAvista: '500.00' }, editar: { id, caminho: `/cursos/${id}/editar`, nome: 'Socorrista' } }, { tipo: 'resposta', texto: 'Ok.' }, { tipo: 'fim' }]];
+    const p = await abrir('/cursos/novo', '', 'cursos');
+    await p.click('#admAssistBtn'); await p.fill('.adm-assist-form textarea', 'muda o preço do Socorrista'); await p.keyboard.press('Enter');
+    await p.waitForSelector('.adm-assist-cartao');
+    assert.equal(await p.$$eval('.adm-assist-preencher', (l) => l.length), 0); // não preenche o Novo curso com dados de outro curso
+    assert.equal(await p.getAttribute('a.adm-assist-abrir', 'href'), `/cursos/${id}/editar`);
+    assert.match(await p.textContent('a.adm-assist-abrir'), /Abrir a edição de Socorrista e preencher/);
+    assert.match(await p.textContent('.adm-assist-cartao-tit'), /Editar curso: Socorrista/);
+    await p.context().close();
+  });
+
   test('erro vira mensagem amigável', async () => {
     respostas = [[{ tipo: 'erro', mensagem: 'O assistente está fora do ar agora. Tente de novo em instantes.' }, { tipo: 'fim' }]];
     const p = await abrir('/pendentes', '', 'pendentes');

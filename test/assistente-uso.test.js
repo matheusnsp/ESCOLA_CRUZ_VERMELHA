@@ -46,6 +46,26 @@ describe('uso do assistente', { skip: temBanco ? false : 'sem DATABASE_URL local
     assert.match(r.erro, /hoje/);
   });
 
+  test('reserva: 25 pedidos ao mesmo tempo, só 20 passam (pequenos ajustes)', async () => {
+    await prisma.usoAssistente.deleteMany({ where: { usuarioId: u.id } });
+    const rs = await Promise.all(Array.from({ length: 25 }, () => uso.reservar(u.id)));
+    assert.equal(rs.filter((r) => r.ok).length, 20);
+    assert.equal(await prisma.usoAssistente.count({ where: { usuarioId: u.id } }), 20);
+  });
+
+  test('reserva: registrar atualiza a mesma linha; liberar apaga (falha da API não conta)', async () => {
+    await prisma.usoAssistente.deleteMany({ where: { usuarioId: u.id } });
+    const r = await uso.reservar(u.id);
+    assert.ok(r.ok && r.id);
+    await uso.registrarUso(u.id, { input_tokens: 50, output_tokens: 5 }, ['listar_turmas'], r.id);
+    const linhas = await prisma.usoAssistente.findMany({ where: { usuarioId: u.id } });
+    assert.equal(linhas.length, 1);
+    assert.equal(linhas[0].tokensEntrada, 50);
+    const r2 = await uso.reservar(u.id);
+    await uso.liberar(r2.id);
+    assert.equal(await prisma.usoAssistente.count({ where: { usuarioId: u.id } }), 1);
+  });
+
   test('excluir o usuário apaga o uso', async () => {
     const v = await prisma.usuario.create({ data: { nome: 'Temp', email: `assist-tmp-${Date.now()}@teste.local`, papel: 'SECRETARIA' } });
     await uso.registrarUso(v.id, null, []);
