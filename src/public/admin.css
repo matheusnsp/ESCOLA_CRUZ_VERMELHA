@@ -2127,3 +2127,9 @@ html[data-tema="escuro"] .adm-bv-tag.proprio { background: rgba(34,197,94,.15); 
 .adm-bv-acoes form { display: inline; margin-left: 12px; }
 .adm-bv-acoes button.adm-link { background: none; border: 0; padding: 0; font-family: inherit; font-weight: 700; font-size: 14px; color: var(--vermelho); cursor: pointer; }
 @media (max-width: 620px) { .adm-bv-acoes { text-align: left; white-space: normal; } }
+
+/* Revisão visual (2026-11-13): no tablet, tabela larga dentro da caixa rola para o lado (antes as últimas colunas
+   ficavam cortadas, ex.: Cursos em 820 px). No celular isso já valia (regra de 620 px). */
+@media (max-width: 1024px) {
+  .adm-box { overflow-x: auto; }
+}

@@ -142,3 +142,8 @@ test('botões de criar do topo marcados para virar (+) no celular; os do meio do
   assert.doesNotMatch(V('ead/escolas.ejs'), /data-criar[^>]*>\s*<i[^>]*><\/i>\s*Outro lote/);
   assert.match(V('ead/escolas.ejs'), /href="\/ead\/escolas\/lote\/novo"\s+data-criar/);
 });
+
+test('no tablet (até 1024 px) a caixa com tabela larga rola para o lado em vez de cortar as colunas', () => {
+  // Revisão visual de 13/11: em 820 px a tabela de Cursos passava 193 px da tela e as últimas colunas sumiam.
+  assert.match(CSS, /@media \(max-width: 1024px\) \{\s*\.adm-box \{ overflow-x: auto; \}/);
+});
