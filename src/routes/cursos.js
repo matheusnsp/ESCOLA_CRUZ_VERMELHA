@@ -39,18 +39,12 @@ const router = express.Router();
 // Não precisa de cron/scheduler — funciona porque o site é acessado
 // regularmente; a primeira visita depois que a data vira já corrige o status.
 // ─────────────────────────────────────────────────────────────────────────
-const { concluirTurmasPassadas } = require('../lib/concluir-turmas');
+const { atualizarStatusTurmas, inicioDoDiaSeguinteBrasilia } = require('../lib/concluir-turmas');
 
+// 2026-11-13: Aberta → Confirmada à 00:00 (Brasília) do dia de início, e Confirmada → Concluída no dia seguinte à
+// última aula (lib/concluir-turmas.js). Também roda de hora em hora (server.js) e ao abrir Turmas no painel.
 async function fecharTurmasVencidas() {
-  try {
-    await prisma.turma.updateMany({
-      where: { status: 'ABERTA', inicioPrevisto: { lte: new Date() } },
-      data: { status: 'CONFIRMADA' },
-    });
-  } catch (e) {
-    console.error('[Turmas] Falha ao fechar turmas vencidas:', e.message);
-  }
-  await concluirTurmasPassadas(); // e as confirmadas cujo último dia de aula já passou
+  await atualizarStatusTurmas(); // já trata os próprios erros
 }
 
 // Antes rodava (e esperava) a cada request, inclusive em /sobre: um UPDATE no banco antes de
@@ -72,9 +66,10 @@ router.use(async (req, res, next) => {
   next();
 });
 
-// Turmas que aparecem como abertas no site: status ABERTA e início ainda no futuro.
+// Turmas que aparecem como abertas no site: status ABERTA e o dia de início ainda não chegou (Brasília):
+// à 00:00 do dia de início a turma some do site, no mesmo momento em que vira Confirmada.
 function turmasAbertas() {
-  return { status: 'ABERTA', inicioPrevisto: { gt: new Date() } };
+  return { status: 'ABERTA', inicioPrevisto: { gte: inicioDoDiaSeguinteBrasilia() } };
 }
 
 // 💡 NOVO — Uma matrícula "fantasma" é aquela criada no banco (necessária pro

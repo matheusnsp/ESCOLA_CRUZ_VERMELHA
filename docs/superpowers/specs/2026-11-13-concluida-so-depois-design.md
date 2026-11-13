@@ -15,3 +15,8 @@
 **Dica no formulário**, abaixo do status: "Concluída só a partir do dia seguinte à última aula — o sistema conclui sozinho."
 
 **Fora do escopo:** Aberta, Confirmada, Congelada e Cancelada continuam livres; a conclusão automática não muda.
+
+## Adendo (aprovado): Aberta → Confirmada à 00:00 do dia de início
+- A turma Aberta vira Confirmada à 00:00 (Brasília) do dia de início; antes era ao meio-dia do horário do servidor (9h de Brasília) e só quando alguém visitava o site.
+- O site para de listar a turma no mesmo instante (início ≥ 00:00 de amanhã em Brasília).
+- A conferência (confirmar + concluir) roda ao subir, de hora em hora, ao abrir Turmas no painel e nas páginas do site.

@@ -32,7 +32,7 @@ const { outroPagamentoCursoPago } = require('../lib/status-pagamento');
 const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarTextoWhats, montarLinkProspeccao } = require('../lib/lembretes');
 const { coletarDadosRelatorio, gerarExcel, gerarPdf, coletarLancamentosOfx, gerarOfx } = require('../lib/relatorio'); // relatórios Excel/PDF
 const { estornosExtras, totalEstornado: somarEstornos, lotesDaTabela } = require('../lib/financeiro-estornos');
-const { concluirTurmasPassadas } = require('../lib/concluir-turmas');
+const { atualizarStatusTurmas } = require('../lib/concluir-turmas');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 const permissoes = require('../lib/permissoes');
 const boasVindas = require('../lib/boas-vindas');
@@ -1166,7 +1166,7 @@ router.post('/cursos/:id/ativar', requirePermissao('cursos:gerenciar'), async (r
 // ---------- Turmas ----------
 
 router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
-  await concluirTurmasPassadas(); // a lista já abre com as turmas de ontem como CONCLUÍDA
+  await atualizarStatusTurmas(); // a lista já abre com as turmas de hoje Confirmadas e as de ontem Concluídas
   const turmas = await prisma.turma.findMany({
     // A turma de espera (EM_ESPERA) não é turma de verdade: fica fora das abas e da lista.
     where: { status: { notIn: FORA_DO_PRESENCIAL } },

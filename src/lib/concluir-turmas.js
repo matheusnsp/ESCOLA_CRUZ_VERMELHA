@@ -47,4 +47,29 @@ function ajustarConclusao(dados, aulas, agora = new Date()) {
   return `Turma salva como Confirmada: ela vira Concluída sozinha em ${br}, o dia seguinte à última aula.`;
 }
 
-module.exports = { concluirTurmasPassadas, ajustarConclusao };
+// 00:00 do dia seguinte em Brasília, como instante (Brasília é UTC-3 o ano todo desde 2019).
+function inicioDoDiaSeguinteBrasilia(agora = new Date()) {
+  const [a, m, d] = hojeBrasilia(agora).split('-').map(Number);
+  return new Date(Date.UTC(a, m - 1, d + 1, 3, 0, 0));
+}
+
+// 2026-11-13: a turma Aberta vira Confirmada à 00:00 (Brasília) do dia de início. O início é gravado como um
+// dia (meio-dia no horário do servidor), então "o dia chegou" = início antes da 00:00 de amanhã em Brasília.
+async function confirmarTurmasDoDia(agora = new Date()) {
+  try {
+    const r = await prisma.turma.updateMany({ where: { status: 'ABERTA', inicioPrevisto: { lt: inicioDoDiaSeguinteBrasilia(agora) } }, data: { status: 'CONFIRMADA' } });
+    if (r.count) console.log(`[Turmas] ${r.count} turma(s) confirmada(s) automaticamente.`);
+    return r.count;
+  } catch (e) {
+    console.error('[Turmas] Falha ao confirmar turmas do dia:', e.message);
+    return 0;
+  }
+}
+
+// As duas passagens automáticas, em ordem: Aberta → Confirmada (dia de início) e Confirmada → Concluída (dia seguinte à última aula).
+async function atualizarStatusTurmas() {
+  await confirmarTurmasDoDia();
+  await concluirTurmasPassadas();
+}
+
+module.exports = { concluirTurmasPassadas, ajustarConclusao, inicioDoDiaSeguinteBrasilia, confirmarTurmasDoDia, atualizarStatusTurmas };
