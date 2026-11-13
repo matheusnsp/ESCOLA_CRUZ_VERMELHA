@@ -1623,7 +1623,10 @@ router.post('/modelos', requirePermissao('turmas:gerenciar'), async (req, res) =
 
 // ---------- Certificados (2026-11-12): quem assina, assinatura escaneada, com/sem assinatura no online, livro, prévia ----------
 router.get('/certificados', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  res.render('admin/certificados', { ajustes: await certificado.lerAjustes(), ok: req.query.ok || null, erro: req.query.erro || null });
+  res.render('admin/certificados', {
+    ajustes: await certificado.lerAjustes(), ok: req.query.ok || null, erro: req.query.erro || null,
+    turmasCert: await certificado.turmasParaImprimir({ todas: req.query.todas === '1' }),
+  });
 });
 
 router.post('/certificados', requirePermissao('turmas:gerenciar'), receberAssinaturas, async (req, res) => {

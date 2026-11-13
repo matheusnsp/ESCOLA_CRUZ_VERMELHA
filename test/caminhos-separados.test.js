@@ -83,3 +83,48 @@ test('turmasParaEnvio: só turmas em andamento, com contagem de quem recebe e de
   assert.deepEqual(datas, [...datas].sort((a, b) => a - b));
   await require('../src/db').$disconnect();
 });
+
+test('Certificados num lugar só: botão sai da linha da turma; "Imprimir por turma" na página Certificados', async () => {
+  assert.doesNotMatch(ler('turmas.ejs'), /\/certificados"/);
+  const tc = ler('turma-certificados.ejs');
+  assert.match(tc, /include\('header', \{ ativo: 'certificados' \}\)/);
+  assert.match(tc, /<a href="\/certificados" class="adm-link"><i class="fa-solid fa-arrow-left"><\/i> Certificados<\/a>/);
+  const ejs = require('ejs');
+  const base = {
+    ativo: 'certificados', modoPainel: 'presencial', admPapel: 'DEV', pode: () => true, csrfToken: 'x', usuario: { nome: 'Dev' }, asset: (u) => u,
+    montarMenu: require('../src/lib/menu-painel').montarMenu, ok: null, erro: null,
+    ajustes: { assinantes: [], livro: 1, assinaturaOnline: 'com' },
+  };
+  const html = await ejs.renderFile(V('certificados.ejs'), { ...base, turmasCert: { lista: [
+    { id: 't1', curso: 'Primeiros Socorros Básico', inicio: '2026-11-17T00:00:00Z', situacao: 'andamento', alunos: 28 },
+    { id: 't2', curso: 'Bombeiro Civil', inicio: '2026-09-01T00:00:00Z', situacao: 'concluida', alunos: 12 },
+  ], escondidas: 5, todas: false } });
+  const i = html.indexOf('id="imprimir-turmas"');
+  assert.ok(i > 0 && i < html.indexOf('action="/certificados?'));
+  const sec = html.slice(i);
+  assert.match(sec, /Primeiros Socorros Básico[\s\S]*?17\/11\/2026[\s\S]*?Em andamento[\s\S]*?28[\s\S]*?href="\/turmas\/t1\/certificados"[^>]*>Abrir certificados/);
+  assert.match(sec, /Bombeiro Civil[\s\S]*?Concluída/);
+  assert.match(sec, /<a href="\/certificados\?todas=1#imprimir-turmas"[^>]*>Ver mais 5 turmas concluídas<\/a>/);
+  const vazio = await ejs.renderFile(V('certificados.ejs'), { ...base, turmasCert: { lista: [], escondidas: 0, todas: false } });
+  assert.match(vazio, /Nenhuma turma em andamento ou concluída\./);
+  const rota = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'admin.js'), 'utf8');
+  assert.match(rota.slice(rota.indexOf("router.get('/certificados'"), rota.indexOf("router.get('/certificados'") + 500), /certificado\.turmasParaImprimir\(\{ todas: req\.query\.todas === '1' \}\)/);
+});
+
+test('turmasParaImprimir: em andamento primeiro, depois concluídas (mais recente primeiro), limite de 30', { skip: temBanco ? false : 'sem banco' }, async () => {
+  const cert = require('../src/lib/certificado');
+  const r = await cert.turmasParaImprimir({ todas: false });
+  assert.ok(Array.isArray(r.lista) && typeof r.escondidas === 'number');
+  const sit = r.lista.map((t) => t.situacao);
+  assert.deepEqual(sit, [...sit].sort((a, b) => (a === 'andamento' ? 0 : 1) - (b === 'andamento' ? 0 : 1)));
+  const conc = r.lista.filter((t) => t.situacao === 'concluida').map((t) => new Date(t.inicio).getTime());
+  assert.deepEqual(conc, [...conc].sort((a, b) => b - a));
+  assert.ok(r.lista.filter((t) => t.situacao === 'concluida').length <= 30);
+  await require('../src/db').$disconnect();
+});
+
+test('prévia do certificado (página Certificados) tem o botão que o script procura — sem erro de JavaScript', () => {
+  const v = ler('certificado-imprimir.ejs');
+  const bloco = v.slice(v.indexOf("typeof previaPainel !== 'undefined' && previaPainel"), v.indexOf('<% } else { -%>', v.indexOf("typeof previaPainel !== 'undefined' && previaPainel")));
+  assert.match(bloco, /<button type="button" id="certImprimir" hidden><\/button>/);
+});

@@ -12,6 +12,31 @@
 <% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
 <% if (erro) { %><div class="adm-erro" role="alert"><i class="fa-solid fa-triangle-exclamation"></i> <%= erro %></div><% } %>
 
+<%# Imprimir por turma (2026-11-13): a impressão dos certificados de cada turma fica aqui; o botão saiu da tela de Turmas. %>
+<% var _tc = typeof turmasCert !== 'undefined' ? turmasCert : { lista: [], escondidas: 0 }; var _dia = function (d) { var x = new Date(d), p = function (n) { return String(n).padStart(2, '0'); }; return p(x.getUTCDate()) + '/' + p(x.getUTCMonth() + 1) + '/' + x.getUTCFullYear(); }; %>
+<section class="adm-box adm-cert-turmas" id="imprimir-turmas">
+  <div class="adm-box-head"><h2 class="adm-h2"><i class="fa-solid fa-print"></i> Imprimir por turma</h2></div>
+  <% if (!_tc.lista.length) { %>
+    <p class="adm-mut adm-cert-turmas-dica">Nenhuma turma em andamento ou concluída.</p>
+  <% } else { %>
+  <table class="adm-table adm-table-cards">
+    <thead><tr><th>Turma</th><th>Início</th><th>Situação</th><th>Alunos</th><th></th></tr></thead>
+    <tbody>
+      <% _tc.lista.forEach(function (t) { %>
+        <tr>
+          <td><b><%= t.curso %></b></td>
+          <td><%= _dia(t.inicio) %></td>
+          <td><span class="adm-bv-tag<%= t.situacao === 'andamento' ? ' proprio' : '' %>"><%= t.situacao === 'andamento' ? 'Em andamento' : 'Concluída' %></span></td>
+          <td><%= t.alunos %></td>
+          <td class="adm-bv-acoes"><a href="/turmas/<%= t.id %>/certificados" class="adm-link">Abrir certificados</a></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% if (_tc.escondidas) { %><p class="adm-cert-turmas-dica"><a href="/certificados?todas=1#imprimir-turmas" class="adm-link">Ver mais <%= _tc.escondidas %> turmas concluídas</a></p><% } %>
+  <% } %>
+</section>
+
 <form method="POST" action="/certificados?_csrf=<%= csrfToken %>" class="adm-form adm-box" enctype="multipart/form-data">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
