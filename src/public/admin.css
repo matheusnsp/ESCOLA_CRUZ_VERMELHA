@@ -2335,7 +2335,10 @@ body.adm-assist-aberto .adm-assist-btn { display: none; }
   html.adm-js .adm-assist-top + .adm-menu-btn { margin-left: 0; }
 }
 @media (max-width: 620px) {
-  .adm-assist { width: 100%; border-left: 0; padding-bottom: env(safe-area-inset-bottom); }
+  .adm-assist { width: 100%; border-left: 0; padding-bottom: env(safe-area-inset-bottom);
+    /* iPhone com teclado aberto: o painel acompanha a área visível, mas atrás da barra de endereço flutuante do
+       Safari aparecia uma faixa da página travada. A sombra sólida pinta tudo em volta com a cor do painel. */
+    box-shadow: 0 0 0 100vh var(--card); }
   body.adm-assist-aberto { overflow: hidden; }
   .adm-assist-eu { max-width: 90%; }
   .adm-assist-ia { max-width: 100%; }

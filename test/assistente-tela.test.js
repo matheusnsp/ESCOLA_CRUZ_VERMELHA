@@ -244,6 +244,7 @@ describe('tela do assistente', { skip: chromium ? false : 'sem Playwright' }, ()
     await p.tap('.adm-assist-top');
     assert.equal(await p.evaluate(() => getComputedStyle(document.body).position), 'fixed');
     assert.equal(await p.evaluate(() => document.body.style.top), '-700px');
+    assert.match(await p.$eval('#admAssist', (e) => getComputedStyle(e).boxShadow), /0px 0px 0px \d+px/); // em volta do painel: cor do painel (faixa atrás da barra do Safari)
     await p.tap('.adm-assist-x');
     assert.notEqual(await p.evaluate(() => getComputedStyle(document.body).position), 'fixed');
     assert.equal(await p.evaluate(() => Math.round(window.scrollY)), 700);
