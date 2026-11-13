@@ -264,6 +264,27 @@ describe('tela do assistente', { skip: chromium ? false : 'sem Playwright' }, ()
     await c.close();
   });
 
+  test('celular: ao tocar no campo e mandar a 1ª mensagem, o painel acompanha a área visível mesmo sem o aviso de resize (iPhone)', async () => {
+    respostas = [[{ tipo: 'resposta', texto: 'Oi.' }, { tipo: 'fim' }]];
+    const c = await navegador.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    // visualViewport falso: o teclado muda a área visível SEM disparar resize/scroll (o que o Safari faz na 1ª vez).
+    await c.addInitScript(() => {
+      const vv = { offsetTop: 0, height: 844, width: 390, addEventListener() {}, removeEventListener() {} };
+      Object.defineProperty(window, 'visualViewport', { get: () => vv });
+    });
+    const p = await abrir('/pendentes', '', 'pendentes', 390, c);
+    await p.tap('.adm-assist-top');
+    await p.evaluate(() => { window.visualViewport.offsetTop = 120; window.visualViewport.height = 420; });
+    await p.tap('.adm-assist-form textarea');
+    await p.waitForTimeout(900);
+    assert.deepEqual(await p.$eval('#admAssist', (e) => [e.style.top, e.style.height]), ['120px', '420px']);
+    await p.evaluate(() => { window.visualViewport.offsetTop = 60; window.visualViewport.height = 470; });
+    await p.keyboard.type('oi'); await p.tap('.adm-assist-form button[type=submit]');
+    await p.waitForSelector('.adm-assist-ia:not(.escrevendo)'); await p.waitForTimeout(900);
+    assert.deepEqual(await p.$eval('#admAssist', (e) => [e.style.top, e.style.height]), ['60px', '470px']);
+    await c.close();
+  });
+
   test('erro vira mensagem amigável', async () => {
     respostas = [[{ tipo: 'erro', mensagem: 'O assistente está fora do ar agora. Tente de novo em instantes.' }, { tipo: 'fim' }]];
     const p = await abrir('/pendentes', '', 'pendentes');
