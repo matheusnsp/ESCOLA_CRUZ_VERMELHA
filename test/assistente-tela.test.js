@@ -237,6 +237,19 @@ describe('tela do assistente', { skip: chromium ? false : 'sem Playwright' }, ()
     await c.close();
   });
 
+  test('celular: com o painel aberto a página por trás fica travada (iPhone não rola ao abrir o teclado) e volta ao mesmo lugar ao fechar', async () => {
+    const c = await navegador.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const p = await abrir('/pendentes', '', 'pendentes', 390, c);
+    await p.evaluate(() => { const d = document.createElement('div'); d.style.height = '3000px'; document.querySelector('main').appendChild(d); window.scrollTo(0, 700); });
+    await p.tap('.adm-assist-top');
+    assert.equal(await p.evaluate(() => getComputedStyle(document.body).position), 'fixed');
+    assert.equal(await p.evaluate(() => document.body.style.top), '-700px');
+    await p.tap('.adm-assist-x');
+    assert.notEqual(await p.evaluate(() => getComputedStyle(document.body).position), 'fixed');
+    assert.equal(await p.evaluate(() => Math.round(window.scrollY)), 700);
+    await c.close();
+  });
+
   test('erro vira mensagem amigável', async () => {
     respostas = [[{ tipo: 'erro', mensagem: 'O assistente está fora do ar agora. Tente de novo em instantes.' }, { tipo: 'fim' }]];
     const p = await abrir('/pendentes', '', 'pendentes');
