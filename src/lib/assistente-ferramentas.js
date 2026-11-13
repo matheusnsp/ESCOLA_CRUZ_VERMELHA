@@ -79,8 +79,15 @@ async function buscarAlunos({ termo }, ctx) {
     // Candidatos: o começo (3-4 letras, sem acento) de qualquer palavra; a nota decide.
     const ps = palavras(t).filter((p) => p.length >= 3).slice(0, 4);
     if (!ps.length) return { erro: 'termo_curto' };
-    const re = ps.map((p) => regexSemAcento(p.slice(0, Math.min(4, p.length)))).join('|');
-    const ids = await prisma.$queryRaw`SELECT id FROM "Usuario" WHERE papel = 'ALUNO' AND nome ~* ${re} LIMIT 400`;
+    // Prefixo de até 4 letras de cada palavra (tolera erro no fim da palavra). Ordena no banco por quantas palavras
+    // batem (prefixo e palavra inteira) antes do LIMIT: sem isso, "Maria …" trazia 400 Marias quaisquer e a pessoa sumia.
+    const prefixos = ps.map((p) => regexSemAcento(p.slice(0, Math.min(4, p.length))));
+    const inteiras = ps.map((p) => regexSemAcento(p));
+    const re = prefixos.join('|');
+    const ids = await prisma.$queryRaw`SELECT id FROM "Usuario" WHERE papel = 'ALUNO' AND nome ~* ${re}
+      ORDER BY (SELECT count(*) FROM unnest(${inteiras}::text[]) r WHERE nome ~* r) DESC,
+               (SELECT count(*) FROM unnest(${prefixos}::text[]) r WHERE nome ~* r) DESC
+      LIMIT 400`;
     const cand = ids.length ? await prisma.usuario.findMany({ where: { id: { in: ids.map((x) => x.id) } }, select: sel }) : [];
     const pontuados = cand.map((u) => ({ u, nota: pontuarNome(t, u.nome) })).filter((x) => x.nota >= 0.5).sort((a, b) => b.nota - a.nota).slice(0, 5);
     parecidos = !pontuados.length || pontuados[0].nota < 0.99;
@@ -123,11 +130,13 @@ async function listarPendentesFerramenta({ curso, turmaId, aba }, ctx) {
   const r = await listarPendentes(agora);
   const qual = { 'com-taxa': r.comTaxa, 'sem-taxa': r.semTaxa, 'fora-prazo': r.foraDePrazo }[aba || 'com-taxa'] || r.comTaxa;
   const nc = normalizar(curso);
-  const lista = qual.filter((m) => (!turmaId || m.turmaId === turmaId) && (!nc || normalizar(m.turma.curso.nome).includes(nc))).slice(0, 60);
+  const todos = qual.filter((m) => (!turmaId || m.turmaId === turmaId) && (!nc || normalizar(m.turma.curso.nome).includes(nc)));
+  const lista = todos.slice(0, 60);
   anotar(ctx, 'alunos', lista.map((m) => m.alunoId)); anotar(ctx, 'turmas', lista.map((m) => m.turmaId));
   return {
     aba: aba || 'com-taxa',
-    total: lista.length,
+    total: todos.length,
+    ...(todos.length > lista.length ? { truncado: true, aviso: `Mostrando ${lista.length} de ${todos.length}; a lista completa está na tela Pendentes.` } : {}),
     pessoas: lista.map((m) => ({
       aluno: { id: m.alunoId, nome: m.aluno.nome, celular: m.aluno.celular || null },
       turma: { id: m.turmaId, curso: m.turma.curso.nome, inicio: dia(m.turma.inicioPrevisto) },
@@ -148,12 +157,17 @@ async function listarTurmas({ situacao, curso }, ctx) {
   if (situacao === 'congeladas') where.status = 'CONGELADA';
   if (situacao === 'concluidas') where.status = 'ENCERRADA';
   if (situacao === 'canceladas') where.status = 'CANCELADA';
+  if (!situacao) where.status = { in: [...ativa, 'CONGELADA'] }; // sem situação: as turmas atuais, não as de anos atrás
+  const nc = normalizar(curso);
+  if (nc) { // filtro do curso no banco (antes do take), sem acento: os cursos são poucos
+    const cursos = await prisma.curso.findMany({ select: { id: true, nome: true } });
+    where.cursoId = { in: cursos.filter((c) => normalizar(c.nome).includes(nc)).map((c) => c.id) };
+  }
   const ts = await prisma.turma.findMany({
     where, orderBy: { inicioPrevisto: situacao === 'concluidas' || situacao === 'canceladas' ? 'desc' : 'asc' }, take: 80,
     include: { curso: { select: { nome: true } }, _count: { select: { matriculas: { where: { taxaConfirmada: true, statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] } } } } } },
   });
-  const nc = normalizar(curso);
-  const lista = ts.filter((t) => !nc || normalizar(t.curso.nome).includes(nc)).slice(0, 30);
+  const lista = ts.slice(0, 30);
   anotar(ctx, 'turmas', lista.map((t) => t.id));
   return {
     turmas: lista.map((t) => ({ id: t.id, curso: t.curso.nome, inicio: dia(t.inicioPrevisto), vagas: t.vagas, ocupadas: t._count.matriculas, minimo: t.minimoAlunos, status: t.status })),
@@ -162,7 +176,8 @@ async function listarTurmas({ situacao, curso }, ctx) {
 }
 
 async function listarCursos({ termo }, ctx) {
-  if (!pode(ctx, 'cursos:criar', 'cursos:gerenciar', 'turmas:gerenciar')) return SEM_PERMISSAO;
+  // Tela Cursos (cursos:gerenciar | painel:leitura) + quem monta formulário de curso/turma (precisa achar o curso).
+  if (!pode(ctx, 'cursos:gerenciar', 'painel:leitura', 'cursos:criar', 'turmas:gerenciar')) return SEM_PERMISSAO;
   const { semSoOnline } = require('./ead-curso-online');
   const cs = await semSoOnline(await prisma.curso.findMany({ where: { ebook: null }, orderBy: { nome: 'asc' }, select: { id: true, nome: true, cargaHoraria: true, ativo: true } }));
   const nt = normalizar(termo);

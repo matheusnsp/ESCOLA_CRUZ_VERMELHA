@@ -82,7 +82,8 @@ function linkAceito(href, ctx) {
 
 // Troca [texto](link) por só "texto" quando o link não é aceito.
 function filtrarLinks(markdown, ctx) {
-  return String(markdown || '').replace(/\[([^\]\n]{1,200})\]\(((?:[^()\s]|\([^()\s]*\)){0,500})\)/g, (todo, texto, href) => (linkAceito(href, ctx) ? todo : texto));
+  // Mesmo padrão do navegador (admin-assistente.js), sem limite de tamanho: senão um texto longo escapava do filtro.
+  return String(markdown || '').replace(/\[([^\]\n]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g, (todo, texto, href) => (linkAceito(href, ctx) ? todo : texto));
 }
 
 // Rótulo de cada página do menu (DEV vê tudo) para a página atual.
@@ -106,11 +107,25 @@ async function nomeDe(tipo, id) {
   return null;
 }
 
+function filtrosSeguros(caminho, busca) {
+  const cat = CATALOGO[caminho];
+  if (!cat || !cat.params.length) return '';
+  let q;
+  try { q = new URLSearchParams(String(busca).slice(0, 600)); } catch (e) { return ''; }
+  const fora = new URLSearchParams();
+  for (const k of cat.params) {
+    const v = q.get(k);
+    if (v) fora.set(k, v.replace(/[\u0000-\u001f]/g, ' ').slice(0, 60));
+  }
+  const s = fora.toString();
+  return s ? `?${s}` : '';
+}
+
 // { texto, entidade? } — o nome vem do banco, nunca do navegador.
 async function paginaAtual(pagina, ctx) {
   const caminho = String((pagina && pagina.caminho) || '').slice(0, 300).split('?')[0];
-  const busca = String((pagina && pagina.busca) || '').slice(0, 300);
-  const onde = `${caminho}${busca && busca.startsWith('?') ? busca : ''}`;
+  // Só os filtros conhecidos da tela (catálogo), com valor curto: o endereço vem do navegador e vai como mensagem de sistema.
+  const onde = caminho + filtrosSeguros(caminho, (pagina && pagina.busca) || '');
   if (!caminho.startsWith('/')) return { texto: 'Página atual: desconhecida.' };
   for (const r of [...REGISTROS, ...SO_CONTEXTO]) {
     const m = r.re.exec(caminho);

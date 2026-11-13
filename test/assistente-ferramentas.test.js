@@ -29,7 +29,7 @@ test('sem permissão: nada é consultado', async () => {
   assert.deepEqual(await f.executarConsulta('ver_aluno', { alunoId: 'x' }, ctx(pode('pendentes:gerenciar'))), { erro: 'sem_permissao' });
   assert.deepEqual(await f.executarConsulta('listar_pendentes', {}, ctx(pode('painel:leitura', 'aluno:gerenciar'))), { erro: 'sem_permissao' });
   assert.deepEqual(await f.executarConsulta('listar_turmas', {}, ctx(pode('pendentes:gerenciar'))), { erro: 'sem_permissao' });
-  assert.deepEqual(await f.executarConsulta('listar_cursos', {}, ctx(pode('painel:leitura'))), { erro: 'sem_permissao' });
+  assert.deepEqual(await f.executarConsulta('listar_cursos', {}, ctx(pode('pendentes:gerenciar'))), { erro: 'sem_permissao' });
 });
 
 test('termo curto ou vazio não varre o banco', async () => {
@@ -38,6 +38,24 @@ test('termo curto ou vazio não varre o banco', async () => {
 
 test('ferramenta desconhecida', async () => {
   assert.deepEqual(await f.executarConsulta('apagar_tudo', {}, ctx(pode('aluno:gerenciar'))), { erro: 'ferramenta_desconhecida' });
+});
+
+test('pendentes: total conta todos, mesmo quando a lista é cortada (revisão final)', async () => {
+  const pend = require('../src/lib/pendentes');
+  const original = pend.listarPendentes;
+  const fake = Array.from({ length: 140 }, (_, i) => ({ id: 'm' + i, alunoId: 'a' + i, aluno: { nome: 'Aluno ' + i }, turmaId: 't1', turma: { curso: { nome: 'Socorrista' }, inicioPrevisto: new Date(Date.now() + 5 * 86400000) }, statusPagamento: 'PENDENTE', taxaConfirmada: true, valorCurso: 180, valorTaxaMatricula: 50 }));
+  pend.listarPendentes = async () => ({ comTaxa: fake, semTaxa: [], foraDePrazo: [] });
+  try {
+    const r = await f.executarConsulta('listar_pendentes', {}, ctx(pode('pendentes:gerenciar')));
+    assert.equal(r.total, 140);
+    assert.equal(r.truncado, true);
+    assert.equal(r.pessoas.length, 60);
+  } finally { pend.listarPendentes = original; }
+});
+
+test('cursos: mesma permissão da tela Cursos (Consulta vê)', async () => {
+  const r = await f.executarConsulta('listar_cursos', { termo: 'zzzz-nao-existe' }, ctx(pode('painel:leitura')));
+  assert.ok(Array.isArray(r.cursos));
 });
 
 const temBanco = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');
@@ -97,6 +115,33 @@ describe('consultas no banco', { skip: temBanco ? false : 'sem DATABASE_URL loca
     const { listarPendentes } = require('../src/lib/pendentes');
     const tela = await listarPendentes();
     assert.ok(tela.comTaxa.some((m) => m.id === matricula.id));
+  });
+
+  test('nome: acha a pessoa mesmo com centenas de nomes parecidos (revisão final)', async () => {
+    const ruido = Array.from({ length: 450 }, (_, i) => ({ nome: `Maria Ruido ${i} Assist`, email: `ruido-${sufixo}-${i}@teste.local`, papel: 'ALUNO' }));
+    await prisma.usuario.createMany({ data: ruido });
+    const alvo = await prisma.usuario.create({ data: { nome: 'Mariangela Zuleica Quixaba', email: `alvo-${sufixo}@teste.local`, papel: 'ALUNO' } });
+    try {
+      const r = await f.executarConsulta('buscar_alunos', { termo: 'mariangela zuleica quixaba' }, ctx(pode('aluno:gerenciar')));
+      assert.equal(r.alunos[0] && r.alunos[0].id, alvo.id);
+    } finally {
+      await prisma.usuario.deleteMany({ where: { email: { startsWith: `ruido-${sufixo}-` } } });
+      await prisma.usuario.deleteMany({ where: { id: alvo.id } });
+    }
+  });
+
+  test('turmas de um curso sem situação: traz as atuais, filtro no banco (revisão final)', async () => {
+    if (!turma) return;
+    const curso = await prisma.curso.create({ data: { nome: `Ruido Assistente ${sufixo}`, cargaHoraria: 1, precoAvista: 1, precoCheio: 1, valorParcela: 1 } });
+    await prisma.turma.createMany({ data: Array.from({ length: 85 }, (_, i) => ({ cursoId: curso.id, inicioPrevisto: new Date(2001, 0, 1 + i), status: 'ENCERRADA' })) });
+    try {
+      const r = await f.executarConsulta('listar_turmas', { curso: turma.curso.nome }, ctx(pode('turmas:gerenciar')));
+      assert.ok(r.turmas.some((x) => x.id === turma.id));
+      assert.ok(r.turmas.every((x) => x.curso === turma.curso.nome));
+    } finally {
+      await prisma.turma.deleteMany({ where: { cursoId: curso.id } });
+      await prisma.curso.delete({ where: { id: curso.id } });
+    }
   });
 
   test('turmas e cursos', async () => {

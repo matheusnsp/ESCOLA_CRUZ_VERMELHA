@@ -184,6 +184,16 @@ describe('tela do assistente', { skip: chromium ? false : 'sem Playwright' }, ()
     await p.context().close();
   });
 
+  test('revisão final: sem "resposta" final, o texto parcial fica sem links', async () => {
+    respostas = [[{ tipo: 'texto', texto: 'Veja [Abrir](/pendentes)' }, { tipo: 'fim' }]];
+    const p = await abrir('/pendentes', '', 'pendentes');
+    await p.click('#admAssistBtn'); await p.fill('.adm-assist-form textarea', 'oi'); await p.keyboard.press('Enter');
+    await p.waitForSelector('.adm-assist-ia:not(.escrevendo)');
+    assert.equal(await p.$$eval('.adm-assist-ia a', (l) => l.length), 0);
+    assert.match(await p.textContent('.adm-assist-ia'), /Veja Abrir/);
+    await p.context().close();
+  });
+
   test('erro vira mensagem amigável', async () => {
     respostas = [[{ tipo: 'erro', mensagem: 'O assistente está fora do ar agora. Tente de novo em instantes.' }, { tipo: 'fim' }]];
     const p = await abrir('/pendentes', '', 'pendentes');

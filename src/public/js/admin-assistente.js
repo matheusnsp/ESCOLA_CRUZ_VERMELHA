@@ -144,7 +144,7 @@
 
   // ---------- Markdown restrito ----------
   // Inline: **negrito**, `código`, [texto](/caminho). Links só com comLinks e só caminhos internos (começam com uma "/").
-  var RE_INLINE = /\*\*([^*]+?)\*\*|`([^`]+)`|\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g;
+  var RE_INLINE = /\*\*([^*]+?)\*\*|`([^`]+)`|\[([^\]\n]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g; // mesmo padrão do filtrarLinks do servidor
   function inline(pai, texto, comLinks) {
     var ultimo = 0; var m;
     RE_INLINE.lastIndex = 0;
@@ -404,7 +404,8 @@
     }
     function terminar() {
       bolha.remove();
-      var texto = final != null ? final : (erro ? '' : parcial);
+      // Sem a "resposta" final (já filtrada no servidor), o texto parcial fica sem links.
+      var texto = final != null ? final : (erro ? '' : parcial.replace(/\[([^\]\n]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g, '$1'));
       if (texto || propostas.length) {
         conversa.push({ papel: 'assistente', texto: texto, preencher: propostas.length ? propostas : undefined });
         if (texto) bolhaIa(texto);
