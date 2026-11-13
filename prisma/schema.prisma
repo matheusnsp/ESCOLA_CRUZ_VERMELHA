@@ -46,6 +46,7 @@ model Usuario {
   ultimoLogin          DateTime?
   ultimaAtividade      DateTime?
   matriculas           Matricula[]
+  usosAssistente       UsoAssistente[]
   cursosEad            AlunoCursoEad[]
   // EAD, etapa 6: gestor de escola e vagas de lote (só relações; nenhuma coluna nova em Usuario)
   gestorEscolas        GestorEscolaEad[]
@@ -763,4 +764,19 @@ model AcessoEbook {
 
   @@unique([ebookId, usuarioId])
   @@index([usuarioId])
+}
+
+// Assistente da secretaria (2026-11-13): uma linha por mensagem respondida, para os limites (20 a cada 10 min,
+// 200 por dia) e o custo. Sem o texto da conversa.
+model UsoAssistente {
+  id            String   @id @default(uuid())
+  usuarioId     String
+  criadoEm      DateTime @default(now())
+  tokensEntrada Int      @default(0)
+  tokensSaida   Int      @default(0)
+  tokensCache   Int      @default(0)
+  ferramentas   String[]
+  usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, criadoEm])
 }

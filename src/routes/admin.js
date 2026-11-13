@@ -499,6 +499,32 @@ router.post('/modo', requireDev, (req, res) => {
 router.use(require('./ead')({ requireDev, auditar, ADMIN_URL }));
 router.use(require('./ead-ebooks')({ requireDev, auditar })); // E-books da Escola Digital (2026-11-09)
 
+// Assistente da secretaria (2026-11-13; spec 2026-11-13-assistente-secretaria-design.md): responde em NDJSON, um evento
+// por linha, enquanto o Claude escreve. "no-transform" impede o compression() de segurar o texto. Não grava nada.
+router.post('/assistente/mensagem', async (req, res) => {
+  const assistente = require('../lib/assistente');
+  res.status(200);
+  res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+  let fechou = false;
+  res.on('close', () => { fechou = true; });
+  const emitir = (e) => { if (!fechou) res.write(JSON.stringify(e) + '\n'); };
+  try {
+    const b = req.body || {};
+    await assistente.responder({
+      mensagens: b.mensagens, pagina: b.pagina, usuarioId: req.session.usuarioId, papel: req.session.papel,
+      pode: res.locals.pode, documentoAluno: req.app.locals.documentoAluno, emitir,
+    });
+  } catch (e) {
+    console.error('[ASSISTENTE] rota:', e.message);
+    emitir({ tipo: 'erro', mensagem: 'O assistente está fora do ar agora. Tente de novo em instantes.' });
+    emitir({ tipo: 'fim' });
+  }
+  res.end();
+});
+
 // ---------- Dashboard ----------
 
 // 💡 NOVO — Mesmo filtro de "matrícula fantasma" usado em conta.js (tela do
@@ -1375,7 +1401,7 @@ async function carregarHorarios(req) {
 // ---------- Matrícula rápida (site da instituição; lib/matricula-rapida.js) ----------
 router.get('/matricula-rapida', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
   const d = await matriculaRapida.carregar({ forcar: req.query.atualizar === '1' });
-  const base = { formatBRL, flash: req.query.ok || null, aviso: req.query.erro || null };
+  const base = { qBusca: String(req.query.q || '').trim().slice(0, 100), formatBRL, flash: req.query.ok || null, aviso: req.query.erro || null };
   if (d.erro) return res.render('admin/matricula-rapida', { ...base, erro: d.erro, filtro: { sit: 'aguardando', curso: '' } });
   const cursos = horariosSite.cursos({ respostas: d.pessoas.filter((p) => p.respondeu), semResposta: d.pessoas.filter((p) => !p.respondeu) });
   const curso = cursos.some((c) => c.chave === req.query.curso) ? req.query.curso : '';
@@ -2256,6 +2282,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     .sort((x, y) => new Date(y.data || 0) - new Date(x.data || 0));
 
   res.render('admin/financeiro', {
+    qBusca: String(req.query.q || '').trim().slice(0, 100), // o assistente leva para cá já filtrado (2026-11-13)
     contaFiltro,
     recebidoPorConta,
     mesPorConta,
@@ -3113,54 +3140,8 @@ const STATUS_TURMA_ATIVA = ['ABERTA', 'CONFIRMADA'];
 router.get('/pendentes', requirePermissao('pendentes:gerenciar'), async (req, res) => {
   const agora = new Date();
 
-  // Turma que ainda dá pra aproveitar: aberta e com início no futuro.
-  // O status sozinho não bastava — turma marcada ABERTA com data vencida
-  // aparecia como se desse tempo. (O fechamento automático só roda quando
-  // alguém acessa o site do aluno, então pode atrasar.)
-  const TURMA_VALE = turmaEmAberto(agora);
-
-  const [comTaxa, semTaxa, foraDePrazo] = await Promise.all([
-    // ── 1. Taxa paga, curso pendente ──────────────────────────────────────
-    prisma.matricula.findMany({
-      where: {
-        statusPagamento: 'PENDENTE',
-        taxaConfirmada: true,
-        turma: TURMA_VALE,
-      },
-      orderBy: { turma: { inicioPrevisto: 'asc' } },
-      include: { aluno: true, turma: { include: { curso: true } }, cupomEad: { select: { desconto: true } }, pagamentos: true },
-    }),
-
-    // ── 2. Nada pago, ainda dá tempo ──────────────────────────────────────
-    prisma.matricula.findMany({
-      where: {
-        statusPagamento: 'PENDENTE',
-        taxaConfirmada: false,
-        turma: TURMA_VALE,
-      },
-      orderBy: { turma: { inicioPrevisto: 'asc' } },
-      include: { aluno: true, turma: { include: { curso: true } }, cupomEad: { select: { desconto: true } }, pagamentos: true },
-    }),
-
-    // ── 3. Fora de prazo ──────────────────────────────────────────────────
-    // Pendente, mas a turma encerrou ou já começou. Não desaparece mais da
-    // tela: é gente que ficou pelo caminho e a secretaria pode querer chamar
-    // pra outra turma.
-    prisma.matricula.findMany({
-      where: {
-        statusPagamento: 'PENDENTE',
-        // Turma congelada (pausada) não é "fora de prazo": fica fora de Pendentes até ser retomada.
-        // Turma em espera (sem data) também não: não há prazo a vencer.
-        turma: { status: { notIn: ['CONGELADA', ...FORA_DO_PRESENCIAL] } }, // online: cobrança única, fora de Pendentes
-        OR: [
-          { turma: { status: { notIn: STATUS_TURMA_ATIVA } } },
-          { turma: { inicioPrevisto: { lte: agora } } },
-        ],
-      },
-      orderBy: { turma: { inicioPrevisto: 'desc' } },
-      include: { aluno: true, turma: { include: { curso: true } }, pagamentos: true },
-    }),
-  ]);
+  // Consulta em lib/pendentes.js (2026-11-13): a mesma usada pelo assistente da secretaria.
+  const { comTaxa, semTaxa, foraDePrazo } = await require('../lib/pendentes').listarPendentes(agora);
 
   // Último contato registrado de cada aluno. Serve pra secretaria não
   // insistir com quem acabou de receber mensagem.

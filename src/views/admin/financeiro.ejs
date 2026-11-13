@@ -148,7 +148,7 @@ conta.lote = _lotes.length;
 <div class="adm-box" id="pagamentos">
   <div class="adm-box-head adm-fin-head">
     <h2><i class="fa-solid fa-receipt"></i> Pagamentos</h2>
-    <input type="search" class="adm-fin-busca" id="finBusca" placeholder="Buscar aluno ou curso" aria-label="Buscar aluno ou curso">
+    <input type="search" class="adm-fin-busca" id="finBusca" value="<%= typeof qBusca !== 'undefined' ? qBusca : '' %>" placeholder="Buscar aluno ou curso" aria-label="Buscar aluno ou curso">
   </div>
 
   <div class="adm-abas adm-fin-abas" role="tablist" aria-label="Pagamentos">
