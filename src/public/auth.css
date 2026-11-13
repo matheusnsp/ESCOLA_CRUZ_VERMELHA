@@ -490,3 +490,7 @@
 .pq-form .auth-btn i { margin-left: 8px; font-size: .9em; }
 .pq-obrigado { text-align: center; padding-top: 6px; }
 .pq-obrigado-ico { width: 64px; height: 64px; margin: 0 auto 10px; border-radius: 50%; display: grid; place-items: center; background: #fdecee; color: #d9081f; font-size: 26px; }
+
+/* Safari no celular (2026-11-13): campo com largura mínima própria empurrava a página para o lado. */
+.auth-field, .auth-form-grid > * { min-width: 0; }
+.auth-field input, .auth-field select { min-width: 0; max-width: 100%; box-sizing: border-box; }
