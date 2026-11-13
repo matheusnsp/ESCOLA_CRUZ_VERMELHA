@@ -168,7 +168,7 @@
     border: 1px solid var(--linha); border-radius: 999px; background: var(--bg);
   }
   .adm-tema button {
-    width: 30px; height: 30px; border: 0; border-radius: 50%;
+    width: 30px; height: 30px; border: 0; border-radius: 999px; /* pílula: redondo quando quadrado, sem virar elipse quando esticado (barra lateral e menu do celular) */
     display: grid; place-items: center; cursor: pointer;
     background: none; color: var(--mut); font-size: 13px;
     transition: color .12s, background .12s;
@@ -2109,7 +2109,7 @@ a.mr-num:hover { border-color: var(--linha); }
     padding: 14px 4px 0; border-top: 1px solid var(--linha);
   }
   .adm-top-pe .adm-tema { flex: 1 1 100%; margin-left: 0; }
-  .adm-top-pe .adm-tema button { flex: 1; width: auto; }
+  .adm-top-pe .adm-tema button { flex: 1; width: auto; border-radius: 999px; } /* esticado: pílula (com 50% virava elipse) */
   .adm-top-pe .adm-sair span { display: inline; }
 }
 @media (max-width: 1024px) and (prefers-reduced-motion: reduce) { .adm-top { transition: none; } }
