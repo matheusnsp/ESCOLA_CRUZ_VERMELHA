@@ -1,0 +1,54 @@
+<%# Seção Dúvidas frequentes do curso (telas novas, 2026-11-13): ver, editar, mudar a ordem, remover, adicionar e
+    sugerir com IA. Cada ação grava na hora. %>
+<%- include('head', { titulo: 'Dúvidas frequentes' }) %>
+<%- include('header', { ativo: 'cursos' }) %>
+<% var c = curso; %>
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Dúvidas frequentes</h1>
+  <a href="/cursos/<%= c.id %>" class="adm-link">← Voltar ao curso</a>
+</div>
+<p class="adm-sub-titulo"><%= c.nome %> · aparecem em sanfona na página do curso, nesta ordem</p>
+<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+
+<%- include('_ia-duvidas', { iaUrl: '/cursos/ia-textos', iaTipo: 'presencial', iaCursoId: c.id, salvarUrl: '/cursos/' + c.id + '/faqs-ia' }) %>
+
+<div class="adm-box adm-box-pad adm-faqs">
+  <div class="adm-faqs-tit"><h2 class="adm-h2"><i class="fa-solid fa-circle-question"></i> Dúvidas do curso</h2><span class="adm-mut"><%= faqs.length %> <%= faqs.length === 1 ? 'dúvida' : 'dúvidas' %></span></div>
+  <% if (!faqs.length) { %><p class="adm-mut">Nenhuma dúvida cadastrada ainda.</p><% } %>
+  <% faqs.forEach(function (f, i) { %>
+    <div class="adm-faq" id="faq-<%= f.id %>">
+      <div class="adm-faq-ordem">
+        <form method="POST" action="/cursos/<%= c.id %>/faqs/<%= f.id %>/subir"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="adm-mini" title="Subir" aria-label="Subir" <%= i === 0 ? 'disabled' : '' %>><i class="fa-solid fa-chevron-up"></i></button></form>
+        <form method="POST" action="/cursos/<%= c.id %>/faqs/<%= f.id %>/descer"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="adm-mini" title="Descer" aria-label="Descer" <%= i === faqs.length - 1 ? 'disabled' : '' %>><i class="fa-solid fa-chevron-down"></i></button></form>
+      </div>
+      <div class="adm-faq-txt">
+        <strong><%= f.pergunta %></strong>
+        <p><%= f.resposta %></p>
+        <form method="POST" action="/cursos/<%= c.id %>/faqs/<%= f.id %>/editar" class="adm-faq-edicao adm-sub-form" data-faq-edicao>
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <label>Pergunta <input type="text" name="pergunta" maxlength="200" value="<%= f.pergunta %>" required></label>
+          <label>Resposta <textarea name="resposta" rows="3" maxlength="1000" required><%= f.resposta %></textarea></label>
+          <div class="adm-faq-bts"><button class="adm-btn-sm">Salvar</button> <button type="button" class="adm-link" data-faq-cancelar>Cancelar</button></div>
+        </form>
+      </div>
+      <div class="adm-faq-acoes">
+        <button type="button" class="adm-pend-btn" data-faq-editar hidden><i class="fa-solid fa-pen"></i> Editar</button>
+        <form method="POST" action="/cursos/<%= c.id %>/faqs/<%= f.id %>/remover" data-confirmar="Remover esta dúvida?" data-botao="Remover">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="adm-mini danger" title="Remover" aria-label="Remover"><i class="fa-solid fa-trash"></i></button>
+        </form>
+      </div>
+    </div>
+  <% }) %>
+
+  <form method="POST" action="/cursos/<%= c.id %>/faqs" class="adm-sub-form adm-faq-nova">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <b>Adicionar dúvida</b>
+    <label class="full">Pergunta <input type="text" name="pergunta" required maxlength="200"></label>
+    <label class="full">Resposta <textarea name="resposta" required rows="3" maxlength="1000"></textarea></label>
+    <div><button type="submit" class="adm-btn-sm"><i class="fa-solid fa-plus"></i> Adicionar dúvida</button></div>
+  </form>
+</div>
+<script src="<%= asset('/js/ia-textos.js') %>"></script>
+<script src="<%= asset('/js/faq-editar.js') %>"></script>
+<%- include('foot') %>

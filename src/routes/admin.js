@@ -950,37 +950,8 @@ router.post('/cursos', requirePermissao('cursos:criar'), uploadFoto, async (req,
 });
 
 
-router.post('/cursos/:id/faqs', requirePermissao('cursos:gerenciar'), async (req, res) => {
-  const curso = await prisma.curso.findUnique({ where: { id: req.params.id } });
-  if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
-  const pergunta = String(req.body.pergunta || '').trim();
-  const resposta = String(req.body.resposta || '').trim();
-  if (!pergunta || !resposta) {
-    return res.redirect(`/cursos/${curso.id}/editar?erroFaq=` + encodeURIComponent('Preencha a pergunta e a resposta.'));
-  }
-  const total = await prisma.faqCurso.count({ where: { cursoId: curso.id } });
-  await prisma.faqCurso.create({ data: { cursoId: curso.id, pergunta, resposta, ordem: total } });
-  await auditar(req, 'ADICIONOU_FAQ', 'Curso', curso.id, { pergunta });
-  res.redirect(`/cursos/${curso.id}/editar#duvidas`);
-});
 
-// As dúvidas marcadas de "Escrever dúvidas com IA" (seção de dúvidas do curso), gravadas direto (2026-11-09).
-router.post('/cursos/:id/faqs-ia', requirePermissao('cursos:gerenciar'), async (req, res) => {
-  const curso = await prisma.curso.findUnique({ where: { id: req.params.id }, select: { id: true } }).catch(() => null);
-  if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
-  const txt = require('../lib/ia-textos');
-  const n = await txt.salvarFaqs(curso.id, txt.lerFaqsDoForm(req.body));
-  if (n) await auditar(req, 'ADICIONOU_FAQ', 'Curso', curso.id, { porIa: true, quantas: n });
-  res.redirect(`/cursos/${curso.id}/editar${n ? '' : '?erroFaq=' + encodeURIComponent('Nenhuma dúvida marcada (ou todas já existiam).')}#duvidas`);
-});
 
-router.post('/cursos/:id/faqs/:faqId/remover', requirePermissao('cursos:gerenciar'), async (req, res) => {
-  const faq = await prisma.faqCurso.findUnique({ where: { id: req.params.faqId } });
-  if (!faq || faq.cursoId !== req.params.id) return res.status(404).render('admin/erro', { mensagem: 'Duvida nao encontrada.' });
-  await prisma.faqCurso.delete({ where: { id: faq.id } });
-  await auditar(req, 'REMOVEU_FAQ', 'Curso', req.params.id, { pergunta: faq.pergunta });
-  res.redirect(`/cursos/${req.params.id}/editar#duvidas`);
-});
 
 // Escrever com IA (2026-11-09): o Claude escreve resumo, texto completo, conteúdo programático e dúvidas no padrão
 // dos outros cursos; a página só preenche os campos (nada é salvo). JSON { ok, textos } ou { ok:false, erro }.

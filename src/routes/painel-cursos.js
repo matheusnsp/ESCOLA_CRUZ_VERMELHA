@@ -14,6 +14,7 @@ const { assinaturasDoForm, salvarAssinaturasDoCurso } = require('../lib/curso-as
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 const { formatBRL, lerConfigMatricula } = require('../lib/matricula');
 const { simularValores } = require('../lib/simular-valores');
+const F = require('../lib/curso-faqs');
 
 const ID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const NOME_SECAO = 'pagina|valores|certificado|publicacao';
@@ -129,6 +130,56 @@ module.exports = function painelCursos({ requirePermissao, auditar }) {
     if (secao === 'certificado') await salvarAssinaturasDoCurso(id, b, req, auditar);
     await auditar(req, 'EDITOU_CURSO', 'Curso', id, { secao, nome: dados.nome || existe.nome });
     return res.redirect(`/cursos/${id}?ok=${encodeURIComponent(MSG_SALVO[secao])}`);
+  });
+
+  // ---- Dúvidas frequentes: cada ação grava na hora e volta para a seção ----
+  const voltaDuvidas = (id, erro) => `/cursos/${id}/duvidas${erro ? `?erro=${encodeURIComponent(erro)}` : ''}`;
+
+  router.get(`/cursos/:id(${ID})/duvidas`, gerenciar, async (req, res) => {
+    const curso = await carregarCurso(req.params.id);
+    if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso não encontrado.' });
+    const faqs = await prisma.faqCurso.findMany({ where: { cursoId: curso.id }, orderBy: F.ORDEM });
+    res.render('admin/curso-duvidas', { curso, faqs, erro: req.query.erro || null });
+  });
+
+  router.post(`/cursos/:id(${ID})/faqs`, gerenciar, async (req, res) => {
+    const curso = await prisma.curso.findUnique({ where: { id: req.params.id }, select: { id: true } });
+    if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso não encontrado.' });
+    const pergunta = String(req.body.pergunta || '').trim().slice(0, 200);
+    const resposta = String(req.body.resposta || '').trim().slice(0, 1000);
+    if (!pergunta || !resposta) return res.redirect(voltaDuvidas(curso.id, 'Preencha a pergunta e a resposta.'));
+    const total = await prisma.faqCurso.count({ where: { cursoId: curso.id } });
+    await prisma.faqCurso.create({ data: { cursoId: curso.id, pergunta, resposta, ordem: total } });
+    await auditar(req, 'ADICIONOU_FAQ', 'Curso', curso.id, { pergunta });
+    return res.redirect(voltaDuvidas(curso.id));
+  });
+
+  // As marcadas de "Sugerir dúvidas" (IA) ou as que o assistente propôs.
+  router.post(`/cursos/:id(${ID})/faqs-ia`, gerenciar, async (req, res) => {
+    const curso = await prisma.curso.findUnique({ where: { id: req.params.id }, select: { id: true } });
+    if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso não encontrado.' });
+    const txt = require('../lib/ia-textos');
+    const n = await txt.salvarFaqs(curso.id, txt.lerFaqsDoForm(req.body));
+    if (n) await auditar(req, 'ADICIONOU_FAQ', 'Curso', curso.id, { porIa: true, quantas: n });
+    return res.redirect(voltaDuvidas(curso.id, n ? null : 'Nenhuma dúvida marcada (ou todas já existiam).'));
+  });
+
+  router.post(`/cursos/:id(${ID})/faqs/:faqId/:acao(remover|editar|subir|descer)`, gerenciar, async (req, res) => {
+    const { id, faqId, acao } = req.params;
+    if (acao === 'subir' || acao === 'descer') {
+      await F.moverFaq(id, faqId, acao);
+      return res.redirect(voltaDuvidas(id));
+    }
+    if (acao === 'editar') {
+      const r = await F.editarFaq(id, faqId, req.body || {});
+      if (r.ok) await auditar(req, 'EDITOU_FAQ', 'Curso', id, { faqId });
+      return res.redirect(voltaDuvidas(id, r.ok ? null : r.erro));
+    }
+    const faq = await prisma.faqCurso.findUnique({ where: { id: faqId } }).catch(() => null);
+    if (!faq || faq.cursoId !== id) return res.redirect(voltaDuvidas(id, 'Dúvida não encontrada.'));
+    await prisma.faqCurso.delete({ where: { id: faq.id } });
+    await auditar(req, 'REMOVEU_FAQ', 'Curso', id, { pergunta: faq.pergunta });
+    return res.redirect(voltaDuvidas(id));
   });
 
   router.post(`/cursos/:id(${ID})/excluir`, gerenciar, async (req, res) => {

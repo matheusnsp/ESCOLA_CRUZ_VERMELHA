@@ -2394,3 +2394,13 @@ body.adm-assist-aberto .adm-assist-btn { display: none; }
 .adm-btn-perigo { justify-self: start; border: 1px solid var(--erro-tx); color: var(--erro-tx); background: transparent; border-radius: var(--r-s); padding: 9px 16px; font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; }
 .adm-btn-perigo:disabled { opacity: .45; cursor: not-allowed; }
 .adm-tag-ia { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--roxo-bg); color: var(--roxo-tx); }
+.adm-faqs { display: grid; gap: 4px; }
+.adm-faqs-tit { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.adm-faq { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 14px 0; border-top: 1px solid var(--linha); }
+.adm-faq-ordem { display: grid; gap: 4px; }
+.adm-faq-ordem form, .adm-faq-acoes form { margin: 0; }
+.adm-faq-txt p { margin: 4px 0 0; color: var(--mut); font-size: 14px; overflow-wrap: anywhere; }
+.adm-faq-acoes { display: flex; gap: 6px; align-items: center; }
+.adm-faq-edicao { margin-top: 10px; }
+.adm-faq-edicao[hidden] { display: none; }
+.adm-faq-nova { border-top: 1px solid var(--linha); padding-top: 14px; margin-top: 4px; }
