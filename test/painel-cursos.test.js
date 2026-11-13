@@ -120,6 +120,12 @@ describe('painel de cursos: resumo e seções', { skip: temBanco ? false : 'sem 
         }
         await p.close();
       }
+      // O botão de salvar fica preso embaixo da tela numa página longa (Página no site).
+      const p = await b.newPage({ viewport: { width: 1440, height: 500 } });
+      await p.goto(`${srv.url}/cursos/${curso.id}/pagina`);
+      const r = await p.evaluate(() => [document.querySelector('.adm-rodape-salvar').getBoundingClientRect().bottom, innerHeight]);
+      assert.ok(r[0] <= r[1] + 1, `rodapé fora da tela: ${r[0]} > ${r[1]}`);
+      await p.close();
     } finally { await b.close(); }
   });
 
