@@ -202,11 +202,11 @@ const STATUS_TURMA = ['ABERTA', 'CONFIRMADA', 'CONGELADA', 'CANCELADA', 'ENCERRA
 // opcionais (estes três têm 30). Tudo é validado aqui (validarCurso/validarTurma), então o strict não faz falta.
 const str = () => ({ type: 'string' });
 const DEFINICOES_FORMULARIO = [
-  { name: 'escrever_textos_curso', description: 'Escreve o resumo, o texto completo, o conteúdo programático e as dúvidas frequentes de um curso presencial, no padrão dos cursos do site (a mesma função do botão "Escrever com IA"). Depois os textos vão para o formulário com o botão "Preencher na tela".',
-    input_schema: obj({ nome: str(120), cargaHoraria: { type: 'number' }, escolaridade: str(40), categoria: str(60), ideias: str(500), cursoId: str(40) }, ['nome']) },
-  { name: 'preencher_curso', description: 'Prepara o preenchimento do formulário de curso (novo ou edição) com os dados que a pessoa deu. Só os campos citados. Para MUDAR um curso que já existe, passe editarCursoId (da página atual ou de listar_cursos); sem ele, é um curso novo. Não salva: a pessoa confere e clica em Salvar. Preços em reais (número).',
+  { name: 'escrever_textos_curso', description: 'Escreve o resumo, o texto completo, o conteúdo programático e as dúvidas frequentes de um curso presencial, no padrão dos cursos do site (a mesma função do botão "Escrever com IA"). É o ÚNICO jeito de preencher resumo e texto completo. Em ideias, passe tudo que a pessoa contou sobre o curso (observações, público, temas, onde vai atuar, dúvidas). Depois os textos vão para o formulário com o botão "Preencher na tela".',
+    input_schema: obj({ nome: str(120), cargaHoraria: { type: 'number' }, escolaridade: str(40), categoria: str(60), ideias: str(1500), cursoId: str(40) }, ['nome']) },
+  { name: 'preencher_curso', description: 'Prepara o preenchimento do formulário de curso (novo ou edição) com os dados que a pessoa deu. Só os campos citados. Resumo e texto completo NÃO entram aqui: use escrever_textos_curso. Para MUDAR um curso que já existe, passe editarCursoId (da página atual ou de listar_cursos); sem ele, é um curso novo. Não salva: a pessoa confere e clica em Salvar. Preços em reais (número).',
     input_schema: obj({ campos: obj({
-      nome: str(120), descricao: str(300), descricaoLonga: str(3000), cargaHoraria: { type: 'number' }, escolaridadeMinima: { type: 'string', enum: ESCOLARIDADES_CURSO },
+      nome: str(120), cargaHoraria: { type: 'number' }, escolaridadeMinima: { type: 'string', enum: ESCOLARIDADES_CURSO },
       categoria: { type: 'string', enum: ['', ...CATEGORIAS_CURSO] }, precoAvista: { type: 'number' }, precoCheio: { type: 'number' }, parcelas: { type: 'integer' }, taxaMatricula: { type: 'number' },
       nomeCertificado: str(160), conteudoProgramatico: str(4000), certificadoValidade: str(80), exigeComprovanteSaude: { type: 'boolean' }, pedido: str(600), ativo: { type: 'boolean' },
       faqs: { type: 'array', items: obj({ pergunta: str(200), resposta: str(1000) }, ['pergunta', 'resposta']) },
@@ -224,10 +224,10 @@ const numero = (v) => (typeof v === 'number' ? v : Number(String(v ?? '').replac
 
 function validarCurso(campos) {
   const ok = {}, erros = {}, ignorados = [];
-  const conhecidos = new Set(['nome', 'descricao', 'descricaoLonga', 'cargaHoraria', 'escolaridadeMinima', 'categoria', 'precoAvista', 'precoCheio', 'parcelas', 'taxaMatricula', 'nomeCertificado', 'conteudoProgramatico', 'certificadoValidade', 'exigeComprovanteSaude', 'pedido', 'ativo', 'faqs']);
+  const conhecidos = new Set(['nome', 'cargaHoraria', 'escolaridadeMinima', 'categoria', 'precoAvista', 'precoCheio', 'parcelas', 'taxaMatricula', 'nomeCertificado', 'conteudoProgramatico', 'certificadoValidade', 'exigeComprovanteSaude', 'pedido', 'ativo', 'faqs']);
   for (const [k, v] of Object.entries(campos || {})) {
     if (!conhecidos.has(k)) { ignorados.push(k); continue; }
-    if (['nome', 'descricao', 'descricaoLonga', 'nomeCertificado', 'conteudoProgramatico', 'certificadoValidade', 'pedido'].includes(k)) { ok[k] = String(v ?? '').replace(/\r\n/g, '\n').slice(0, 4000); continue; }
+    if (['nome', 'nomeCertificado', 'conteudoProgramatico', 'certificadoValidade', 'pedido'].includes(k)) { ok[k] = String(v ?? '').replace(/\r\n/g, '\n').slice(0, 4000); continue; }
     if (k === 'cargaHoraria') { const n = numero(v); if (!(n >= 1 && n <= 2000)) erros[k] = 'carga horária deve ser um número de horas maior que zero'; else ok[k] = String(Math.round(n)); continue; }
     if (k === 'parcelas') { const n = numero(v); if (!(Number.isInteger(n) && n >= 1 && n <= 12)) erros[k] = 'parcelas: de 1 a 12'; else ok[k] = String(n); continue; }
     if (['precoAvista', 'precoCheio', 'taxaMatricula'].includes(k)) { const n = numero(v); if (!(n >= 0 && n < 100000)) erros[k] = 'valor em reais inválido'; else ok[k] = n.toFixed(2); continue; }
@@ -291,7 +291,10 @@ async function comEdicao(tipo, idEditar, resposta) {
 function respostaPreencher(formulario, { ok, erros, ignorados }) {
   if (Object.keys(erros).length) return { resultado: { preparado: false, erros, ignorados } };
   const campos = { ...ok }; const cursoNome = campos.cursoNome; delete campos.cursoNome;
-  return { resultado: { preparado: true, formulario, campos: Object.keys(campos), ...(cursoNome ? { curso: cursoNome } : {}), ignorados, aviso: `Ainda não está salvo: a pessoa precisa clicar em "Preencher na tela", conferir e clicar em ${formulario === 'turma' ? 'Criar turma' : 'Criar curso'} (numa edição, "Salvar alterações").` },
+  // Resumo e texto completo seguem o padrão do site: só o escrever_textos_curso escreve.
+  const semTexto = formulario === 'curso' && ignorados.some((k) => k === 'descricao' || k === 'descricaoLonga')
+    ? 'Resumo e texto completo não entram por aqui: chame escrever_textos_curso (com as observações da pessoa em ideias). ' : '';
+  return { resultado: { preparado: true, formulario, campos: Object.keys(campos), ...(cursoNome ? { curso: cursoNome } : {}), ignorados, aviso: `${semTexto}Ainda não está salvo: a pessoa precisa clicar em "Preencher na tela", conferir e clicar em ${formulario === 'turma' ? 'Criar turma' : 'Criar curso'} (numa edição, "Salvar alterações").` },
     evento: { tipo: 'preencher', formulario, campos, ...(cursoNome ? { cursoNome } : {}) } };
 }
 
@@ -303,7 +306,7 @@ async function escreverTextos(entrada, ctx) {
   const cursoId = /^[0-9a-f-]{36}$/i.test(String(entrada.cursoId || '')) ? entrada.cursoId : null;
   const dados = { nome: String(entrada.nome || '').slice(0, 120), cargaHoraria: entrada.cargaHoraria || null, escolaridade: entrada.escolaridade || null, categoria: entrada.categoria || null };
   try {
-    const r = await txt.escrever({ tipo: 'presencial', dados, ideias: String(entrada.ideias || '').slice(0, 500), cursoId }, ctx && ctx.cliente ? { cliente: ctx.cliente } : {});
+    const r = await txt.escrever({ tipo: 'presencial', dados, ideias: String(entrada.ideias || '').slice(0, 1500), cursoId }, ctx && ctx.cliente ? { cliente: ctx.cliente } : {});
     await ia.somarCustoAvulso(r.usage);
     const campos = { descricao: r.textos.descricao, descricaoLonga: r.textos.descricaoLonga, conteudoProgramatico: r.textos.conteudoProgramatico, faqs: r.textos.faqs || [] };
     const resp = { resultado: { preparado: true, formulario: 'curso', textos: campos, aviso: 'Textos prontos; vão para o formulário com "Preencher na tela". Nada foi salvo.' }, evento: { tipo: 'preencher', formulario: 'curso', campos } };

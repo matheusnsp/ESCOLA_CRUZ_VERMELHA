@@ -98,3 +98,32 @@ describe('textos com IA: banco', { skip: temBanco ? false : 'sem DATABASE_URL lo
     assert.deepEqual(lista.map((f) => f.ordem), [0, 1, 2]);
   });
 });
+
+// 2026-11-13: o texto completo do curso presencial segue sempre o modelo de 3 parágrafos da secretaria.
+test('escrever (presencial): pede o texto completo em 3 parágrafos, no modelo da secretaria', async () => {
+  const orig = txt.exemplos;
+  const cli = clienteFalso([() => ({ descricao: 'R', descricaoLonga: 'P1.\nP2.\n\n\nP3.', conteudoProgramatico: 'A', faqs: [faq(1), faq(2), faq(3), faq(4), faq(5)] })]);
+  const prisma = require('../src/db');
+  const fm = prisma.curso.findMany; prisma.curso.findMany = async () => [];
+  try {
+    const r = await txt.escrever({ tipo: 'presencial', dados: { nome: 'Cuidador Infantil' } }, { cliente: cli });
+    const texto = cli.chamadas[0].messages[0].content.map((c) => c.text).join('\n');
+    assert.match(texto, /3 parágrafos/);
+    assert.match(texto, /O Curso de .* da Cruz Vermelha forma profissionais/);
+    assert.match(texto, /Durante a formação, o aluno desenvolve/);
+    assert.match(texto, /Após a conclusão, o profissional poderá atuar/);
+    assert.match(texto, /Cuidador de Idosos/, 'o modelo vai inteiro como exemplo');
+    assert.equal(r.textos.descricaoLonga, 'P1.\n\nP2.\n\nP3.', 'parágrafos separados por uma linha em branco');
+  } finally { prisma.curso.findMany = fm; txt.exemplos = orig; }
+});
+
+test('escrever (online): não usa o modelo do presencial', async () => {
+  const cli = clienteFalso([() => ({ descricao: 'D', faqs: [faq(1), faq(2), faq(3), faq(4), faq(5)] })]);
+  const prisma = require('../src/db');
+  const fm = prisma.cursoOnline.findMany; prisma.cursoOnline.findMany = async () => [];
+  try {
+    await txt.escrever({ tipo: 'online', dados: { nome: 'X' } }, { cliente: cli });
+    const texto = cli.chamadas[0].messages[0].content.map((c) => c.text).join('\n');
+    assert.doesNotMatch(texto, /Durante a formação, o aluno desenvolve/);
+  } finally { prisma.cursoOnline.findMany = fm; }
+});

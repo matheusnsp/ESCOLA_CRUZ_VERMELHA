@@ -146,3 +146,23 @@ test('pequenos ajustes: editar curso/turma existente leva o endereço da ediçã
   const r3 = await f.executarFormulario('preencher_curso', { campos: { nome: 'Novo' } }, { pode: () => true });
   assert.equal(r3.evento.editar, undefined);
 });
+
+// 2026-11-13: resumo e texto completo saem só do escrever_textos_curso (padrão do site), nunca escritos pelo assistente.
+test('preencher_curso: não aceita resumo nem texto completo escritos pelo assistente', async () => {
+  const def = f.DEFINICOES_FORMULARIO.find((d) => d.name === 'preencher_curso');
+  const props = def.input_schema.properties.campos.properties;
+  assert.equal(props.descricao, undefined);
+  assert.equal(props.descricaoLonga, undefined);
+  const r = await f.executarFormulario('preencher_curso', { campos: { nome: 'Cuidador Infantil', cargaHoraria: 120, descricao: 'feito à mão', descricaoLonga: 'texto livre' } }, { pode: pode('cursos:criar') });
+  assert.equal(r.evento.campos.descricao, undefined);
+  assert.equal(r.evento.campos.descricaoLonga, undefined);
+  assert.match(r.resultado.aviso, /escrever_textos_curso/);
+});
+
+test('regras do assistente: textos do curso só pelo escrever_textos_curso, com as observações em ideias', () => {
+  const { REGRAS } = require('../src/lib/assistente-contexto');
+  assert.match(REGRAS, /escrever_textos_curso/);
+  assert.match(REGRAS, /nunca escreva (esses textos|o resumo|a descrição)/i);
+  const def = f.DEFINICOES_FORMULARIO.find((d) => d.name === 'escrever_textos_curso');
+  assert.match(def.description, /observações/i);
+});
