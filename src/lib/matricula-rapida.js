@@ -173,7 +173,7 @@ async function carregar({ forcar = false } = {}) {
   const idsCurso = [...new Set(pessoas.map((p) => p.cursoId).filter(Boolean))];
   const hoje = new Date(); hoje.setUTCHours(0, 0, 0, 0);
   const turmas = idsCurso.length ? await prisma.turma.findMany({
-    where: { cursoId: { in: idsCurso }, status: { in: ['ABERTA', 'CONFIRMADA'] }, inicioPrevisto: { gte: hoje } },
+    where: { cursoId: { in: idsCurso }, status: 'ABERTA', inicioPrevisto: { gte: hoje } }, // Confirmada não recebe mais aluno
     orderBy: { inicioPrevisto: 'asc' },
     include: { aulas: { orderBy: { data: 'asc' }, take: 1 }, _count: { select: { matriculas: { where: { taxaConfirmada: true } } } } },
   }) : [];
@@ -190,6 +190,14 @@ async function carregar({ forcar = false } = {}) {
   };
 }
 
+// 2026-11-13: só turma Aberta recebe aluno. Confirmada (fechada para inscrições) não recebe nem pela secretaria.
+// Devolve a mensagem de erro, ou null quando a turma pode receber.
+function turmaNaoRecebe(turma) {
+  if (turma && turma.status === 'ABERTA') return null;
+  if (turma && turma.status === 'CONFIRMADA') return 'Essa turma está confirmada e não recebe mais alunos. Escolha uma turma aberta.';
+  return 'Escolha uma turma aberta.';
+}
+
 // Encaixa a pessoa (inscrição do site) na turma. Devolve { ok, msg } para a tela.
 // Quem está na lista de espera já tem matrícula (na turma EM_ESPERA do curso): ela é MOVIDA para a
 // turma escolhida, sem conta, matrícula ou pagamento novos ({ daEspera: true, de }).
@@ -200,7 +208,8 @@ async function encaixar({ inscricaoId, turmaId, porUsuarioId, appUrl }) {
   if (!pessoa) return { ok: false, msg: 'Inscrição não encontrada no site da instituição.' };
 
   const turma = await prisma.turma.findUnique({ where: { id: String(turmaId || '') }, include: { curso: true } });
-  if (!turma || !['ABERTA', 'CONFIRMADA'].includes(turma.status)) return { ok: false, msg: 'Escolha uma turma aberta.' };
+  const naoRecebe = turmaNaoRecebe(turma);
+  if (naoRecebe) return { ok: false, msg: naoRecebe };
   if (pessoa.cursoId && turma.cursoId !== pessoa.cursoId) return { ok: false, msg: 'A turma escolhida é de outro curso.' };
 
   // Na espera? Então só muda a matrícula de turma (antes de qualquer criação).
@@ -395,8 +404,9 @@ const gravarAnotacao = (inscricaoId, valor) => prisma.configuracao.upsert({
 // (turma atual EM_ESPERA): aí o e-mail é "Sua turma foi definida" e a resposta traz daEspera.
 async function moverMatricula({ inscricaoId, alvo, destino, porUsuarioId, appUrl }) {
   const { m } = alvo;
-  // Destino: só turma de verdade (ABERTA/CONFIRMADA; a de espera nunca é destino de Mover).
-  if (!destino || !['ABERTA', 'CONFIRMADA'].includes(destino.status)) return { ok: false, msg: 'Escolha uma turma aberta.' };
+  // Destino: só turma Aberta (Confirmada não recebe mais aluno; a de espera nunca é destino de Mover).
+  const naoRecebe = turmaNaoRecebe(destino);
+  if (naoRecebe) return { ok: false, msg: naoRecebe };
   if (destino.cursoId !== m.turma.cursoId) return { ok: false, msg: 'A turma escolhida é de outro curso. Para trocar de curso, use Transferir em Inscrições.' };
   if (destino.id === m.turmaId) return { ok: false, msg: `${m.aluno.nome} já está nessa turma.` };
   if (['CANCELADO', 'ESTORNADO'].includes(m.statusPagamento)) return { ok: false, msg: 'Essa matrícula está cancelada ou estornada; não dá para mover.' };
@@ -709,4 +719,4 @@ async function idsMatriculas() {
   return ids;
 }
 
-module.exports = { idsMatriculas, carregar, encaixar, matriculaDoCurso, moverEncaixe, voltarParaEspera, situacaoPagamento, dataPago, resumoPainel, taxaPaga, pagoNoGateway };
+module.exports = { turmaNaoRecebe, idsMatriculas, carregar, encaixar, matriculaDoCurso, moverEncaixe, voltarParaEspera, situacaoPagamento, dataPago, resumoPainel, taxaPaga, pagoNoGateway };
