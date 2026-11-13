@@ -7,9 +7,9 @@ const path = require('path');
 const ler = (p) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
 
 test('listas que leem Curso direto filtram o e-book (ebook: null)', () => {
-  assert.match(ler('src/routes/ead.js'), /prisma\.curso\.findMany\(\{ where: \{ online: null, ebook: null \}/, 'cursos sem EAD (ativar EAD)');
-  assert.match(ler('src/lib/planilha-ao-vivo.js'), /prisma\.curso\.findMany\(\{\s*where: \{ ebook: null \}/, 'planilha ao vivo');
-  assert.match(ler('src/routes/cursos.js'), /prisma\.curso\.findMany\(\{ where: \{ ebook: null \}, select: \{ id: true, nome: true, ativo: true \}/, 'endereços /cursos/<x>');
+  assert.match(ler('src/routes/ead.js'), /prisma\.curso\.findMany\(\{ where: \{ online: null, ebook: null[,} ]/, 'cursos sem EAD (ativar EAD)');
+  assert.match(ler('src/lib/planilha-ao-vivo.js'), /prisma\.curso\.findMany\(\{\s*where: \{ ebook: null[,} ]/, 'planilha ao vivo');
+  assert.match(ler('src/routes/cursos.js'), /prisma\.curso\.findMany\(\{ where: \{ ebook: null[^}]*\}, select: \{ id: true, nome: true, ativo: true \}/, 'endereços /cursos/<x>');
 });
 
 const temBanco = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');

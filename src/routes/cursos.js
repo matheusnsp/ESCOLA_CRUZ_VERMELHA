@@ -474,7 +474,7 @@ router.get('/compartilhar/curso/:id.jpg', (req, res, next) => (async () => {
 // 1 dia: se o curso mudar de nome, o navegador não fica preso no endereço velho.
 async function idPeloEndereco(res, endereco) {
   const mapa = await catalogo(res, 'enderecos-cursos', async () => {
-    const lista = await prisma.curso.findMany({ where: { ebook: null }, select: { id: true, nome: true, ativo: true }, orderBy: { criadoEm: 'asc' } });
+    const lista = await prisma.curso.findMany({ where: { ebook: null, webinario: null }, select: { id: true, nome: true, ativo: true }, orderBy: { criadoEm: 'asc' } });
     const m = {};
     // dois cursos com o mesmo nome: fica o ativo (e, entre iguais, o mais antigo)
     for (const c of lista) { const k = vitrine.slugCurso(c.nome); if (!m[k] || (!m[k].ativo && c.ativo)) m[k] = c; }

@@ -12,15 +12,15 @@ datasource db {
 }
 
 model Usuario {
-  id                   String            @id @default(uuid())
+  id                   String                      @id @default(uuid())
   nome                 String
-  email                String            @unique
+  email                String                      @unique
   tipoDocumento        TipoDocumento?
-  cpfCnpj              String?           @unique
-  passaporte           String?           @unique
+  cpfCnpj              String?                     @unique
+  passaporte           String?                     @unique
   paisOrigem           String?
   senhaHash            String?
-  papel                Papel             @default(ALUNO)
+  papel                Papel                       @default(ALUNO)
   escolaridade         String?
   escolaridadeSituacao String?
   genero               String?
@@ -31,16 +31,16 @@ model Usuario {
   bairro               String?
   cidade               String?
   uf                   String?
-  emailVerificado      Boolean           @default(false)
-  loginFalhas          Int               @default(0)
+  emailVerificado      Boolean                     @default(false)
+  loginFalhas          Int                         @default(0)
   bloqueadoAte         DateTime?
-  loginStrikes         Int               @default(0)
-  bloqueioTotal        Boolean           @default(false)
+  loginStrikes         Int                         @default(0)
+  bloqueioTotal        Boolean                     @default(false)
   avatarUrl            String?
   consentimentoLgpdEm  DateTime?
   consentimentoVersao  String?
-  criadoEm             DateTime          @default(now())
-  atualizadoEm         DateTime          @updatedAt
+  criadoEm             DateTime                    @default(now())
+  atualizadoEm         DateTime                    @updatedAt
   celular              String?
   rg                   String?
   ultimoLogin          DateTime?
@@ -53,6 +53,9 @@ model Usuario {
   vagasLote            VagaLoteEad[]
   downloadsEbook       DownloadEbook[]
   acessosEbook         AcessoEbook[]
+  inscricoesWebinario  InscricaoWebinario[]
+  presencasWebinario   PresencaWebinario[]
+  tentativasWebinario  TentativaPalavraWebinario[]
 
   @@index([papel])
   @@index([ultimaAtividade])
@@ -68,7 +71,7 @@ model Curso {
   // Imagens com IA (2026-11-09): pedido do Claude, descrição e selo da imagem do curso (online e presencial).
   imagemPedido       String?
   imagemSugestao     String?
-  imagemGeradaPorIa  Boolean            @default(false)
+  imagemGeradaPorIa  Boolean      @default(false)
   precoAvista        Decimal      @db.Decimal(10, 2)
   precoCheio         Decimal      @db.Decimal(10, 2)
   parcelas           Int          @default(1)
@@ -83,6 +86,7 @@ model Curso {
   online             CursoOnline?
   // E-book (2026-11-09): o curso escondido do e-book (a FK fica em "Ebook"). Fora de toda lista de cursos.
   ebook              Ebook?
+  webinario          Webinario?
   cuponsPresencial   CupomEad[]
 }
 
@@ -653,29 +657,32 @@ model VagaLoteEad {
 // ─── Etapa 7: cupom de desconto do curso online ───────────────────────────────────────────────
 // tipo: PERCENTUAL | VALOR (texto, como LoteEad.forma). cursoOnlineId null = todos os cursos online.
 model CupomEad {
-  id            String              @id @default(uuid())
-  codigo        String              @unique
-  tipo          String
-  valor         Decimal             @db.Decimal(10, 2)
-  cursoOnlineId String?
-  validoAte     DateTime?
-  limiteUsos    Int?
-  ativo         Boolean             @default(true)
-  observacao    String?
-  criadoPor     String
-  criadoEm      DateTime            @default(now())
-  atualizadoEm  DateTime            @updatedAt
-  cursoOnline   CursoOnline?        @relation(fields: [cursoOnlineId], references: [id], onDelete: Restrict)
+  id               String              @id @default(uuid())
+  codigo           String              @unique
+  tipo             String
+  valor            Decimal             @db.Decimal(10, 2)
+  cursoOnlineId    String?
+  validoAte        DateTime?
+  limiteUsos       Int?
+  ativo            Boolean             @default(true)
+  observacao       String?
+  criadoPor        String
+  criadoEm         DateTime            @default(now())
+  atualizadoEm     DateTime            @updatedAt
+  cursoOnline      CursoOnline?        @relation(fields: [cursoOnlineId], references: [id], onDelete: Restrict)
   // E-book (2026-11-09): cupom só deste e-book. Sem cursoOnlineId nem ebookId, vale para todos.
-  ebookId       String?
-  ebook         Ebook?              @relation(fields: [ebookId], references: [id], onDelete: Restrict)
+  ebookId          String?
+  ebook            Ebook?              @relation(fields: [ebookId], references: [id], onDelete: Restrict)
+  // Webinário (2026-11-13): cupom só deste webinário. Sem curso, e-book nem webinário, vale para todos.
+  webinarioId      String?
+  webinario        Webinario?          @relation(fields: [webinarioId], references: [id], onDelete: Restrict)
   // Cupom no presencial (2026-11-09): um curso presencial (qualquer turma) ou todos os presenciais.
   cursoId          String?
-  curso            Curso?           @relation(fields: [cursoId], references: [id], onDelete: Restrict)
-  todosPresenciais Boolean          @default(false)
+  curso            Curso?              @relation(fields: [cursoId], references: [id], onDelete: Restrict)
+  todosPresenciais Boolean             @default(false)
   // "Tudo" (2026-11-10): vale em qualquer produto — cursos online, e-books e presenciais.
-  valeTudo         Boolean          @default(false)
-  compras       CupomMatriculaEad[]
+  valeTudo         Boolean             @default(false)
+  compras          CupomMatriculaEad[]
 }
 
 // O cupom usado numa compra (uma por matrícula). Fica fora de Matricula: a migração só acrescenta.
@@ -779,4 +786,72 @@ model UsoAssistente {
   usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId, criadoEm])
+}
+
+// Escola Digital, webinários (2026-11-13, spec 2026-11-13-escola-digital-webinarios-design.md). Como o e-book:
+// título, descrições, capa e dúvidas no Curso escondido (ativo false); a compra é uma Matricula na turma ONLINE.
+model Webinario {
+  id                String                      @id @default(uuid())
+  cursoId           String                      @unique
+  apresentador      String?
+  inicioEm          DateTime?
+  duracaoMin        Int
+  linkAoVivo        String?
+  gravacaoUrl       String?
+  palavraCodigo     String?
+  precoOnline       Decimal                     @default(0) @db.Decimal(10, 2)
+  gratuito          Boolean                     @default(false)
+  maxParcelas       Int                         @default(1)
+  publicado         Boolean                     @default(false)
+  ordemVitrine      Int                         @default(0)
+  gravacaoAvisadaEm DateTime?
+  criadoEm          DateTime                    @default(now())
+  atualizadoEm      DateTime                    @updatedAt
+  curso             Curso                       @relation(fields: [cursoId], references: [id], onDelete: Restrict)
+  inscricoes        InscricaoWebinario[]
+  presencas         PresencaWebinario[]
+  tentativas        TentativaPalavraWebinario[]
+  cupons            CupomEad[]
+
+  @@index([publicado, inicioEm])
+}
+
+// Quem pode assistir: inscrição grátis ou criada quando o pagamento confirma. Guia os lembretes.
+model InscricaoWebinario {
+  id            String    @id @default(uuid())
+  webinarioId   String
+  usuarioId     String
+  criadoEm      DateTime  @default(now())
+  lembrete24hEm DateTime?
+  lembrete1hEm  DateTime?
+  webinario     Webinario @relation(fields: [webinarioId], references: [id], onDelete: Cascade)
+  usuario       Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([webinarioId, usuarioId])
+  @@index([usuarioId])
+}
+
+// Presença confirmada pela palavra-código. Dona do número do certificado (reservarNumero 'PresencaWebinario').
+model PresencaWebinario {
+  id           String    @id @default(uuid())
+  webinarioId  String
+  usuarioId    String
+  confirmadaEm DateTime  @default(now())
+  webinario    Webinario @relation(fields: [webinarioId], references: [id], onDelete: Cascade)
+  usuario      Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([webinarioId, usuarioId])
+  @@index([usuarioId])
+}
+
+// Tentativas da palavra-código (limite por hora; no banco para não zerar quando o servidor reinicia).
+model TentativaPalavraWebinario {
+  id          String    @id @default(uuid())
+  webinarioId String
+  usuarioId   String
+  criadoEm    DateTime  @default(now())
+  webinario   Webinario @relation(fields: [webinarioId], references: [id], onDelete: Cascade)
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([webinarioId, usuarioId, criadoEm])
 }

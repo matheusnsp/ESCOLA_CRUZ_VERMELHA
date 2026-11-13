@@ -105,7 +105,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
       const mods = await contagensDosModulos(co.id);
       lista.push({ ...co, nModulos: mods.length, nValidados: mods.filter((m) => m.status === 'VALIDADO').length, nPerguntas: mods.reduce((s, m) => s + m.nPerguntas, 0) });
     }
-    const semEad = await prisma.curso.findMany({ where: { online: null, ebook: null }, select: { id: true, nome: true, ativo: true }, orderBy: { nome: 'asc' } });
+    const semEad = await prisma.curso.findMany({ where: { online: null, ebook: null, webinario: null }, select: { id: true, nome: true, ativo: true }, orderBy: { nome: 'asc' } });
     // Vitrine (2026-11-09): os publicados na ordem do site, para o destaque e o ↑ ↓.
     const vitrinePublicados = await publicadosNaOrdem();
     res.render('admin/ead/cursos', {

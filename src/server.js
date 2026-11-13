@@ -335,7 +335,7 @@ siteAluno.use((req, res, next) => {
   if (guardado) { res.locals.contaLinks = guardado; return next(); }
   Promise.all([
     // A compra de e-book também é matrícula na turma ONLINE: não conta como curso online.
-    prisma.alunoCursoEad.count({ where: { usuarioId: id } }).then((n) => n || prisma.matricula.count({ where: { alunoId: id, turma: { status: 'ONLINE', curso: { ebook: null } } } })).catch(() => 0),
+    prisma.alunoCursoEad.count({ where: { usuarioId: id } }).then((n) => n || prisma.matricula.count({ where: { alunoId: id, turma: { status: 'ONLINE', curso: { ebook: null, webinario: null } } } })).catch(() => 0),
     prisma.gestorEscolaEad.count({ where: { usuarioId: id } }).catch(() => 0),
     // E-books (2026-11-09): o grátis já baixado ou o pago.
     prisma.acessoEbook.count({ where: { usuarioId: id } }).then((n) => n || prisma.matricula.count({ where: { alunoId: id, statusPagamento: { in: ['PAGO', 'PARCELADO'] }, turma: { status: 'ONLINE', curso: { ebook: { isNot: null } } } } })).catch(() => 0),

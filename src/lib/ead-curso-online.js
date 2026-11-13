@@ -70,11 +70,13 @@ async function apagarCursoSoOnline(cursoOnlineId) {
 async function idsSoOnline() {
   try {
     // E-books (2026-11-09): o curso escondido do e-book também fica fora do presencial (listas, turmas, contagem).
-    const [so, ebooks] = await Promise.all([
+    // Webinários (2026-11-13): idem.
+    const [so, ebooks, webinarios] = await Promise.all([
       prisma.cursoOnline.findMany({ where: { somenteOnline: true }, select: { cursoId: true } }),
       prisma.ebook.findMany({ select: { cursoId: true } }),
+      prisma.webinario.findMany({ select: { cursoId: true } }),
     ]);
-    return new Set([...so, ...ebooks].map((c) => c.cursoId));
+    return new Set([...so, ...ebooks, ...webinarios].map((c) => c.cursoId));
   } catch (e) {
     console.error('[EAD] cursos só online:', e.message);
     return new Set();
