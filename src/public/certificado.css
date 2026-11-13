@@ -3,6 +3,9 @@
 @page { size: A4 landscape; margin: 0; }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+/* iPhone: o Safari aumenta sozinho o texto que acha pequeno (text autosizing); com o certificado reduzido pelo zoom
+   na tela pequena, isso encavalava as linhas (assinaturas por cima do texto). Tamanho do texto fica o do modelo. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { background: #e9e6e1; font-family: Arimo, Arial, Helvetica, sans-serif; color: #111; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
 .cert-barra { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 20px; background: #fff; border-bottom: 1px solid #ddd; font-size: 14px; }
