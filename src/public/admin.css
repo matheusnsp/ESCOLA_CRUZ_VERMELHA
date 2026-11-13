@@ -1981,3 +1981,164 @@ a.mr-num:hover { border-color: var(--linha); }
 .adm-cert-cartoes > *, .adm-cert-cartao > *, .adm-cert-cartao label, .adm-cert-assinatura > * { min-width: 0; }
 .adm-cert-cartao input[type=text], .adm-cert-cartao input[type=file] { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
 .adm-cert-cartao input[type=file] { overflow: hidden; text-overflow: ellipsis; }
+
+/* ===== Menu em grupos e gaveta no celular (2026-11-13) =====================
+   spec docs/superpowers/specs/2026-11-13-menu-submenus-design.md. O header.ejs desenha os grupos
+   (lib/menu-painel.js); /js/admin-menu.js abre/fecha grupos e a gaveta. */
+.adm-grp { display: grid; }
+.adm-grp-tit {
+  all: unset; box-sizing: border-box; cursor: pointer;
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 9px 14px; border-radius: var(--r-s);
+  font: 700 14px var(--fonte); color: var(--tinta);
+}
+.adm-grp-tit > i:first-child { font-size: 13px; color: var(--mut); width: 18px; text-align: center; }
+.adm-grp-tit:hover { background: var(--bg); }
+.adm-grp-tit:focus-visible { outline: 2px solid var(--vermelho); outline-offset: 2px; }
+.adm-grp-seta { margin-left: auto; font-size: 11px; color: var(--mut); transition: transform .15s; }
+.adm-grp-selo { margin-left: 6px; }
+.adm-grp.aberto > .adm-grp-tit .adm-grp-seta { transform: rotate(90deg); }
+.adm-grp.ativo > .adm-grp-tit, .adm-grp.ativo > .adm-grp-tit > i:first-child { color: var(--vermelho-txt); }
+.adm-grp.aberto > .adm-grp-tit .adm-grp-selo { display: none; } /* aberto: o selo já aparece no item */
+.adm-grp-itens { display: none; margin: 2px 0 6px 23px; padding-left: 10px; border-left: 2px solid var(--linha); }
+.adm-grp.aberto > .adm-grp-itens, html:not(.adm-js) .adm-grp-itens { display: grid; gap: 1px; } /* sem o script, todos abertos */
+.adm-nav .adm-grp-itens a { padding: 8px 10px; font-size: 14px; font-weight: 600; }
+.adm-nav .adm-grp-itens a .adm-badge { margin-left: auto; }
+.adm-nav-sep { font: 800 10.5px var(--fonte); letter-spacing: .12em; text-transform: uppercase; color: var(--mut); padding: 14px 14px 4px; }
+.adm-topo-cel, .adm-lado-fechar, .adm-lado-fundo { display: none; }
+
+@media (min-width: 1025px) {
+  .adm-nav .adm-grp-tit { padding: 10px 12px; font-size: 14.5px; }
+}
+
+@media (max-width: 1024px) {
+  /* topo fino: logo, nome da página e o botão Menu */
+  .adm-topo-cel {
+    display: flex; align-items: center; gap: 12px;
+    position: sticky; top: 0; z-index: 900;
+    padding: 10px 16px; background: var(--card);
+    border-bottom: 1px solid var(--linha); box-shadow: var(--sombra);
+  }
+  .adm-topo-cel::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--vermelho); }
+  .adm-topo-logo img { height: 34px; width: auto; display: block; }
+  .adm-topo-onde { font: 700 14px var(--fonte); color: var(--mut); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .adm-menu-btn { display: none; }
+  html.adm-js .adm-menu-btn {
+    margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    font: 700 14px var(--fonte); color: var(--tinta);
+    padding: 9px 14px; border-radius: 999px; border: 1px solid var(--linha); background: var(--card);
+  }
+  /* o menu vira gaveta pela esquerda (só com o script; sem ele, o menu fica aberto no alto da página) */
+  .adm-top {
+    position: static; height: auto;
+    flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 18px;
+    padding: 18px 14px 16px;
+  }
+  html.adm-js .adm-top {
+    position: fixed; top: 0; bottom: 0; left: 0; z-index: 1001;
+    width: min(320px, 86vw); overflow-y: auto; overscroll-behavior: contain;
+    border: 0; border-right: 1px solid var(--linha);
+    transform: translateX(-105%); transition: transform .2s ease; visibility: hidden;
+  }
+  body.adm-menu-aberto .adm-top { transform: none; visibility: visible; box-shadow: 0 0 40px rgba(0,0,0,.25); }
+  body.adm-menu-aberto { overflow: hidden; }
+  .adm-lado-fundo:not([hidden]) { display: block; position: fixed; inset: 0; z-index: 1000; background: rgba(15,18,22,.45); }
+  html.adm-js .adm-lado-fechar {
+    display: grid; place-items: center; position: absolute; right: 10px; top: 12px;
+    width: 40px; height: 40px; border: 0; border-radius: 50%; background: none; color: var(--mut); font-size: 20px; cursor: pointer;
+  }
+  html.adm-js .adm-top .adm-brand { padding-right: 44px; }
+  .adm-top .adm-brand-txt { display: none; }
+  .adm-nav { order: 0; width: auto; flex: 1 0 auto; flex-direction: column; overflow: visible; padding: 0; margin: 0; gap: 2px; }
+  .adm-nav a { white-space: normal; padding: 10px 12px; }
+  .adm-top-pe {
+    display: flex !important; /* vence o display:contents do style do header.ejs */
+    flex-wrap: wrap; align-items: center; gap: 10px;
+    padding: 14px 4px 0; border-top: 1px solid var(--linha);
+  }
+  .adm-top-pe .adm-tema { flex: 1 1 100%; margin-left: 0; }
+  .adm-top-pe .adm-tema button { flex: 1; width: auto; }
+  .adm-top-pe .adm-sair span { display: inline; }
+}
+@media (max-width: 1024px) and (prefers-reduced-motion: reduce) { .adm-top { transition: none; } }
+
+/* ===== Filtros no celular: cartão "Mostrando" + lista de baixo (2026-11-13) ===== */
+.adm-filtro-cel { display: none; }
+.adm-folha[hidden], .adm-folha-fundo[hidden] { display: none !important; }
+@media (max-width: 620px) {
+  html.adm-js .adm-abas { display: none !important; } /* sem o script, as abas continuam */
+  .adm-filtro-cel {
+    display: flex; align-items: center; gap: 12px; width: 100%; margin: 0 0 16px; cursor: pointer;
+    padding: 12px 16px; border-radius: 16px; border: 1px solid var(--linha); background: var(--card);
+    box-shadow: var(--sombra); font: 600 13px var(--fonte); color: var(--tinta-60); text-align: left;
+  }
+  .adm-filtro-cel > .fa-filter { flex: none; width: 34px; height: 34px; border-radius: 10px; background: var(--vermelho-bg); color: var(--vermelho); display: grid; place-items: center; font-size: 14px; }
+  .adm-filtro-txt { min-width: 0; }
+  .adm-filtro-txt b { display: block; font: 800 16px var(--fonte); color: var(--tinta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .adm-filtro-num { margin-left: auto; min-width: 26px; padding: 3px 8px; border-radius: 999px; background: var(--vermelho); color: #fff; font: 800 12px var(--fonte); text-align: center; }
+  .adm-filtro-seta { color: var(--mut); font-size: 12px; }
+  .adm-filtro-num + .adm-filtro-seta { margin-left: 0; }
+  .adm-filtro-txt + .adm-filtro-seta { margin-left: auto; }
+  .adm-folha-fundo { position: fixed; inset: 0; z-index: 1100; background: rgba(15,18,22,.45); }
+  .adm-folha {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 1101; max-height: 80vh; overflow-y: auto;
+    background: var(--card); border-radius: 22px 22px 0 0; padding: 10px 16px calc(22px + env(safe-area-inset-bottom));
+    box-shadow: 0 -10px 30px rgba(0,0,0,.18);
+  }
+  .adm-folha-puxador { width: 44px; height: 5px; border-radius: 99px; background: var(--linha); margin: 2px auto 14px; }
+  .adm-folha h3 { font: 800 18px var(--fonte-t); margin: 0 4px 10px; color: var(--tinta); }
+  .adm-folha-item {
+    all: unset; box-sizing: border-box; cursor: pointer; width: 100%;
+    display: flex; align-items: center; gap: 12px; padding: 14px 12px; border-radius: 14px;
+    font: 700 15.5px var(--fonte); color: var(--tinta); text-decoration: none;
+  }
+  .adm-folha-item:focus-visible { outline: 2px solid var(--vermelho); outline-offset: -2px; }
+  .adm-folha-ok { width: 18px; color: var(--vermelho); visibility: hidden; }
+  .adm-folha-item.on, .adm-folha-item.on .adm-folha-ok { visibility: visible; }
+  .adm-folha-item.on { background: var(--vermelho-bg); color: var(--vermelho-txt); }
+  .adm-folha-item .fa-download { visibility: visible; }
+  .adm-folha-num { margin-left: auto; min-width: 26px; padding: 3px 8px; border-radius: 999px; background: var(--bg); color: var(--tinta-60); font: 800 12px var(--fonte); text-align: center; }
+  .adm-folha-item.on .adm-folha-num { background: var(--vermelho); color: #fff; }
+  .adm-folha-sep { height: 1px; background: var(--linha); margin: 8px 6px; }
+}
+
+/* ===== Botão de criar no celular: (+) flutuante (2026-11-13) ===== */
+.adm-fab, .adm-fab-menu, .adm-fab-fundo { display: none; }
+@media (max-width: 620px) {
+  html.adm-js [data-criar] { display: none !important; } /* qualquer botão marcado: no topo (Turmas) ou numa barra (Cursos, Novo módulo) */
+  .adm-fab {
+    display: grid; place-items: center; position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 1050;
+    width: 58px; height: 58px; border-radius: 50%; border: 0; cursor: pointer;
+    background: var(--vermelho); color: #fff; font-size: 22px; text-decoration: none;
+    box-shadow: 0 8px 24px rgba(200,16,46,.35);
+  }
+  .adm-fab i { transition: transform .15s; }
+  .adm-fab.aberto i { transform: rotate(45deg); }
+  .adm-fab:focus-visible { outline: 3px solid var(--tinta); outline-offset: 3px; }
+  .adm-fab-fundo:not([hidden]) { display: block; position: fixed; inset: 0; z-index: 1048; background: rgba(15,18,22,.35); }
+  .adm-fab-menu:not([hidden]) { display: grid; position: fixed; right: 18px; bottom: calc(88px + env(safe-area-inset-bottom)); z-index: 1049; gap: 8px; justify-items: end; }
+  .adm-fab-menu a {
+    display: inline-flex; align-items: center; gap: 10px; padding: 11px 16px; border-radius: 999px;
+    background: var(--card); color: var(--tinta); font: 700 14.5px var(--fonte); text-decoration: none; box-shadow: 0 6px 18px rgba(0,0,0,.18);
+  }
+  .adm-fab-menu a i { color: var(--vermelho); }
+  body.adm-tem-fab .adm-wrap { padding-bottom: 96px; }
+  body.adm-menu-aberto .adm-fab, body.adm-menu-aberto .adm-fab-menu, body.adm-menu-aberto .adm-fab-fundo { display: none !important; } /* menu aberto: o (+) sai da frente */ /* o (+) não cobre o fim da página */
+}
+
+/* ===== Boas-vindas: texto por curso (2026-11-13) ===== */
+.adm-bv-cursos { margin-top: 18px; }
+.adm-bv-cursos-dica { padding: 0 20px; margin: 0 0 12px; }
+.adm-bv-tag { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--bg); color: var(--mut); }
+.adm-bv-tag.proprio { background: #e7f6ec; color: #17803d; }
+html[data-tema="escuro"] .adm-bv-tag.proprio { background: rgba(34,197,94,.15); color: #6ee7a0; }
+.adm-bv-acoes { text-align: right; white-space: nowrap; }
+.adm-bv-acoes form { display: inline; margin-left: 12px; }
+.adm-bv-acoes button.adm-link { background: none; border: 0; padding: 0; font-family: inherit; font-weight: 700; font-size: 14px; color: var(--vermelho); cursor: pointer; }
+@media (max-width: 620px) { .adm-bv-acoes { text-align: left; white-space: normal; } }
+
+/* Revisão visual (2026-11-13): no tablet, tabela larga dentro da caixa rola para o lado (antes as últimas colunas
+   ficavam cortadas, ex.: Cursos em 820 px). No celular isso já valia (regra de 620 px). */
+@media (max-width: 1024px) {
+  .adm-box { overflow-x: auto; }
+}

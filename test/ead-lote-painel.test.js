@@ -22,6 +22,7 @@ describe('painel: escolas e lotes', { skip: temBanco ? false : 'sem DATABASE_URL
     app.set('view engine', 'ejs');
     app.set('views', path.join(__dirname, '..', 'src', 'views'));
     app.locals.asset = require('../src/lib/assets').asset;
+    app.locals.montarMenu = require('../src/lib/menu-painel').montarMenu;
     app.use(express.urlencoded({ extended: true }));
     app.use((req, res, next) => {
       req.session = { usuarioId: null };

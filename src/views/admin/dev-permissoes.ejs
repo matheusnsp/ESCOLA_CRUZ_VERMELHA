@@ -1,5 +1,5 @@
 <%- include('head', { titulo: 'Permissões' }) %>
-<%- include('header', { ativo: 'dev-usuarios' }) %>
+<%- include('header', { ativo: 'permissoes' }) %>
 <%
   const NOMES = { SECRETARIA: 'Secretaria', COORDENADOR: 'Coordenador', FINANCEIRO: 'Financeiro', CONSULTA: 'Consulta' };
   const grupos = [...new Set(catalogo.map(c => c.grupo))];

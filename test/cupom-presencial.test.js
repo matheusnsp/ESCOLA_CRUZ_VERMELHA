@@ -6,8 +6,11 @@ const fs = require('fs');
 const path = require('path');
 
 test('aba Cupons também no modo Presencial do painel', () => {
-  const h = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', 'admin', 'header.ejs'), 'utf8');
-  assert.equal((h.match(/href="\/ead\/cupons"/g) || []).length, 2);
+  // 2026-11-13: o menu saiu do header.ejs para lib/menu-painel.js (Financeiro ▸ Cupons, só DEV).
+  const { montarMenu } = require('../src/lib/menu-painel');
+  const hrefs = (modo) => montarMenu({ modo, papel: 'DEV', pode: () => true, ativo: '' }).flatMap((g) => [g.href, ...(g.itens || []).map((i) => i.href)]);
+  assert.ok(hrefs('presencial').includes('/ead/cupons'));
+  assert.ok(hrefs('online').includes('/ead/cupons'));
 });
 
 const temBanco = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');

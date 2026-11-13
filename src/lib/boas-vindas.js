@@ -83,7 +83,8 @@ function montarTexto(turma, modelo) {
   const data = dataBr(primeira ? primeira.data : turma.inicioPrevisto);
   const hora = primeira ? horaInicio(primeira.horario) : '';
   const doacao = (turma.boasVindasDoacao || '').trim() || modelo.doacao;
-  let t = modelo.texto;
+  // Texto próprio do curso (2026-11-13; extras do curso), senão o padrão de todas as turmas.
+  let t = String((turma.curso && turma.curso.boasVindasTexto) || '').trim() || modelo.texto;
   if (!hora) t = t.replace(/ às \{hora\}/g, '').replace(/\{hora\}/g, '');
   return t
     .replace(/\{CURSO\}/g, turma.curso.nome.toUpperCase())
@@ -173,7 +174,7 @@ async function enviarParaTurma(turma, modelo) {
 
 async function carregarTurma(turmaId) {
   const turma = await prisma.turma.findUnique({ where: { id: turmaId }, include: { curso: true, aulas: true } });
-  if (turma) await extras.anexar('turma', [turma]);
+  if (turma) { await extras.anexar('turma', [turma]); await anexarTextosCursos([turma]); }
   return turma;
 }
 
@@ -200,6 +201,7 @@ async function enviarPendentes() {
       include: { curso: true, aulas: true },
     });
     await extras.anexar('turma', turmas);
+    await anexarTextosCursos(turmas);
     const emCurso = turmas.filter(turmaEmCurso);
     if (!emCurso.length) return;
     const modelo = await lerModelo();
@@ -209,7 +211,32 @@ async function enviarPendentes() {
   }
 }
 
+// ---- Texto por curso (2026-11-13; spec 2026-11-13-menu-submenus-design.md §3) ----
+// Guardado nos extras do curso (campo boasVindasTexto), sem coluna nova. Vazio ou igual ao padrão = usa o padrão.
+
+// { cursoId: texto } de todos os cursos que têm texto próprio.
+async function lerTextosCursos() {
+  const cfgs = await prisma.configuracao.findMany({ where: { chave: { startsWith: 'extra:curso:' } } });
+  const r = {};
+  for (const c of cfgs) {
+    try { const t = String(JSON.parse(c.valor).boasVindasTexto || '').trim(); if (t) r[c.chave.slice('extra:curso:'.length)] = t; } catch (e) { /* linha estragada: ignora */ }
+  }
+  return r;
+}
+
+async function salvarTextoCurso(cursoId, texto) {
+  const v = String(texto || '').replace(/\r\n/g, '\n').trim();
+  const padrao = (await lerModelo()).texto.trim();
+  await extras.salvarExtra('curso', cursoId, { boasVindasTexto: !v || v === padrao ? null : v });
+}
+
+// Coloca curso.boasVindasTexto nas turmas (precisa vir antes de montarTexto).
+async function anexarTextosCursos(turmas) {
+  await extras.anexar('curso', (turmas || []).map((t) => t && t.curso).filter(Boolean));
+  return turmas;
+}
+
 module.exports = {
-  PADROES, lerModelo, salvarModelo, montarTexto, textoParaHtml, assunto, turmaEmCurso,
+  PADROES, lerModelo, salvarModelo, montarTexto, lerTextosCursos, salvarTextoCurso, anexarTextosCursos, textoParaHtml, assunto, turmaEmCurso,
   FILTRO_ALUNO_OK, enviarTurma, enviarPendentes, anexarEnvios,
 };

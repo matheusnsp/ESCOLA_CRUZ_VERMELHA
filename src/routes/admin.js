@@ -1501,6 +1501,7 @@ async function carregarTurmaBoasVindas(id) {
   });
   if (!turma) return null;
   await extras.anexar('turma', [turma]);
+  await boasVindas.anexarTextosCursos([turma]);
   await boasVindas.anexarEnvios(turma.matriculas);
   return turma;
 }
@@ -1579,13 +1580,30 @@ router.post('/turmas/:id/boas-vindas/enviar', requirePermissao('turmas:gerenciar
 // Texto padrão das boas-vindas e ajustes do certificado.
 const VOLTAR_MODELOS = /^\/turmas\/[\w-]+\/(boas-vindas|certificados)$/;
 
+// Cursos presenciais ativos (os que mandam boas-vindas), para o "Texto por curso".
+const cursosDasBoasVindas = async () => semSoOnline(await prisma.curso.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' }, select: { id: true, nome: true } }));
+
 router.get('/modelos', requirePermissao('turmas:gerenciar'), async (req, res) => {
+  const cursos = await cursosDasBoasVindas();
   res.render('admin/modelos', {
     modelo: await boasVindas.lerModelo(),
     padroes: boasVindas.PADROES,
     voltar: VOLTAR_MODELOS.test(String(req.query.voltar || '')) ? req.query.voltar : '/turmas',
     ok: req.query.ok || null,
+    cursos,
+    textosCursos: await boasVindas.lerTextosCursos(),
+    cursoEditando: cursos.find((c) => c.id === String(req.query.curso || '')) || null,
   });
+});
+
+// Texto de boas-vindas de um curso (2026-11-13). Vazio = volta ao padrão.
+router.post('/modelos/curso', requirePermissao('turmas:gerenciar'), async (req, res) => {
+  const curso = (await cursosDasBoasVindas()).find((c) => c.id === String(req.body.cursoId || ''));
+  if (!curso) return res.redirect('/modelos?ok=' + encodeURIComponent('Curso não encontrado.') + '#texto-curso');
+  await boasVindas.salvarTextoCurso(curso.id, req.body.texto);
+  await auditar(req, 'EDITOU_MODELOS', 'Curso', curso.id, { boasVindasCurso: true });
+  const proprio = !!(await boasVindas.lerTextosCursos())[curso.id];
+  res.redirect('/modelos?ok=' + encodeURIComponent(proprio ? `Texto de ${curso.nome} salvo.` : `${curso.nome} voltou ao texto padrão.`) + '#texto-curso');
 });
 
 // Assinaturas escaneadas do certificado online (2026-11-12): até 6 imagens (uma por pessoa), 2 MB cada.

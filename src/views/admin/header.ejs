@@ -1,7 +1,24 @@
-<header class="adm-top">
-  <% var secaoAtiva = (typeof ativo !== 'undefined') ? ativo : ''; %>
-  <% // Modo do painel (só DEV): Presencial (o menu de sempre) ou Online (o EAD). As rotas /ead forçam 'online'. %>
-  <% var modo = (typeof modoPainel !== 'undefined' && modoPainel === 'online') ? 'online' : 'presencial'; %>
+<%
+  var secaoAtiva = (typeof ativo !== 'undefined') ? ativo : '';
+  // Modo do painel (só DEV): Presencial (o menu de sempre) ou Online (o EAD). As rotas /ead forçam 'online'.
+  var modo = (typeof modoPainel !== 'undefined' && modoPainel === 'online') ? 'online' : 'presencial';
+  // Menu em grupos (2026-11-13): lib/menu-painel.js (app.locals.montarMenu) decide grupos, itens, permissões e o que fica marcado.
+  var _menu = typeof montarMenu !== 'function' ? [] : montarMenu({
+    modo: modo, papel: typeof admPapel !== 'undefined' ? admPapel : '', pode: typeof pode === 'function' ? pode : function () { return false; },
+    ativo: secaoAtiva, duvidasAguardando: typeof duvidasAguardando === 'number' ? duvidasAguardando : 0,
+  });
+  var _onde = '';
+  _menu.forEach(function (g) { if (g.href && g.ativo) _onde = g.rotulo; (g.itens || []).forEach(function (i) { if (i.ativo) _onde = i.rotulo; }); });
+%>
+<%# Celular e tablet (até 1024 px): barra fina com o nome da página e o botão Menu; o menu abre como gaveta. %>
+<div class="adm-topo-cel">
+  <a href="<%= modo === 'online' ? '/ead' : '/' %>" class="adm-topo-logo"><img src="/img/logo-cvb-rj-nav.webp" width="252" height="112" alt="Cruz Vermelha Brasileira — RJ"></a>
+  <span class="adm-topo-onde"><%= _onde || 'Secretaria' %></span>
+  <button type="button" class="adm-menu-btn" aria-controls="admLado" aria-expanded="false"><i class="fa-solid fa-bars"></i> Menu</button>
+</div>
+<div class="adm-lado-fundo" id="admLadoFundo" hidden></div>
+<header class="adm-top" id="admLado">
+  <button type="button" class="adm-lado-fechar" aria-label="Fechar o menu"><i class="fa-solid fa-xmark"></i></button>
 
   <a href="<%= modo === 'online' ? '/ead' : '/' %>" class="adm-brand">
     <img src="/img/logo-cvb-rj-nav.webp" width="252" height="112" alt="Cruz Vermelha Brasileira — RJ" class="adm-logo">
@@ -16,57 +33,23 @@
     </form>
   <% } %>
 
-  <nav class="adm-nav">
-  <% if (modo === 'online') { %>
-    <a href="/ead" class="<%= secaoAtiva === 'ead' ? 'on' : '' %>"><i class="fa-solid fa-laptop-medical"></i> Cursos online</a>
-    <a href="/ead/ebooks" class="<%= secaoAtiva === 'ebooks' ? 'on' : '' %>"><i class="fa-solid fa-book-open"></i> E-books</a>
-    <a href="/ead/escolas" class="<%= secaoAtiva === 'escolas' ? 'on' : '' %>"><i class="fa-solid fa-school"></i> Escolas</a>
-    <a href="/ead/cupons" class="<%= secaoAtiva === 'cupons' ? 'on' : '' %>"><i class="fa-solid fa-ticket"></i> Cupons</a>
-    <a href="/ead/duvidas" class="<%= secaoAtiva === 'duvidas' ? 'on' : '' %>"><i class="fa-solid fa-comments"></i> Dúvidas<% if (typeof duvidasAguardando === 'number' && duvidasAguardando > 0) { %> <span class="adm-badge" title="Aguardando resposta"><%= duvidasAguardando %></span><% } %></a>
-    <% if (pode('turmas:gerenciar')) { %><a href="/certificados" class="<%= secaoAtiva === 'certificados' ? 'on' : '' %>"><i class="fa-solid fa-award"></i> Certificados</a><% } %>
-  <% } else { %>
-    <a href="/" class="<%= secaoAtiva === 'home' ? 'on' : '' %>"><i class="fa-solid fa-gauge"></i> Painel</a>
-    <a href="/cursos" class="<%= secaoAtiva === 'cursos' ? 'on' : '' %>"><i class="fa-solid fa-book"></i> Cursos</a>
-    <a href="/turmas" class="<%= secaoAtiva === 'turmas' ? 'on' : '' %>"><i class="fa-solid fa-calendar-days"></i> Turmas</a>
-    <% if (typeof admPapel !== 'undefined' && admPapel === 'DEV') { %><a href="/ead/cupons" class="<%= secaoAtiva === 'cupons' ? 'on' : '' %>"><i class="fa-solid fa-ticket"></i> Cupons</a><% } %>
-    <% // Horários fica como aba dentro de Turmas (abas-turmas.ejs). %>
-    <% // Mesma permissão da rota /inscricoes: sem ela (ex.: Consulta) o link caía numa página de erro. %>
-    <% if (pode('doacao:confirmar') || pode('financeiro:aprovar') || pode('financeiro:leitura')) { %>
-      <a href="/inscricoes" class="<%= secaoAtiva === 'inscricoes' ? 'on' : '' %>"><i class="fa-solid fa-users"></i> Matrículas</a>
+  <nav class="adm-nav" aria-label="Menu do painel">
+  <% _menu.forEach(function (g) { %>
+    <% if (g.separador) { %>
+    <div class="adm-nav-sep"><%= g.separador %></div>
+    <% } else if (g.href) { %>
+    <a href="<%= g.href %>" class="<%= g.ativo ? 'on' : '' %>"<%- g.ativo ? ' aria-current="page"' : '' %>><i class="fa-solid <%= g.icone %>"></i> <%= g.rotulo %></a>
+    <% } else { %>
+    <div class="adm-grp<%= g.aberto ? ' aberto' : '' %><%= g.ativo ? ' ativo' : '' %>" data-grupo="<%= g.id %>">
+      <button type="button" class="adm-grp-tit" aria-expanded="<%= g.aberto ? 'true' : 'false' %>"><i class="fa-solid <%= g.icone %>"></i><span><%= g.rotulo %></span><% if (g.selo) { %><span class="adm-badge adm-grp-selo" title="Aguardando resposta"><%= g.selo %></span><% } %><i class="fa-solid fa-chevron-right adm-grp-seta" aria-hidden="true"></i></button>
+      <div class="adm-grp-itens">
+        <% g.itens.forEach(function (i) { %>
+        <a href="<%= i.href %>" class="<%= i.ativo ? 'on' : '' %>"<%- i.ativo ? ' aria-current="page"' : '' %>><%= i.rotulo %><% if (i.selo) { %> <span class="adm-badge" title="Aguardando resposta"><%= i.selo %></span><% } %></a>
+        <% }) %>
+      </div>
+    </div>
     <% } %>
-    <%
-      // 💡 Pagamentos pendentes. A condição espelha a permissão da rota
-      // /pendentes: requirePermissao('pendentes:gerenciar').
-      //
-      // Antes dependia de financeiro:leitura, o que escondia a tela da
-      // Secretaria — mas cobrar pagamento pendente é trabalho dela, não de
-      // tesouraria. Por isso a permissão própria.
-    %>
-    <% if (pode('pendentes:gerenciar')) { %>
-      <a href="/pendentes" class="<%= secaoAtiva === 'pendentes' ? 'on' : '' %>"><i class="fa-solid fa-hourglass-half"></i> Pendentes</a>
-    <% } %>
-    <a href="/alunos" class="<%= secaoAtiva === 'alunos' ? 'on' : '' %>"><i class="fa-solid fa-user-graduate"></i> Alunos</a>
-    <% if (pode('turmas:gerenciar')) { %><a href="/certificados" class="<%= secaoAtiva === 'certificados' ? 'on' : '' %>"><i class="fa-solid fa-award"></i> Certificados</a><% } %>
-    <% if (pode('aluno:gerenciar')) { %>
-      <a href="/comprovantes-saude" class="<%= secaoAtiva === 'comprovantes' ? 'on' : '' %>"><i class="fa-solid fa-user-doctor"></i> Comprovantes</a>
-    <% } %>
-    <% if (pode('pesquisa:gerenciar') || pode('painel:leitura')) { %>
-      <a href="/pesquisa" class="<%= secaoAtiva === 'pesquisa' ? 'on' : '' %>"><i class="fa-solid fa-star"></i> Pesquisa</a>
-    <% } %>
-    <% if (pode('financeiro:leitura')) { %>
-      <a href="/financeiro" class="<%= secaoAtiva === 'financeiro' ? 'on' : '' %>"><i class="fa-solid fa-sack-dollar"></i> Financeiro</a>
-    <% } %>
-    <% if (pode('contas:lancar') || pode('contas:aprovar') || pode('contas:pagar')) { %>
-      <a href="/contas" class="<%= secaoAtiva === 'contas' ? 'on' : '' %>"><i class="fa-solid fa-file-invoice-dollar"></i> Contas a pagar</a>
-    <% } %>
-    <% if (pode('integracao:gerenciar')) { %>
-      <a href="/integracao" class="<%= secaoAtiva === 'integracao' ? 'on' : '' %>"><i class="fa-solid fa-plug"></i> Integração</a>
-    <% } %>
-  <% } %>
-    <% if (admPapel === 'DEV') { %>
-      <%# Admin e Ban viraram abas de Configurações (abas-config.ejs) %>
-      <a href="/dev/usuarios" class="<%= ['dev-usuarios', 'banimentos', 'suspeitos'].includes(secaoAtiva) ? 'on' : '' %>"><i class="fa-solid fa-gear"></i> Configurações</a>
-    <% } %>
+  <% }) %>
   </nav>
 
   <!-- Rodapé da barra lateral (no celular, os itens voltam a ficar na linha do topo).

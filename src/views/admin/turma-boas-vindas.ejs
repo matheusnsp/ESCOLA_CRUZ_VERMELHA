@@ -30,7 +30,13 @@
       <div class="adm-bv-corpo"><%- html %></div>
     </div>
     <p class="adm-hint adm-bv-nota">Vai por e-mail e aparece em "Minha conta" do aluno até a turma terminar.
-      Data, hora e local saem das aulas da turma. <a href="/modelos?voltar=/turmas/<%= turma.id %>/boas-vindas">Editar o texto padrão</a>.</p>
+      Data, hora e local saem das aulas da turma.
+      <% if (turma.curso.boasVindasTexto) { %>
+        <b>Texto próprio do curso.</b> <a href="/modelos?curso=<%= turma.curso.id %>#texto-curso">Editar o texto do curso</a>.
+      <% } else { %>
+        <b>Texto padrão.</b> <a href="/modelos?voltar=/turmas/<%= turma.id %>/boas-vindas">Editar o texto padrão</a>
+        · <a href="/modelos?curso=<%= turma.curso.id %>#texto-curso">Escrever um texto só para este curso</a>.
+      <% } %></p>
   </section>
 
   <div class="adm-bv-lado">
