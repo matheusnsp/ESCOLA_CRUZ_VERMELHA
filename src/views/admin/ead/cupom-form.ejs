@@ -67,6 +67,11 @@
           <% _eb.forEach(function (e) { %><option value="ebook:<%= e.id %>" <%= _alvo === 'ebook:' + e.id ? 'selected' : '' %>><%= e.curso.nome %></option><% }) %>
         </optgroup>
         <% } %>
+        <% var _wb = typeof webinarios !== 'undefined' ? webinarios : []; if (_wb.length) { %>
+        <optgroup label="Webinários">
+          <% _wb.forEach(function (x) { %><option value="webinario:<%= x.id %>" <%= _alvo === 'webinario:' + x.id ? 'selected' : '' %>><%= x.curso.nome %></option><% }) %>
+        </optgroup>
+        <% } %>
       </select>
     </label>
     <label>Vale até (opcional)<input type="date" name="validoAte" value="<%= v.validoAte || '' %>"></label>

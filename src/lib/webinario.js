@@ -17,6 +17,8 @@ const SITUACAO = { PAGO: 'pago', PARCELADO: 'pago', PENDENTE: 'pendente', CANCEL
 const INCLUIR = { curso: { select: { id: true, nome: true, descricao: true, descricaoLonga: true, imagemUrl: true } } };
 
 const endereco = (nome) => slugCurso(nome);
+// Relógio das rotas (testes trocam por um fixo).
+const agora = () => new Date();
 const cargaHorasDe = (duracaoMin) => Math.max(1, Math.ceil((Number(duracaoMin) || 0) / 60));
 
 function valor(v) {
@@ -197,6 +199,6 @@ async function excluir(id) {
 }
 
 module.exports = {
-  JANELA_MIN, INCLUIR, endereco, quandoTexto, linkPagina, cargaHorasDe, dataBrasilia, paraCampo, normalizarPalavra, salvar, doEndereco, porId,
+  agora, JANELA_MIN, INCLUIR, endereco, quandoTexto, linkPagina, cargaHorasDe, dataBrasilia, paraCampo, normalizarPalavra, salvar, doEndereco, porId,
   acesso, temAcesso, janela, situacaoCartao, excluir,
 };

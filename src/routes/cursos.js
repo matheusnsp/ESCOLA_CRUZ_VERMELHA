@@ -1213,7 +1213,7 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
     ? await prisma.matricula.findFirst({
         where: { id: matriculaId, alunoId: req.session.usuarioId },
         include: {
-          turma: { include: { curso: { include: { ebook: { select: { id: true } } } } } },
+          turma: { include: { curso: { include: { ebook: { select: { id: true } }, webinario: { select: { id: true } } } } } },
           pagamentos: { orderBy: { criadoEm: 'desc' }, take: 1 },
         },
       })
@@ -1298,6 +1298,8 @@ async function maxParcelasOnline(turma) {
   // E-book (2026-11-09, revisão I2): o curso escondido do e-book tem as parcelas no Ebook.
   const ebook = await prisma.ebook.findUnique({ where: { cursoId: turma.cursoId }, select: { maxParcelas: true } });
   if (ebook) return Math.min(Math.max(Number(ebook.maxParcelas) || 1, 1), 12);
+  const webinario = await prisma.webinario.findUnique({ where: { cursoId: turma.cursoId }, select: { maxParcelas: true } }); // 2026-11-13
+  if (webinario) return Math.min(Math.max(Number(webinario.maxParcelas) || 1, 1), 12);
   const co = await prisma.cursoOnline.findUnique({ where: { cursoId: turma.cursoId }, select: { maxParcelas: true } });
   return Math.min(Math.max(Number(co && co.maxParcelas) || 1, 1), 12);
 }

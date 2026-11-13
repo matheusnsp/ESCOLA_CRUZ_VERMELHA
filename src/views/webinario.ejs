@@ -1,0 +1,161 @@
+<%#
+  Página do webinário na Escola Digital (2026-11-13; spec 2026-11-13-escola-digital-webinarios-design.md §3). Mesmo
+  visual do e-book (ead.css, _topo/_fim). situacao: visitante | encerrado-sem-gravacao | inscrever | comprar | pendente |
+  inscrito-antes | transmissao | transmissao-sem-link | gravacao | gravacao-em-breve. O link da transmissão nunca entra
+  aqui: o botão passa por …/entrar-na-transmissao. Nunca mostrar vagas nem número de inscritos.
+%><%
+  var c = w.curso;
+  var final = cupom ? cupom.precoFinal : preco;
+  var horas = w.duracaoMin >= 60 ? (Math.floor(w.duracaoMin / 60) + 'h' + (w.duracaoMin % 60 ? String(w.duracaoMin % 60).padStart(2, '0') : '')) : w.duracaoMin + ' min';
+%>
+<%- include('ead-teste/_topo', { titulo: c.nome }) %>
+<% if (!w.publicado) { %><div class="ea-teste">Rascunho · só a equipe (e quem já está inscrito) vê esta página</div><% } %>
+<section class="ea-heroi ea-heroi-ebook">
+  <div class="ea-wrap ea-heroi-grid">
+    <div class="ea-ebook-topo ea-webinario-topo">
+      <% if (c.imagemUrl) { %><img class="ea-webinario-capa" src="<%= c.imagemUrl %>" alt="Capa do webinário <%= c.nome %>"><% } %>
+      <div>
+        <p class="ea-kicker">Webinário<%= quando ? ' ao vivo' : ' gravado' %></p>
+        <h1><%= c.nome %><span>.</span></h1>
+        <% if (c.descricao) { %><p class="ea-heroi-lead"><%= c.descricao %></p><% } %>
+        <div class="ea-chips">
+          <span class="ea-chip"><i class="fa-regular fa-calendar" aria-hidden="true"></i> <%= quando ? quando + ' (Brasília)' : 'Gravado' %></span>
+          <span class="ea-chip"><i class="fa-regular fa-clock" aria-hidden="true"></i> <%= horas %></span>
+          <% if (w.apresentador) { %><span class="ea-chip"><i class="fa-solid fa-user" aria-hidden="true"></i> <%= w.apresentador %></span><% } %>
+          <span class="ea-chip"><i class="fa-solid fa-award" aria-hidden="true"></i> Certificado de participação</span>
+        </div>
+      </div>
+    </div>
+    <div class="ea-cartao">
+      <% if (situacao === 'visitante') { %>
+        <p class="ea-kicker">Webinário</p>
+        <h2><%= w.gratuito ? 'Grátis' : brl(preco) %><span style="color:var(--r)">.</span></h2>
+        <p><%= w.gratuito ? 'Crie sua conta (ou entre) e inscreva-se. É grátis.' : 'Crie sua conta (ou entre) para comprar.' %></p>
+        <a class="ea-pilula ea-pilula-red" href="<%= base %>/criar-conta"><%= w.gratuito ? 'Criar conta e inscrever-se' : 'Criar conta e comprar' %></a>
+        <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/entrar">Já tenho conta</a>
+      <% } else if (situacao === 'encerrado-sem-gravacao') { %>
+        <p class="ea-kicker">Webinário</p>
+        <h2>Este webinário já aconteceu<span style="color:var(--r)">.</span></h2>
+        <p>A gravação ainda não está disponível.</p>
+      <% } else if (situacao === 'inscrever') { %>
+        <p class="ea-kicker">Webinário</p>
+        <h2>Grátis<span style="color:var(--r)">.</span></h2>
+        <p><%= quando ? 'Inscreva-se e receba a confirmação e os lembretes por e-mail.' : 'Inscreva-se para assistir à gravação.' %></p>
+        <form method="POST" action="<%= base %>/inscrever">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="ea-pilula ea-pilula-red">Inscrever-se</button>
+        </form>
+      <% } else if (situacao === 'pendente') { %>
+        <p class="ea-kicker">Pagamento em andamento</p>
+        <h2>Falta só confirmar o pagamento<span style="color:var(--r)">.</span></h2>
+        <p>Assim que o banco confirmar, sua inscrição aparece aqui e você recebe um e-mail. O PIX costuma confirmar em segundos.</p>
+        <% if (retornoUrl) { %><a class="ea-pilula ea-pilula-red" href="<%= retornoUrl %>">Ver o pagamento →</a><% } %>
+      <% } else if (situacao === 'comprar') { %>
+        <p class="ea-kicker"><%= cancelado ? 'Compra cancelada' : 'Webinário' %></p>
+        <% if (cupom) { %>
+          <h2><s><%= brl(cupom.precoCheio) %></s> <%= final === 0 ? 'Grátis' : brl(final) %><span style="color:var(--r)">.</span></h2>
+        <% } else { %>
+          <h2><%= brl(preco) %><span style="color:var(--r)">.</span></h2>
+        <% } %>
+        <p><%= cancelado ? 'O pagamento foi cancelado ou devolvido. Para assistir, faça uma nova compra.' : (w.maxParcelas > 1 ? 'À vista no PIX ou em até ' + w.maxParcelas + 'x no cartão. ' : 'Pagamento único, por PIX ou cartão. ') + 'Depois de confirmado, você recebe a confirmação por e-mail.' %></p>
+        <% if (erro) { %><p class="ea-obs" role="alert"><b><%= erro %></b></p><% } %>
+        <% if (cupom) { %>
+          <p class="ea-obs ea-cupom-ok">Cupom <%= cupom.codigo %> aplicado: <%= brl(cupom.desconto) %> de desconto. <a href="<%= base %>?cupom=">tirar</a></p>
+        <% } else { %>
+          <form method="GET" action="<%= base %>" class="ea-cupom">
+            <label class="ea-obs" for="eaCupom">Tem cupom?</label>
+            <span class="ea-cupom-linha">
+              <input id="eaCupom" type="text" name="cupom" maxlength="40" autocomplete="off" autocapitalize="characters" placeholder="CÓDIGO">
+              <button type="submit" class="ea-pilula ea-pilula-clara">Aplicar</button>
+            </span>
+            <% if (erroCupom) { %><p class="ea-obs" role="alert"><b><%= erroCupom %></b> <a href="<%= base %>?cupom=">tirar</a></p><% } %>
+          </form>
+        <% } %>
+        <form method="POST" action="<%= base %>/comprar" class="ea-compra">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <% if (cupom) { %><input type="hidden" name="cupom" value="<%= cupom.codigo %>"><% } %>
+          <% if (cupom && final === 0) { %>
+            <input type="hidden" name="forma" value="CUPOM">
+            <button type="submit" class="ea-pilula ea-pilula-red">Liberar inscrição</button>
+          <% } else { %>
+            <fieldset class="ea-compra-formas">
+              <legend class="ea-obs">Forma de pagamento</legend>
+              <label><input type="radio" name="forma" value="PIX" checked> PIX</label>
+              <label><input type="radio" name="forma" value="CREDITO"> Cartão de crédito</label>
+            </fieldset>
+            <button type="submit" class="ea-pilula ea-pilula-red">Comprar · <%= brl(final) %></button>
+          <% } %>
+        </form>
+      <% } else if (situacao === 'inscrito-antes') { %>
+        <p class="ea-kicker">Sua inscrição</p>
+        <h2>Você está inscrito<span style="color:var(--r)">.</span></h2>
+        <p><%= quando %> (horário de Brasília). O botão da transmissão aparece aqui 30 minutos antes. Você recebe lembretes por e-mail.</p>
+        <a class="ea-pilula ea-pilula-clara ea-pilula-bloco" href="<%= base %>/agenda.ics"><i class="fa-regular fa-calendar-plus" aria-hidden="true"></i> Adicionar à agenda</a>
+      <% } else if (situacao === 'transmissao') { %>
+        <p class="ea-kicker">Ao vivo</p>
+        <h2>Está na hora<span style="color:var(--r)">.</span></h2>
+        <p>A transmissão abre em uma nova aba.</p>
+        <a class="ea-pilula ea-pilula-red" href="<%= base %>/entrar-na-transmissao" target="_blank" rel="noopener">Entrar na transmissão</a>
+      <% } else if (situacao === 'transmissao-sem-link') { %>
+        <p class="ea-kicker">Ao vivo</p>
+        <h2>Quase lá<span style="color:var(--r)">.</span></h2>
+        <p>O link da transmissão aparece aqui assim que a Escola cadastrar. Recarregue a página em alguns minutos.</p>
+      <% } else if (situacao === 'gravacao') { %>
+        <p class="ea-kicker">Sua inscrição</p>
+        <h2>Gravação disponível<span style="color:var(--r)">.</span></h2>
+        <p>Assista logo abaixo, quantas vezes quiser.</p>
+      <% } else if (situacao === 'gravacao-em-breve') { %>
+        <p class="ea-kicker">Sua inscrição</p>
+        <h2>Obrigado por participar<span style="color:var(--r)">.</span></h2>
+        <p>A gravação ficará disponível aqui. Avisaremos por e-mail.</p>
+      <% } %>
+
+      <% if (presenca) { %>
+        <div class="ea-webinario-cert">
+          <p class="ea-obs"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Presença confirmada.</p>
+          <a class="ea-pilula ea-pilula-red" href="<%= base %>/certificado">Ver certificado</a>
+        </div>
+      <% } else if (blocoPalavra) { %>
+        <form method="POST" action="<%= base %>/palavra-codigo" class="ea-webinario-cert">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <label class="ea-obs" for="eaPalavra"><b>Certificado:</b> digite a palavra-código dita no fim do webinário.</label>
+          <span class="ea-cupom-linha">
+            <input id="eaPalavra" type="text" name="palavra" maxlength="60" autocomplete="off" required>
+            <button type="submit" class="ea-pilula ea-pilula-clara">Pegar certificado</button>
+          </span>
+          <% if (msgPalavra) { %><p class="ea-obs" role="alert"><b><%= msgPalavra %></b></p><% } %>
+        </form>
+      <% } %>
+    </div>
+  </div>
+</section>
+
+<main class="ea-wrap ea-secao">
+  <% if (gravacao) { %>
+  <section class="ea-webinario-video" aria-label="Gravação do webinário">
+    <div class="ea-video"><iframe src="<%= gravacao %>" title="Gravação: <%= c.nome %>" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+  </section>
+  <% } %>
+  <% if (c.descricaoLonga) { %>
+  <section class="ea-ebook-sobre">
+    <p class="ea-kicker">O que você vai ver</p>
+    <h2 class="ea-secao-h">Sobre o webinário<span>.</span></h2>
+    <% c.descricaoLonga.split(/\n\s*\n/).forEach(function (par) { %><p><%= par.trim() %></p><% }) %>
+  </section>
+  <% } %>
+  <% if (faqs.length) { %>
+  <section class="ea-faq" aria-labelledby="faq-titulo">
+    <p class="ea-kicker">Antes de se inscrever</p>
+    <h2 class="ea-secao-h" id="faq-titulo">Dúvidas frequentes<span>.</span></h2>
+    <div class="ea-faq-lista">
+      <% faqs.forEach(function (f) { %>
+        <details class="ea-faq-item">
+          <summary><%= f.pergunta %></summary>
+          <p><%= f.resposta %></p>
+        </details>
+      <% }) %>
+    </div>
+  </section>
+  <% } %>
+</main>
+<%- include('ead-teste/_fim') %>

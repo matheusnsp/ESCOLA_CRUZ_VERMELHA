@@ -58,15 +58,16 @@ function valeNoPresencial(cupom, curso) {
 }
 const ehDoPresencial = (cupom) => !!(cupom.cursoId || cupom.todosPresenciais);
 
-async function validarCupom(codigo, co, { ebook = false, presencial = false, preco = null, alunoId = null } = {}) {
+async function validarCupom(codigo, co, { ebook = false, webinario = false, presencial = false, preco = null, alunoId = null } = {}) {
   const c = normalizarCodigo(codigo);
   const cupom = codigoValido(c) ? await prisma.cupomEad.findUnique({ where: { codigo: c } }) : null;
   if (!cupom || !cupom.ativo) return { erro: MSG.naoAchou };
   // "Tudo" (2026-11-10): vale em qualquer produto; só as regras de validade e de limite se aplicam.
   if (!cupom.valeTudo) {
     if (presencial ? !valeNoPresencial(cupom, co) : ehDoPresencial(cupom)) return { erro: MSG.outroCurso };
-    if (cupom.cursoOnlineId && (ebook || presencial || cupom.cursoOnlineId !== co.id)) return { erro: MSG.outroCurso };
+    if (cupom.cursoOnlineId && (ebook || webinario || presencial || cupom.cursoOnlineId !== co.id)) return { erro: MSG.outroCurso };
     if (cupom.ebookId && (!ebook || cupom.ebookId !== co.id)) return { erro: MSG.outroCurso };
+    if (cupom.webinarioId && (!webinario || cupom.webinarioId !== co.id)) return { erro: MSG.outroCurso }; // 2026-11-13
   }
   if (cupom.validoAte && fimDoDiaRio(cupom.validoAte) < new Date()) return { erro: MSG.venceu };
   if (cupom.limiteUsos !== null && cupom.limiteUsos !== undefined && await usosParaLimite(cupom.id, alunoId) >= cupom.limiteUsos) return { erro: MSG.esgotado };
@@ -91,16 +92,17 @@ function lerDados(d) {
   if (temLimite && !(Number.isInteger(limiteUsos) && limiteUsos >= 1)) return { erro: 'Limite de usos: 1 ou mais.' };
   // "Vale para" (2026-11-09): alvo = "curso:<id>" | "ebook:<id>" | "" (todos). cursoOnlineId solto ainda vale.
   // Presencial (2026-11-09): "presencial:<cursoId>" (um curso, qualquer turma) ou "presenciais" (todos).
-  const alvo = /^(curso|ebook|presencial):(.+)$/.exec(String(d.alvo || ''));
+  const alvo = /^(curso|ebook|webinario|presencial):(.+)$/.exec(String(d.alvo || ''));
   const cursoOnlineId = alvo ? (alvo[1] === 'curso' && ehId(alvo[2]) ? alvo[2] : null) : (d.alvo === 'presenciais' ? null : d.cursoOnlineId && ehId(d.cursoOnlineId) ? d.cursoOnlineId : null);
   const ebookId = alvo && alvo[1] === 'ebook' && ehId(alvo[2]) ? alvo[2] : null;
+  const webinarioId = alvo && alvo[1] === 'webinario' && ehId(alvo[2]) ? alvo[2] : null;
   const cursoId = alvo && alvo[1] === 'presencial' && ehId(alvo[2]) ? alvo[2] : null;
   const todosPresenciais = d.alvo === 'presenciais';
   // "tudo" (2026-11-10): sem alvo nenhum e com valeTudo; o resto fica vazio.
   const valeTudo = d.alvo === 'tudo';
   const validoAte = d.validoAte ? new Date(d.validoAte) : null;
   if (validoAte && Number.isNaN(validoAte.getTime())) return { erro: 'Validade inválida.' };
-  return { dados: { codigo, tipo, valor, cursoOnlineId, ebookId, cursoId, todosPresenciais, valeTudo, validoAte, limiteUsos, observacao: String(d.observacao || '').trim().slice(0, 500) || null } };
+  return { dados: { codigo, tipo, valor, cursoOnlineId, ebookId, webinarioId, cursoId, todosPresenciais, valeTudo, validoAte, limiteUsos, observacao: String(d.observacao || '').trim().slice(0, 500) || null } };
 }
 
 const repetido = (e) => e && e.code === 'P2002';
@@ -126,7 +128,7 @@ async function alterarCupom(id, d, atorId) {
   const temCompra = await prisma.cupomMatriculaEad.count({ where: { cupomId: id } }) > 0;
   if (temCompra && (r.dados.codigo !== atual.codigo || r.dados.tipo !== atual.tipo)) return { erro: 'Este cupom já foi usado: o código e o tipo não mudam.' };
   // Revisão do cupom presencial (I2): usado, o valor e o "Vale para" também ficam (as inscrições guardam o desconto).
-  const mesmoAlvo = (a, b) => (a.cursoOnlineId || null) === (b.cursoOnlineId || null) && (a.ebookId || null) === (b.ebookId || null)
+  const mesmoAlvo = (a, b) => (a.cursoOnlineId || null) === (b.cursoOnlineId || null) && (a.ebookId || null) === (b.ebookId || null) && (a.webinarioId || null) === (b.webinarioId || null)
     && (a.cursoId || null) === (b.cursoId || null) && !!a.todosPresenciais === !!b.todosPresenciais && !!a.valeTudo === !!b.valeTudo;
   if (temCompra && (Number(r.dados.valor) !== Number(atual.valor) || !mesmoAlvo(r.dados, atual))) return { erro: 'Este cupom já foi usado: o desconto e o "Vale para" não mudam. Crie outro cupom.' };
   try {
@@ -161,7 +163,7 @@ async function listarCupons({ ativos } = {}) {
   const cupons = await prisma.cupomEad.findMany({
     where,
     orderBy: { criadoEm: 'desc' },
-    include: { cursoOnline: { select: { curso: { select: { nome: true } } } }, ebook: { select: { curso: { select: { nome: true } } } }, curso: { select: { nome: true } } },
+    include: { cursoOnline: { select: { curso: { select: { nome: true } } } }, ebook: { select: { curso: { select: { nome: true } } } }, webinario: { select: { curso: { select: { nome: true } } } }, curso: { select: { nome: true } } },
   });
   const pagas = cupons.length ? await prisma.cupomMatriculaEad.groupBy({
     by: ['cupomId'],
@@ -172,7 +174,7 @@ async function listarCupons({ ativos } = {}) {
   const porCupom = new Map(pagas.map((p) => [p.cupomId, p]));
   return cupons.map((c) => {
     const p = porCupom.get(c.id);
-    const rotulo = c.cursoOnline ? c.cursoOnline.curso.nome : c.ebook ? `E-book: ${c.ebook.curso.nome}` : c.curso ? `Presencial: ${c.curso.nome}` : c.todosPresenciais ? 'Todos os cursos presenciais' : c.valeTudo ? 'Tudo (online, e-books e presenciais)' : null;
+    const rotulo = c.cursoOnline ? c.cursoOnline.curso.nome : c.ebook ? `E-book: ${c.ebook.curso.nome}` : c.webinario ? `Webinário: ${c.webinario.curso.nome}` : c.curso ? `Presencial: ${c.curso.nome}` : c.todosPresenciais ? 'Todos os cursos presenciais' : c.valeTudo ? 'Tudo (online, e-books e presenciais)' : null;
     return { ...c, curso: rotulo, usos: p ? p._count._all : 0, totalDesconto: p ? round2(p._sum.desconto || 0) : 0 };
   });
 }
