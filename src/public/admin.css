@@ -2350,3 +2350,16 @@ body.adm-assist-aberto .adm-assist-btn { display: none; }
 }
 
 .adm-assist:focus { outline: none; } /* no toque, o foco fica no painel ao abrir (sem teclado) */
+
+/* ===== Recarregar no app (tela de início), 2026-11-13 ===== */
+.adm-recarregar { display: none; }
+@media (max-width: 1024px) {
+  html.adm-js.adm-app .adm-recarregar {
+    margin-left: auto; flex: none; display: inline-grid; place-items: center; width: 37px; height: 37px; cursor: pointer;
+    border-radius: 999px; border: 1px solid var(--linha); background: var(--card); color: var(--tinta); font-size: 15px;
+  }
+  html.adm-js.adm-app .adm-recarregar + .adm-assist-top { margin-left: 0; }
+  html.adm-js.adm-app .adm-recarregar.girando i { animation: admGirar .7s linear infinite; }
+}
+@keyframes admGirar { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { html.adm-js.adm-app .adm-recarregar.girando i { animation: none; } }

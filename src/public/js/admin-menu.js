@@ -6,6 +6,18 @@
   // Marca que o script rodou: o CSS só esconde abas/botões e transforma o menu em gaveta com esta classe.
   // Se o script falhar, nada some (abas, botões e menu continuam à vista).
   document.documentElement.classList.add('adm-js');
+
+  // Aberto como app (tela de início): mostra o botão Recarregar da barra do topo (2026-11-13).
+  try {
+    var app = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    if (app) document.documentElement.classList.add('adm-app');
+  } catch (e) { /* sem matchMedia: segue sem o botão */ }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('.adm-recarregar');
+    if (!b) return;
+    b.classList.add('girando');
+    window.location.reload();
+  });
   var CHAVE = 'adm-menu-abertos';
 
   function lerAbertos() {
