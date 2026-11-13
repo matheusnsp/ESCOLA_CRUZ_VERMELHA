@@ -1,5 +1,5 @@
 <%- include('head', { titulo: 'Turma' }) %>
-<%- include('header', { ativo: 'turmas' }) %>
+<%- include('header', { ativo: (turma && turma.id) ? 'turmas' : 'turma-nova' }) %>
 <%
 var t = turma || {};
 var novo = !t.id;

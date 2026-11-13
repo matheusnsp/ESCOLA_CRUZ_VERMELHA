@@ -89,6 +89,7 @@ test('telas filhas da turma e o formulário voltam para o resumo', () => {
   const form = fs.readFileSync(V('turma-form.ejs'), 'utf8');
   for (const t of ['Quando', 'Vagas', 'Situação', 'Instrutor']) assert.match(form, new RegExp(`<h2 class="adm-form-secao full"[^>]*>[^<]*<i[^>]*></i> ${t}`), t);
   assert.match(form, /data-gerar-aulas/);
+  assert.match(form, /include\('header', \{ ativo: \(turma && turma\.id\) \? 'turmas' : 'turma-nova' \}\)/, 'Nova turma marca o item Nova turma no menu');
   assert.match(form, /js\/gerar-aulas\.js/);
   assert.doesNotMatch(form, /<script>\s*document\.addEventListener/, 'script das aulas foi para js/gerar-aulas.js');
 });
