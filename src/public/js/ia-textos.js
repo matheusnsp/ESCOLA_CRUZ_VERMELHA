@@ -26,6 +26,7 @@
       });
       faqs.hidden = !(itens && itens.length);
     }
+    if (lista) bloco.iaMostrarFaqs = mostrarFaqs; // "Começar com a IA" (js/ia-comecar.js) usa para as dúvidas
     bt.addEventListener('click', function () {
       var temTexto = campos.some(function (n) { var c = campo(n); return c && c.value.trim(); });
       if (temTexto && !window.confirm('Substituir os textos que você já escreveu?')) return;

@@ -8,6 +8,15 @@
   <a href="/cursos" class="adm-link">Cancelar</a>
 </div>
 
+<div class="ia-textos adm-comecar-ia" data-comecar-url="/cursos/ia-comecar" data-comecar-form="cursoNovo">
+  <div class="ia-textos-cab"><i class="fa-solid fa-wand-magic-sparkles"></i>
+    <div><b>Começar com a IA</b> <small class="adm-hint">Escreva o que você sabe do curso, do seu jeito (nome, horas, público, preços, taxa, o que tem no curso, dúvidas comuns). A IA preenche os 3 passos e você confere cada um antes de criar.</small></div></div>
+  <textarea class="adm-comecar-texto" rows="4" maxlength="3000" aria-label="O que você sabe do curso" placeholder="Ex.: Cuidador Infantil, 120 horas, para quem quer trabalhar em creches e casas de família. R$ 900 à vista ou R$ 1.000 em até 10x, taxa de inscrição R$ 60."></textarea>
+  <button type="button" class="adm-btn adm-comecar-bt"><i class="fa-solid fa-wand-magic-sparkles"></i> Preencher com IA</button>
+  <p class="ia-textos-msg" role="status" hidden></p>
+</div>
+<p class="adm-ou">ou preencha você mesmo</p>
+
 <div class="adm-passos" data-passos-indicador>
   <span class="adm-passo" data-ind="1"><b>1</b> Curso</span><span class="adm-passo-traco"></span>
   <span class="adm-passo" data-ind="2"><b>2</b> Valores</span><span class="adm-passo-traco"></span>
@@ -88,4 +97,5 @@
 </form>
 <script src="<%= asset('/js/ia-textos.js') %>"></script>
 <script src="<%= asset('/js/curso-passos.js') %>"></script>
+<script src="<%= asset('/js/ia-comecar.js') %>"></script>
 <%- include('foot') %>

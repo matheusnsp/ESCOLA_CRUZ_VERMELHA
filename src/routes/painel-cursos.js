@@ -78,6 +78,26 @@ module.exports = function painelCursos({ requirePermissao, auditar }) {
     return res.redirect(podeAbrir ? `/cursos/${curso.id}?ok=${encodeURIComponent('Curso criado.')}` : `/cursos?ok=${encodeURIComponent('Curso criado.')}`);
   });
 
+  // "Começar com a IA": texto livre -> campos dos 3 passos (JSON). Nada é salvo.
+  router.post('/cursos/ia-comecar', criar, async (req, res) => {
+    const ia = require('../lib/ead-ia');
+    if (!ia.ehChaveConfigurada()) return res.json({ ok: false, erro: ia.MSG_CHAVE });
+    const t = await ia.dentroDoTeto();
+    if (!t.ok) return res.json({ ok: false, erro: t.erro });
+    const texto = String((req.body && req.body.texto) || '').trim();
+    if (!texto) return res.json({ ok: false, erro: 'Escreva o que você sabe do curso.' });
+    try {
+      const r = await require('../lib/ia-comecar').comecarCurso(texto);
+      for (const u of r.usage) await ia.somarCustoAvulso(u);
+      await auditar(req, 'IA_COMECAR_CURSO', 'Curso', 'novo', {});
+      return res.json({ ok: true, campos: r.campos, textos: r.textos });
+    } catch (e) {
+      if (e.usage) await ia.somarCustoAvulso(e.usage).catch(() => {});
+      console.error('[IA COMEÇAR CURSO]', e.message);
+      return res.json({ ok: false, erro: 'A IA não conseguiu agora; preencha à mão ou tente de novo.' });
+    }
+  });
+
   // Link antigo (e-mails, favoritos): a edição agora começa no resumo.
   router.get(`/cursos/:id(${ID})/editar`, gerenciar, (req, res) => res.redirect(`/cursos/${req.params.id}`));
 
