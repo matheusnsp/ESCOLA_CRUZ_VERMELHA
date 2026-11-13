@@ -229,7 +229,7 @@ const PRECOS = {
   'claude-opus-4-8': { entrada: 5, saida: 25, cacheLeitura: 0.5, cacheEscrita: 6.25 },
   'claude-opus-5': { entrada: 5, saida: 25, cacheLeitura: 0.5, cacheEscrita: 6.25 },
   'claude-fable-5-1': { entrada: 10, saida: 50, cacheLeitura: 1, cacheEscrita: 12.5 },
-  'claude-sonnet-5-5': { entrada: 2, saida: 10, cacheLeitura: 0.2, cacheEscrita: 2.5 },
+  'claude-sonnet-5-5': { entrada: 2, saida: 10, cacheLeitura: 0.1, cacheEscrita: 2.5 },
 };
 const PRECO = PRECOS['claude-opus-5-5'];
 const partes = (u) => (Array.isArray(u && u.iterations) && u.iterations.length ? u.iterations : [u || {}]);

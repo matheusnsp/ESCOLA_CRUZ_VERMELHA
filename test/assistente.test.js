@@ -56,7 +56,7 @@ test('resposta simples: texto aos poucos, resposta final filtrada, fim; uso regi
   assert.equal(registros.length, 1);
   assert.equal(registros[0][0], 'u1');
   const p = c.chamadas[0];
-  assert.equal(p.model, 'claude-opus-5-5');
+  assert.equal(p.model, 'claude-sonnet-5-5');
   assert.deepEqual(p.output_config, { effort: 'low' });
   assert.equal(p.fallbacks, 'default');
   assert.deepEqual(p.betas, ['server-side-fallback-2026-07-01']);
@@ -142,4 +142,16 @@ test('rota POST /assistente/mensagem: painel logado, NDJSON sem compressão', ()
   assert.match(corpo, /no-transform/);
   assert.match(corpo, /assistente\.responder\(/);
   assert.match(corpo, /documentoAluno: req\.app\.locals\.documentoAluno/);
+});
+
+test('custo: conta pelo preço do modelo que respondeu (Sonnet 5.5), não pelo do Opus', async () => {
+  let custo = null;
+  const c = clienteFalso([texto('Oi.')]);
+  ia.somarCustoAvulso = async (u) => { custo = u; };
+  await rodar(c);
+  const E = require('../src/lib/ead-ia-esquema');
+  // 1M de entrada + 1M de saída no Sonnet 5.5 = US$ 2 + US$ 10
+  const base = custo.iterations.map((x) => ({ ...x, input_tokens: 1e6, output_tokens: 1e6, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }));
+  assert.equal(base[0].model, 'claude-sonnet-5-5');
+  assert.equal(E.custoUsd({ iterations: base }), 12);
 });
