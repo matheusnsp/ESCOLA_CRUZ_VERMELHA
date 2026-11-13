@@ -16,7 +16,8 @@ test('urlOnline: o nome do curso no endereço', () => {
 });
 
 test('renomear no presencial e ativar o EAD conferem o endereço do curso online', () => {
-  const admin = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'admin.js'), 'utf8');
+  // Renomear o curso presencial agora é na seção Página no site (routes/painel-cursos.js, 2026-11-13).
+  const admin = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'painel-cursos.js'), 'utf8');
   assert.match(admin, /enderecoOnlineEmUso\(/);
   assert.match(admin, /guardarEnderecoAntigo\(/);
   const ead = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'ead.js'), 'utf8');

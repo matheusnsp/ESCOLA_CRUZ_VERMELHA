@@ -1,0 +1,43 @@
+<%# Uma seção do curso (telas novas de Cursos, 2026-11-13): título, "Voltar ao curso", os campos da seção e o
+    rodapé fixo com o salvar. secao = pagina|valores|certificado|publicacao; s = SECOES[secao]. %>
+<%- include('head', { titulo: s.rotulo }) %>
+<%- include('header', { ativo: 'cursos' }) %>
+<% var c = curso || {}; %>
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= s.rotulo %></h1>
+  <a href="/cursos/<%= c.id %>" class="adm-link">← Voltar ao curso</a>
+</div>
+<p class="adm-sub-titulo"><%= c.nome %></p>
+<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+
+<form method="POST" action="/cursos/<%= c.id %>/<%= secao %>?_csrf=<%= csrfToken %>" <%- secao === 'pagina' ? 'enctype="multipart/form-data"' : '' %> class="adm-form adm-box">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <%- include('_curso-secao-' + secao, { c: c }) %>
+  <%- include('_rodape-salvar', { botao: s.botao }) %>
+</form>
+
+<% if (secao === 'pagina') { %>
+<form id="formImagemIa" method="POST" action="/cursos/<%= c.id %>/imagem-ia" hidden
+      data-confirmar="<%= c.imagemUrl ? 'Trocar a imagem atual por uma gerada pela IA? A atual é apagada. Leva cerca de 1 minuto.' : 'Gerar a imagem do curso com IA? Leva cerca de 1 minuto.' %>" data-botao="Gerar imagem" data-confirmar-tipo="ok">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+</form>
+<script src="<%= asset('/js/ia-textos.js') %>"></script>
+<script src="<%= asset('/js/imagem-pedido.js') %>"></script>
+<% } %>
+
+<% if (secao === 'publicacao') { %>
+  <div class="adm-perigo">
+    <h2><i class="fa-solid fa-trash"></i> Excluir curso</h2>
+    <% if (motivoNaoExcluir) { %>
+      <p><%= motivoNaoExcluir %></p>
+      <button type="button" class="adm-btn-perigo" disabled><i class="fa-solid fa-trash"></i> Excluir curso</button>
+    <% } else { %>
+      <p>Este curso não tem turmas nem inscrições, então pode ser excluído. Não dá para desfazer.</p>
+      <form method="POST" action="/cursos/<%= c.id %>/excluir" data-confirmar="Excluir o curso <%= c.nome %>? Não dá para desfazer." data-botao="Excluir curso">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="adm-btn-perigo"><i class="fa-solid fa-trash"></i> Excluir curso</button>
+      </form>
+    <% } %>
+  </div>
+<% } %>
+<%- include('foot') %>
