@@ -127,6 +127,7 @@
     quemAbriu = origem || botao;
     painel.hidden = false;
     document.body.classList.add('adm-assist-aberto');
+    travarPagina();
     [botao, botaoTopo].forEach(function (b) { if (b) b.setAttribute('aria-expanded', 'true'); });
     rolarFim();
     if (telaDeToque()) { try { painel.focus({ preventScroll: true }); } catch (e) { painel.focus(); } } else campo.focus();
@@ -145,9 +146,28 @@
     window.visualViewport.addEventListener('resize', ajustarAoTeclado);
     window.visualViewport.addEventListener('scroll', ajustarAoTeclado);
   }
+  // iPhone: com o painel em tela cheia, ao abrir o teclado o Safari rolava a página por trás (o topo do painel sumia
+  // e a página aparecia embaixo). overflow:hidden não basta no iOS; prender o body com position:fixed resolve.
+  // Ao fechar, a página volta exatamente para onde estava.
+  var rolagemTravada = null;
+  function travarPagina() {
+    if (rolagemTravada !== null || !window.matchMedia || !window.matchMedia('(max-width: 620px)').matches) return;
+    rolagemTravada = window.scrollY || window.pageYOffset || 0;
+    var b = document.body.style;
+    b.position = 'fixed'; b.top = -rolagemTravada + 'px'; b.left = '0'; b.right = '0'; b.width = '100%';
+  }
+  function soltarPagina() {
+    if (rolagemTravada === null) return;
+    var y = rolagemTravada; rolagemTravada = null;
+    var b = document.body.style;
+    b.position = ''; b.top = ''; b.left = ''; b.right = ''; b.width = '';
+    window.scrollTo(0, y);
+  }
   function fecharPainel() {
     painel.hidden = true;
     document.body.classList.remove('adm-assist-aberto');
+    soltarPagina();
+    painel.style.top = ''; painel.style.height = '';
     [botao, botaoTopo].forEach(function (b) { if (b) b.setAttribute('aria-expanded', 'false'); });
     var volta = quemAbriu && quemAbriu.offsetParent !== null ? quemAbriu : (botaoTopo && botaoTopo.offsetParent !== null ? botaoTopo : botao);
     if (volta) volta.focus();
@@ -279,9 +299,10 @@
       var b = el('button', 'adm-btn adm-assist-preencher'); b.type = 'button';
       b.appendChild(icone('fa-pen-to-square')); b.appendChild(document.createTextNode(' Preencher na tela'));
       b.addEventListener('click', function () {
+        // Celular: fecha antes (destrava a página) para a rolagem até o primeiro campo preenchido valer.
+        if (window.matchMedia && window.matchMedia('(max-width: 620px)').matches) fecharPainel();
         var r = preencher(f, prop);
         nota(r.faltaram.length ? 'Preenchi o formulário (não achei na tela: ' + r.faltaram.join(', ') + '). Confira e clique em Salvar.' : 'Preenchi o formulário. Confira e clique em Salvar.');
-        if (window.matchMedia && window.matchMedia('(max-width: 620px)').matches) fecharPainel();
       });
       acoes.appendChild(b);
     } else {
