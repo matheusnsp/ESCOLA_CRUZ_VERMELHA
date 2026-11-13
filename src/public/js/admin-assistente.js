@@ -488,7 +488,12 @@
       if (!ev || !ev.tipo) return;
       if (ev.tipo === 'texto') { parcial += ev.texto || ''; status.lastChild.textContent = ' Escrevendo…'; mostrarParcial(); }
       else if (ev.tipo === 'ferramenta') { status.lastChild.textContent = ' ' + (NOMES_FERRAMENTAS[ev.nome] || 'Consultando…'); }
-      else if (ev.tipo === 'preencher') { propostas.push({ formulario: ev.formulario, campos: ev.campos || {}, cursoNome: ev.cursoNome, editar: ev.editar }); }
+      else if (ev.tipo === 'preencher') { // Mesmo formulário (e mesmo curso/turma, se for edição) na mesma resposta: junta num cartão só
+        // (ex.: os textos do "Escrever com IA" + os valores), para um botão só preencher tudo.
+        var alvoId = ev.editar ? ev.editar.id : null;
+        var igual = propostas.filter(function (x) { return x.formulario === ev.formulario && (x.editar ? x.editar.id : null) === alvoId; })[0];
+        if (igual) { Object.keys(ev.campos || {}).forEach(function (k) { igual.campos[k] = ev.campos[k]; }); if (ev.cursoNome) igual.cursoNome = ev.cursoNome; }
+        else propostas.push({ formulario: ev.formulario, campos: Object.assign({}, ev.campos || {}), cursoNome: ev.cursoNome, editar: ev.editar }); }
       else if (ev.tipo === 'resposta') { final = String(ev.texto || ''); }
       else if (ev.tipo === 'erro') { erro = ev.mensagem || 'O assistente está fora do ar agora. Tente de novo em instantes.'; }
       rolarFim();
