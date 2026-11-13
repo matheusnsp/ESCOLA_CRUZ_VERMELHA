@@ -199,6 +199,16 @@
       var p = el('p'); var partes = [];
       while (i < linhas.length && linhas[i].trim() && !/^\s*(\||\d+[.)]\s|[-*•]\s|#{1,6}\s)/.test(linhas[i])) { partes.push(linhas[i].trim()); i++; }
       partes.forEach(function (t, k) { if (k) p.appendChild(el('br')); inline(p, t, comLinks); });
+      // Parágrafo só de links (ex.: "[Abrir Pendentes](…)"): viram botões. Link no meio da frase fica como texto.
+      var links = p.querySelectorAll('a');
+      if (links.length) {
+        var sobra = p.textContent;
+        Array.prototype.forEach.call(links, function (a) { sobra = sobra.replace(a.textContent, ''); });
+        if (!/[\p{L}\p{N}]/u.test(sobra)) {
+          p.className = 'adm-assist-botoes';
+          Array.prototype.forEach.call(p.childNodes, function (n) { if (n.nodeType === 3) n.textContent = ''; });
+        }
+      }
       frag.appendChild(p);
     }
     return frag;

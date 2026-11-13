@@ -2262,15 +2262,23 @@ body.adm-assist-aberto .adm-assist-btn { display: none; }
 .adm-assist-subtit { font-weight: 800; }
 .adm-assist-tabela { overflow-x: auto; margin: 0 0 8px; border-radius: 10px; background: var(--card); }
 .adm-assist-tabela table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.adm-assist-tabela th, .adm-assist-tabela td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--linha2); vertical-align: top; }
-.adm-assist-tabela th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--mut); }
-.adm-assist-tabela tr:last-child td { border-bottom: 0; }
-.adm-assist-link {
-  display: inline-flex; align-items: center; gap: 8px; margin: 2px 0; padding: 8px 13px; border-radius: 10px;
-  border: 1px solid var(--linha); background: var(--card); color: var(--vermelho-txt); font-weight: 800; text-decoration: none;
+.adm-assist-tabela th, .adm-assist-tabela td {
+  padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--linha2); vertical-align: top;
+  overflow-wrap: normal; word-break: normal; /* nada de quebrar "Fernanda" letra por letra: tabela larga rola para o lado */
 }
-.adm-assist-link:hover { border-color: var(--vermelho); }
-.adm-assist-link i { font-size: 12px; }
+.adm-assist-tabela th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--mut); white-space: nowrap; }
+.adm-assist-tabela td:last-child { white-space: nowrap; } /* valores (R$ 279,00) numa linha só */
+.adm-assist-tabela tr:last-child td { border-bottom: 0; }
+/* link no meio da frase: texto sublinhado; parágrafo só de links: botões */
+.adm-assist-link { color: var(--vermelho-txt); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.adm-assist-link i { display: none; }
+.adm-assist-botoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.adm-assist-botoes .adm-assist-link {
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 13px; border-radius: 10px;
+  border: 1px solid var(--linha); background: var(--card); font-weight: 800; text-decoration: none;
+}
+.adm-assist-botoes .adm-assist-link:hover { border-color: var(--vermelho); }
+.adm-assist-botoes .adm-assist-link i { display: inline; font-size: 12px; }
 .adm-assist-status { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--mut); }
 .adm-assist-ia.escrevendo > p + .adm-assist-status, .adm-assist-ia.escrevendo > :not(.adm-assist-status) + .adm-assist-status { margin-top: 8px; }
 .adm-assist-pontos { width: 8px; height: 8px; border-radius: 50%; background: var(--vermelho); animation: admAssistPulso 1s ease-in-out infinite; }

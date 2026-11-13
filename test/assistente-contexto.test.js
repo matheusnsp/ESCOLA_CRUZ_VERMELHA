@@ -101,3 +101,10 @@ test('revisão final: página atual só leva os filtros conhecidos, curtos', asy
   assert.doesNotMatch(r.texto, /IGNORE|ignore=/);
   assert.ok(r.texto.length < 260, r.texto);
 });
+
+test('regras de formato: tabela com poucas colunas, links no fim e sem avisos não pedidos', () => {
+  const t = require('../src/lib/assistente-contexto').montarSistema();
+  assert.match(t, /no máximo 3 colunas/);
+  assert.match(t, /links? (fica|ficam) no fim/i);
+  assert.match(t, /não acrescente avisos/i);
+});
