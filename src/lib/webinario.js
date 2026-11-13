@@ -183,6 +183,27 @@ function situacaoCartao(w, a, agora = new Date()) {
   return w.gravacaoUrl ? 'gravacao' : 'gravacao-em-breve';
 }
 
+// Palavra-código (spec §3): grava a tentativa antes de comparar; 10 por pessoa por webinário por hora.
+// { ok: true, nova } | { ok: false, erro: 'sem-acesso'|'cedo'|'tentativas'|'nao-confere' }
+const LIMITE_TENTATIVAS = 10;
+async function confirmarPresenca(usuarioId, w, palavra, agora = new Date()) {
+  if (!usuarioId || !temAcesso(await acesso(usuarioId, w))) return { ok: false, erro: 'sem-acesso' };
+  if (w.inicioEm && agora < new Date(w.inicioEm)) return { ok: false, erro: 'cedo' };
+  const chave = { webinarioId_usuarioId: { webinarioId: w.id, usuarioId } };
+  if (await prisma.presencaWebinario.findUnique({ where: chave })) return { ok: true, nova: false };
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`webinario-palavra:${w.id}:${usuarioId}`}))`;
+    await tx.tentativaPalavraWebinario.create({ data: { webinarioId: w.id, usuarioId } });
+    const naHora = await tx.tentativaPalavraWebinario.count({ where: { webinarioId: w.id, usuarioId, criadoEm: { gte: new Date(Date.now() - 3600 * 1000) } } });
+    if (naHora > LIMITE_TENTATIVAS) return { ok: false, erro: 'tentativas' };
+    if (!w.palavraCodigo || normalizarPalavra(palavra) !== normalizarPalavra(w.palavraCodigo)) return { ok: false, erro: 'nao-confere' };
+    const ja = await tx.presencaWebinario.findUnique({ where: chave });
+    if (ja) return { ok: true, nova: false };
+    await tx.presencaWebinario.create({ data: { webinarioId: w.id, usuarioId } });
+    return { ok: true, nova: true };
+  });
+}
+
 // Só sem inscrições, compras (nem pendentes) e cupons. Com isso tudo: despublicar.
 async function excluir(id) {
   const w = await prisma.webinario.findUnique({ where: { id } });
@@ -200,5 +221,5 @@ async function excluir(id) {
 
 module.exports = {
   agora, JANELA_MIN, INCLUIR, endereco, quandoTexto, linkPagina, cargaHorasDe, dataBrasilia, paraCampo, normalizarPalavra, salvar, doEndereco, porId,
-  acesso, temAcesso, janela, situacaoCartao, excluir,
+  acesso, temAcesso, janela, situacaoCartao, confirmarPresenca, LIMITE_TENTATIVAS, excluir,
 };

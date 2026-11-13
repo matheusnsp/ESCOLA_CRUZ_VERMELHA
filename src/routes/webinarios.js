@@ -149,6 +149,17 @@ router.post(P('/comprar'), requireLogin, limiteCupom, comWebinario(async (req, r
   return res.redirect(cobranca.redirect);
 }));
 
+router.post(P('/palavra-codigo'), requireLogin, comWebinario(async (req, res, w) => {
+  const base = urlDe(w);
+  const r = await wb.confirmarPresenca(aluno(req), w, String(req.body.palavra || '').slice(0, 100), wb.agora());
+  if (!r.ok) return res.redirect(r.erro === 'nao-confere' || r.erro === 'tentativas' ? `${base}?palavra=${r.erro}` : base);
+  if (r.nova) {
+    // E-mail "certificado pronto" só na primeira presença (Task 5: lib/webinario-certificado.js).
+    try { await require('../lib/webinario-certificado').aoConfirmar(w, aluno(req), req); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') console.error('[WEBINARIO] certificado:', e.message); }
+  }
+  res.redirect(`${base}#certificado`);
+}));
+
 router.get(P('/entrar-na-transmissao'), requireLogin, comWebinario(async (req, res, w, a) => {
   if (wb.situacaoCartao(w, a, wb.agora()) === 'transmissao') return res.redirect(w.linkAoVivo);
   return res.redirect(urlDe(w));
