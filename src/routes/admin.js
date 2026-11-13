@@ -1588,7 +1588,7 @@ router.get('/modelos', requirePermissao('turmas:gerenciar'), async (req, res) =>
   res.render('admin/modelos', {
     modelo: await boasVindas.lerModelo(),
     padroes: boasVindas.PADROES,
-    voltar: VOLTAR_MODELOS.test(String(req.query.voltar || '')) ? req.query.voltar : '/turmas',
+    voltar: VOLTAR_MODELOS.test(String(req.query.voltar || '')) ? req.query.voltar : null,
     ok: req.query.ok || null,
     cursos,
     textosCursos: await boasVindas.lerTextosCursos(),

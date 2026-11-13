@@ -1,5 +1,5 @@
 <%
-// Abas da seção Turmas (a tela de Turmas e a Matrícula rápida, que inclui o mapa de horários). Uso: include('abas-turmas', { aba, abas }) — abas (as listas por
+// Abas (filtros de status) da tela de Turmas. 2026-11-13: Matrícula rápida e Mapa de horários saíram daqui (têm item próprio no menu). Uso: include('abas-turmas', { aba, abas }) — abas (as listas por
 // status) só na tela de Turmas, para mostrar as contagens.
 const _ROT = [
   { id: 'por-comecar', rot: 'Por começar' },
@@ -16,8 +16,4 @@ const _contas = typeof abas !== 'undefined' && abas ? abas : null;
       <%= a.rot %><% if (_contas) { %> <span class="adm-aba-num"><%= _contas[a.id].length %></span><% } %>
     </a>
   <% }) %>
-  <% if (pode('turmas:gerenciar') || pode('painel:leitura')) { %>
-    <%# Matrícula rápida (site da instituição) junta quem se inscreveu lá, o pagamento e o mapa de horários. %>
-    <a href="/matricula-rapida" class="adm-aba adm-aba-sep <%= aba === 'horarios' || aba === 'matricula-rapida' ? 'on' : '' %>"><i class="fa-solid fa-bolt"></i> Matrícula rápida</a>
-  <% } %>
 </nav>

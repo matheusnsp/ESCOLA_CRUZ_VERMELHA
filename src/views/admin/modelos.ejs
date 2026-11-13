@@ -3,14 +3,14 @@
 
 <div class="adm-h1-row">
   <h1 class="adm-h1">Mensagem de boas-vindas</h1>
-  <a href="<%= voltar %>" class="adm-link"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
+  <% if (voltar) { %><a href="<%= voltar %>" class="adm-link"><i class="fa-solid fa-arrow-left"></i> Voltar à turma</a><% } %>
 </div>
 
 <% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
 
 <form method="POST" action="/modelos" class="adm-form adm-box">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-  <input type="hidden" name="voltar" value="<%= voltar %>">
+  <% if (voltar) { %><input type="hidden" name="voltar" value="<%= voltar %>"><% } %>
 
   <h2 class="adm-form-secao full"><i class="fa-solid fa-envelope-open-text"></i> Mensagem de boas-vindas (padrão de todas as turmas)</h2>
   <label class="full">
@@ -29,11 +29,10 @@
     <textarea name="local" rows="2"><%= modelo.local %></textarea>
   </label>
 
-  <p class="full adm-hint">Quem assina os certificados, a assinatura escaneada e o livro em uso ficam na aba <a href="/certificados">Certificados</a>.</p>
 
   <div class="full adm-form-rodape">
     <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
-    <a href="<%= voltar %>" class="adm-link">Cancelar</a>
+    <% if (voltar) { %><a href="<%= voltar %>" class="adm-link">Cancelar</a><% } %>
   </div>
 </form>
 

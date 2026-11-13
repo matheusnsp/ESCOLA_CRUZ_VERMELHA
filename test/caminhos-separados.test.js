@@ -1,0 +1,49 @@
+// 2026-11-13 (pedido do Matheus): cada página tem um caminho só — o menu. Nada de abas que repetem o menu.
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('fs');
+const path = require('path');
+const V = (p) => path.join(__dirname, '..', 'src', 'views', 'admin', p);
+const ler = (p) => fs.readFileSync(V(p), 'utf8');
+const h1 = (p) => (ler(p).match(/<h1 class="adm-h1">([^<]+)<\/h1>/) || [])[1];
+
+test('Turmas: as abas são só os filtros de status (sem o atalho para Matrícula rápida)', () => {
+  assert.doesNotMatch(ler('abas-turmas.ejs'), /href="\/matricula-rapida"/);
+});
+
+test('Matrícula rápida e Mapa de horários: sem as abas de Turmas e sem a troca entre as duas; título próprio', () => {
+  for (const [f, titulo] of [['matricula-rapida.ejs', 'Matrícula rápida'], ['horarios.ejs', 'Mapa de horários']]) {
+    assert.doesNotMatch(ler(f), /include\('abas-turmas'|include\('abas-matricula-rapida'/, f);
+    assert.equal(h1(f), titulo, f);
+  }
+  assert.equal(fs.existsSync(V('abas-matricula-rapida.ejs')), false);
+});
+
+test('Configurações: cada página com o próprio título, sem as abas que repetem o menu', () => {
+  for (const [f, titulo] of [['dev-usuarios.ejs', 'Usuários do painel'], ['dev-permissoes.ejs', 'Permissões'], ['banimentos.ejs', 'Alunos banidos'], ['suspeitos.ejs', 'Suspeitos']]) {
+    assert.doesNotMatch(ler(f), /include\('abas-config'/, f);
+    assert.equal(h1(f), titulo, f);
+  }
+  assert.equal(fs.existsSync(V('abas-config.ejs')), false);
+});
+
+test('Cupons aberto pelo modo Presencial continua no Presencial (não pula para o Online)', () => {
+  const ead = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'ead.js'), 'utf8');
+  assert.match(ead, /req\.path\.startsWith\('\/cupons'\)[^\n]*req\.session\.modoPainel === 'online'/);
+});
+
+test('Mensagem de boas-vindas: "Voltar" só quando veio de uma turma; sem o aviso de Certificados', async () => {
+  const ejs = require('ejs');
+  const pq = require('../src/lib/boas-vindas');
+  const locais = (voltar) => ({ ativo: 'boas-vindas', modoPainel: 'presencial', admPapel: 'DEV', pode: () => true, csrfToken: 'x', usuario: { nome: 'Dev' }, asset: (u) => u,
+    montarMenu: require('../src/lib/menu-painel').montarMenu, modelo: { texto: 't', doacao: 'd', local: 'l' }, padroes: pq.PADROES, voltar, ok: null, cursos: [], textosCursos: {}, cursoEditando: null });
+  const sem = await ejs.renderFile(V('modelos.ejs'), locais(null));
+  const main = sem.slice(sem.indexOf('<main'));
+  assert.doesNotMatch(main, /Voltar<\/a>/);
+  assert.doesNotMatch(main, /href="\/turmas"/);
+  assert.doesNotMatch(main, /href="\/certificados"/);
+  const com = await ejs.renderFile(V('modelos.ejs'), locais('/turmas/abc/boas-vindas'));
+  assert.match(com, /<a href="\/turmas\/abc\/boas-vindas" class="adm-link"><i class="fa-solid fa-arrow-left"><\/i> Voltar à turma<\/a>/);
+  const rota = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'admin.js'), 'utf8');
+  assert.match(rota, /voltar: VOLTAR_MODELOS\.test\(String\(req\.query\.voltar \|\| ''\)\) \? req\.query\.voltar : null,/);
+});
