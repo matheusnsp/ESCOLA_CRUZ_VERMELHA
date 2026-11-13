@@ -36,6 +36,7 @@
     --info-bg: #dbeafe;  --info-tx: #1d4ed8;  --info-bd: #bfdbfe;
     --roxo-bg: #ede9fe;  --roxo-tx: #5b21b6;
     --gelo-bg: #cffafe;  --gelo-tx: #0e7490;
+    --ia-bg:   #fbf9ff;   /* caixa "Escrever com IA" */
   
     --sombra: 0 1px 0 rgba(22,25,29,.02), 0 6px 20px -12px rgba(22,25,29,.18);
   
@@ -83,6 +84,7 @@
     --info-bg: #16233d;  --info-tx: #93b8f8;  --info-bd: #24396b;
     --roxo-bg: #241b3a;  --roxo-tx: #c4b0f5;
     --gelo-bg: #0f2f36;  --gelo-tx: #67e8f9;
+    --ia-bg:   #1a1826;
   
     --sombra: 0 1px 0 rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.6);
   
@@ -1977,21 +1979,21 @@ a.mr-num:hover { border-color: var(--linha); }
 .adm-btn-ia { margin-top: 8px; width: auto; align-self: flex-start; justify-self: start; }
 
 /* Escrever com IA (2026-11-09) */
-.ia-textos { border: 1px dashed var(--linha); border-radius: var(--r-s); padding: 14px 16px; display: grid; gap: 10px; background: #fbf9ff; }
+.ia-textos { border: 1px dashed var(--linha); border-radius: var(--r-s); padding: 14px 16px; display: grid; gap: 10px; background: var(--ia-bg); }
 .ia-textos-cab { display: flex; gap: 10px; align-items: flex-start; }
-.ia-textos-cab > i { color: #5b2bbf; margin-top: 3px; }
+.ia-textos-cab > i { color: var(--roxo-tx); margin-top: 3px; }
 .ia-textos-bt { justify-self: start; }
-.ia-textos-msg { margin: 0; color: #1e7a4d; font-weight: 600; }
+.ia-textos-msg { margin: 0; color: var(--ok-tx); font-weight: 600; }
 .ia-textos-msg.erro { color: var(--vermelho); }
 .ia-faqs { display: grid; gap: 8px; }
-.ia-faq { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: start; padding: 10px; border: 1px solid var(--linha); border-radius: var(--r-s); background: #fff; }
+.ia-faq { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: start; padding: 10px; border: 1px solid var(--linha); border-radius: var(--r-s); background: var(--card); }
 .ia-faq textarea { grid-column: 2; }
 .ia-faq input[type="text"], .ia-faq textarea { width: 100%; font: inherit; font-size: 14px; color: var(--tinta); background: var(--campo); border: 1px solid var(--linha); border-radius: var(--r-s); padding: 10px 12px; box-sizing: border-box; }
 .ia-faq textarea { resize: vertical; }
 .ia-faq input[type="text"]:focus, .ia-faq textarea:focus { outline: none; border-color: var(--vermelho); }
 .ia-faq .check { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; padding-top: 10px; }
 .ia-faqs[hidden], .ia-duvidas-form[hidden] { display: none; }
-.ia-duvidas { display: grid; gap: 10px; margin: 0 0 16px; padding: 14px 16px; border: 1px dashed var(--linha); border-radius: var(--r-s); background: #fbf9ff; }
+.ia-duvidas { display: grid; gap: 10px; margin: 0 0 16px; padding: 14px 16px; border: 1px dashed var(--linha); border-radius: var(--r-s); background: var(--ia-bg); }
 .ia-duvidas-form { display: grid; gap: 8px; }
 .ia-duvidas-bt, .ia-duvidas-form > button { justify-self: start; }
 .ead-pedido-img { display: grid; gap: 8px; margin-top: 8px; }
