@@ -1401,7 +1401,7 @@ async function carregarHorarios(req) {
 // ---------- Matrícula rápida (site da instituição; lib/matricula-rapida.js) ----------
 router.get('/matricula-rapida', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
   const d = await matriculaRapida.carregar({ forcar: req.query.atualizar === '1' });
-  const base = { formatBRL, flash: req.query.ok || null, aviso: req.query.erro || null };
+  const base = { qBusca: String(req.query.q || '').trim().slice(0, 100), formatBRL, flash: req.query.ok || null, aviso: req.query.erro || null };
   if (d.erro) return res.render('admin/matricula-rapida', { ...base, erro: d.erro, filtro: { sit: 'aguardando', curso: '' } });
   const cursos = horariosSite.cursos({ respostas: d.pessoas.filter((p) => p.respondeu), semResposta: d.pessoas.filter((p) => !p.respondeu) });
   const curso = cursos.some((c) => c.chave === req.query.curso) ? req.query.curso : '';
@@ -2282,6 +2282,7 @@ router.get('/financeiro', requirePermissao('financeiro:aprovar', 'financeiro:lei
     .sort((x, y) => new Date(y.data || 0) - new Date(x.data || 0));
 
   res.render('admin/financeiro', {
+    qBusca: String(req.query.q || '').trim().slice(0, 100), // o assistente leva para cá já filtrado (2026-11-13)
     contaFiltro,
     recebidoPorConta,
     mesPorConta,

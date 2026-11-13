@@ -74,7 +74,7 @@
     <input type="hidden" name="sit" value="<%= filtro.sit %>">
     <label class="mr-busca">
       <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-      <input type="search" id="mrBusca" placeholder="Buscar por nome, e-mail ou telefone" aria-label="Buscar" autocomplete="off">
+      <input type="search" id="mrBusca" name="q" value="<%= typeof qBusca !== 'undefined' ? qBusca : '' %>" placeholder="Buscar por nome, e-mail ou telefone" aria-label="Buscar" autocomplete="off">
     </label>
     <select name="curso" class="mr-auto" aria-label="Curso">
       <option value="">Todos os cursos</option>
@@ -273,6 +273,7 @@
       });
       if (nada) nada.hidden = vistos > 0;
     });
+    if (campo.value) campo.dispatchEvent(new Event('input')); // veio com ?q= (ex.: link do assistente)
   })();
 </script>
 
