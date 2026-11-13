@@ -198,18 +198,20 @@ const ESCOLARIDADES_CURSO = ['', 'Ensino Fundamental', 'Ensino Médio', 'Ensino 
 const STATUS_TURMA = ['ABERTA', 'CONFIRMADA', 'CONGELADA', 'CANCELADA', 'ENCERRADA'];
 
 // Tamanho máximo fica só no servidor: o modo estrito da API não aceita maxLength (o valor é cortado na validação).
+// Formulários SEM strict: a API recusa o pedido inteiro quando as ferramentas strict somam mais de 24 parâmetros
+// opcionais (estes três têm 30). Tudo é validado aqui (validarCurso/validarTurma), então o strict não faz falta.
 const str = () => ({ type: 'string' });
 const DEFINICOES_FORMULARIO = [
-  { name: 'escrever_textos_curso', strict: true, description: 'Escreve o resumo, o texto completo, o conteúdo programático e as dúvidas frequentes de um curso presencial, no padrão dos cursos do site (a mesma função do botão "Escrever com IA"). Depois os textos vão para o formulário com o botão "Preencher na tela".',
+  { name: 'escrever_textos_curso', description: 'Escreve o resumo, o texto completo, o conteúdo programático e as dúvidas frequentes de um curso presencial, no padrão dos cursos do site (a mesma função do botão "Escrever com IA"). Depois os textos vão para o formulário com o botão "Preencher na tela".',
     input_schema: obj({ nome: str(120), cargaHoraria: { type: 'number' }, escolaridade: str(40), categoria: str(60), ideias: str(500), cursoId: str(40) }, ['nome']) },
-  { name: 'preencher_curso', strict: true, description: 'Prepara o preenchimento do formulário de curso (novo ou edição) com os dados que a pessoa deu. Só os campos citados. Não salva: a pessoa confere e clica em Salvar. Preços em reais (número).',
+  { name: 'preencher_curso', description: 'Prepara o preenchimento do formulário de curso (novo ou edição) com os dados que a pessoa deu. Só os campos citados. Não salva: a pessoa confere e clica em Salvar. Preços em reais (número).',
     input_schema: obj({ campos: obj({
       nome: str(120), descricao: str(300), descricaoLonga: str(3000), cargaHoraria: { type: 'number' }, escolaridadeMinima: { type: 'string', enum: ESCOLARIDADES_CURSO },
       categoria: { type: 'string', enum: ['', ...CATEGORIAS_CURSO] }, precoAvista: { type: 'number' }, precoCheio: { type: 'number' }, parcelas: { type: 'integer' }, taxaMatricula: { type: 'number' },
       nomeCertificado: str(160), conteudoProgramatico: str(4000), certificadoValidade: str(80), exigeComprovanteSaude: { type: 'boolean' }, pedido: str(600), ativo: { type: 'boolean' },
       faqs: { type: 'array', items: obj({ pergunta: str(200), resposta: str(1000) }, ['pergunta', 'resposta']) },
     }) }, ['campos']) },
-  { name: 'preencher_turma', strict: true, description: 'Prepara o preenchimento do formulário de turma (nova ou edição). cursoId vem de listar_cursos. Datas AAAA-MM-DD; horário "HH:MM – HH:MM". Para "toda terça e quinta de dezembro", liste cada aula. Não salva.',
+  { name: 'preencher_turma', description: 'Prepara o preenchimento do formulário de turma (nova ou edição). cursoId vem de listar_cursos. Datas AAAA-MM-DD; horário "HH:MM – HH:MM". Para "toda terça e quinta de dezembro", liste cada aula. Não salva.',
     input_schema: obj({ campos: obj({
       cursoId: str(40), inicioPrevisto: str(10), vagas: { type: 'integer' }, minimoAlunos: { type: 'integer' }, instrutorNome: str(120), instrutorRegistro: str(60),
       status: { type: 'string', enum: STATUS_TURMA }, aulas: { type: 'array', items: obj({ data: str(10), horario: str(20) }, ['data', 'horario']) },
@@ -288,7 +290,8 @@ async function escreverTextos(entrada, ctx) {
 }
 
 async function executarFormulario(nome, entrada, ctx) {
-  const e = entrada && typeof entrada === 'object' ? entrada : {};
+  const e = entrada && typeof entrada === 'object' ? { ...entrada } : {};
+  if (typeof e.campos === 'string') { try { e.campos = JSON.parse(e.campos); } catch (x) { e.campos = {}; } } // sem strict, pode vir como texto
   if (nome === 'escrever_textos_curso') return pode(ctx, 'cursos:criar', 'cursos:gerenciar') ? escreverTextos(e, ctx) : { resultado: SEM_PERMISSAO };
   if (nome === 'preencher_curso') return pode(ctx, 'cursos:criar', 'cursos:gerenciar') ? respostaPreencher('curso', validarCurso(e.campos)) : { resultado: SEM_PERMISSAO };
   if (nome === 'preencher_turma') return pode(ctx, 'turmas:gerenciar') ? respostaPreencher('turma', await validarTurma(e.campos)) : { resultado: SEM_PERMISSAO };

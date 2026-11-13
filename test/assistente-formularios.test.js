@@ -97,3 +97,29 @@ test('schemas estritos sem regras que a API não aceita (maxLength, minimum…)'
   const objetos = (s, acc = []) => { if (s && typeof s === 'object') { if (s.type === 'object') acc.push(s); Object.values(s).forEach((v) => objetos(v, acc)); } return acc; };
   for (const o of objetos([...f.DEFINICOES_CONSULTA, ...f.DEFINICOES_FORMULARIO].map((d) => d.input_schema))) assert.equal(o.additionalProperties, false);
 });
+
+// 2026-11-13 (produção: "fora do ar" em toda pergunta): a API recusa o pedido quando as ferramentas strict somam
+// mais de 24 parâmetros opcionais (ou mais de 20 ferramentas strict). Os formulários são validados no servidor.
+test('limite da API para ferramentas strict: até 24 opcionais e 20 ferramentas', () => {
+  const f = require('../src/lib/assistente-ferramentas');
+  const todas = [...f.DEFINICOES_CONSULTA, ...f.DEFINICOES_FORMULARIO];
+  let opcionais = 0;
+  const contar = (s) => {
+    if (!s || typeof s !== 'object') return;
+    if (s.type === 'object' && s.properties) {
+      const req = new Set(s.required || []);
+      for (const [k, v] of Object.entries(s.properties)) { if (!req.has(k)) opcionais++; contar(v.items || v); }
+    }
+  };
+  const strict = todas.filter((d) => d.strict);
+  strict.forEach((d) => contar(d.input_schema));
+  assert.ok(strict.length <= 20, `${strict.length} ferramentas strict`);
+  assert.ok(opcionais <= 24, `${opcionais} parâmetros opcionais em ferramentas strict`);
+});
+
+test('formulário: campos que chegam como texto JSON também valem (ferramenta sem strict)', async () => {
+  const f = require('../src/lib/assistente-ferramentas');
+  const r = await f.executarFormulario('preencher_curso', { campos: JSON.stringify({ nome: 'Curso Texto', precoAvista: '180,00' }) }, { pode: () => true });
+  assert.equal(r.evento.campos.nome, 'Curso Texto');
+  assert.equal(r.evento.campos.precoAvista, '180.00');
+});
