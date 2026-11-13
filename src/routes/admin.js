@@ -32,7 +32,7 @@ const { outroPagamentoCursoPago } = require('../lib/status-pagamento');
 const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarTextoWhats, montarLinkProspeccao } = require('../lib/lembretes');
 const { coletarDadosRelatorio, gerarExcel, gerarPdf, coletarLancamentosOfx, gerarOfx } = require('../lib/relatorio'); // relatórios Excel/PDF
 const { estornosExtras, totalEstornado: somarEstornos, lotesDaTabela } = require('../lib/financeiro-estornos');
-const { concluirTurmasPassadas } = require('../lib/concluir-turmas');
+const { atualizarStatusTurmas } = require('../lib/concluir-turmas');
 const { uploadFoto, salvarFotoCurso, removerFotoCurso } = require('../lib/upload');
 const permissoes = require('../lib/permissoes');
 const boasVindas = require('../lib/boas-vindas');
@@ -1166,7 +1166,7 @@ router.post('/cursos/:id/ativar', requirePermissao('cursos:gerenciar'), async (r
 // ---------- Turmas ----------
 
 router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), async (req, res) => {
-  await concluirTurmasPassadas(); // a lista já abre com as turmas de ontem como CONCLUÍDA
+  await atualizarStatusTurmas(); // a lista já abre com as turmas de hoje Confirmadas e as de ontem Concluídas
   const turmas = await prisma.turma.findMany({
     // A turma de espera (EM_ESPERA) não é turma de verdade: fica fora das abas e da lista.
     where: { status: { notIn: FORA_DO_PRESENCIAL } },
@@ -1243,11 +1243,13 @@ function lerTurmaDoForm(body) {
   else if (Number.isNaN(dados.vagas)) erro = 'Numero de vagas invalido.';
   else if (Number.isNaN(dados.minimoAlunos)) erro = 'Minimo de alunos invalido.';
 
-  return { dados, aulas, erro };
+  // "Concluída" antes do dia seguinte à última aula: salva como Confirmada e avisa quando conclui.
+  const aviso = erro ? null : require('../lib/concluir-turmas').ajustarConclusao(dados, aulas);
+  return { dados, aulas, erro, aviso };
 }
 
 router.post('/turmas', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  const { dados, aulas, erro } = lerTurmaDoForm(req.body);
+  const { dados, aulas, erro, aviso } = lerTurmaDoForm(req.body);
 
   const reRenderErro = async (msg) => {
     const cursos = await semSoOnline(await prisma.curso.findMany({
@@ -1271,7 +1273,7 @@ router.post('/turmas', requirePermissao('turmas:gerenciar'), async (req, res) =>
   });
   await extras.salvarExtra('turma', turma.id, extrasTurmaDoForm(req.body));
   await auditar(req, 'CRIOU_TURMA', 'Turma', turma.id, { cursoId: dados.cursoId });
-  res.redirect('/turmas?ok=Turma criada.');
+  res.redirect('/turmas?ok=' + encodeURIComponent(aviso ? `Turma criada. ${aviso}` : 'Turma criada.'));
 });
 
 router.get('/turmas/:id/editar', requirePermissao('turmas:gerenciar'), async (req, res) => {
@@ -1292,7 +1294,7 @@ router.post('/turmas/:id', requirePermissao('turmas:gerenciar'), async (req, res
   // A turma de espera (lib/turma-espera.js) é do sistema: data, vagas e status não se editam à mão.
   if (existe.status === 'EM_ESPERA') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma de espera não pode ser editada.'));
   if (existe.status === 'ONLINE') return res.redirect('/turmas?erro=' + encodeURIComponent('A turma do curso online não é editada aqui: use o modo Online do painel.'));
-  const { dados, aulas, erro: erroForm } = lerTurmaDoForm(req.body);
+  const { dados, aulas, erro: erroForm, aviso } = lerTurmaDoForm(req.body);
   const erro = erroForm || (dados && await ehSoOnline(dados.cursoId) ? MSG_SO_ONLINE : null);
   if (erro) {
     const cursos = await semSoOnline(await prisma.curso.findMany({ orderBy: { nome: 'asc' } }));
@@ -1308,7 +1310,7 @@ router.post('/turmas/:id', requirePermissao('turmas:gerenciar'), async (req, res
   });
   await extras.salvarExtra('turma', req.params.id, extrasTurmaDoForm(req.body));
   await auditar(req, 'EDITOU_TURMA', 'Turma', req.params.id, null);
-  res.redirect('/turmas?ok=Turma atualizada.');
+  res.redirect('/turmas?ok=' + encodeURIComponent(aviso ? `Turma atualizada. ${aviso}` : 'Turma atualizada.'));
 });
 
 async function recalcularMedia(matriculaId) {

@@ -74,7 +74,7 @@ Início previsto
 <option value="<%= s %>" <%= (t.status||'ABERTA')===s ? 'selected' : '' %>><%= rotuloTurma(s) %></option>
 <% }) %>
 </select>
-<small class="adm-hint">Aberta: aceita inscrições. Confirmada: atingiu o mínimo e vai acontecer. A turma confirmada vira Concluída sozinha no dia seguinte à última aula. Congelada: pausa a turma; ela some do site, não recebe lembretes, boas-vindas nem pesquisa, sai do A receber e não é concluída sozinha. Os alunos continuam matriculados. Para retomar, volte para Aberta ou Confirmada; se as datas já passaram, ajuste as aulas antes (senão ela é concluída ou fechada sozinha).</small>
+<small class="adm-hint">Aberta: aceita inscrições; vira Confirmada sozinha à 00:00 do dia de início. Confirmada: vai acontecer e não aceita mais inscrição pelo site. Concluída só a partir do dia seguinte à última aula — o sistema conclui sozinho a turma confirmada; se escolher Concluída antes, ela fica Confirmada até lá. Congelada: pausa a turma; ela some do site, não recebe lembretes, boas-vindas nem pesquisa, sai do A receber e não é concluída sozinha. Os alunos continuam matriculados. Para retomar, volte para Aberta ou Confirmada; se as datas já passaram, ajuste as aulas antes (senão ela é concluída ou fechada sozinha).</small>
 </label>
 
 <h2 class="adm-form-secao full" id="certificado"><i class="fa-solid fa-award"></i> Instrutor (vai no certificado)</h2>

@@ -392,11 +392,11 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Conclui as turmas confirmadas cujo último dia de aula já passou (lib/concluir-turmas.js).
+// Confirma as turmas do dia (00:00 de Brasília) e conclui as que já passaram (lib/concluir-turmas.js).
 // Roda ao subir e depois de hora em hora; as telas de turmas e o site também chamam.
-const { concluirTurmasPassadas } = require('./lib/concluir-turmas');
-concluirTurmasPassadas();
-setInterval(concluirTurmasPassadas, 60 * 60 * 1000).unref();
+const { atualizarStatusTurmas } = require('./lib/concluir-turmas');
+atualizarStatusTurmas();
+setInterval(atualizarStatusTurmas, 60 * 60 * 1000).unref();
 // Lembretes de "falta pagar o curso" para quem pagou só a taxa (lib/lembretes.js): 1 h depois,
 // 3 dias antes e na véspera. Cada um sai uma vez por aluno, mesmo com os 3 serviços rodando.
 require('./lib/lembretes').agendarLembretes(30);
