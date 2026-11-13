@@ -32,8 +32,28 @@ function proximaMudanca(t, agora = new Date()) {
   return null;
 }
 
-module.exports = function painelTurmas({ requirePermissao }) {
+module.exports = function painelTurmas({ requirePermissao, auditar }) {
   const router = express.Router();
+
+  // "Começar com a IA" na Nova turma: texto livre -> curso, início, aulas, vagas e instrutor (JSON). Nada é salvo.
+  router.post('/turmas/ia-comecar', requirePermissao('turmas:gerenciar'), async (req, res) => {
+    const ia = require('../lib/ead-ia');
+    if (!ia.ehChaveConfigurada()) return res.json({ ok: false, erro: ia.MSG_CHAVE });
+    const t = await ia.dentroDoTeto();
+    if (!t.ok) return res.json({ ok: false, erro: t.erro });
+    const texto = String((req.body && req.body.texto) || '').trim();
+    if (!texto) return res.json({ ok: false, erro: 'Escreva como é a turma.' });
+    try {
+      const r = await require('../lib/ia-comecar').comecarTurma(texto);
+      await ia.somarCustoAvulso(r.usage);
+      if (auditar) await auditar(req, 'IA_COMECAR_TURMA', 'Turma', 'nova', {});
+      return res.json({ ok: true, campos: r.campos });
+    } catch (e) {
+      if (e.usage) await ia.somarCustoAvulso(e.usage).catch(() => {});
+      console.error('[IA COMEÇAR TURMA]', e.message);
+      return res.json({ ok: false, erro: 'A IA não conseguiu agora; preencha à mão ou tente de novo.' });
+    }
+  });
 
   router.get(`/turmas/:id(${ID})`, requirePermissao('turmas:gerenciar'), async (req, res) => {
     const turma = await prisma.turma.findUnique({ where: { id: req.params.id }, include: { curso: true, aulas: { orderBy: { data: 'asc' } } } });

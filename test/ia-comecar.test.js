@@ -96,3 +96,45 @@ test('tela: Preencher com IA preenche os passos, as dúvidas e etiqueta IA', { s
     assert.match(await p.textContent('.adm-comecar-ia .ia-textos-msg'), /nada foi salvo/);
   } finally { await b.close(); srv.s.close(); }
 });
+
+test('comecarTurma: curso pelo nome, datas e horários validados', { skip: temBanco ? false : 'sem banco' }, async () => {
+  const prisma = require('../src/db');
+  const c = await prisma.curso.create({ data: { nome: `Socorrista IA ${Date.now()}`, cargaHoraria: 40, precoAvista: 1, precoCheio: 1, valorParcela: 1, ativo: true } });
+  try {
+    const cli = clienteFalso([() => ({ cursoNome: c.nome.toUpperCase(), inicioPrevisto: '2026-12-01', aulas: [{ data: '2026-12-01', horario: '18h às 22h' }, { data: '2026-02-31', horario: '18:00 – 22:00' }], vagas: 30, minimoAlunos: 15, instrutorNome: 'Carla Dias', instrutorRegistro: 'COREN-RJ 445566' })]);
+    const r = await C.comecarTurma('Socorrista, terças em dezembro, 18h às 22h, 30 vagas', { cliente: cli });
+    assert.equal(r.campos.cursoId, c.id);
+    assert.equal(r.campos.inicioPrevisto, '2026-12-01');
+    assert.equal(r.campos.vagas, '30');
+    assert.equal(r.campos.instrutorNome, 'Carla Dias');
+    assert.deepEqual(r.campos.aulas, [{ data: '2026-12-01', horario: '18:00 – 22:00' }], 'aula com data impossível sai, horário normalizado');
+    const cli2 = clienteFalso([() => ({ cursoNome: 'Curso que não existe nenhum', inicioPrevisto: '2026-02-31', aulas: [], vagas: null, minimoAlunos: null, instrutorNome: null, instrutorRegistro: null })]);
+    const r2 = await C.comecarTurma('qualquer coisa', { cliente: cli2 });
+    assert.equal('cursoId' in r2.campos, false);
+    assert.equal('inicioPrevisto' in r2.campos, false);
+  } finally { await prisma.curso.delete({ where: { id: c.id } }); }
+  await assert.rejects(() => C.comecarTurma(''), /Escreva como é a turma\./);
+});
+
+test('Nova turma: Preencher com IA preenche o curso e troca as aulas', { skip: chromium ? false : 'sem Playwright' }, async () => {
+  const ejs = require('ejs');
+  const html = await ejs.renderFile(path.join(__dirname, '..', 'src', 'views', 'admin', 'turma-form.ejs'), {
+    ativo: 'turma-nova', modoPainel: 'presencial', admPapel: 'X', csrfToken: 'x', usuario: { nome: 'T' }, asset: (u) => u,
+    montarMenu: require('../src/lib/menu-painel').montarMenu, rotuloTurma: (s) => s, pode: () => true,
+    turma: null, aulas: [], cursos: [{ id: 'c1', nome: 'Socorrista' }], statusTurma: ['ABERTA'], erro: null,
+  });
+  const b = await chromium.launch();
+  try {
+    const p = await b.newPage();
+    await p.route('**/turmas/ia-comecar', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, campos: { cursoId: 'c1', inicioPrevisto: '2026-12-01', vagas: '30', aulas: [{ data: '2026-12-01', horario: '18:00 – 22:00' }, { data: '2026-12-03', horario: '18:00 – 22:00' }] } }) }));
+    await p.setContent(html.replace(/<script src="[^"]*\.js"><\/script>/g, ''));
+    for (const f of ['gerar-aulas.js', 'ia-comecar.js']) await p.addScriptTag({ path: path.join(__dirname, '..', 'src', 'public', 'js', f) });
+    await p.evaluate(() => { document.querySelector('.adm-comecar-ia').setAttribute('data-comecar-url', 'http://localhost/turmas/ia-comecar'); });
+    await p.fill('.adm-comecar-texto', 'Socorrista em dezembro');
+    await p.click('.adm-comecar-bt');
+    await p.waitForFunction(() => document.querySelectorAll('#aulas-lista .aula-linha').length === 2);
+    assert.equal(await p.inputValue('[name=cursoId]'), 'c1');
+    assert.equal(await p.inputValue('[name=vagas]'), '30');
+    assert.equal(await p.evaluate(() => !!document.querySelector('[name=cursoId]').closest('label').querySelector('.adm-tag-ia')), true);
+  } finally { await b.close(); }
+});

@@ -44,7 +44,18 @@ function formatarDataInput(data) {
 <div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div>
 <% } %>
 
-<form method="POST" action="<%= novo ? '/turmas' : '/turmas/' + t.id %>" class="adm-form adm-box">
+<% if (novo) { %>
+<div class="ia-textos adm-comecar-ia" data-comecar-url="/turmas/ia-comecar" data-comecar-form="turmaForm">
+  <div class="ia-textos-cab"><i class="fa-solid fa-wand-magic-sparkles"></i>
+    <div><b>Começar com a IA</b> <small class="adm-hint">Escreva a turma do seu jeito: curso, dias, horário, vagas, instrutor. A IA preenche e você confere antes de criar.</small></div></div>
+  <textarea class="adm-comecar-texto" rows="3" maxlength="3000" aria-label="Como é a turma" placeholder="Ex.: Socorrista, toda terça e quinta de dezembro a partir do dia 1, das 18h às 22h, 30 vagas, mínimo 15, instrutora Carla Dias COREN-RJ 445566"></textarea>
+  <button type="button" class="adm-btn adm-comecar-bt"><i class="fa-solid fa-wand-magic-sparkles"></i> Preencher com IA</button>
+  <p class="ia-textos-msg" role="status" hidden></p>
+</div>
+<p class="adm-ou">ou preencha você mesmo</p>
+<% } %>
+
+<form method="POST" action="<%= novo ? '/turmas' : '/turmas/' + t.id %>" class="adm-form adm-box" id="turmaForm">
 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
 <h2 class="adm-form-secao full"><i class="fa-solid fa-clock"></i> Quando</h2>
@@ -122,5 +133,6 @@ Início previsto
 </form>
 
 <script src="<%= asset('/js/gerar-aulas.js') %>"></script>
+<% if (novo) { %><script src="<%= asset('/js/ia-comecar.js') %>"></script><% } %>
 
 <%- include('foot') %>
