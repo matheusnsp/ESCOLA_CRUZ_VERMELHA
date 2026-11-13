@@ -222,6 +222,21 @@ describe('tela do assistente', { skip: chromium ? false : 'sem Playwright' }, ()
     await p.context().close();
   });
 
+  test('celular: tocar em Assistente abre só o painel (sem teclado); o foco vai para o campo só quando a pessoa toca nele', async () => {
+    respostas = [[{ tipo: 'resposta', texto: 'Oi.' }, { tipo: 'fim' }]];
+    const c = await navegador.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const p = await abrir('/pendentes', '', 'pendentes', 390, c);
+    await p.tap('.adm-assist-top');
+    assert.equal(await vis(p, '#admAssist'), true);
+    assert.notEqual(await p.evaluate(() => document.activeElement && document.activeElement.tagName), 'TEXTAREA');
+    assert.equal(await p.evaluate(() => window.scrollY), 0);
+    await p.tap('.adm-assist-form textarea');
+    await p.keyboard.type('oi'); await p.tap('.adm-assist-form button[type=submit]');
+    await p.waitForSelector('.adm-assist-ia:not(.escrevendo)');
+    assert.notEqual(await p.evaluate(() => document.activeElement && document.activeElement.tagName), 'TEXTAREA'); // teclado não volta sozinho
+    await c.close();
+  });
+
   test('erro vira mensagem amigável', async () => {
     respostas = [[{ tipo: 'erro', mensagem: 'O assistente está fora do ar agora. Tente de novo em instantes.' }, { tipo: 'fim' }]];
     const p = await abrir('/pendentes', '', 'pendentes');

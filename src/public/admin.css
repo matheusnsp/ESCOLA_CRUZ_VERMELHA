@@ -2345,3 +2345,5 @@ body.adm-assist-aberto .adm-assist-btn { display: none; }
   html.adm-js .adm-assist-top span { display: none; }
   .adm-assist-tit small { display: none; }
 }
+
+.adm-assist:focus { outline: none; } /* no toque, o foco fica no painel ao abrir (sem teclado) */
