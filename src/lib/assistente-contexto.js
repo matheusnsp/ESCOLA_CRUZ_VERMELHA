@@ -26,7 +26,7 @@ const CATALOGO = {
   '/pendentes': { params: ['aba'], perm: P('pendentes:gerenciar') },
   '/comprovantes-saude': { params: ['aba'], perm: P('aluno:gerenciar') },
   '/pesquisa': { params: ['curso', 'turma', 'nota', 'aba'], perm: P('pesquisa:gerenciar', 'painel:leitura') },
-  '/financeiro': { params: ['q'], perm: P('financeiro:aprovar', 'financeiro:leitura') },
+  '/financeiro': { params: ['conta'], perm: P('financeiro:aprovar', 'financeiro:leitura') },
   '/contas': { params: ['aba'], perm: P('contas:lancar', 'contas:aprovar', 'contas:pagar') },
   '/certificados': { params: [], perm: P('turmas:gerenciar') },
   '/integracao': { params: [], perm: P('integracao:gerenciar') },

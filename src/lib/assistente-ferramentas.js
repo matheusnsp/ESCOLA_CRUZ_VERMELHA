@@ -102,6 +102,9 @@ async function buscarAlunos({ termo }, ctx) {
   };
 }
 
+// Situação da turma com o nome que aparece na tela (no banco, ENCERRADA = Concluída).
+const ROTULO_SITUACAO = { ABERTA: 'Aberta', CONFIRMADA: 'Confirmada', ENCERRADA: 'Concluída', CANCELADA: 'Cancelada', CONGELADA: 'Congelada', EM_ESPERA: 'Lista de espera', ONLINE: 'Curso online' };
+const rotuloSituacao = (s) => ROTULO_SITUACAO[s] || s;
 const ROTULO_PAG = { PAGO: 'paga', PARCELADO: 'parcelada', PENDENTE: 'pendente', CANCELADO: 'cancelada', ESTORNADO: 'estornada' };
 async function verAluno({ alunoId }, ctx) {
   if (!pode(ctx, 'aluno:gerenciar', 'painel:leitura')) return SEM_PERMISSAO;
@@ -113,7 +116,7 @@ async function verAluno({ alunoId }, ctx) {
     aluno: { id: u.id, nome: u.nome, email: u.email, celular: u.celular || null, documento: ctx && ctx.documentoAluno ? ctx.documentoAluno(u) : null,
       escolaridade: u.escolaridade || null, cadastradoEm: dia(u.criadoEm), bloqueado: !!u.bloqueioTotal },
     matriculas: ms.map((m) => ({
-      id: m.id, curso: m.turma.curso.nome, turmaId: m.turmaId, inicioTurma: dia(m.turma.inicioPrevisto), situacaoTurma: m.turma.status,
+      id: m.id, curso: m.turma.curso.nome, turmaId: m.turmaId, inicioTurma: dia(m.turma.inicioPrevisto), situacaoTurma: rotuloSituacao(m.turma.status),
       inscricao: m.taxaConfirmada ? 'paga' : 'não paga', matricula: ROTULO_PAG[m.statusPagamento] || m.statusPagamento,
       valorCurso: Number(m.valorCurso), taxaInscricao: Number(m.valorTaxaMatricula), forma: m.forma, plano: m.plano,
       alimentoEntregue: m.alimentoEntregue, nota: m.nota, situacaoAcademica: m.situacao || null,
@@ -170,7 +173,7 @@ async function listarTurmas({ situacao, curso }, ctx) {
   const lista = ts.slice(0, 30);
   anotar(ctx, 'turmas', lista.map((t) => t.id));
   return {
-    turmas: lista.map((t) => ({ id: t.id, curso: t.curso.nome, inicio: dia(t.inicioPrevisto), vagas: t.vagas, ocupadas: t._count.matriculas, minimo: t.minimoAlunos, status: t.status })),
+    turmas: lista.map((t) => ({ id: t.id, curso: t.curso.nome, inicio: dia(t.inicioPrevisto), vagas: t.vagas, ocupadas: t._count.matriculas, minimo: t.minimoAlunos, status: rotuloSituacao(t.status) })),
     link: `/turmas${situacao && situacao !== 'por-comecar' ? `?aba=${situacao}` : ''}`,
   };
 }
@@ -204,14 +207,14 @@ const str = () => ({ type: 'string' });
 const DEFINICOES_FORMULARIO = [
   { name: 'escrever_textos_curso', description: 'Escreve o resumo, o texto completo, o conteúdo programático e as dúvidas frequentes de um curso presencial, no padrão dos cursos do site (a mesma função do botão "Escrever com IA"). É o ÚNICO jeito de preencher resumo e texto completo. Em ideias, passe tudo que a pessoa contou sobre o curso (observações, público, temas, onde vai atuar, dúvidas). Depois os textos vão para o formulário com o botão "Preencher na tela".',
     input_schema: obj({ nome: str(120), cargaHoraria: { type: 'number' }, escolaridade: str(40), categoria: str(60), ideias: str(1500), cursoId: str(40) }, ['nome']) },
-  { name: 'preencher_curso', description: 'Prepara o preenchimento do formulário de curso (novo ou edição) com os dados que a pessoa deu. Só os campos citados. Resumo e texto completo NÃO entram aqui: use escrever_textos_curso. Para MUDAR um curso que já existe, passe editarCursoId (da página atual ou de listar_cursos); sem ele, é um curso novo. Não salva: a pessoa confere e clica em Salvar. Preços em reais (número).',
+  { name: 'preencher_curso', description: 'Prepara o preenchimento do formulário de curso (novo ou edição) com os dados que a pessoa deu. Só os campos citados. Resumo e texto completo NÃO entram aqui: use escrever_textos_curso. Para MUDAR um curso que já existe, passe editarCursoId (da página atual ou de listar_cursos); sem ele, é um curso novo. Não salva: a pessoa confere e clica em Criar curso (numa edição, Salvar alterações). Preços em reais (número).',
     input_schema: obj({ campos: obj({
       nome: str(120), cargaHoraria: { type: 'number' }, escolaridadeMinima: { type: 'string', enum: ESCOLARIDADES_CURSO },
       categoria: { type: 'string', enum: ['', ...CATEGORIAS_CURSO] }, precoAvista: { type: 'number' }, precoCheio: { type: 'number' }, parcelas: { type: 'integer' }, taxaMatricula: { type: 'number' },
       nomeCertificado: str(160), conteudoProgramatico: str(4000), certificadoValidade: str(80), exigeComprovanteSaude: { type: 'boolean' }, pedido: str(600), ativo: { type: 'boolean' },
       faqs: { type: 'array', items: obj({ pergunta: str(200), resposta: str(1000) }, ['pergunta', 'resposta']) },
     }), editarCursoId: str() }, ['campos']) },
-  { name: 'preencher_turma', description: 'Prepara o preenchimento do formulário de turma (nova ou edição). cursoId vem de listar_cursos. Datas AAAA-MM-DD; horário "HH:MM – HH:MM". Para "toda terça e quinta de dezembro", liste cada aula. Para MUDAR uma turma que já existe, passe editarTurmaId (da página atual ou de listar_turmas); sem ele, é uma turma nova. Não salva.',
+  { name: 'preencher_turma', description: 'Prepara o preenchimento do formulário de turma (nova ou edição). cursoId vem de listar_cursos. Datas AAAA-MM-DD; horário "HH:MM – HH:MM". Para "toda terça e quinta de dezembro", liste cada aula. Para MUDAR uma turma que já existe, passe editarTurmaId (da página atual ou de listar_turmas); sem ele, é uma turma nova. Situação: Concluída só vale a partir do dia seguinte à última aula (antes disso a turma fica Confirmada até lá); Confirmada fecha as inscrições pelo site. Não salva: a pessoa confere e clica em Criar turma (numa edição, Salvar alterações).',
     input_schema: obj({ campos: obj({
       cursoId: str(40), inicioPrevisto: str(10), vagas: { type: 'integer' }, minimoAlunos: { type: 'integer' }, instrutorNome: str(120), instrutorRegistro: str(60),
       status: { type: 'string', enum: STATUS_TURMA }, aulas: { type: 'array', items: obj({ data: str(10), horario: str(20) }, ['data', 'horario']) },
@@ -326,4 +329,4 @@ async function executarFormulario(nome, entrada, ctx) {
   return { resultado: { erro: 'ferramenta_desconhecida' } };
 }
 
-module.exports = { DEFINICOES_CONSULTA, DEFINICOES_FORMULARIO, executarConsulta, executarFormulario, pontuarNome, normalizar, levenshtein };
+module.exports = { rotuloSituacao, DEFINICOES_CONSULTA, DEFINICOES_FORMULARIO, executarConsulta, executarFormulario, pontuarNome, normalizar, levenshtein };

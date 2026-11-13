@@ -5,8 +5,8 @@ test/assistente-contexto.test.js avisa quando falta). Quando uma tela mudar, atu
 O menu (grupos e endereços) é montado sozinho a partir de lib/menu-painel.js; aqui fica o que cada tela faz.
 
 ## Painel
-Página inicial do modo Presencial: números do dia (inscrições hoje e nos últimos 7 dias, recebido no mês, a receber),
-próximas turmas e atalhos. Tocar num número abre a lista daquele número.
+Página inicial do modo Presencial: Inscrições hoje, Recebido no mês, A receber, Para agir (o que precisa de atenção),
+Matrícula rápida (quem espera encaixe), Próximas turmas e Últimas inscrições. Tocar num número abre a lista dele.
 
 ## Cursos — presencial (Cursos e turmas › Cursos)
 Lista dos cursos presenciais com carga horária, valores, turmas e se aparece no site. Filtro por endereço:
@@ -14,7 +14,9 @@ Lista dos cursos presenciais com carga horária, valores, turmas e se aparece no
 - **Criar curso:** botão "Novo curso" (`/cursos/novo`). Campos: nome, resumo, texto completo, carga horária,
   escolaridade mínima, área, preço à vista, total no parcelado, máximo de parcelas, taxa de inscrição, nome no
   certificado, conteúdo programático, validade do certificado, exige comprovante de saúde, ativo (aparece no site),
-  foto e dúvidas frequentes. O botão "Escrever com IA" escreve resumo, texto completo, conteúdo e dúvidas.
+  foto e dúvidas frequentes. O botão "Escrever com IA" escreve resumo, texto completo, conteúdo e dúvidas; o texto
+  completo sai sempre em 3 parágrafos (o que o curso forma; o que o aluno aprende; onde vai poder atuar).
+  Botão final: "Criar curso" (num curso que já existe, "Salvar alterações").
 - **Editar:** botão "Editar" na linha do curso (`/cursos/<id>/editar`).
 - **Abrir turma do curso:** "Nova turma" na linha do curso.
 
@@ -23,19 +25,35 @@ Lista das turmas por situação (abas): Por começar, Em andamento, Congeladas, 
 início, aulas, vagas ocupadas (inscrições com a taxa paga) e o mínimo. Filtro por endereço:
 `/turmas?aba=<por-comecar|andamento|congeladas|concluidas|canceladas>`.
 - **Criar turma:** botão "Nova turma" (`/turmas/nova`). Campos: curso, início previsto, vagas, mínimo de alunos,
-  instrutor e registro, situação, aulas (data e horário; "Adicionar aula" cria mais linhas).
+  instrutor e registro, situação, aulas (data e horário; "Adicionar aula" cria mais linhas). Botão "Criar turma"
+  (na edição, "Salvar alterações").
 - **Ações na linha:** Alunos (lista filtrada pela turma), Notas, QR da pesquisa, Editar, Excluir (só sem alunos).
-- **Congelar:** em Editar, situação "Congelada" (pausa a turma: some de Pendentes até ser retomada).
+- **Situações:**
+  - Aberta: aparece no site e aceita inscrição. Vira Confirmada sozinha à 00:00 do dia de início.
+  - Confirmada: vai acontecer e não aceita mais inscrição pelo site nem encaixe na Matrícula rápida (quem já está
+    nela pode ser movido para outra turma ou voltar para a espera). Marcar Confirmada antes do início fecha as
+    inscrições na hora.
+  - Concluída: a Confirmada vira Concluída sozinha no dia seguinte à última aula. Se alguém escolher Concluída antes
+    disso, a turma fica Confirmada até lá (a tela avisa o dia).
+  - Congelada: pausa a turma; some do site, não recebe lembretes, boas-vindas nem pesquisa, sai do A receber e não
+    é concluída sozinha. Para retomar, volte para Aberta ou Confirmada.
+  - Cancelada: tira a turma do site guardando o histórico (é o caminho quando ela tem alunos e não pode ser excluída).
 
 ## Matrícula rápida (Cursos e turmas › Matrícula rápida)
 Quem pagou a inscrição no site da instituição, sem criar conta. A pessoa sugere a turma e os horários; a secretaria
-encaixa numa turma e ela recebe o e-mail para pagar o curso. Abas: Aguardando encaixe, Em turma, Todos. Filtro por
-endereço: `/matricula-rapida?sit=<aguardando|encaixados|todos>&curso=<nome>&q=<nome, e-mail ou telefone>`.
-- **Encaixar:** no cartão da pessoa, escolha a turma e clique em "Encaixar" (precisa da permissão de aprovar taxa).
+encaixa numa turma e ela recebe o e-mail para pagar o curso. Abas: Aguardando, Em turma, Todos. Filtro por endereço:
+`/matricula-rapida?sit=<aguardando|encaixados|todos>&curso=<id do curso>&q=<nome, e-mail ou telefone>`.
+As ações precisam da permissão de aprovar taxa. O destino é sempre só turma Aberta do mesmo curso:
+Confirmada não recebe mais aluno.
+- **Encaixar:** no cartão de quem está aguardando, escolha a turma e clique em "Encaixar".
+- **Mover:** no cartão de quem já está em turma, escolha outra turma aberta e clique em "Mover" (a pessoa recebe o
+  aviso por e-mail; vale também para quem está numa turma Confirmada).
+- **Voltar para a espera:** quando a pessoa não pode mais ir na turma; escreva o motivo. Ela volta para Aguardando e
+  nada é apagado (pagamentos e histórico ficam). Não vale para turma já concluída.
 
 ## Mapa de horários (Cursos e turmas › Mapa de horários)
 Quantos alunos podem em cada dia e período (manhã, tarde, noite), pelo que marcaram no site depois de pagar a
-inscrição. Serve para abrir ou remarcar turmas. Filtro: `/horarios?curso=<nome>`. "Baixar planilha" exporta.
+inscrição. Serve para abrir ou remarcar turmas. Filtro: `/horarios?curso=<id do curso>`. "Baixar planilha" exporta.
 
 ## Mensagem de boas-vindas (Cursos e turmas › Mensagem de boas-vindas)
 Tudo sobre boas-vindas num lugar só:
@@ -52,8 +70,8 @@ inscrições, situação da taxa e da matrícula, valores, e "Editar dados".
 
 ## Matrículas (Alunos › Matrículas)
 Todas as inscrições com busca e filtros: `/inscricoes?q=<busca>&status=<PAGO,PARCELADO|PENDENTE>&turma=<id>`.
-Ações na linha: Confirmar taxa (taxa paga por fora), Transferir (outra turma; o valor pago vai junto), Notas,
-Remover.
+Ações na linha: Confirmar taxa (taxa paga por fora), Confirmar pagamento (curso pago por fora), Transferir (outra
+turma; o valor pago vai junto), Nota, Estornar e Cancelar.
 - **Transferir aluno:** Alunos › Matrículas, procure o aluno, "Transferir" na linha, escolha a turma e confirme.
 
 ## Pendentes (Alunos › Pendentes)
@@ -74,8 +92,10 @@ Depoimentos com autorização do aluno podem ir para o site: "Aprovar" / "Não p
 inicial" mostra ou esconde a seção no site.
 
 ## Financeiro (Financeiro › Financeiro)
-Recebido por conta e lista de pagamentos com abas (Todos, Matrícula paga, Só a inscrição, Estornados) e busca.
-Filtro por endereço: `/financeiro?q=<nome ou curso>`. "Exportar" baixa planilhas.
+Recebido por conta (Únicopag da escola, Únicopag da instituição e recebido na secretaria) e lista de pagamentos com
+abas (Todos, Matrícula paga, Só a inscrição, Estornados) e busca na própria tela. Filtro por endereço:
+`/financeiro?conta=<principal|segunda|manual>` (principal = Únicopag da escola, segunda = Únicopag da instituição,
+manual = recebido na secretaria). "Exportar" baixa planilhas.
 
 ## Contas a pagar (Financeiro › Contas a pagar)
 Despesas, pedidos de compra e reembolsos, com aprovação e pagamento. Abas: `/contas?aba=<semana|enviadas|aprovar|pagar|historico>`.
