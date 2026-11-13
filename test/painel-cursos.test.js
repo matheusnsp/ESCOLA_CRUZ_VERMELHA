@@ -37,7 +37,7 @@ describe('painel de cursos: resumo e seções', { skip: temBanco ? false : 'sem 
     await extras.salvarExtra('curso', curso.id, { conteudoProgramatico: 'Item A', certAssinaturas: ['a0', 'instrutor'] });
     comTurma = await prisma.curso.create({ data: { nome: `Curso Com Turma ${sfx}`, cargaHoraria: 8, precoAvista: 1, precoCheio: 1, valorParcela: 1, ativo: true } });
     turma = await prisma.turma.create({ data: { cursoId: comTurma.id, inicioPrevisto: new Date(Date.now() + 9 * 86400000), vagas: 10, minimoAlunos: 0, status: 'ABERTA' } });
-    srv = await ouvir(montar(['cursos:gerenciar', 'cursos:criar']));
+    srv = await ouvir(montar(['cursos:gerenciar', 'cursos:criar', 'turmas:gerenciar']));
     leitura = await ouvir(montar(['painel:leitura']));
   });
   after(async () => {
@@ -121,6 +121,14 @@ describe('painel de cursos: resumo e seções', { skip: temBanco ? false : 'sem 
         await p.close();
       }
     } finally { await b.close(); }
+  });
+
+  test('Turmas deste curso: situação pelo nome da tela e atalho para a nova', async () => {
+    const html = await (await fetch(`${srv.url}/cursos/${comTurma.id}/turmas`)).text();
+    assert.match(html, /Turmas deste curso/);
+    assert.match(html, /ABERTA/);
+    assert.match(html, new RegExp(`/turmas/${turma.id}/editar`));
+    assert.match(html, new RegExp(`/turmas/nova\\?curso=${comTurma.id}`));
   });
 
   test('links antigos e permissões', async () => {

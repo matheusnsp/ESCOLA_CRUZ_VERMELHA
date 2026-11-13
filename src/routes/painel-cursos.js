@@ -132,6 +132,22 @@ module.exports = function painelCursos({ requirePermissao, auditar }) {
     return res.redirect(`/cursos/${id}?ok=${encodeURIComponent(MSG_SALVO[secao])}`);
   });
 
+  // Turmas deste curso: todas, das próximas para as mais antigas concluídas, com atalho para a nova.
+  router.get(`/cursos/:id(${ID})/turmas`, gerenciar, async (req, res) => {
+    const curso = await carregarCurso(req.params.id);
+    if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso não encontrado.' });
+    const { FORA_DO_PRESENCIAL } = require('../lib/turma-online');
+    const turmas = await prisma.turma.findMany({
+      where: { cursoId: curso.id, status: { notIn: FORA_DO_PRESENCIAL } },
+      orderBy: { inicioPrevisto: 'desc' }, take: 60,
+      include: {
+        aulas: { orderBy: { data: 'asc' }, select: { data: true, horario: true } },
+        _count: { select: { matriculas: { where: { taxaConfirmada: true, statusPagamento: { in: ['PAGO', 'PARCELADO', 'PENDENTE'] } } } } },
+      },
+    });
+    res.render('admin/curso-turmas', { curso, turmas });
+  });
+
   // ---- Dúvidas frequentes: cada ação grava na hora e volta para a seção ----
   const voltaDuvidas = (id, erro) => `/cursos/${id}/duvidas${erro ? `?erro=${encodeURIComponent(erro)}` : ''}`;
 

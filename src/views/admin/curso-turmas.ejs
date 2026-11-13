@@ -1,0 +1,33 @@
+<%# Seção Turmas deste curso (telas novas, 2026-11-13). %>
+<%- include('head', { titulo: 'Turmas deste curso' }) %>
+<%- include('header', { ativo: 'cursos' }) %>
+<% var c = curso; var dia = function (d) { return d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—'; }; %>
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Turmas deste curso</h1>
+  <a href="/cursos/<%= c.id %>" class="adm-link">← Voltar ao curso</a>
+</div>
+<p class="adm-sub-titulo"><%= c.nome %></p>
+<div class="adm-box">
+  <% if (!turmas.length) { %>
+    <p class="adm-vazio">Nenhuma turma deste curso ainda.</p>
+  <% } else { %>
+    <table class="adm-table adm-table-cards">
+      <thead><tr><th>Início</th><th>Aulas</th><th>Vagas</th><th>Situação</th><th></th></tr></thead>
+      <tbody>
+        <% turmas.forEach(function (t) { %>
+          <tr>
+            <td><strong><%= dia(t.inicioPrevisto) %></strong></td>
+            <td><%= t.aulas.length ? t.aulas.length + (t.aulas.length === 1 ? ' aula' : ' aulas') + ' · ' + t.aulas[0].horario : 'sem aulas cadastradas' %></td>
+            <td><%= t._count.matriculas %> de <%= t.vagas %></td>
+            <td><span class="badge st-<%= t.status.toLowerCase() %>"><%= rotuloTurma(t.status) %></span></td>
+            <td class="adm-acoes"><% if (pode('turmas:gerenciar')) { %><a href="/turmas/<%= t.id %>/editar" class="adm-pend-btn"><i class="fa-solid fa-pen"></i> Editar</a><% } %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+<% if (pode('turmas:gerenciar')) { %>
+  <p><a href="/turmas/nova?curso=<%= c.id %>" class="adm-btn"><i class="fa-solid fa-plus"></i> Nova turma deste curso</a></p>
+<% } %>
+<%- include('foot') %>

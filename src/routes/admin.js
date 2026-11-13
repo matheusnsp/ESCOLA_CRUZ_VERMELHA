@@ -852,12 +852,23 @@ router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), as
   cursos.splice(0, cursos.length, ...visiveis);
   const total = totalComOnline - (await require('../lib/ead-curso-online').idsSoOnline()).size;
 
-  // O que o aluno paga de verdade (à vista e parcelado com os juros do cartão), igual ao checkout.
-  const cfgMatricula = await lerConfigMatricula();
-  await Promise.all(cursos.map(async (c) => { c.valores = await simularValores(c, cfgMatricula); }));
+  // "Falta" de cada curso (telas novas, 2026-11-13): foto, texto completo, conteúdo do certificado, dúvidas.
+  await extras.anexar('curso', cursos);
+  const faqsPorCurso = Object.fromEntries((await prisma.faqCurso.groupBy({ by: ['cursoId'], where: { cursoId: { in: cursos.map((c) => c.id) } }, _count: { _all: true } })).map((g) => [g.cursoId, g._count._all]));
+  const { faltasCurso } = require('../lib/curso-secoes');
+  cursos.forEach((c) => { c.faltas = faltasCurso({ ...c, totalFaqs: faqsPorCurso[c.id] || 0 }); });
+  // Contagens dos filtros (Todos / No site / Fora do site), sem os cursos só online e respeitando a busca.
+  const doFiltro = busca ? { nome: { contains: busca, mode: 'insensitive' } } : {};
+  const idsSoOnline = [...(await require('../lib/ead-curso-online').idsSoOnline())];
+  const semOnline = idsSoOnline.length ? { id: { notIn: idsSoOnline } } : {};
+  const [ativos, inativos] = await Promise.all([
+    prisma.curso.count({ where: { ...doFiltro, ...semOnline, ativo: true } }),
+    prisma.curso.count({ where: { ...doFiltro, ...semOnline, ativo: false } }),
+  ]);
 
   res.render('admin/cursos', {
     cursos,
+    contagem: { todos: ativos + inativos, ativos, inativos },
     total,
     busca,
     statusFiltro,
