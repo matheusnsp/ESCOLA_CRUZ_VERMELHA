@@ -1,5 +1,5 @@
 <%- include('head', { titulo: 'Certificados' }) %>
-<%- include('header', { ativo: 'turmas' }) %>
+<%- include('header', { ativo: 'certificados' }) %>
 <%
   const dia = (d) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
   const temNota = aprovados.some((m) => m.nota != null);
@@ -11,7 +11,7 @@
     <h1 class="adm-h1">Certificados</h1>
     <p class="adm-mut adm-bv-sub"><%= turma.curso.nome %> · <%= dia(turma.aulas[0] ? turma.aulas[0].data : turma.inicioPrevisto) %> · <%= rotuloTurma(turma.status) %></p>
   </div>
-  <a href="/turmas?aba=concluidas" class="adm-link"><i class="fa-solid fa-arrow-left"></i> Turmas</a>
+  <a href="/certificados" class="adm-link"><i class="fa-solid fa-arrow-left"></i> Certificados</a>
 </div>
 
 <% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>

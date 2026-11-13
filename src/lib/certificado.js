@@ -218,7 +218,28 @@ function pendencias(turma, alunos = []) {
   return p;
 }
 
+// Turmas para a lista "Imprimir por turma" da página Certificados (2026-11-13): em andamento (aberta/confirmada que
+// já começou) e concluídas (as 30 mais recentes, ou todas). Mesmas regras das abas da tela de Turmas.
+const LIMITE_CONCLUIDAS = 30;
+async function turmasParaImprimir({ todas = false } = {}) {
+  const agora = new Date();
+  const turmas = await prisma.turma.findMany({
+    where: { OR: [{ status: { in: ['ABERTA', 'CONFIRMADA'] }, inicioPrevisto: { lte: agora } }, { status: 'ENCERRADA' }] },
+    include: {
+      curso: { select: { nome: true } },
+      _count: { select: { matriculas: { where: { taxaConfirmada: true, statusPagamento: { in: ['PAGO', 'PARCELADO'] } } } } },
+    },
+    orderBy: { inicioPrevisto: 'desc' },
+  });
+  const linha = (t, situacao) => ({ id: t.id, curso: t.curso.nome, inicio: t.inicioPrevisto.toISOString(), situacao, alunos: t._count.matriculas });
+  const andamento = turmas.filter((t) => t.status !== 'ENCERRADA').reverse().map((t) => linha(t, 'andamento'));
+  const concluidas = turmas.filter((t) => t.status === 'ENCERRADA').map((t) => linha(t, 'concluida'));
+  const mostradas = todas ? concluidas : concluidas.slice(0, LIMITE_CONCLUIDAS);
+  return { lista: andamento.concat(mostradas), escondidas: concluidas.length - mostradas.length, todas };
+}
+
 module.exports = {
+  turmasParaImprimir,
   lerAjustes, salvarAjustes, numerar, anexarCertificados, dadosDoCertificado, pendencias, PADROES,
   reservarNumero, lerNumero, numerarEad, emitidoEm, portador, dataBr,
   escolhaDaTurma, escolhaDoCurso, assinaturasDaTurma, MAX_ASSINANTES, MAX_NO_CERTIFICADO,

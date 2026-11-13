@@ -2,10 +2,9 @@
 <%- include('header', { ativo: 'dev-usuarios' }) %>
 
 <div class="adm-h1-row">
-  <h1 class="adm-h1">Configurações</h1>
+  <h1 class="adm-h1">Usuários do painel</h1>
   <a href="/dev/usuarios/novo" class="adm-btn" data-criar><i class="fa-solid fa-plus"></i> Novo usuário</a>
 </div>
-<%- include('abas-config', { aba: 'usuarios' }) %>
 
 <% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
 <% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>

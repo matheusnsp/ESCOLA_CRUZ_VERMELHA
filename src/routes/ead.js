@@ -44,7 +44,12 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
   });
 
   // Tudo do EAD: só DEV, e o menu do painel no modo Online.
-  router.use('/ead', requireDev, (req, res, next) => { res.locals.modoPainel = 'online'; res.locals.cssExtra = CSS; next(); });
+  // 2026-11-13: Cupons também está no menu Presencial (Financeiro ▸ Cupons): ali ele segue o modo escolhido em vez de pular para o Online.
+  router.use('/ead', requireDev, (req, res, next) => {
+    res.locals.modoPainel = req.path.startsWith('/cupons') ? (req.session && req.session.modoPainel === 'online' ? 'online' : 'presencial') : 'online';
+    res.locals.cssExtra = CSS;
+    next();
+  });
   // Número de dúvidas aguardando resposta, para o menu do modo Online (etapa 5). Falhar não derruba a página.
   router.use('/ead', (req, res, next) => {
     if (req.method !== 'GET') return next();

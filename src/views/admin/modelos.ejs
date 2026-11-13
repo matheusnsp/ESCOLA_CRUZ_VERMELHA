@@ -3,14 +3,41 @@
 
 <div class="adm-h1-row">
   <h1 class="adm-h1">Mensagem de boas-vindas</h1>
-  <a href="<%= voltar %>" class="adm-link"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
+  <% if (voltar) { %><a href="<%= voltar %>" class="adm-link"><i class="fa-solid fa-arrow-left"></i> Voltar à turma</a><% } %>
 </div>
 
 <% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
 
+<%# Envio por turma (2026-11-13): tudo de boas-vindas num lugar só; o botão saiu da tela de Turmas. %>
+<% var _envio = typeof turmasEnvio !== 'undefined' ? turmasEnvio : []; var _dia = function (d) { var x = new Date(d), p = function (n) { return String(n).padStart(2, '0'); }; return p(x.getUTCDate()) + '/' + p(x.getUTCMonth() + 1) + '/' + x.getUTCFullYear(); }; %>
+<section class="adm-box adm-bv-envio-lista" id="envio-turmas">
+  <div class="adm-box-head"><h2 class="adm-h2"><i class="fa-solid fa-paper-plane"></i> Envio por turma</h2></div>
+  <% if (!_envio.length) { %>
+    <p class="adm-mut adm-bv-cursos-dica">Nenhuma turma aberta ou confirmada em andamento.</p>
+  <% } else { %>
+  <table class="adm-table adm-table-cards">
+    <thead><tr><th>Turma</th><th>Início</th><th>Envio</th><th></th></tr></thead>
+    <tbody>
+      <% _envio.forEach(function (t) { %>
+        <tr>
+          <td><b><%= t.curso %></b></td>
+          <td><%= _dia(t.inicio) %></td>
+          <td><span class="adm-bv-tag<%= t.recebem && t.receberam === t.recebem ? ' proprio' : '' %>"><%=
+            !t.recebem ? 'Ninguém com pagamento ok ainda'
+            : t.receberam === t.recebem ? 'Todos os ' + t.recebem + ' receberam'
+            : !t.liberadaEm && !t.receberam ? 'Ainda não liberado · ' + t.recebem + ' com pagamento ok'
+            : t.receberam + ' de ' + t.recebem + ' receberam' %></span></td>
+          <td class="adm-bv-acoes"><a href="/turmas/<%= t.id %>/boas-vindas" class="adm-link">Abrir envio</a></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% } %>
+</section>
+
 <form method="POST" action="/modelos" class="adm-form adm-box">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-  <input type="hidden" name="voltar" value="<%= voltar %>">
+  <% if (voltar) { %><input type="hidden" name="voltar" value="<%= voltar %>"><% } %>
 
   <h2 class="adm-form-secao full"><i class="fa-solid fa-envelope-open-text"></i> Mensagem de boas-vindas (padrão de todas as turmas)</h2>
   <label class="full">
@@ -29,11 +56,10 @@
     <textarea name="local" rows="2"><%= modelo.local %></textarea>
   </label>
 
-  <p class="full adm-hint">Quem assina os certificados, a assinatura escaneada e o livro em uso ficam na aba <a href="/certificados">Certificados</a>.</p>
 
   <div class="full adm-form-rodape">
     <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
-    <a href="<%= voltar %>" class="adm-link">Cancelar</a>
+    <% if (voltar) { %><a href="<%= voltar %>" class="adm-link">Cancelar</a><% } %>
   </div>
 </form>
 

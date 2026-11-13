@@ -123,6 +123,27 @@ function turmaEmCurso(turma) {
   return fim >= hoje.getTime() && ['ABERTA', 'CONFIRMADA'].includes(turma.status);
 }
 
+// Turmas em andamento para a lista "Envio por turma" da página Mensagem de boas-vindas (2026-11-13):
+// [{ id, curso, inicio, recebem (pagamento ok), receberam, liberadaEm }], da que começa primeiro para a última.
+async function turmasParaEnvio() {
+  const turmas = await prisma.turma.findMany({
+    where: { status: { in: ['ABERTA', 'CONFIRMADA'] } },
+    include: { curso: { select: { nome: true } }, aulas: { select: { data: true } }, matriculas: { where: FILTRO_ALUNO_OK, select: { id: true } } },
+  });
+  const emCurso = turmas.filter(turmaEmCurso);
+  await extras.anexar('turma', emCurso);
+  const envios = await enviadosEm(emCurso.flatMap((t) => t.matriculas.map((m) => m.id)));
+  return emCurso.map((t) => {
+    const datas = t.aulas.map((a) => new Date(a.data).getTime());
+    return {
+      id: t.id, curso: t.curso.nome,
+      inicio: new Date(datas.length ? Math.min(...datas) : new Date(t.inicioPrevisto).getTime()).toISOString(),
+      recebem: t.matriculas.length, receberam: t.matriculas.filter((m) => envios[m.id]).length,
+      liberadaEm: t.boasVindasEnviadaEm || null,
+    };
+  }).sort((a, b) => new Date(a.inicio) - new Date(b.inicio));
+}
+
 // Quem já recebeu: um registro no LogAuditoria com id fixo por matrícula ("boasvindas-<id>").
 // Criar esse registro é a "reserva" do envio: se dois serviços do Render tentarem ao mesmo tempo,
 // o segundo falha no id repetido e não manda de novo. Nenhuma coluna nova no banco.
@@ -237,6 +258,6 @@ async function anexarTextosCursos(turmas) {
 }
 
 module.exports = {
-  PADROES, lerModelo, salvarModelo, montarTexto, lerTextosCursos, salvarTextoCurso, anexarTextosCursos, textoParaHtml, assunto, turmaEmCurso,
+  PADROES, lerModelo, salvarModelo, montarTexto, turmasParaEnvio, lerTextosCursos, salvarTextoCurso, anexarTextosCursos, textoParaHtml, assunto, turmaEmCurso,
   FILTRO_ALUNO_OK, enviarTurma, enviarPendentes, anexarEnvios,
 };
