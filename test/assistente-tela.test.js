@@ -285,6 +285,40 @@ describe('tela do assistente', { skip: chromium ? false : 'sem Playwright' }, ()
     await c.close();
   });
 
+  test('textos + dados do mesmo curso viram UM cartão só, e "Preencher na tela" preenche tudo', async () => {
+    respostas = [[
+      { tipo: 'preencher', formulario: 'curso', campos: { descricao: 'Resumo da IA.', faqs: [{ pergunta: 'P?', resposta: 'R.' }] } },
+      { tipo: 'preencher', formulario: 'curso', campos: { nome: 'Curso Junto', cargaHoraria: '8', precoAvista: '180.00' } },
+      { tipo: 'resposta', texto: 'Preparei.' }, { tipo: 'fim' }]];
+    const p = await abrir('/cursos/novo', '', 'cursos');
+    await p.click('#admAssistBtn'); await p.fill('.adm-assist-form textarea', 'cria o curso'); await p.keyboard.press('Enter');
+    await p.waitForSelector('.adm-assist-ia:not(.escrevendo)');
+    assert.equal(await p.$$eval('.adm-assist-cartao', (l) => l.length), 1);
+    await p.click('.adm-assist-preencher');
+    assert.equal(await p.inputValue('[name=nome]'), 'Curso Junto');
+    assert.equal(await p.inputValue('[name=descricao]'), 'Resumo da IA.');
+    assert.equal(await p.inputValue('[name="faqsIa[0][pergunta]"]'), 'P?');
+    await p.context().close();
+  });
+
+  test('textos falam o nome real do botão: Criar curso (novo) e Salvar alterações (edição)', async () => {
+    respostas = [[{ tipo: 'preencher', formulario: 'curso', campos: { nome: 'Curso Botão' } }, { tipo: 'resposta', texto: 'Ok.' }, { tipo: 'fim' }]];
+    const p = await abrir('/cursos/novo', '', 'cursos');
+    await p.click('#admAssistBtn'); await p.fill('.adm-assist-form textarea', 'cria'); await p.keyboard.press('Enter');
+    await p.waitForSelector('.adm-assist-cartao');
+    assert.match(await p.textContent('.adm-assist-cartao-acoes small'), /Criar curso/);
+    await p.click('.adm-assist-preencher');
+    assert.match(await p.textContent('.adm-assist-nota'), /clique em Criar curso/);
+    await p.context().close();
+    const id = '11111111-2222-3333-4444-555555555555';
+    respostas = [[{ tipo: 'preencher', formulario: 'turma', campos: { vagas: '20' }, editar: { id, caminho: `/turmas/${id}/editar`, nome: 'Turma X' } }, { tipo: 'resposta', texto: 'Ok.' }, { tipo: 'fim' }]];
+    const q = await abrir('/pendentes', '', 'pendentes');
+    await q.click('#admAssistBtn'); await q.fill('.adm-assist-form textarea', 'muda'); await q.keyboard.press('Enter');
+    await q.waitForSelector('.adm-assist-cartao');
+    assert.match(await q.textContent('.adm-assist-cartao-acoes small'), /Salvar alterações/);
+    await q.context().close();
+  });
+
   test('erro vira mensagem amigável', async () => {
     respostas = [[{ tipo: 'erro', mensagem: 'O assistente está fora do ar agora. Tente de novo em instantes.' }, { tipo: 'fim' }]];
     const p = await abrir('/pendentes', '', 'pendentes');
