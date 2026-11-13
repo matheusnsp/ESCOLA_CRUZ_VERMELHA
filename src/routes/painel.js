@@ -139,7 +139,7 @@ router.post('/conta/comprovante-saude', requireLogin, comprovanteSaude.receber('
 
 // Área do aluno — painel único com seções (inscricoes | dados | seguranca | excluir).
 router.get('/minha-conta', requireLogin, async (req, res) => {
-  const secValidas = ['inscricoes', 'online', 'ebooks', 'dados', 'seguranca', 'excluir'];
+  const secValidas = ['inscricoes', 'online', 'ebooks', 'webinarios', 'dados', 'seguranca', 'excluir'];
   const sec = secValidas.includes(req.query.sec) ? req.query.sec : 'inscricoes';
 
   const usuario = await prisma.usuario.findUnique({ where: { id: req.session.usuarioId } });
@@ -162,9 +162,10 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
   const matriculasComRetomada = matriculas.map((m) => ({ ...m, retomada: calcularRetomada(m) }));
 
   // As quatro leituras não dependem uma da outra: em paralelo (eram 4 idas ao banco em sequência).
-  const [cursosOnline, ebooks, saude, avisosTurma] = await Promise.all([
+  const [cursosOnline, ebooks, webinarios, saude, avisosTurma] = await Promise.all([
     require('../lib/ead-meus-cursos').meusCursosOnline(usuario.id).catch((e) => { console.error('[Minha conta] cursos online:', e.message); return []; }),
     require('../lib/ebook').meus(usuario.id).catch((e) => { console.error('[Minha conta] e-books:', e.message); return []; }),
+    require('../lib/webinario').meus(usuario.id).catch((e) => { console.error('[Minha conta] webinários:', e.message); return []; }),
     saudeDaConta(usuario.id, matriculas, req.query),
     avisosDeBoasVindas(matriculas),
   ]);
@@ -177,6 +178,7 @@ router.get('/minha-conta', requireLogin, async (req, res) => {
     urlOnline: require('../lib/vitrine').urlOnline,
     cursosOnline,
     ebooks,
+    webinarios,
     vitrine: require('../lib/vitrine'),
     saude,
     avisosTurma,

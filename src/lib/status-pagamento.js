@@ -60,6 +60,8 @@ async function avisarMatriculaConfirmada(matriculaId) {
     // Curso online (turma ONLINE): no lugar do e-mail da turma presencial, o de curso liberado, com o
     // link do curso. (Lido na hora do envio: os testes trocam a função por um espião.)
     if (m.turma.status === 'ONLINE') {
+      // Webinário (2026-11-13): cria a inscrição (guia os lembretes) e manda a confirmação do webinário.
+      if (await require('./webinario-avisos').inscricaoPaga(m.id)) return;
       // E-book (2026-11-09): o curso escondido do e-book manda o aviso de e-book, com o link para baixar.
       if (await prisma.ebook.count({ where: { cursoId: m.turma.cursoId } })) {
         await require('./email').enviarEbookLiberado(m.aluno.email, String(m.aluno.nome).split(' ')[0], {

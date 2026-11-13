@@ -1,0 +1,29 @@
+<%# Fileira "Webinários" da vitrine da Escola Digital (2026-11-13). Espera: webinarios (lib/webinario.js daVitrine), vitrine. Sem webinário, nada. Nunca mostra vagas. %>
+<% if (webinarios && webinarios.length) { %>
+<section class="ed-sec" id="webinarios">
+  <div class="v-wrap">
+    <div class="ed-h"><div><p class="ed-kicker">Palestras ao vivo e gravadas</p><h2>Webinários<span>.</span></h2></div></div>
+    <div class="ed-carrossel">
+      <button type="button" class="ed-seta ed-seta-ant" aria-label="Voltar" hidden><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
+      <ul class="ed-linha">
+        <% webinarios.forEach(function (w) { %>
+        <li class="ed-card">
+          <a href="<%= vitrine.urlWebinario(w.curso) %>" class="ed-card-link">
+            <span class="ed-capa<%= w.curso.imagemUrl ? '' : ' ed-capa-sem' %>">
+              <% if (w.curso.imagemUrl) { %><img src="<%= w.curso.imagemUrl %>" alt="" loading="lazy"><% } else { %><i class="fa-solid fa-video" aria-hidden="true"></i><% } %>
+              <% if (w.inscrito) { %><span class="ed-selo">Você está inscrito</span><% } else if (w.gratuito) { %><span class="ed-selo ed-selo-gratis">Grátis</span><% } %>
+            </span>
+            <span class="ed-card-corpo">
+              <b class="ed-card-nome"><%= w.curso.nome %></b>
+              <span class="ed-card-info"><i class="fa-solid <%= w.quando ? 'fa-tower-broadcast' : 'fa-circle-play' %>" aria-hidden="true"></i> <%= w.quando ? 'Ao vivo · ' + w.quando : 'Gravado' %></span>
+              <span class="ed-card-preco"><b><%= w.gratuito ? 'Grátis' : vitrine.reais(Number(w.precoOnline)) %></b></span>
+            </span>
+          </a>
+        </li>
+        <% }) %>
+      </ul>
+      <button type="button" class="ed-seta ed-seta-prox" aria-label="Avançar" hidden><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+    </div>
+  </div>
+</section>
+<% } %>

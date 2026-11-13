@@ -37,7 +37,7 @@ test('DEV online: grupos, Vendas aberto e selo de dúvidas no item e no grupo', 
   assert.deepEqual(co.itens.map((i) => i.rotulo), ['Cursos', 'Criar curso com IA', 'Dúvidas dos alunos']);
   assert.equal(co.itens[2].selo, 3);
   assert.equal(co.selo, 3);
-  assert.deepEqual(g(m, 'Conteúdos').itens.map((i) => i.href), ['/ead/ebooks']);
+  assert.deepEqual(g(m, 'Conteúdos').itens.map((i) => i.href), ['/ead/ebooks', '/ead/webinarios']);
 });
 
 test('Secretaria: só o que tem permissão; grupo sem item some', () => {

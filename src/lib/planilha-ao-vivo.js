@@ -253,7 +253,7 @@ async function tabelaAlunos() {
 async function tabelaCursos() {
   const [cursos, ultimaAula] = await Promise.all([
     prisma.curso.findMany({
-      where: { ebook: null }, // o curso escondido do e-book não é curso (2026-11-09)
+      where: { ebook: null, webinario: null }, // o curso escondido do e-book/webinário não é curso
       orderBy: { nome: 'asc' },
       include: {
         turmas: {

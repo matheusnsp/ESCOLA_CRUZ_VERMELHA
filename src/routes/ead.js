@@ -105,7 +105,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
       const mods = await contagensDosModulos(co.id);
       lista.push({ ...co, nModulos: mods.length, nValidados: mods.filter((m) => m.status === 'VALIDADO').length, nPerguntas: mods.reduce((s, m) => s + m.nPerguntas, 0) });
     }
-    const semEad = await prisma.curso.findMany({ where: { online: null, ebook: null }, select: { id: true, nome: true, ativo: true }, orderBy: { nome: 'asc' } });
+    const semEad = await prisma.curso.findMany({ where: { online: null, ebook: null, webinario: null }, select: { id: true, nome: true, ativo: true }, orderBy: { nome: 'asc' } });
     // Vitrine (2026-11-09): os publicados na ordem do site, para o destaque e o ↑ ↓.
     const vitrinePublicados = await publicadosNaOrdem();
     res.render('admin/ead/cursos', {
@@ -710,7 +710,7 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
   });
   const valoresDoCupom = (c) => ({
     codigo: c.codigo, tipo: c.tipo, valor: Number(c.valor).toLocaleString('pt-BR', { maximumFractionDigits: 2 }), cursoOnlineId: c.cursoOnlineId || '',
-    alvo: c.ebookId ? `ebook:${c.ebookId}` : c.cursoOnlineId ? `curso:${c.cursoOnlineId}` : c.cursoId ? `presencial:${c.cursoId}` : c.todosPresenciais ? 'presenciais' : c.valeTudo ? 'tudo' : '',
+    alvo: c.ebookId ? `ebook:${c.ebookId}` : c.webinarioId ? `webinario:${c.webinarioId}` : c.cursoOnlineId ? `curso:${c.cursoOnlineId}` : c.cursoId ? `presencial:${c.cursoId}` : c.todosPresenciais ? 'presenciais' : c.valeTudo ? 'tudo' : '',
     validoAte: c.validoAte ? new Date(c.validoAte).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }) : '',
     limiteUsos: c.limiteUsos === null ? '' : String(c.limiteUsos), observacao: c.observacao || '',
   });
@@ -723,9 +723,10 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
 
   async function formCupom(res, { cupom = null, valores = {}, erro = null, compras = [], status = 200, ok = null } = {}) {
     const ebooks = await prisma.ebook.findMany({ select: { id: true, curso: { select: { nome: true } } }, orderBy: { criadoEm: 'asc' } });
+    const webinarios = await prisma.webinario.findMany({ select: { id: true, curso: { select: { nome: true } } }, orderBy: { criadoEm: 'asc' } });
     // Presencial (2026-11-09): os cursos do presencial (sem os só online e os de e-book).
     const presenciais = await cursoSoOnline.semSoOnline(await prisma.curso.findMany({ select: { id: true, nome: true, ativo: true }, orderBy: { nome: 'asc' } }));
-    res.status(status).render('admin/ead/cupom-form', { cupom, valores, erro, ok, compras, cursos: await cursosDoForm(), ebooks, presenciais, usos: cupom ? await cupons.usosDoCupom(cupom.id) : 0 });
+    res.status(status).render('admin/ead/cupom-form', { cupom, valores, erro, ok, compras, cursos: await cursosDoForm(), ebooks, webinarios, presenciais, usos: cupom ? await cupons.usosDoCupom(cupom.id) : 0 });
   }
   router.get('/ead/cupons/novo', async (req, res) => formCupom(res, { valores: { tipo: 'PERCENTUAL' } }));
   router.post('/ead/cupons/novo', async (req, res) => {

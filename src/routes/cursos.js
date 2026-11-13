@@ -303,7 +303,8 @@ router.get('/escola-digital', (req, res, next) => (async () => {
   const usuario = req.session && req.session.usuarioId ? { id: req.session.usuarioId, papel: req.session.papel } : null;
   const v = await require('../lib/escola-digital-vitrine').montarVitrine(lista, usuario);
   const ebooks = await require('../lib/ebook').daVitrine(); // e-books (2026-11-09): fileira própria, sem cache
-  res.render('escola-digital', { ...v, ebooks, vitrine });
+  const webinarios = await require('../lib/webinario').daVitrine(new Date(), usuario && usuario.papel === 'ALUNO' ? usuario.id : null); // 2026-11-13
+  res.render('escola-digital', { ...v, ebooks, webinarios, vitrine });
 })().catch(next));
 
 router.get('/cursos', async (req, res) => {
@@ -474,7 +475,7 @@ router.get('/compartilhar/curso/:id.jpg', (req, res, next) => (async () => {
 // 1 dia: se o curso mudar de nome, o navegador não fica preso no endereço velho.
 async function idPeloEndereco(res, endereco) {
   const mapa = await catalogo(res, 'enderecos-cursos', async () => {
-    const lista = await prisma.curso.findMany({ where: { ebook: null }, select: { id: true, nome: true, ativo: true }, orderBy: { criadoEm: 'asc' } });
+    const lista = await prisma.curso.findMany({ where: { ebook: null, webinario: null }, select: { id: true, nome: true, ativo: true }, orderBy: { criadoEm: 'asc' } });
     const m = {};
     // dois cursos com o mesmo nome: fica o ativo (e, entre iguais, o mais antigo)
     for (const c of lista) { const k = vitrine.slugCurso(c.nome); if (!m[k] || (!m[k].ativo && c.ativo)) m[k] = c; }
@@ -1213,7 +1214,7 @@ router.get('/inscricao/retorno', requireLogin, async (req, res) => {
     ? await prisma.matricula.findFirst({
         where: { id: matriculaId, alunoId: req.session.usuarioId },
         include: {
-          turma: { include: { curso: { include: { ebook: { select: { id: true } } } } } },
+          turma: { include: { curso: { include: { ebook: { select: { id: true } }, webinario: { select: { id: true } } } } } },
           pagamentos: { orderBy: { criadoEm: 'desc' }, take: 1 },
         },
       })
@@ -1298,6 +1299,8 @@ async function maxParcelasOnline(turma) {
   // E-book (2026-11-09, revisão I2): o curso escondido do e-book tem as parcelas no Ebook.
   const ebook = await prisma.ebook.findUnique({ where: { cursoId: turma.cursoId }, select: { maxParcelas: true } });
   if (ebook) return Math.min(Math.max(Number(ebook.maxParcelas) || 1, 1), 12);
+  const webinario = await prisma.webinario.findUnique({ where: { cursoId: turma.cursoId }, select: { maxParcelas: true } }); // 2026-11-13
+  if (webinario) return Math.min(Math.max(Number(webinario.maxParcelas) || 1, 1), 12);
   const co = await prisma.cursoOnline.findUnique({ where: { cursoId: turma.cursoId }, select: { maxParcelas: true } });
   return Math.min(Math.max(Number(co && co.maxParcelas) || 1, 1), 12);
 }

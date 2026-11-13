@@ -335,7 +335,7 @@ siteAluno.use((req, res, next) => {
   if (guardado) { res.locals.contaLinks = guardado; return next(); }
   Promise.all([
     // A compra de e-book também é matrícula na turma ONLINE: não conta como curso online.
-    prisma.alunoCursoEad.count({ where: { usuarioId: id } }).then((n) => n || prisma.matricula.count({ where: { alunoId: id, turma: { status: 'ONLINE', curso: { ebook: null } } } })).catch(() => 0),
+    prisma.alunoCursoEad.count({ where: { usuarioId: id } }).then((n) => n || prisma.matricula.count({ where: { alunoId: id, turma: { status: 'ONLINE', curso: { ebook: null, webinario: null } } } })).catch(() => 0),
     prisma.gestorEscolaEad.count({ where: { usuarioId: id } }).catch(() => 0),
     // E-books (2026-11-09): o grátis já baixado ou o pago.
     prisma.acessoEbook.count({ where: { usuarioId: id } }).then((n) => n || prisma.matricula.count({ where: { alunoId: id, statusPagamento: { in: ['PAGO', 'PARCELADO'] }, turma: { status: 'ONLINE', curso: { ebook: { isNot: null } } } } })).catch(() => 0),
@@ -346,6 +346,7 @@ siteAluno.use((req, res, next) => {
   }, () => next());
 });
 siteAluno.use(require('./routes/ebooks')); // e-books da Escola Digital (2026-11-09), antes de /escola-digital/<curso>
+siteAluno.use(require('./routes/webinarios')); // webinários da Escola Digital (2026-11-13), antes de /escola-digital/<curso>
 siteAluno.use(require('./routes/ead-online'));
 // Etapa 6: Minha escola (gestor) e o convite do lote; também marca o atalho na Minha conta.
 siteAluno.use(require('./routes/ead-escola'));
@@ -399,6 +400,7 @@ setInterval(concluirTurmasPassadas, 60 * 60 * 1000).unref();
 // Lembretes de "falta pagar o curso" para quem pagou só a taxa (lib/lembretes.js): 1 h depois,
 // 3 dias antes e na véspera. Cada um sai uma vez por aluno, mesmo com os 3 serviços rodando.
 require('./lib/lembretes').agendarLembretes(30);
+require('./lib/webinario-lembretes').agendarLembretesWebinario(10); // webinários: lembretes 24 h e 1 h antes (2026-11-13)
 // Boas-vindas de quem pagou depois de a secretaria liberar a mensagem da turma (lib/boas-vindas.js).
 setInterval(() => require('./lib/boas-vindas').enviarPendentes(), 15 * 60 * 1000).unref();
 // Pesquisa de satisfação: e-mail logo depois da última aula de cada turma (lib/pesquisa.js).

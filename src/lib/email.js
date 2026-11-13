@@ -93,7 +93,8 @@ function espelharNoTerminal(email, subject, descricaoDev, link) {
   console.log(`+${barra}\n`);
 }
 
-async function enviar(email, subject, html, descricaoDev, link) {
+// anexos (opcional): [{ filename, content }] — ex.: o .ics do webinário.
+async function enviar(email, subject, html, descricaoDev, link, anexos) {
   // Conta excluída e anonimizada (lib/excluir-conta.js): endereço .invalid, nunca entrega.
   if (/@excluida\.invalid$/i.test(String(email || ''))) return;
   // Espelha SEMPRE, e antes de tentar entregar: se o Resend recusar, o dado
@@ -107,7 +108,7 @@ async function enviar(email, subject, html, descricaoDev, link) {
   // Precisamos checar o `error` explicitamente.
   let resposta;
   try {
-    resposta = await resend.emails.send({ from: REMETENTE, to: email, subject, html });
+    resposta = await resend.emails.send({ from: REMETENTE, to: email, subject, html, ...(anexos && anexos.length ? { attachments: anexos } : {}) });
   } catch (e) {
     console.error(`[EMAIL] Erro de rede ao enviar para ${email}:`, e.message);
     return;
@@ -647,6 +648,47 @@ async function enviarEbookLiberado(email, nome, { ebook, link }) {
   await enviar(email, `Seu e-book está liberado: ${limpo(ebook)}`, html, `E-book liberado (${ebook})`, link);
 }
 
+// Webinário (2026-11-13): presença confirmada pela palavra-código -> certificado de participação.
+async function enviarCertificadoWebinarPronto(email, nome, { webinario, link }) {
+  const limpo = (t) => String(t || '').replace(/[<>&"]/g, '');
+  const html = moldura('Seu certificado está pronto', limpo(nome),
+    `Obrigado por participar do webinário <strong>${limpo(webinario)}</strong>. O seu certificado de participação já está disponível, com o código de verificação da Cruz Vermelha Brasileira – RJ.`,
+    'Ver meu certificado', link, 'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.');
+  await enviar(email, `Seu certificado está pronto: ${limpo(webinario)}`, html, `Certificado webinário (${webinario})`, link);
+}
+
+// Webinários (2026-11-13; spec §5). Os e-mails levam o link da PÁGINA do webinário, nunca o da transmissão.
+const RODAPE_ESCOLA = 'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.';
+const limpaW = (t) => String(t || '').replace(/[<>&"]/g, '');
+const anexoIcs = (ics) => (ics ? [{ filename: 'webinario.ics', content: Buffer.from(ics).toString('base64') }] : undefined);
+// quando: "20/11/2026 às 19h" (ou null, só gravado)
+async function enviarWebinarConfirmado(email, nome, { webinario, quando, link, ics }) {
+  const texto = quando
+    ? `Sua inscrição no webinário <strong>${limpaW(webinario)}</strong> está confirmada. Ele será no dia <strong>${limpaW(quando)}</strong> (horário de Brasília). No dia, entre com o seu login na página do webinário: o botão da transmissão aparece 30 minutos antes. O convite para a sua agenda vai em anexo.`
+    : `Sua inscrição no webinário <strong>${limpaW(webinario)}</strong> está confirmada. A gravação já está disponível: entre com o seu login na página do webinário para assistir.`;
+  const html = moldura('Inscrição confirmada', limpaW(nome), texto, 'Abrir a página do webinário', link, RODAPE_ESCOLA);
+  await enviar(email, `Inscrição confirmada: ${limpaW(webinario)}`, html, `Webinário confirmado (${webinario})`, link, anexoIcs(ics));
+}
+async function enviarWebinarLembrete(email, nome, { webinario, quando, link, falta }) {
+  const titulo = falta === '1h' ? 'O webinário começa em 1 hora' : 'O webinário é amanhã';
+  const html = moldura(titulo, limpaW(nome),
+    `Lembrete: o webinário <strong>${limpaW(webinario)}</strong> será ${falta === '1h' ? 'daqui a 1 hora' : 'amanhã'}, <strong>${limpaW(quando)}</strong> (horário de Brasília). Entre com o seu login na página do webinário: o botão da transmissão aparece 30 minutos antes.`,
+    'Abrir a página do webinário', link, RODAPE_ESCOLA);
+  await enviar(email, `${titulo}: ${limpaW(webinario)}`, html, `Lembrete webinário ${falta} (${webinario})`, link);
+}
+async function enviarWebinarNovoHorario(email, nome, { webinario, quando, link, ics }) {
+  const html = moldura('O webinário mudou de horário', limpaW(nome),
+    `O webinário <strong>${limpaW(webinario)}</strong> agora será <strong>${limpaW(quando)}</strong> (horário de Brasília). Sua inscrição continua valendo. O convite atualizado para a sua agenda vai em anexo.`,
+    'Abrir a página do webinário', link, RODAPE_ESCOLA);
+  await enviar(email, `Novo horário: ${limpaW(webinario)}`, html, `Webinário novo horário (${webinario})`, link, anexoIcs(ics));
+}
+async function enviarWebinarGravacao(email, nome, { webinario, link }) {
+  const html = moldura('A gravação já está disponível', limpaW(nome),
+    `A gravação do webinário <strong>${limpaW(webinario)}</strong> já está disponível. Entre com o seu login na página do webinário para assistir.`,
+    'Assistir à gravação', link, RODAPE_ESCOLA);
+  await enviar(email, `Gravação disponível: ${limpaW(webinario)}`, html, `Webinário gravação (${webinario})`, link);
+}
+
 // Etapa 5: a Escola respondeu a dúvida que o aluno mandou numa aula do curso online.
 async function enviarDuvidaRespondida(email, nome, { curso, tela, link }) {
   const limpo = (t) => String(t).replace(/[<>&"]/g, '');
@@ -700,6 +742,7 @@ async function enviarGestorEscola(email, nome, { escola, link, senhaInicial }) {
 }
 
 module.exports = {
+  enviarCertificadoWebinarPronto, enviarWebinarConfirmado, enviarWebinarLembrete, enviarWebinarNovoHorario, enviarWebinarGravacao,
   enviarVagaLiberada,
   enviarGestorEscola,
   enviarDuvidaRespondida,

@@ -18,7 +18,7 @@
     <div>
       <b>Seu certificado</b>
       <small>Para baixar em PDF: clique em "Baixar PDF" e escolha "Salvar como PDF". Use papel A4 deitado.</small>
-      <a href="<%= barraAluno.cartaoUrl %>">Baixar cartão de bolso</a> · <a href="<%= barraAluno.voltarUrl %>">Voltar ao curso</a>
+      <% if (barraAluno.cartaoUrl) { %><a href="<%= barraAluno.cartaoUrl %>">Baixar cartão de bolso</a> · <a href="<%= barraAluno.voltarUrl %>">Voltar ao curso</a><% } else { %><a href="<%= barraAluno.voltarUrl %>">Voltar</a><% } %>
     </div>
     <button type="button" id="certImprimir">Baixar PDF / imprimir</button>
   </header>
@@ -49,11 +49,14 @@
       </div>
 <% if (c.online) { %><% if (c.teste) { %>      <p class="cert-teste">TESTE — sem validade</p>
 <% } %>      <p class="cert-selo-online">CURSO ONLINE</p>
+<% } else if (c.webinario) { %>      <p class="cert-selo-online">WEBINÁRIO</p>
 <% } %>      <h1 class="cert-titulo">Certificado</h1>
       <p class="cert-nome"><%= c.nome %></p>
       <p class="cert-texto">
-        <%= c.portador %> do <b><%= c.documento ? c.documento.tipo + ' ' + c.documento.numero : 'documento ____________' %></b>, concluiu o
-<% if (c.online) { %>        <b>Curso Livre de <%= c.curso.toUpperCase() %></b>, na <b>modalidade a distância (100% online)</b>, ministrado pela
+        <%= c.portador %> do <b><%= c.documento ? c.documento.tipo + ' ' + c.documento.numero : 'documento ____________' %></b>,<%= c.webinario ? '' : ' concluiu o' %>
+<% if (c.webinario) { %>        participou do webinário <b><%= c.webinario.titulo.toUpperCase() %></b>, promovido pela Cruz Vermelha Brasileira – Filial Rio
+        de Janeiro, <%- c.webinario.data ? 'realizado em <b>' + c.webinario.data + '</b>' : 'na modalidade gravada' %>, com duração de <b><%= c.cargaHoraria %></b>.
+<% } else if (c.online) { %>        <b>Curso Livre de <%= c.curso.toUpperCase() %></b>, na <b>modalidade a distância (100% online)</b>, ministrado pela
         Cruz Vermelha Brasileira – Filial Rio de Janeiro, com carga horária de <%= c.cargaHoraria %>, <b><%= c.periodo.frase %></b>.
 <% } else { %>        <b>Curso Livre de <%= c.curso.toUpperCase() %></b>, ministrado pela Cruz Vermelha Brasileira – Filial Rio de Janeiro com
         carga horária de <%= c.cargaHoraria %> <%= c.periodo.frase %>.
@@ -62,7 +65,7 @@
       <p class="cert-local"><%= c.emitidoEm %></p>
 <% if (c.online) { %>      <p class="cert-ressalva">Capacitação teórica. Não inclui treinamento prático em manequim, oferecido nos cursos presenciais da Escola.</p>
 <% } -%>
-<%_ /* Online "sem assinatura" (painel → Modelos): só nome e cargo. Com assinatura: a imagem escaneada (se houver) e a linha. */ var _semLinha = c.online && c.assinaturaOnline === 'sem'; _%>
+<%_ /* Online "sem assinatura" (painel → Modelos): só nome e cargo. Com assinatura: a imagem escaneada (se houver) e a linha. Webinário segue a regra do online. */ var _semLinha = (c.online || c.webinario) && c.assinaturaOnline === 'sem'; _%>
       <div class="cert-assinaturas n<%= c.assinaturas.length %><%= _semLinha ? ' sem-linha' : '' %>">
         <% c.assinaturas.forEach(function (a) { %>
           <div>
@@ -101,12 +104,21 @@
       </header>
       <div class="cert-verso-corpo">
         <div class="cert-verso-dados">
+<% if (c.webinario) { -%>
+          <p class="cert-verso-curso">Webinário<br><b><%= c.webinario.titulo %></b></p>
+          <p>Promovido pela Cruz Vermelha Brasileira<br>Filial Rio de Janeiro</p>
+          <% if (c.webinario.apresentador) { %><p><b>Apresentação</b><br><%= c.webinario.apresentador %></p><% } %>
+          <p>Data: <%= c.webinario.data || 'Gravado' %><br>Duração: <%= c.cargaHoraria %></p>
+<% } else { -%>
           <p class="cert-verso-curso">Curso Livre<br><b><%= c.curso %></b></p>
           <p>Ministrado pela Cruz Vermelha Brasileira<br>Filial Rio de Janeiro</p>
           <p>Data: <%= c.periodo.curta %><br>Carga Horária: <%= c.cargaHoraria %></p>
+<% } -%>
           <p><b>Aluno</b><br><%= c.nome %><% if (c.documento) { %><br><%= c.documento.tipo %> <%= c.documento.numero %><% } %></p>
 <% if (c.online) { -%>
           <p><b>Modalidade</b><br>A distância (100% online)</p>
+<% } else if (c.webinario) { -%>
+          <p><b>Modalidade</b><br><%= c.webinario.gravado ? 'Online (gravado)' : 'Online (ao vivo)' %></p>
 <% } else { -%>
           <p><b>Instrutor</b><br><%= c.instrutorNome || '—' %></p>
 <% } -%>

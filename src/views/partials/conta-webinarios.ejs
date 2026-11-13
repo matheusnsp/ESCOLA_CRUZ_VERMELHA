@@ -1,0 +1,17 @@
+<%# "Minha conta → Webinários" (2026-11-13). Espera: webinarios (lib/webinario.js meus), vitrine. %>
+<% if (!webinarios.length) { %>
+  <div class="ct-vazio"><i class="fa-solid fa-video" aria-hidden="true"></i><p>Você ainda não se inscreveu em webinários.</p><a href="/escola-digital#webinarios">Ver webinários</a></div>
+<% } else { %>
+  <ul class="ct-ebooks">
+    <% webinarios.forEach(function (w) { var url = vitrine.urlWebinario(w.curso); %>
+      <li class="ct-ebook">
+        <% if (w.curso.imagemUrl) { %><img src="<%= w.curso.imagemUrl %>" alt="" loading="lazy"><% } else { %><span class="ct-ebook-sem"><i class="fa-solid fa-video" aria-hidden="true"></i></span><% } %>
+        <div>
+          <b><a href="<%= url %>"><%= w.curso.nome %></a></b>
+          <small><%= w.quando ? w.quando + ' (Brasília)' : 'Gravado' %></small>
+          <% if (w.temCertificado) { %><a class="ct-ebook-baixar" href="<%= url %>/certificado"><i class="fa-solid fa-award" aria-hidden="true"></i> Certificado</a><% } else { %><a class="ct-ebook-baixar" href="<%= url %>"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i> Abrir</a><% } %>
+        </div>
+      </li>
+    <% }) %>
+  </ul>
+<% } %>

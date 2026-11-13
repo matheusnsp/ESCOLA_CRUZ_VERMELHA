@@ -179,7 +179,7 @@ async function listarCursos({ termo }, ctx) {
   // Tela Cursos (cursos:gerenciar | painel:leitura) + quem monta formulário de curso/turma (precisa achar o curso).
   if (!pode(ctx, 'cursos:gerenciar', 'painel:leitura', 'cursos:criar', 'turmas:gerenciar')) return SEM_PERMISSAO;
   const { semSoOnline } = require('./ead-curso-online');
-  const cs = await semSoOnline(await prisma.curso.findMany({ where: { ebook: null }, orderBy: { nome: 'asc' }, select: { id: true, nome: true, cargaHoraria: true, ativo: true } }));
+  const cs = await semSoOnline(await prisma.curso.findMany({ where: { ebook: null, webinario: null }, orderBy: { nome: 'asc' }, select: { id: true, nome: true, cargaHoraria: true, ativo: true } }));
   const nt = normalizar(termo);
   return { cursos: cs.filter((c) => !nt || normalizar(c.nome).includes(nt) || pontuarNome(nt, c.nome) >= 0.6).slice(0, 30) };
 }
