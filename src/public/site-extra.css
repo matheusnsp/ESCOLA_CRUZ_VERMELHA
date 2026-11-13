@@ -2331,3 +2331,7 @@ body > section { flex: 1 0 auto; }
 .ct-ebook small { color: var(--tinta-60, #6b6b6b); }
 .ct-ebook-baixar { justify-self: start; margin-top: 4px; background: #d9081f; color: #fff; font-weight: 800; font-size: 13px; padding: 8px 14px; border-radius: 999px; text-decoration: none; }
 .ct-ebook-baixar:hover { background: #b80016; }
+
+/* Safari no celular (2026-11-13): campo com largura mínima própria passava da tela (Minha conta, Completar dados). */
+.ct-form > *, .ct-campo { min-width: 0; }
+.ct-campo input, .ct-campo select { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
