@@ -65,7 +65,7 @@ organizado em grupos e o painel bom em todas as telas, aplicado **igual em todas
   sobe a lista com todas as opções, contagens e ✓ na atual. Título da lista: "Mostrar" + o `aria-label` da `nav`
   (ex.: "Mostrar turmas"). Funciona com abas que são **links** (troca de página) e com as que são **botões** (o
   Financeiro filtra na própria página com JS: o clique na lista aciona o botão original). Itens marcados como
-  separados (`adm-aba-sep`, ex.: "Matrícula rápida" em Turmas) aparecem na lista depois de uma linha.
+  separados (`adm-aba-sep`, ex.: "Matrícula rápida" em Turmas) aparecem na lista depois de uma linha. Links que **baixam arquivo** (`.xlsx`, `.csv`, `.pdf`, ex.: "Excel" nas abas do curso online) também vão para depois da linha, como "Baixar planilha (Excel)" com o ícone de download, e nunca aparecem como "Mostrando".
 - **Botão de criar (até 620 px):** o botão marcado com `data-criar` vira o botão redondo (+) fixo no canto de baixo,
   à direita, sem cobrir o rodapé. Página com **mais de uma** ação de criar (Contas a pagar: Nova despesa, Pedido de
   compra, Reembolso): o (+) abre uma lista com as três.
@@ -75,7 +75,7 @@ organizado em grupos e o painel bom em todas as telas, aplicado **igual em todas
 
 ## 3. Boas-vindas por curso
 
-- Na página **Mensagem de boas-vindas** (`/modelos`), nova parte **"Texto por curso"**: escolher o curso (cursos
+- Na página **Mensagem de boas-vindas** (`/modelos`), nova parte **"Texto por curso"**, **abaixo** do texto padrão: escolher o curso (cursos
   presenciais ativos), escrever o texto dele, salvar. Mesmos campos automáticos ({CURSO}, {curso}, {data}, {hora},
   {local}, {doacao}). Apagar o texto e salvar = o curso volta a usar o padrão. A lista mostra quais cursos têm texto
   próprio (com "Editar" e "Voltar ao padrão").
