@@ -115,6 +115,13 @@
   }
 
   // ---------- abrir / fechar ----------
+  // Celular e tablet (toque ou até 1024 px): abrir NÃO dá foco ao campo. O foco abria o teclado e empurrava a tela;
+  // a pessoa toca no campo quando quiser escrever. No computador, o foco vai direto para o campo.
+  function telaDeToque() {
+    try { return window.matchMedia('(max-width: 1024px), (hover: none) and (pointer: coarse)').matches; } catch (e) { return false; }
+  }
+  function focarCampo() { if (!telaDeToque()) campo.focus(); }
+  painel.tabIndex = -1; // no toque, o foco fica no painel (leitor de tela anuncia o diálogo) sem abrir o teclado
   var quemAbriu = null;
   function abrir(origem) {
     quemAbriu = origem || botao;
@@ -122,7 +129,21 @@
     document.body.classList.add('adm-assist-aberto');
     [botao, botaoTopo].forEach(function (b) { if (b) b.setAttribute('aria-expanded', 'true'); });
     rolarFim();
-    campo.focus();
+    if (telaDeToque()) { try { painel.focus({ preventScroll: true }); } catch (e) { painel.focus(); } } else campo.focus();
+    ajustarAoTeclado();
+  }
+  // Teclado do celular: o painel acompanha a área visível (visualViewport), então o campo fica acima do teclado
+  // e a página por trás não é empurrada.
+  function ajustarAoTeclado() {
+    var vv = window.visualViewport;
+    if (!vv || painel.hidden || !window.matchMedia || !window.matchMedia('(max-width: 620px)').matches) { painel.style.top = ''; painel.style.height = ''; return; }
+    painel.style.top = vv.offsetTop + 'px';
+    painel.style.height = vv.height + 'px';
+    rolarFim();
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', ajustarAoTeclado);
+    window.visualViewport.addEventListener('scroll', ajustarAoTeclado);
   }
   function fecharPainel() {
     painel.hidden = true;
@@ -139,7 +160,7 @@
   });
   nova.addEventListener('click', function () {
     if (ocupado) return;
-    conversa = []; salvarConversa(); msgs.textContent = ''; atualizarVazio(); campo.focus();
+    conversa = []; salvarConversa(); msgs.textContent = ''; atualizarVazio(); focarCampo();
   });
 
   // ---------- Markdown restrito ----------
@@ -438,7 +459,7 @@
       salvarConversa();
       atualizarVazio(); rolarFim();
       ocupado = false; enviarBtn.disabled = false; painel.classList.remove('ocupado');
-      if (!painel.hidden) campo.focus();
+      if (!painel.hidden) focarCampo(); // no toque, não puxa o teclado de volta sozinho
     }
 
     var corpoPedido = {
