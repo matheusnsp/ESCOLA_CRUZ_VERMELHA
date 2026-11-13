@@ -12,10 +12,12 @@ const ferr = require('../src/lib/assistente-ferramentas');
 // Cliente falso: cada chamada devolve a próxima resposta da fila (textos em pedaços + mensagem final).
 function clienteFalso(respostas) {
   const chamadas = [];
-  return {
+  const c = {
     chamadas,
-    beta: { messages: { stream(params) {
+    opcoes: [],
+    beta: { messages: { stream(params, opcoes) {
       chamadas.push(JSON.parse(JSON.stringify(params)));
+      this._dono.opcoes.push(opcoes);
       const r = respostas.shift();
       const ouvintes = [];
       return {
@@ -28,21 +30,24 @@ function clienteFalso(respostas) {
       };
     } } },
   };
+  c.beta.messages._dono = c;
+  return c;
 }
 const texto = (t) => ({ pedacos: [t.slice(0, 5), t.slice(5)], content: [{ type: 'text', text: t }], stop_reason: 'end_turn' });
 
 let orig;
 beforeEach(() => {
-  orig = { podeEnviar: uso.podeEnviar, registrarUso: uso.registrarUso, teto: ia.dentroDoTeto, somar: ia.somarCustoAvulso, chave: ia.ehChaveConfigurada, consulta: ferr.executarConsulta };
-  uso.podeEnviar = async () => ({ ok: true });
+  orig = { reservar: uso.reservar, liberar: uso.liberar, registrarUso: uso.registrarUso, teto: ia.dentroDoTeto, somar: ia.somarCustoAvulso, chave: ia.ehChaveConfigurada, consulta: ferr.executarConsulta };
+  uso.reservar = async () => ({ ok: true, id: 'r1' });
+  uso.liberar = async (id) => { liberados.push(id); };
   uso.registrarUso = async (...a) => { registros.push(a); };
   ia.dentroDoTeto = async () => ({ ok: true });
   ia.somarCustoAvulso = async () => {};
   ia.ehChaveConfigurada = () => true;
-  registros = [];
+  registros = []; liberados = [];
 });
-afterEach(() => { Object.assign(uso, { podeEnviar: orig.podeEnviar, registrarUso: orig.registrarUso }); Object.assign(ia, { dentroDoTeto: orig.teto, somarCustoAvulso: orig.somar, ehChaveConfigurada: orig.chave }); ferr.executarConsulta = orig.consulta; });
-let registros = [];
+afterEach(() => { Object.assign(uso, { reservar: orig.reservar, liberar: orig.liberar, registrarUso: orig.registrarUso }); Object.assign(ia, { dentroDoTeto: orig.teto, somarCustoAvulso: orig.somar, ehChaveConfigurada: orig.chave }); ferr.executarConsulta = orig.consulta; });
+let registros = []; let liberados = [];
 
 const base = (extra) => ({ mensagens: [{ papel: 'pessoa', texto: 'oi' }], pagina: { caminho: '/pendentes', busca: '' }, usuarioId: 'u1', pode: () => true, papel: 'SECRETARIA', ...extra });
 async function rodar(cliente, extra) { const ev = []; await assistente.responder({ ...base(extra), cliente, emitir: (e) => ev.push(e) }); return ev; }
@@ -115,10 +120,10 @@ test('recusa, erro da API, chave, teto, limite e mensagem longa viram mensagens 
   ev = await rodar(clienteFalso([texto('nunca')]));
   assert.equal(ev[0].mensagem, 'O limite de uso de IA deste mês foi atingido. Fale com o dev.');
   ia.dentroDoTeto = async () => ({ ok: true });
-  uso.podeEnviar = async () => ({ ok: false, erro: 'Você usou muito o assistente agora; tente de novo em alguns minutos.' });
+  uso.reservar = async () => ({ ok: false, erro: 'Você usou muito o assistente agora; tente de novo em alguns minutos.' });
   ev = await rodar(clienteFalso([texto('nunca')]));
   assert.equal(ev[0].mensagem, 'Você usou muito o assistente agora; tente de novo em alguns minutos.');
-  uso.podeEnviar = async () => ({ ok: true });
+  uso.reservar = async () => ({ ok: true, id: 'r1' });
   ev = await rodar(clienteFalso([texto('nunca')]), { mensagens: [{ papel: 'pessoa', texto: 'x'.repeat(2001) }] });
   assert.equal(ev[0].mensagem, 'A mensagem passou de 2.000 caracteres. Resuma um pouco e envie de novo.');
 });
@@ -154,4 +159,29 @@ test('custo: conta pelo preço do modelo que respondeu (Sonnet 5.5), não pelo d
   const base = custo.iterations.map((x) => ({ ...x, input_tokens: 1e6, output_tokens: 1e6, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }));
   assert.equal(base[0].model, 'claude-sonnet-5-5');
   assert.equal(E.custoUsd({ iterations: base }), 12);
+});
+
+test('pequenos ajustes: falha da API libera a reserva (não conta no limite); recusa conta', async () => {
+  let ev = await rodar(clienteFalso([new Error('500 interno')]));
+  assert.equal(ev[0].mensagem, 'O assistente está fora do ar agora. Tente de novo em instantes.');
+  assert.deepEqual(liberados, ['r1']);
+  liberados = []; registros = [];
+  ev = await rodar(clienteFalso([{ content: [], stop_reason: 'refusal' }]));
+  assert.deepEqual(liberados, []);
+  assert.equal(registros.length, 1);
+  assert.equal(registros[0][3], 'r1');
+});
+
+test('pequenos ajustes: aba fechada (sinal) para o laço e passa o sinal para a API', async () => {
+  const ac = new AbortController();
+  const c = clienteFalso([
+    { content: [{ type: 'tool_use', id: 't1', name: 'listar_turmas', input: {} }], stop_reason: 'tool_use' },
+    texto('não deveria chegar aqui'),
+  ]);
+  ferr.executarConsulta = async () => { ac.abort(); return { turmas: [] }; };
+  const ev = [];
+  await assistente.responder({ ...base(), cliente: c, sinal: ac.signal, emitir: (e) => ev.push(e) });
+  assert.equal(c.chamadas.length, 1);
+  assert.equal(c.opcoes[0].signal, ac.signal);
+  assert.equal(registros.length, 1); // o que já foi gasto fica registrado
 });

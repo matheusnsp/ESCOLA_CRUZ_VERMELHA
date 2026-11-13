@@ -204,18 +204,18 @@ const str = () => ({ type: 'string' });
 const DEFINICOES_FORMULARIO = [
   { name: 'escrever_textos_curso', description: 'Escreve o resumo, o texto completo, o conteúdo programático e as dúvidas frequentes de um curso presencial, no padrão dos cursos do site (a mesma função do botão "Escrever com IA"). Depois os textos vão para o formulário com o botão "Preencher na tela".',
     input_schema: obj({ nome: str(120), cargaHoraria: { type: 'number' }, escolaridade: str(40), categoria: str(60), ideias: str(500), cursoId: str(40) }, ['nome']) },
-  { name: 'preencher_curso', description: 'Prepara o preenchimento do formulário de curso (novo ou edição) com os dados que a pessoa deu. Só os campos citados. Não salva: a pessoa confere e clica em Salvar. Preços em reais (número).',
+  { name: 'preencher_curso', description: 'Prepara o preenchimento do formulário de curso (novo ou edição) com os dados que a pessoa deu. Só os campos citados. Para MUDAR um curso que já existe, passe editarCursoId (da página atual ou de listar_cursos); sem ele, é um curso novo. Não salva: a pessoa confere e clica em Salvar. Preços em reais (número).',
     input_schema: obj({ campos: obj({
       nome: str(120), descricao: str(300), descricaoLonga: str(3000), cargaHoraria: { type: 'number' }, escolaridadeMinima: { type: 'string', enum: ESCOLARIDADES_CURSO },
       categoria: { type: 'string', enum: ['', ...CATEGORIAS_CURSO] }, precoAvista: { type: 'number' }, precoCheio: { type: 'number' }, parcelas: { type: 'integer' }, taxaMatricula: { type: 'number' },
       nomeCertificado: str(160), conteudoProgramatico: str(4000), certificadoValidade: str(80), exigeComprovanteSaude: { type: 'boolean' }, pedido: str(600), ativo: { type: 'boolean' },
       faqs: { type: 'array', items: obj({ pergunta: str(200), resposta: str(1000) }, ['pergunta', 'resposta']) },
-    }) }, ['campos']) },
-  { name: 'preencher_turma', description: 'Prepara o preenchimento do formulário de turma (nova ou edição). cursoId vem de listar_cursos. Datas AAAA-MM-DD; horário "HH:MM – HH:MM". Para "toda terça e quinta de dezembro", liste cada aula. Não salva.',
+    }), editarCursoId: str() }, ['campos']) },
+  { name: 'preencher_turma', description: 'Prepara o preenchimento do formulário de turma (nova ou edição). cursoId vem de listar_cursos. Datas AAAA-MM-DD; horário "HH:MM – HH:MM". Para "toda terça e quinta de dezembro", liste cada aula. Para MUDAR uma turma que já existe, passe editarTurmaId (da página atual ou de listar_turmas); sem ele, é uma turma nova. Não salva.',
     input_schema: obj({ campos: obj({
       cursoId: str(40), inicioPrevisto: str(10), vagas: { type: 'integer' }, minimoAlunos: { type: 'integer' }, instrutorNome: str(120), instrutorRegistro: str(60),
       status: { type: 'string', enum: STATUS_TURMA }, aulas: { type: 'array', items: obj({ data: str(10), horario: str(20) }, ['data', 'horario']) },
-    }) }, ['campos']) },
+    }), editarTurmaId: str() }, ['campos']) },
 ];
 
 const dataValida = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || '')); if (!m) return false; const d = new Date(`${v}T12:00:00Z`); return d.getUTCFullYear() === +m[1] && d.getUTCMonth() + 1 === +m[2] && d.getUTCDate() === +m[3]; };
@@ -264,6 +264,30 @@ async function validarTurma(campos) {
   return { ok, erros, ignorados };
 }
 
+const dia2 = (d) => `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
+// Alvo da edição: curso presencial ou turma que existem -> { id, caminho, nome } (o navegador abre a tela de edição dele).
+async function alvoEdicao(tipo, id) {
+  if (!/^[0-9a-f-]{36}$/i.test(String(id || ''))) return null;
+  if (tipo === 'curso') {
+    const c = await prisma.curso.findUnique({ where: { id }, select: { id: true, nome: true, ebook: { select: { id: true } } } });
+    const soOnline = c ? await require('./ead-curso-online').ehSoOnline(c.id).catch(() => false) : false;
+    return c && !c.ebook && !soOnline ? { id: c.id, caminho: `/cursos/${c.id}/editar`, nome: c.nome } : null;
+  }
+  const t = await prisma.turma.findUnique({ where: { id }, select: { id: true, status: true, inicioPrevisto: true, curso: { select: { nome: true } } } });
+  return t && !FORA_DO_PRESENCIAL.includes(t.status) ? { id: t.id, caminho: `/turmas/${t.id}/editar`, nome: `${t.curso.nome} · ${dia2(t.inicioPrevisto)}` } : null;
+}
+async function comEdicao(tipo, idEditar, resposta) {
+  if (idEditar == null || idEditar === '') return resposta;
+  const campo = tipo === 'curso' ? 'editarCursoId' : 'editarTurmaId';
+  const alvo = await alvoEdicao(tipo, idEditar).catch(() => null);
+  if (!alvo) {
+    const erros = { ...((resposta.resultado && resposta.resultado.erros) || {}), [campo]: `${tipo} não encontrado (use ${tipo === 'curso' ? 'listar_cursos' : 'listar_turmas'})` };
+    return { resultado: { preparado: false, erros } };
+  }
+  if (!resposta.evento) return resposta;
+  return { resultado: { ...resposta.resultado, editando: alvo.nome }, evento: { ...resposta.evento, editar: alvo } };
+}
+
 function respostaPreencher(formulario, { ok, erros, ignorados }) {
   if (Object.keys(erros).length) return { resultado: { preparado: false, erros, ignorados } };
   const campos = { ...ok }; const cursoNome = campos.cursoNome; delete campos.cursoNome;
@@ -282,7 +306,8 @@ async function escreverTextos(entrada, ctx) {
     const r = await txt.escrever({ tipo: 'presencial', dados, ideias: String(entrada.ideias || '').slice(0, 500), cursoId }, ctx && ctx.cliente ? { cliente: ctx.cliente } : {});
     await ia.somarCustoAvulso(r.usage);
     const campos = { descricao: r.textos.descricao, descricaoLonga: r.textos.descricaoLonga, conteudoProgramatico: r.textos.conteudoProgramatico, faqs: r.textos.faqs || [] };
-    return { resultado: { preparado: true, formulario: 'curso', textos: campos, aviso: 'Textos prontos; vão para o formulário com "Preencher na tela". Nada foi salvo.' }, evento: { tipo: 'preencher', formulario: 'curso', campos } };
+    const resp = { resultado: { preparado: true, formulario: 'curso', textos: campos, aviso: 'Textos prontos; vão para o formulário com "Preencher na tela". Nada foi salvo.' }, evento: { tipo: 'preencher', formulario: 'curso', campos } };
+    return cursoId ? comEdicao('curso', cursoId, resp) : resp; // textos de um curso que já existe: vão para a edição dele
   } catch (e) {
     if (e.usage) await ia.somarCustoAvulso(e.usage).catch(() => {});
     return { resultado: { erro: 'ia_falhou', mensagem: 'A IA não conseguiu escrever os textos agora.' } };
@@ -293,8 +318,8 @@ async function executarFormulario(nome, entrada, ctx) {
   const e = entrada && typeof entrada === 'object' ? { ...entrada } : {};
   if (typeof e.campos === 'string') { try { e.campos = JSON.parse(e.campos); } catch (x) { e.campos = {}; } } // sem strict, pode vir como texto
   if (nome === 'escrever_textos_curso') return pode(ctx, 'cursos:criar', 'cursos:gerenciar') ? escreverTextos(e, ctx) : { resultado: SEM_PERMISSAO };
-  if (nome === 'preencher_curso') return pode(ctx, 'cursos:criar', 'cursos:gerenciar') ? respostaPreencher('curso', validarCurso(e.campos)) : { resultado: SEM_PERMISSAO };
-  if (nome === 'preencher_turma') return pode(ctx, 'turmas:gerenciar') ? respostaPreencher('turma', await validarTurma(e.campos)) : { resultado: SEM_PERMISSAO };
+  if (nome === 'preencher_curso') return pode(ctx, 'cursos:criar', 'cursos:gerenciar') ? comEdicao('curso', e.editarCursoId, respostaPreencher('curso', validarCurso(e.campos))) : { resultado: SEM_PERMISSAO };
+  if (nome === 'preencher_turma') return pode(ctx, 'turmas:gerenciar') ? comEdicao('turma', e.editarTurmaId, respostaPreencher('turma', await validarTurma(e.campos))) : { resultado: SEM_PERMISSAO };
   return { resultado: { erro: 'ferramenta_desconhecida' } };
 }
 

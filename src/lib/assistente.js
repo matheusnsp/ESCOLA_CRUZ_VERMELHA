@@ -48,7 +48,7 @@ const somar = (a, b) => ({
   cache_creation_input_tokens: (a.cache_creation_input_tokens || 0) + ((b && b.cache_creation_input_tokens) || 0),
 });
 
-async function responder({ mensagens, pagina, usuarioId, pode, papel, documentoAluno, cliente, emitir }) {
+async function responder({ mensagens, pagina, usuarioId, pode, papel, documentoAluno, cliente, emitir, sinal }) {
   const fim = () => emitir({ tipo: 'fim' });
   const erro = (mensagem) => { emitir({ tipo: 'erro', mensagem }); fim(); };
 
@@ -58,10 +58,12 @@ async function responder({ mensagens, pagina, usuarioId, pode, papel, documentoA
   if (ultimaOriginal && String(ultimaOriginal.texto || '').length > MAX_CARACTERES) return erro(MSG.longa);
   if (!ultima || ultima.role !== 'user') return erro(MSG.vazia);
   if (!cliente && !ia.ehChaveConfigurada()) return erro(MSG.semChave);
-  const limite = await uso.podeEnviar(usuarioId);
-  if (!limite.ok) return erro(limite.erro);
   const teto = await ia.dentroDoTeto();
   if (!teto.ok) return erro(MSG.teto);
+  // Reserva a mensagem no limite da pessoa (conferência e registro juntos: pedidos em paralelo não furam o limite).
+  const limite = await uso.reservar(usuarioId);
+  if (!limite.ok) return erro(limite.erro);
+  const reservaId = limite.id;
 
   const ctx = { pode, papel, documentoAluno, cliente, vistos: { alunos: new Set(), turmas: new Set(), cursos: new Set() } };
   const pag = await contexto.paginaAtual(pagina, ctx).catch(() => ({ texto: 'Página atual: desconhecida.' }));
@@ -78,11 +80,12 @@ async function responder({ mensagens, pagina, usuarioId, pode, papel, documentoA
   let terminou = false;
   try {
     for (let rodada = 0; rodada < MAX_RODADAS; rodada++) {
+      if (sinal && sinal.aborted) { await registrar(); return; } // a pessoa fechou a aba: não gasta mais rodadas
       const stream = api.beta.messages.stream({
         model: MODELO, max_tokens: 4000, system, tools, messages,
         output_config: { effort: 'low' },
         betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
-      });
+      }, sinal ? { signal: sinal } : undefined);
       stream.on('text', (delta) => { textoTotal += delta; emitir({ tipo: 'texto', texto: delta }); });
       const msg = await stream.finalMessage();
       usage = somar(usage, msg.usage);
@@ -110,8 +113,10 @@ async function responder({ mensagens, pagina, usuarioId, pode, papel, documentoA
       messages.push({ role: 'user', content: resultados });
     }
   } catch (e) {
+    if (sinal && sinal.aborted) { await registrar(); return; } // aba fechada no meio da resposta: só registra o gasto
     console.error('[ASSISTENTE]', e && e.status ? `API ${e.status}` : '', e && e.message);
-    await registrar();
+    await ia.somarCustoAvulso({ iterations: iteracoes }).catch(() => {}); // o que já foi gasto entra no teto do mês
+    await uso.liberar(reservaId).catch(() => {}); // falha nossa/da API: não conta no limite da pessoa
     return erro(MSG.foraDoAr);
   }
   if (!terminou) textoTotal += (textoTotal ? '\n\n' : '') + MSG.rodadas;
@@ -120,9 +125,8 @@ async function responder({ mensagens, pagina, usuarioId, pode, papel, documentoA
   fim();
 
   async function registrar() {
-    if (!usage.input_tokens && !usage.output_tokens) return;
-    await uso.registrarUso(usuarioId, usage, usadas).catch((e) => console.error('[ASSISTENTE] uso:', e.message));
-    await ia.somarCustoAvulso({ iterations: iteracoes }).catch(() => {});
+    await uso.registrarUso(usuarioId, usage, usadas, reservaId).catch((e) => console.error('[ASSISTENTE] uso:', e.message));
+    if (iteracoes.length) await ia.somarCustoAvulso({ iterations: iteracoes }).catch(() => {});
   }
 }
 
