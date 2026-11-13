@@ -11,7 +11,7 @@
     <h1 class="adm-h1">Certificados</h1>
     <p class="adm-mut adm-bv-sub"><%= turma.curso.nome %> · <%= dia(turma.aulas[0] ? turma.aulas[0].data : turma.inicioPrevisto) %> · <%= rotuloTurma(turma.status) %></p>
   </div>
-  <a href="/certificados" class="adm-link"><i class="fa-solid fa-arrow-left"></i> Certificados</a>
+  <span class="adm-links-volta"><a href="/turmas/<%= turma.id %>" class="adm-link">← Voltar à turma</a> <a href="/certificados" class="adm-link">Certificados</a></span>
 </div>
 
 <% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>

@@ -37,7 +37,7 @@ function formatarDataInput(data) {
 
 <div class="adm-h1-row">
   <h1 class="adm-h1"><%= novo ? 'Nova turma' : 'Editar turma' %></h1>
-  <a href="/turmas" class="adm-link">← Voltar</a>
+  <a href="<%= novo ? '/turmas' : '/turmas/' + t.id %>" class="adm-link">← <%= novo ? 'Voltar' : 'Voltar à turma' %></a>
 </div>
 
 <% if (erro) { %>
@@ -47,8 +47,7 @@ function formatarDataInput(data) {
 <form method="POST" action="<%= novo ? '/turmas' : '/turmas/' + t.id %>" class="adm-form adm-box">
 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-<h2 class="adm-form-secao full"><i class="fa-solid fa-calendar-days"></i> Turma</h2>
-
+<h2 class="adm-form-secao full"><i class="fa-solid fa-clock"></i> Quando</h2>
 <label class="full">
 Curso
 <select name="cursoId" required>
@@ -64,24 +63,22 @@ Início previsto
 <input type="date" name="inicioPrevisto" value="<%= formatarDataInput(t.inicioPrevisto) %>" required>
 </label>
 
-<label>Vagas<input type="number" name="vagas" min="1" value="<%= t.vagas || 30 %>" required></label>
+<div class="full adm-gerar-aulas" data-gerar-aulas>
+  <b><i class="fa-solid fa-repeat"></i> Gerar aulas</b>
+  <small class="adm-hint">Marque os dias da semana, o horário e até quando: as datas são criadas a partir do início.</small>
+  <div class="adm-gerar-linha">
+    <fieldset class="adm-dias"><legend>Dias da semana</legend>
+      <% [['D','Domingo',0],['S','Segunda',1],['T','Terça',2],['Q','Quarta',3],['Q','Quinta',4],['S','Sexta',5],['S','Sábado',6]].forEach(function (d) { %>
+        <label title="<%= d[1] %>"><input type="checkbox" value="<%= d[2] %>" aria-label="<%= d[1] %>"><span><%= d[0] %></span></label>
+      <% }) %>
+    </fieldset>
+    <label>Horário<input type="text" class="gerar-aulas-horario" placeholder="18:00 – 22:00"></label>
+    <label>Até<input type="date" class="gerar-aulas-ate"></label>
+    <button type="button" class="adm-btn-neutro gerar-aulas-bt"><i class="fa-solid fa-repeat"></i> Gerar aulas</button>
+  </div>
+  <p class="ia-textos-msg gerar-aulas-msg" role="status" hidden></p>
+</div>
 
-<label>Mínimo de alunos<input type="number" name="minimoAlunos" min="0" value="<%= t.minimoAlunos != null ? t.minimoAlunos : 15 %>" required></label>
-
-<label>Status
-<select name="status">
-<% statusTurma.forEach(function(s){ %>
-<option value="<%= s %>" <%= (t.status||'ABERTA')===s ? 'selected' : '' %>><%= rotuloTurma(s) %></option>
-<% }) %>
-</select>
-<small class="adm-hint">Aberta: aceita inscrições; vira Confirmada sozinha à 00:00 do dia de início. Confirmada: vai acontecer e não aceita mais inscrição pelo site. Concluída só a partir do dia seguinte à última aula — o sistema conclui sozinho a turma confirmada; se escolher Concluída antes, ela fica Confirmada até lá. Congelada: pausa a turma; ela some do site, não recebe lembretes, boas-vindas nem pesquisa, sai do A receber e não é concluída sozinha. Os alunos continuam matriculados. Para retomar, volte para Aberta ou Confirmada; se as datas já passaram, ajuste as aulas antes (senão ela é concluída ou fechada sozinha).</small>
-</label>
-
-<h2 class="adm-form-secao full" id="certificado"><i class="fa-solid fa-award"></i> Instrutor (vai no certificado)</h2>
-<label>Nome do instrutor<input type="text" name="instrutorNome" maxlength="80" value="<%= t.instrutorNome || '' %>" placeholder="Ex.: Maria da Silva"></label>
-<label>Registro profissional<input type="text" name="instrutorRegistro" maxlength="60" value="<%= t.instrutorRegistro || '' %>" placeholder="Ex.: COREN 477198-RJ"></label>
-
-<h2 class="adm-form-secao full"><i class="fa-solid fa-clock"></i> Aulas</h2>
 <div class="full">
 <p class="adm-hint adm-aulas-dica">Uma linha por dia de aula, com o horário. As datas aparecem para o aluno na página do curso. Ao adicionar, o horário da última linha é repetido.</p>
 
@@ -100,42 +97,30 @@ Início previsto
 </button>
 </div>
 
-<div class="full adm-form-rodape">
-<button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> <%= novo ? 'Criar turma' : 'Salvar alterações' %></button>
-<a href="/turmas" class="adm-link">Cancelar</a>
-</div>
+
+<h2 class="adm-form-secao full"><i class="fa-solid fa-users"></i> Vagas</h2>
+<label>Vagas<input type="number" name="vagas" min="1" value="<%= t.vagas || 30 %>" required></label>
+
+<label>Mínimo de alunos<input type="number" name="minimoAlunos" min="0" value="<%= t.minimoAlunos != null ? t.minimoAlunos : 15 %>" required></label>
+
+<h2 class="adm-form-secao full"><i class="fa-solid fa-flag"></i> Situação</h2>
+<label class="full">Situação
+<select name="status">
+<% statusTurma.forEach(function(s){ %>
+<option value="<%= s %>" <%= (t.status||'ABERTA')===s ? 'selected' : '' %>><%= rotuloTurma(s) %></option>
+<% }) %>
+</select>
+<small class="adm-hint">Aberta: aceita inscrições; vira Confirmada sozinha à 00:00 do dia de início. Confirmada: vai acontecer e não aceita mais inscrição pelo site. Concluída só a partir do dia seguinte à última aula — o sistema conclui sozinho a turma confirmada; se escolher Concluída antes, ela fica Confirmada até lá. Congelada: pausa a turma; ela some do site, não recebe lembretes, boas-vindas nem pesquisa, sai do A receber e não é concluída sozinha. Os alunos continuam matriculados. Para retomar, volte para Aberta ou Confirmada; se as datas já passaram, ajuste as aulas antes (senão ela é concluída ou fechada sozinha).</small>
+</label>
+
+<h2 class="adm-form-secao full" id="certificado"><i class="fa-solid fa-user-doctor"></i> Instrutor (vai no certificado)</h2>
+<label>Nome do instrutor<input type="text" name="instrutorNome" maxlength="80" value="<%= t.instrutorNome || '' %>" placeholder="Ex.: Maria da Silva"></label>
+<label>Registro profissional<input type="text" name="instrutorRegistro" maxlength="60" value="<%= t.instrutorRegistro || '' %>" placeholder="Ex.: COREN 477198-RJ"></label>
+
+
+<%- include('_rodape-salvar', { botao: novo ? 'Criar turma' : 'Salvar alterações' }) %>
 </form>
 
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  let idx = <%= (aulas || []).length %>;
-  const lista = document.getElementById('aulas-lista');
-
-  function criarLinhaAula() {
-    // Repete o horário da última linha: quase sempre é o mesmo em todas as aulas.
-    const ultimas = lista.querySelectorAll('.aula-linha input[type=text]');
-    const horario = ultimas.length ? ultimas[ultimas.length - 1].value : '';
-    const div = document.createElement('div');
-    div.className = 'aula-linha';
-    div.dataset.idx = idx;
-    div.innerHTML = `
-      <input type="date" name="aulas[${idx}][data]">
-      <input type="text" name="aulas[${idx}][horario]" placeholder="18:00 – 22:00">
-      <button type="button" class="adm-mini danger btn-remover-aula"><i class="fa-solid fa-trash"></i></button>
-    `;
-    div.querySelector('input[type=text]').value = horario;
-    lista.appendChild(div);
-    div.querySelector('input[type=date]').focus();
-    idx++;
-  }
-
-  document.getElementById('btnAdicionarAula').addEventListener('click', criarLinhaAula);
-
-  lista.addEventListener('click', function(e){
-    const btn = e.target.closest('.btn-remover-aula');
-    if(btn) btn.closest('.aula-linha').remove();
-  });
-});
-</script>
+<script src="<%= asset('/js/gerar-aulas.js') %>"></script>
 
 <%- include('foot') %>

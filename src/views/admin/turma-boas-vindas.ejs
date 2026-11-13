@@ -14,7 +14,7 @@
     <h1 class="adm-h1">Boas-vindas</h1>
     <p class="adm-mut adm-bv-sub"><%= turma.curso.nome %> · início <%= dia(turma.aulas[0] ? turma.aulas[0].data : turma.inicioPrevisto) %> · <%= rotuloTurma(turma.status) %></p>
   </div>
-  <a href="/modelos" class="adm-link"><i class="fa-solid fa-arrow-left"></i> Mensagem de boas-vindas</a>
+  <span class="adm-links-volta"><a href="/turmas/<%= turma.id %>" class="adm-link">← Voltar à turma</a> <a href="/modelos" class="adm-link">Mensagem de boas-vindas</a></span>
 </div>
 
 <% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>

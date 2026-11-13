@@ -895,6 +895,7 @@ router.use('/cursos', async (req, res, next) => {
 
 // Telas novas de Cursos (2026-11-13): resumo do curso e seções com salvar próprio (routes/painel-cursos.js).
 router.use(require('./painel-cursos')({ requirePermissao, auditar }));
+router.use(require('./painel-turmas')({ requirePermissao, auditar })); // resumo da turma
 
 
 
@@ -1012,10 +1013,13 @@ router.get('/turmas', requirePermissao('turmas:gerenciar', 'painel:leitura'), as
     'concluidas': turmas.filter((t) => t.status === 'ENCERRADA').reverse(),
     'canceladas': turmas.filter((t) => t.status === 'CANCELADA').reverse(),
   };
+  // Busca pelo nome do curso (telas novas, 2026-11-13): vale para todas as abas.
+  const busca = String(req.query.q || '').trim().slice(0, 100);
+  if (busca) { const { filtrarPorCurso } = require('./painel-turmas'); for (const k of Object.keys(abas)) abas[k] = filtrarPorCurso(abas[k], busca); }
   const aba = abas[req.query.aba] ? req.query.aba : 'por-comecar';
   const pagTurmas = await pagamentosPorTurma(abas[aba].map((t) => t.id));
   abas[aba].forEach((t) => { t.pag = pagTurmas[t.id]; });
-  res.render('admin/turmas', { turmas, abas, aba, statusTurma: STATUS_TURMA, flash: req.query.ok || null, erro: req.query.erro || null });
+  res.render('admin/turmas', { turmas, abas, aba, busca, statusTurma: STATUS_TURMA, flash: req.query.ok || null, erro: req.query.erro || null });
 });
 
 router.get('/turmas/nova', requirePermissao('turmas:gerenciar'), async (req, res) => {
@@ -1097,7 +1101,7 @@ router.post('/turmas', requirePermissao('turmas:gerenciar'), async (req, res) =>
   });
   await extras.salvarExtra('turma', turma.id, extrasTurmaDoForm(req.body));
   await auditar(req, 'CRIOU_TURMA', 'Turma', turma.id, { cursoId: dados.cursoId });
-  res.redirect('/turmas?ok=' + encodeURIComponent(aviso ? `Turma criada. ${aviso}` : 'Turma criada.'));
+  res.redirect(`/turmas/${turma.id}?ok=` + encodeURIComponent(aviso ? `Turma criada. ${aviso}` : 'Turma criada.')); // abre o resumo da turma
 });
 
 router.get('/turmas/:id/editar', requirePermissao('turmas:gerenciar'), async (req, res) => {
@@ -1134,7 +1138,7 @@ router.post('/turmas/:id', requirePermissao('turmas:gerenciar'), async (req, res
   });
   await extras.salvarExtra('turma', req.params.id, extrasTurmaDoForm(req.body));
   await auditar(req, 'EDITOU_TURMA', 'Turma', req.params.id, null);
-  res.redirect('/turmas?ok=' + encodeURIComponent(aviso ? `Turma atualizada. ${aviso}` : 'Turma atualizada.'));
+  res.redirect(`/turmas/${req.params.id}?ok=` + encodeURIComponent(aviso ? `Turma atualizada. ${aviso}` : 'Turma atualizada.')); // volta ao resumo
 });
 
 async function recalcularMedia(matriculaId) {

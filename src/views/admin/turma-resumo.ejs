@@ -1,0 +1,70 @@
+<%# Resumo da turma (telas novas, 2026-11-13): um cartão por parte e a caixa de cancelar/excluir. %>
+<%- include('head', { titulo: turma.curso.nome }) %>
+<%- include('header', { ativo: 'turmas' }) %>
+<% var t = turma;
+   var dia = function (d) { var x = new Date(d); return String(x.getUTCDate()).padStart(2, '0') + '/' + String(x.getUTCMonth() + 1).padStart(2, '0'); };
+   var tem = function (i) { return faltas.indexOf(i) >= 0; }; %>
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= t.curso.nome %> · <%= dia(t.inicioPrevisto) %></h1>
+  <a href="/turmas" class="adm-link">← Todas as turmas</a>
+</div>
+<p class="adm-sub-titulo"><span class="badge st-<%= t.status.toLowerCase() %>"><%= rotuloTurma(t.status) %></span>
+  <%= mudanca ? mudanca + ' · ' : '' %><%= t.aulas.length ? t.aulas.length + (t.aulas.length === 1 ? ' aula' : ' aulas') + ' · ' + t.aulas[0].horario : 'sem aulas cadastradas' %></p>
+<% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
+<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+
+<div class="adm-hub">
+  <a class="adm-hub-card" href="/turmas/<%= t.id %>/editar">
+    <h3><i class="fa-solid fa-pen"></i> Dados da turma</h3>
+    <p>Datas e aulas, vagas, situação e instrutor<%= t.instrutorNome ? ' (' + t.instrutorNome + (t.instrutorRegistro ? ' · ' + t.instrutorRegistro : '') + ')' : '' %>.</p>
+    <% if (tem('Aulas')) { %><span class="adm-falta">Falta: Aulas</span><% } %>
+    <span class="adm-hub-acao">Editar →</span>
+  </a>
+  <% if (pode('aluno:gerenciar') || pode('painel:leitura')) { %>
+  <a class="adm-hub-card" href="/alunos?turma=<%= t.id %>">
+    <h3><i class="fa-solid fa-user-graduate"></i> Alunos</h3>
+    <p><%= inscritos %> de <%= t.vagas %> vagas<%= t.minimoAlunos ? ' · mínimo ' + t.minimoAlunos : '' %></p>
+    <% if (pendentes) { %><span class="adm-falta"><%= pendentes %> com pagamento pendente</span><% } %>
+    <% if (tem('Abaixo do mínimo')) { %><span class="adm-falta">Abaixo do mínimo</span><% } %>
+    <span class="adm-hub-acao">Ver alunos →</span>
+  </a>
+  <% } %>
+  <a class="adm-hub-card" href="/turmas/<%= t.id %>/boas-vindas">
+    <h3><i class="fa-solid fa-envelope-open-text"></i> Mensagem de boas-vindas</h3>
+    <p>Enviar a mensagem de boas-vindas para os alunos desta turma.</p>
+    <span class="adm-hub-acao">Abrir →</span>
+  </a>
+  <% if (pode('turmas:gerenciar') || pode('secretaria:leitura')) { %>
+  <a class="adm-hub-card" href="/turmas/<%= t.id %>/notas">
+    <h3><i class="fa-solid fa-star-half-stroke"></i> Notas</h3>
+    <p>Lançar as notas das avaliações.</p>
+    <span class="adm-hub-acao">Lançar notas →</span>
+  </a>
+  <% } %>
+  <a class="adm-hub-card" href="/turmas/<%= t.id %>/pesquisa-qr">
+    <h3><i class="fa-solid fa-qrcode"></i> QR da pesquisa</h3>
+    <p>Para os alunos avaliarem o curso no fim da última aula.</p>
+    <span class="adm-hub-acao">Mostrar QR →</span>
+  </a>
+  <a class="adm-hub-card" href="/turmas/<%= t.id %>/certificados">
+    <h3><i class="fa-solid fa-award"></i> Certificados</h3>
+    <p>Quem assina nesta turma e a impressão dos certificados.</p>
+    <span class="adm-hub-acao">Abrir →</span>
+  </a>
+</div>
+
+<div class="adm-perigo">
+  <% if (totalMatriculas) { %>
+    <h2><i class="fa-solid fa-ban"></i> Cancelar ou excluir</h2>
+    <p>Esta turma tem <b><%= totalMatriculas %> <%= totalMatriculas === 1 ? 'inscrição' : 'inscrições' %></b>, então não pode ser excluída. Para tirar do site, mude a situação para <b>Cancelada</b> em Dados da turma (os alunos continuam no histórico).</p>
+    <button type="button" class="adm-btn-perigo" disabled><i class="fa-solid fa-trash"></i> Excluir turma</button>
+  <% } else { %>
+    <h2><i class="fa-solid fa-trash"></i> Excluir turma</h2>
+    <p>Esta turma não tem alunos, então pode ser excluída. Não dá para desfazer.</p>
+    <form method="POST" action="/turmas/<%= t.id %>/excluir" data-confirmar="Excluir a turma de <%= t.curso.nome %> (<%= dia(t.inicioPrevisto) %>)? Não dá para desfazer." data-botao="Excluir turma">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="adm-btn-perigo"><i class="fa-solid fa-trash"></i> Excluir turma</button>
+    </form>
+  <% } %>
+</div>
+<%- include('foot') %>
