@@ -21,6 +21,25 @@ Regras:
 - não invente leis, normas ou números que não estejam nos dados;
 - dúvidas frequentes: 5 ou 6, sobre o que o aluno costuma perguntar (para quem é, pré-requisito, carga horária, como funciona, certificado), com respostas curtas e corretas para este curso.`;
 
+// 2026-11-13: modelo do texto completo dos cursos presenciais, dado pela secretaria. Todo curso novo segue esta
+// estrutura de 3 parágrafos (o que o curso forma; o que o aluno aprende; onde vai poder atuar).
+const MODELO_TEXTO_COMPLETO = `O Curso de Cuidador de Idosos da Cruz Vermelha forma profissionais capacitados para prestar assistência à pessoa idosa com segurança, responsabilidade, empatia e respeito, promovendo qualidade de vida e bem-estar em diferentes contextos de cuidado.
+
+Durante a formação, o aluno desenvolve conhecimentos teóricos e práticos sobre higiene, alimentação, administração da rotina de cuidados, prevenção de acidentes, técnicas de mobilização, noções de primeiros socorros, além de compreender os aspectos físicos, emocionais e sociais do processo de envelhecimento, proporcionando um atendimento mais humanizado.
+
+Após a conclusão, o profissional poderá atuar em residências, instituições de longa permanência para idosos (ILPIs), clínicas, hospitais, centros de convivência, serviços de atendimento domiciliar e demais ambientes voltados ao cuidado e à assistência da pessoa idosa.`;
+
+const PEDE_TEXTO_COMPLETO = `A descrição longa (texto completo) tem SEMPRE 3 parágrafos, separados por uma linha em branco, nesta estrutura:
+1º "O Curso de <nome do curso> da Cruz Vermelha forma profissionais capacitados para <o que a pessoa vai fazer>, <com que postura>, promovendo <o resultado para quem é atendido>." (ajuste o começo quando o curso não forma profissionais, ex.: "capacita pessoas para");
+2º "Durante a formação, o aluno desenvolve conhecimentos teóricos e práticos sobre <os principais temas do curso>, além de <um aspecto complementar>, <o benefício disso>.";
+3º "Após a conclusão, o profissional poderá atuar em <lugares e serviços onde vai trabalhar>." (ou, se não for profissionalizante, onde vai poder aplicar o que aprendeu).
+Siga o mesmo tom e tamanho deste modelo (vale mais que os exemplos abaixo):
+
+${MODELO_TEXTO_COMPLETO}`;
+
+// Uma linha em branco entre parágrafos (o site separa os parágrafos assim).
+const emParagrafos = (t) => String(t || '').replace(/\r\n/g, '\n').split(/\n+/).map((l) => l.trim()).filter(Boolean).join('\n\n');
+
 // Até 3 cursos de exemplo do mesmo tipo (sem o próprio curso).
 async function exemplos(tipo, excetoCursoId) {
   const faqs = { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }], take: 6, select: { pergunta: true, resposta: true } };
@@ -63,12 +82,12 @@ async function escrever({ tipo, dados = {}, ideias = '', cursoId = null, pdf = n
     dados.categoria ? `Área: ${dados.categoria}` : null, dados.descricao ? `Descrição atual: ${dados.descricao}` : null,
     dados.descricaoLonga ? `Descrição longa atual:\n${dados.descricaoLonga}` : null, dados.conteudoProgramatico ? `Conteúdo atual:\n${dados.conteudoProgramatico}` : null,
     Array.isArray(dados.faqsAtuais) && dados.faqsAtuais.length ? `Dúvidas que o curso já tem (não repita):\n${dados.faqsAtuais.map((f) => `- ${f.pergunta}`).join('\n')}` : null,
-    String(ideias || '').trim() ? `Ideias de quem pediu: ${String(ideias).trim().slice(0, 500)}` : null].filter(Boolean).join('\n');
+    String(ideias || '').trim() ? `Ideias de quem pediu: ${String(ideias).trim().slice(0, 1500)}` : null].filter(Boolean).join('\n');
   const pede = tipo === 'ebook'
     ? `Escreva a descrição curta (1 ou 2 frases, até 300 caracteres), o texto da página de venda (até 3000, parágrafos curtos: o que a pessoa vai encontrar, para quem é) e 5 ou 6 dúvidas frequentes sobre o e-book (para quem é, como recebe, se tem certificado: não tem). ${pdf ? 'Baseie-se SÓ no conteúdo do PDF anexado (as primeiras páginas).' : 'Sem o PDF, não invente o conteúdo: fale do tema de forma geral.'}`
     : tipo === 'online'
     ? 'Escreva a descrição da página de venda (até 1000 caracteres, 1 a 3 parágrafos curtos) e as dúvidas frequentes.'
-    : 'Escreva a descrição curta (1 ou 2 frases, até 300 caracteres), a descrição longa (parágrafos, até 3000), o conteúdo programático (um item por linha) e as dúvidas frequentes.';
+    : `Escreva a descrição curta (1 ou 2 frases, até 300 caracteres), a descrição longa (até 3000), o conteúdo programático (um item por linha) e as dúvidas frequentes.\n\n${PEDE_TEXTO_COMPLETO}`;
   const content = [
     ...(pdf ? [{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: Buffer.from(pdf).toString('base64') } }] : []),
     ...(ex.length ? [{ type: 'text', text: `${tipo === 'ebook' ? 'E-books' : 'Cursos'} de exemplo (siga este padrão):\n\n${ex.map(blocoExemplo).join('\n\n')}` }] : []),
@@ -77,7 +96,9 @@ async function escrever({ tipo, dados = {}, ideias = '', cursoId = null, pdf = n
   const { json, usage } = await IA.chamarClaude(clienteDe(opts), {
     system: SYSTEM, messages: [{ role: 'user', content }], schema: tipo === 'ebook' ? E.ESQUEMA_TEXTOS_EBOOK : tipo === 'online' ? E.ESQUEMA_TEXTOS_ONLINE : E.ESQUEMA_TEXTOS_PRESENCIAL, effort: 'low',
   });
-  return { textos: E.validarTextos(json, tipo), usage };
+  const textos = E.validarTextos(json, tipo);
+  if (tipo === 'presencial' && textos.descricaoLonga) textos.descricaoLonga = emParagrafos(textos.descricaoLonga);
+  return { textos, usage };
 }
 
 // "Escrever dúvidas com IA" na seção de dúvidas (curso já criado): os dados vêm do banco, com as dúvidas atuais.
@@ -118,4 +139,4 @@ async function salvarFaqs(cursoId, faqs, { tx = prisma } = {}) {
   return n;
 }
 
-module.exports = { SYSTEM, exemplos, escrever, lerFaqsDoForm, faqsDoCorpo, dadosDoCurso, salvarFaqs, definirCliente };
+module.exports = { SYSTEM, MODELO_TEXTO_COMPLETO, exemplos, escrever, lerFaqsDoForm, faqsDoCorpo, dadosDoCurso, salvarFaqs, definirCliente };
