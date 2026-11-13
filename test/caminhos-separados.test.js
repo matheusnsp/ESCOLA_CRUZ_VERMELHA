@@ -47,3 +47,39 @@ test('Mensagem de boas-vindas: "Voltar" só quando veio de uma turma; sem o avis
   const rota = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'admin.js'), 'utf8');
   assert.match(rota, /voltar: VOLTAR_MODELOS\.test\(String\(req\.query\.voltar \|\| ''\)\) \? req\.query\.voltar : null,/);
 });
+
+test('Boas-vindas num lugar só: botão sai da linha da turma; envio por turma na página Mensagem de boas-vindas', async () => {
+  assert.doesNotMatch(ler('turmas.ejs'), /\/boas-vindas"/);
+  const tv = ler('turma-boas-vindas.ejs');
+  assert.match(tv, /include\('header', \{ ativo: 'boas-vindas' \}\)/);
+  assert.match(tv, /<a href="\/modelos" class="adm-link"><i class="fa-solid fa-arrow-left"><\/i> Mensagem de boas-vindas<\/a>/);
+  const ejs = require('ejs');
+  const html = await ejs.renderFile(V('modelos.ejs'), {
+    ativo: 'boas-vindas', modoPainel: 'presencial', admPapel: 'DEV', pode: () => true, csrfToken: 'x', usuario: { nome: 'Dev' }, asset: (u) => u,
+    montarMenu: require('../src/lib/menu-painel').montarMenu, modelo: { texto: 't', doacao: 'd', local: 'l' }, padroes: require('../src/lib/boas-vindas').PADROES,
+    voltar: null, ok: null, cursos: [], textosCursos: {}, cursoEditando: null,
+    turmasEnvio: [
+      { id: 't1', curso: 'Bombeiro Civil', inicio: '2026-12-07T00:00:00Z', recebem: 28, receberam: 0, liberadaEm: null },
+      { id: 't2', curso: 'Punção Venosa', inicio: '2026-12-05T00:00:00Z', recebem: 3, receberam: 3, liberadaEm: '2026-11-10T12:00:00Z' },
+    ],
+  });
+  const sec = html.slice(html.indexOf('id="envio-turmas"'));
+  assert.ok(html.indexOf('id="envio-turmas"') > 0 && html.indexOf('id="envio-turmas"') < html.indexOf('action="/modelos"'));
+  assert.match(sec, /Bombeiro Civil[\s\S]*?07\/12\/2026[\s\S]*?Ainda não liberado · 28 com pagamento ok[\s\S]*?href="\/turmas\/t1\/boas-vindas"[^>]*>Abrir envio/);
+  assert.match(sec, /Punção Venosa[\s\S]*?Todos os 3 receberam/);
+});
+
+require('dotenv').config();
+const temBanco = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');
+test('turmasParaEnvio: só turmas em andamento, com contagem de quem recebe e de quem recebeu', { skip: temBanco ? false : 'sem banco' }, async () => {
+  const bv = require('../src/lib/boas-vindas');
+  const lista = await bv.turmasParaEnvio();
+  assert.ok(Array.isArray(lista));
+  for (const t of lista) {
+    assert.ok(t.id && t.curso && t.inicio);
+    assert.ok(t.receberam <= t.recebem);
+  }
+  const datas = lista.map((t) => new Date(t.inicio).getTime());
+  assert.deepEqual(datas, [...datas].sort((a, b) => a - b));
+  await require('../src/db').$disconnect();
+});

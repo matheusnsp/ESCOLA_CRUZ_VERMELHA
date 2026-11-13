@@ -2201,3 +2201,4 @@ html.adm-js [data-sem-js] { display: none !important; }
   }
   html.adm-js .adm-recolhe-cel:not(.aberto) .adm-recolhe-corpo { display: none; }
 }
+.adm-bv-envio-lista { margin-bottom: 18px; }

@@ -8,6 +8,33 @@
 
 <% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
 
+<%# Envio por turma (2026-11-13): tudo de boas-vindas num lugar só; o botão saiu da tela de Turmas. %>
+<% var _envio = typeof turmasEnvio !== 'undefined' ? turmasEnvio : []; var _dia = function (d) { var x = new Date(d), p = function (n) { return String(n).padStart(2, '0'); }; return p(x.getUTCDate()) + '/' + p(x.getUTCMonth() + 1) + '/' + x.getUTCFullYear(); }; %>
+<section class="adm-box adm-bv-envio-lista" id="envio-turmas">
+  <div class="adm-box-head"><h2 class="adm-h2"><i class="fa-solid fa-paper-plane"></i> Envio por turma</h2></div>
+  <% if (!_envio.length) { %>
+    <p class="adm-mut adm-bv-cursos-dica">Nenhuma turma aberta ou confirmada em andamento.</p>
+  <% } else { %>
+  <table class="adm-table adm-table-cards">
+    <thead><tr><th>Turma</th><th>Início</th><th>Envio</th><th></th></tr></thead>
+    <tbody>
+      <% _envio.forEach(function (t) { %>
+        <tr>
+          <td><b><%= t.curso %></b></td>
+          <td><%= _dia(t.inicio) %></td>
+          <td><span class="adm-bv-tag<%= t.recebem && t.receberam === t.recebem ? ' proprio' : '' %>"><%=
+            !t.recebem ? 'Ninguém com pagamento ok ainda'
+            : t.receberam === t.recebem ? 'Todos os ' + t.recebem + ' receberam'
+            : !t.liberadaEm && !t.receberam ? 'Ainda não liberado · ' + t.recebem + ' com pagamento ok'
+            : t.receberam + ' de ' + t.recebem + ' receberam' %></span></td>
+          <td class="adm-bv-acoes"><a href="/turmas/<%= t.id %>/boas-vindas" class="adm-link">Abrir envio</a></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% } %>
+</section>
+
 <form method="POST" action="/modelos" class="adm-form adm-box">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
   <% if (voltar) { %><input type="hidden" name="voltar" value="<%= voltar %>"><% } %>

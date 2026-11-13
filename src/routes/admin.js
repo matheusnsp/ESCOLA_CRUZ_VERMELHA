@@ -1593,6 +1593,7 @@ router.get('/modelos', requirePermissao('turmas:gerenciar'), async (req, res) =>
     cursos,
     textosCursos: await boasVindas.lerTextosCursos(),
     cursoEditando: cursos.find((c) => c.id === String(req.query.curso || '')) || null,
+    turmasEnvio: await boasVindas.turmasParaEnvio(),
   });
 });
 
