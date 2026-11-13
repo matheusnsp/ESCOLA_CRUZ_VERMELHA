@@ -44,10 +44,23 @@ describe('dadosCertificadoEad', () => {
     assert.match(d.emitidoEm, /^Rio de Janeiro, 05 de Novembro de 2026\.$/);
     assert.deepEqual(d.conteudo, ['Antes de tudo', 'Engasgo', 'Juntando tudo']);
   });
-  test('assinaturas sem instrutor; sem escolha válida, a primeira da lista', () => {
+  test('assinaturas: a escolha do curso, sem o instrutor', () => {
     assert.deepEqual(dadosCertificadoEad(base).assinaturas, [{ nome: 'BRUNO', cargo: 'Presidente' }]);
-    const s = dadosCertificadoEad({ ...base, curso: { ...base.curso, certAssinaturas: ['instrutor'] } });
-    assert.deepEqual(s.assinaturas, [{ nome: 'AMANDA', cargo: 'Coordenadora' }]);
+  });
+  // 2026-11-12 (pedido do Matheus): o certificado online sai com as três primeiras pessoas de "Quem assina"
+  // (painel → Modelos): Alessandra (coordenação), Luiz Carlos (Presidente) e Márcio (Coordenador Estadual).
+  test('sem escolha (ou só o instrutor): as três primeiras da lista', () => {
+    const lista = [
+      { nome: 'Alessandra Rachel Gomes da Silva', cargo: 'Coordenadora da Escola' },
+      { nome: 'Luiz Carlos dos Santos', cargo: 'Presidente' },
+      { nome: 'Márcio Romero', cargo: 'Coordenador Estadual de Educação e Saúde' },
+      { nome: 'Outra Pessoa', cargo: 'Outro cargo' },
+    ];
+    const coord = { assinantes: lista, livro: 3 };
+    assert.deepEqual(dadosCertificadoEad({ ...base, ajustes: coord, curso: { nome: 'X', cargaHoraria: 3 } }).assinaturas, lista.slice(0, 3));
+    assert.deepEqual(dadosCertificadoEad({ ...base, ajustes: coord, curso: { ...base.curso, certAssinaturas: ['instrutor'] } }).assinaturas, lista.slice(0, 3));
+    // só uma pessoa cadastrada: sai só ela
+    assert.deepEqual(dadosCertificadoEad({ ...base, ajustes: { assinantes: [lista[0]], livro: 3 }, curso: { nome: 'X', cargaHoraria: 3 } }).assinaturas, [lista[0]]);
   });
   test('nome no certificado do curso (extras) e sem documento', () => {
     const d = dadosCertificadoEad({ ...base, curso: { ...base.curso, nomeCertificado: 'Primeiros Socorros (Lei Lucas)' }, usuario: { nome: 'Sem Doc', genero: null } });
@@ -151,5 +164,37 @@ describe('emitirCertificadoEad', { skip: temBanco ? false : 'sem DATABASE_URL lo
     const r3 = await eadCert.emitirCertificadoEad(ac.id, { documentoAluno });
     assert.equal(r3.verificacao.codigo, 'ABCD-EFGH');
     assert.equal(recebidos.length, 1);
+  });
+});
+
+// 2026-11-12: certificado online "com assinatura" (linha + imagem escaneada, se houver) ou "sem assinatura" (só nome
+// e cargo). A escolha e as imagens ficam em painel → Modelos.
+describe('assinatura do certificado online: com ou sem', () => {
+  const ejs = require('ejs');
+  const path = require('path');
+  const documentoAluno = () => null;
+  const lista = [{ nome: 'ALESSANDRA', cargo: 'Coordenadora', imagemUrl: '/uploads/ass-alessandra.webp' }, { nome: 'LUIZ', cargo: 'Presidente' }];
+  const dados = (assinaturaOnline) => dadosCertificadoEad({
+    usuario: { nome: 'Ana', genero: 'Feminino' }, curso: { nome: 'PS', cargaHoraria: 3 }, modulos: [],
+    numero: { livro: 1, registro: 1, emitidoEm: new Date('2026-11-12T15:00:00Z') }, concluidoEm: new Date('2026-11-12T14:00:00Z'),
+    ajustes: { assinantes: lista, livro: 1, assinaturaOnline }, documentoAluno,
+  });
+  const render = (d) => ejs.renderFile(path.join(__dirname, '..', 'src', 'views', 'admin', 'certificado-imprimir.ejs'), {
+    lista: [{ id: 'x', ...d, verificacao: null }], turma: { curso: { nome: 'PS' } }, avisoRedacao: null, barraAluno: null, asset: (u) => u, csrfToken: 'x',
+  });
+  test('com assinatura (padrão): linha e a imagem de quem tem', async () => {
+    const d = dados(undefined);
+    assert.equal(d.assinaturaOnline, 'com');
+    assert.equal(d.assinaturas[0].imagemUrl, '/uploads/ass-alessandra.webp');
+    const html = await render(d);
+    assert.equal((html.match(/class="cert-linha"/g) || []).length, 2);
+    assert.match(html, /<img class="cert-assinatura-img" src="\/uploads\/ass-alessandra\.webp" alt="">/);
+  });
+  test('sem assinatura: só nome e cargo, sem linha nem imagem', async () => {
+    const d = dados('sem');
+    const html = await render(d);
+    assert.doesNotMatch(html, /class="cert-linha"/);
+    assert.doesNotMatch(html, /cert-assinatura-img/);
+    assert.match(html, /ALESSANDRA/);
   });
 });

@@ -1,0 +1,72 @@
+<%#
+  Aba "Certificados" do painel (2026-11-12): quem assina (nome, cargo e assinatura escaneada), com ou sem assinatura no
+  certificado online, livro em uso e uma prévia do certificado online com um aluno de exemplo.
+%>
+<%- include('head', { titulo: 'Certificados' }) %>
+<%- include('header', { ativo: 'certificados' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Certificados</h1>
+</div>
+
+<% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
+<% if (erro) { %><div class="adm-erro" role="alert"><i class="fa-solid fa-triangle-exclamation"></i> <%= erro %></div><% } %>
+
+<form method="POST" action="/certificados?_csrf=<%= csrfToken %>" class="adm-form adm-box" enctype="multipart/form-data">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+  <h2 class="adm-form-secao full"><i class="fa-solid fa-signature"></i> Quem assina</h2>
+  <p class="full adm-hint adm-assin-dica">Até 6 pessoas. O certificado online sai com as 3 primeiras; no presencial, a secretaria marca em cada turma quem aparece (até 4, junto com o instrutor). Deixe o nome em branco para tirar alguém da lista.</p>
+  <div class="full adm-cert-cartoes">
+    <% for (var i = 0; i < 6; i++) { var a = ajustes.assinantes[i] || {}; %>
+      <div class="adm-cert-cartao<%= i < 3 ? ' no-online' : '' %>">
+        <div class="adm-cert-cartao-topo">
+          <span class="adm-assin-num"><%= i + 1 %></span>
+          <% if (i < 3) { %><span class="adm-cert-selo" title="Aparece no certificado online">online</span><% } %>
+        </div>
+        <label>Nome
+          <input type="text" name="assinantes[<%= i %>][nome]" maxlength="80" value="<%= a.nome || '' %>" placeholder="Nome como sai no certificado">
+        </label>
+        <label>Cargo
+          <input type="text" name="assinantes[<%= i %>][cargo]" maxlength="80" value="<%= a.cargo || '' %>" placeholder="Ex.: Coordenadora da Escola">
+        </label>
+        <div class="adm-cert-assinatura">
+          <% if (a.imagemUrl) { %>
+            <img src="<%= a.imagemUrl %>" alt="Assinatura de <%= a.nome %>">
+            <label class="check"><input type="checkbox" name="assinantes[<%= i %>][removerImg]" value="1"> Remover assinatura</label>
+          <% } else { %>
+            <span class="adm-cert-sem">Sem assinatura escaneada</span>
+          <% } %>
+          <label class="adm-cert-enviar"><%= a.imagemUrl ? 'Trocar assinatura' : 'Enviar assinatura' %>
+            <input type="file" name="assinaturaImg<%= i %>" accept="image/png,image/jpeg,image/webp">
+          </label>
+        </div>
+      </div>
+    <% } %>
+  </div>
+  <p class="full adm-hint">Assinatura escaneada: PNG com fundo transparente (ou branco), até 2 MB. Só envie com a autorização da pessoa.</p>
+
+  <fieldset class="full adm-assin-modo">
+    <legend>Certificado online</legend>
+    <label class="check"><input type="radio" name="assinaturaOnline" value="com" <%= ajustes.assinaturaOnline !== 'sem' ? 'checked' : '' %>> <b>Com assinatura</b> — a linha para assinar e, em cima dela, a assinatura escaneada de quem tiver</label>
+    <label class="check"><input type="radio" name="assinaturaOnline" value="sem" <%= ajustes.assinaturaOnline === 'sem' ? 'checked' : '' %>> <b>Sem assinatura</b> — só o nome e o cargo (a autenticidade fica no código de verificação e no QR)</label>
+    <small class="adm-hint">O certificado presencial não muda: é impresso e assinado à mão.</small>
+  </fieldset>
+
+  <label>Livro em uso
+    <input type="number" name="livro" min="1" value="<%= ajustes.livro %>">
+    <small class="adm-hint">Certificados novos recebem este livro e o próximo registro da sequência dele. Os já emitidos mantêm o número.</small>
+  </label>
+
+  <div class="full adm-form-rodape">
+    <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+  </div>
+</form>
+
+<section class="adm-box adm-cert-previa">
+  <h2 class="adm-form-secao"><i class="fa-solid fa-eye"></i> Prévia do certificado online</h2>
+  <p class="adm-hint">Com um aluno de exemplo e o que está salvo acima (salve para atualizar). <a href="/certificados/previa" target="_blank" rel="noopener">Abrir em tela cheia</a></p>
+  <iframe class="adm-cert-iframe" title="Prévia do certificado online" src="/certificados/previa" loading="lazy"></iframe>
+</section>
+
+<%- include('foot') %>

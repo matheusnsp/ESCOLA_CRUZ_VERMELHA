@@ -22,6 +22,8 @@
     </div>
     <button type="button" id="certImprimir">Baixar PDF / imprimir</button>
   </header>
+<% } else if (typeof previaPainel !== 'undefined' && previaPainel) { -%>
+  <%# Prévia na aba Certificados do painel (iframe): sem barra. %>
 <% } else { -%>
   <header class="cert-barra">
     <div>
@@ -59,10 +61,16 @@
       <p class="cert-local"><%= c.emitidoEm %></p>
 <% if (c.online) { %>      <p class="cert-ressalva">Capacitação teórica. Não inclui treinamento prático em manequim, oferecido nos cursos presenciais da Escola.</p>
 <% } -%>
-      <div class="cert-assinaturas n<%= c.assinaturas.length %>">
+<%_ /* Online "sem assinatura" (painel → Modelos): só nome e cargo. Com assinatura: a imagem escaneada (se houver) e a linha. */ var _semLinha = c.online && c.assinaturaOnline === 'sem'; _%>
+      <div class="cert-assinaturas n<%= c.assinaturas.length %><%= _semLinha ? ' sem-linha' : '' %>">
         <% c.assinaturas.forEach(function (a) { %>
           <div>
+<%_ if (!_semLinha && a.imagemUrl) { _%>
+            <img class="cert-assinatura-img" src="<%= a.imagemUrl %>" alt="">
+<%_ } _%>
+<%_ if (!_semLinha) { _%>
             <span class="cert-linha"></span>
+<%_ } _%>
             <b><%= a.nome || '\u00a0' %></b>
             <span><%= a.cargo %></span>
             <small>Cruz Vermelha Brasileira - Rio de Janeiro</small>

@@ -19,19 +19,23 @@ function dataRio(d) {
   return new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(d));
 }
 
-// Assinaturas do curso, sem o instrutor (o online não tem turma). Sem escolha válida: a primeira da lista.
+// Assinaturas do curso, sem o instrutor (o online não tem turma). Sem escolha própria do curso (ou só o instrutor):
+// as três primeiras pessoas de "Quem assina" (painel → Modelos): a coordenação e a presidência — 2026-11-12.
+const COORDENACAO = 3;
 function assinaturasDoCurso(curso, ajustes) {
   const lista = [];
-  for (const chave of cert.escolhaDoCurso(curso)) {
-    if (chave === 'instrutor') continue;
-    const a = ajustes.assinantes[Number(chave.slice(1))];
-    if (a && a.nome) lista.push({ nome: a.nome, cargo: a.cargo });
+  const escolheu = Array.isArray(curso && curso.certAssinaturas) && curso.certAssinaturas.length;
+  if (escolheu) {
+    for (const chave of cert.escolhaDoCurso(curso)) {
+      if (chave === 'instrutor') continue;
+      const a = ajustes.assinantes[Number(chave.slice(1))];
+      if (a && a.nome) lista.push(a);
+    }
   }
-  if (!lista.length) {
-    const primeira = ajustes.assinantes.find((a) => a && a.nome);
-    if (primeira) lista.push({ nome: primeira.nome, cargo: primeira.cargo });
-  }
-  return lista.slice(0, MAX_NO_CERTIFICADO);
+  if (!lista.length) lista.push(...ajustes.assinantes.filter((x) => x && x.nome).slice(0, COORDENACAO));
+  // Com assinatura: a imagem escaneada vai junto (se houver); sem assinatura: só nome e cargo.
+  const com = ajustes.assinaturaOnline !== 'sem';
+  return lista.slice(0, MAX_NO_CERTIFICADO).map((a) => ({ nome: a.nome, cargo: a.cargo, ...(com && a.imagemUrl ? { imagemUrl: a.imagemUrl } : {}) }));
 }
 
 // Tudo o que o modelo imprime para o aluno do curso online, no formato de dadosDoCertificado + online.
@@ -51,6 +55,7 @@ function dadosCertificadoEad({ usuario, curso, modulos, numero, concluidoEm, aju
     concluidoEm: concluido,
     emitidoEm: cert.emitidoEm(numero.emitidoEm || new Date()),
     assinaturas: assinaturasDoCurso(curso, ajustes),
+    assinaturaOnline: ajustes.assinaturaOnline === 'sem' ? 'sem' : 'com',
     instrutorNome: '',
     instrutorRegistro: '',
     livro: numero.livro,
@@ -116,4 +121,15 @@ async function previaCertificadoEad(alunoCursoId, { documentoAluno } = {}) {
   return { dados: { ...dados, teste: true }, verificacao: null };
 }
 
-module.exports = { dadosCertificadoEad, assinaturasDoCurso, dataRio, emitirCertificadoEad, previaCertificadoEad };
+// Aba "Certificados" do painel (2026-11-12): um certificado de exemplo, com as assinaturas e a escolha atuais, para ver
+// como vai ficar antes de algum aluno baixar. Marcado como teste (sem livro/registro).
+function exemploCertificadoEad(ajustes) {
+  const dados = dadosCertificadoEad({
+    usuario: { nome: 'Aluno Exemplo', genero: null }, curso: { nome: 'Primeiros Socorros Básicos', cargaHoraria: 4 },
+    modulos: [{ titulo: 'Antes de tudo', final: false }, { titulo: 'Parada cardíaca', final: false }, { titulo: 'Engasgo', final: false }, { titulo: 'Juntando tudo', final: true }],
+    numero: { livro: null, registro: null, emitidoEm: new Date() }, concluidoEm: new Date(), ajustes, documentoAluno: () => null,
+  });
+  return { ...dados, teste: true };
+}
+
+module.exports = { dadosCertificadoEad, assinaturasDoCurso, dataRio, emitirCertificadoEad, previaCertificadoEad, exemploCertificadoEad };
