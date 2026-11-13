@@ -36,7 +36,8 @@ async function carregar(req) {
   const w = await wb.doEndereco(req.params.end, { incluirRascunho: true });
   if (!w) return null;
   const a = aluno(req) ? await wb.acesso(aluno(req), w) : null;
-  const jaTem = a && (wb.temAcesso(a) || a.situacao === 'pendente');
+  const temPresenca = a ? !!(await prisma.presencaWebinario.findUnique({ where: { webinarioId_usuarioId: { webinarioId: w.id, usuarioId: aluno(req) } } })) : false;
+  const jaTem = a && (wb.temAcesso(a) || a.situacao === 'pendente' || temPresenca);
   if (!w.publicado && !jaTem && !ehDev(req)) return null;
   if (!jaTem && !ehDev(req) && !(await escolaDigital.estaLigada())) return null;
   return { w, a };
@@ -73,7 +74,7 @@ router.get(P(), limiteCupom, comWebinario(async (req, res, w, a) => {
   const vendendo = situacao === 'comprar' || situacao === 'pendente';
   const { cupom, erroCupom } = vendendo ? await cupomDaPagina(req, w, m) : { cupom: null, erroCupom: null };
   const faqs = await prisma.faqCurso.findMany({ where: { cursoId: w.cursoId }, orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }], select: { pergunta: true, resposta: true } }).catch(() => []);
-  const presenca = a && wb.temAcesso(a) ? await prisma.presencaWebinario.findUnique({ where: { webinarioId_usuarioId: { webinarioId: w.id, usuarioId: aluno(req) } } }) : null;
+  const presenca = aluno(req) ? await prisma.presencaWebinario.findUnique({ where: { webinarioId_usuarioId: { webinarioId: w.id, usuarioId: aluno(req) } } }) : null; // vale mesmo sem acesso (estorno depois)
   // Palavra-código: para quem tem acesso, a partir do início do ao vivo (ou sempre, se só gravado).
   const janela = wb.janela(w, agora);
   const blocoPalavra = !!(a && wb.temAcesso(a) && (janela === 'sem-data' || (w.inicioEm && agora >= new Date(w.inicioEm))));
@@ -154,10 +155,26 @@ router.post(P('/palavra-codigo'), requireLogin, comWebinario(async (req, res, w)
   const r = await wb.confirmarPresenca(aluno(req), w, String(req.body.palavra || '').slice(0, 100), wb.agora());
   if (!r.ok) return res.redirect(r.erro === 'nao-confere' || r.erro === 'tentativas' ? `${base}?palavra=${r.erro}` : base);
   if (r.nova) {
-    // E-mail "certificado pronto" só na primeira presença (Task 5: lib/webinario-certificado.js).
-    try { await require('../lib/webinario-certificado').aoConfirmar(w, aluno(req), req); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') console.error('[WEBINARIO] certificado:', e.message); }
+    // E-mail "certificado pronto" só na primeira presença (número reservado aqui).
+    await require('../lib/webinario-certificado').aoConfirmar(w, aluno(req), req).catch((e) => console.error('[WEBINARIO] certificado:', e.message));
   }
   res.redirect(`${base}#certificado`);
+}));
+
+// Certificado: login + presença (não precisa mais ter acesso: estorno depois da presença não apaga o certificado).
+router.get(P('/certificado'), requireLogin, comWebinario(async (req, res, w) => {
+  const base = urlDe(w);
+  const usuarioId = aluno(req);
+  const p = usuarioId ? await prisma.presencaWebinario.findUnique({ where: { webinarioId_usuarioId: { webinarioId: w.id, usuarioId } } }) : null;
+  if (!p) return res.redirect(base);
+  const r = await require('../lib/webinario-certificado').emitirCertificadoWebinario(p.id, { documentoAluno: req.app.locals.documentoAluno });
+  if (!r) return res.redirect(base);
+  if (r.avisoRedacao) console.warn('[WEBINARIO] certificado sem QR:', r.avisoRedacao);
+  res.render('admin/certificado-imprimir', {
+    lista: [{ id: p.id, ...r.dados, verificacao: r.verificacao }],
+    turma: { curso: { nome: w.curso.nome } }, avisoRedacao: null,
+    barraAluno: { voltarUrl: base, cartaoUrl: null },
+  });
 }));
 
 router.get(P('/entrar-na-transmissao'), requireLogin, comWebinario(async (req, res, w, a) => {

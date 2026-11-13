@@ -648,6 +648,15 @@ async function enviarEbookLiberado(email, nome, { ebook, link }) {
   await enviar(email, `Seu e-book está liberado: ${limpo(ebook)}`, html, `E-book liberado (${ebook})`, link);
 }
 
+// Webinário (2026-11-13): presença confirmada pela palavra-código -> certificado de participação.
+async function enviarCertificadoWebinarPronto(email, nome, { webinario, link }) {
+  const limpo = (t) => String(t || '').replace(/[<>&"]/g, '');
+  const html = moldura('Seu certificado está pronto', limpo(nome),
+    `Obrigado por participar do webinário <strong>${limpo(webinario)}</strong>. O seu certificado de participação já está disponível, com o código de verificação da Cruz Vermelha Brasileira – RJ.`,
+    'Ver meu certificado', link, 'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.');
+  await enviar(email, `Seu certificado está pronto: ${limpo(webinario)}`, html, `Certificado webinário (${webinario})`, link);
+}
+
 // Webinários (2026-11-13; spec §5). Os e-mails levam o link da PÁGINA do webinário, nunca o da transmissão.
 const RODAPE_ESCOLA = 'Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ · Praça da Cruz Vermelha, 10 · Centro.';
 const limpaW = (t) => String(t || '').replace(/[<>&"]/g, '');
@@ -733,7 +742,7 @@ async function enviarGestorEscola(email, nome, { escola, link, senhaInicial }) {
 }
 
 module.exports = {
-  enviarWebinarConfirmado, enviarWebinarLembrete, enviarWebinarNovoHorario, enviarWebinarGravacao,
+  enviarCertificadoWebinarPronto, enviarWebinarConfirmado, enviarWebinarLembrete, enviarWebinarNovoHorario, enviarWebinarGravacao,
   enviarVagaLiberada,
   enviarGestorEscola,
   enviarDuvidaRespondida,
