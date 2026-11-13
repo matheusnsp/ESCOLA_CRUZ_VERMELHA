@@ -521,3 +521,12 @@ details.ea-indice > summary, .ea-indice summary { padding: 12px 0; }
 @media (min-width: 720px) { .ea-ebook-topo { grid-template-columns: 180px minmax(0, 1fr); gap: 28px; } .ea-ebook-capa { width: 180px; } }
 .ea-ebook-sobre { max-width: 760px; margin-bottom: 36px; }
 .ea-ebook-sobre p { font-size: 16.5px; line-height: 1.7; color: #3a3a3a; margin: 0 0 14px; }
+
+/* Webinários (2026-11-13): sem o grid da capa do e-book (a capa é larga, 16:9, em cima do título). */
+.ea-webinario-topo { display: block; }
+.ea-webinario-capa { display: block; width: 100%; max-width: 560px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 14px; border: 1px solid var(--ln); box-shadow: 0 18px 40px rgba(16,24,40,.12); margin-bottom: 22px; background: #fff; }
+.ea-webinario-cert { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--ln); }
+.ea-webinario-cert .ea-obs i { color: #17803d; }
+.ea-webinario-video { margin-bottom: 36px; }
+.ea-webinario-video .ea-video { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #000; }
+.ea-webinario-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
