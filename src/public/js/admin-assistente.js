@@ -147,6 +147,14 @@
     window.visualViewport.addEventListener('resize', ajustarAoTeclado);
     window.visualViewport.addEventListener('scroll', ajustarAoTeclado);
   }
+  // Na 1ª vez que o teclado abre (e ao mandar a 1ª mensagem), o Safari do iPhone muda a área visível sem avisar
+  // (sem resize/scroll), e o painel ficava fora do lugar até a próxima mudança. Reajusta algumas vezes seguidas.
+  var sincronias = [];
+  function sincronizarTeclado() {
+    sincronias.forEach(clearTimeout);
+    ajustarAoTeclado();
+    sincronias = [60, 180, 360, 650, 1000].map(function (ms) { return setTimeout(ajustarAoTeclado, ms); });
+  }
   // iPhone: com o painel em tela cheia, ao abrir o teclado o Safari rolava a página por trás (o topo do painel sumia
   // e a página aparecia embaixo). overflow:hidden não basta no iOS; prender o body com position:fixed resolve.
   // Ao fechar, a página volta exatamente para onde estava.
@@ -449,6 +457,8 @@
   var ocupado = false;
   function ajustarAltura() { campo.style.height = 'auto'; campo.style.height = Math.min(campo.scrollHeight, 160) + 'px'; }
   campo.addEventListener('input', ajustarAltura);
+  campo.addEventListener('focus', sincronizarTeclado);
+  campo.addEventListener('blur', sincronizarTeclado);
   campo.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); enviar(campo.value); }
   });
@@ -459,7 +469,7 @@
     if (!texto || ocupado) return;
     if (painel.hidden) abrir(botao);
     ocupado = true; enviarBtn.disabled = true; painel.classList.add('ocupado');
-    campo.value = ''; ajustarAltura();
+    campo.value = ''; ajustarAltura(); sincronizarTeclado();
     conversa.push({ papel: 'pessoa', texto: texto });
     salvarConversa();
     bolhaEu(texto); atualizarVazio();
@@ -496,6 +506,7 @@
       salvarConversa();
       atualizarVazio(); rolarFim();
       ocupado = false; enviarBtn.disabled = false; painel.classList.remove('ocupado');
+      sincronizarTeclado();
       if (!painel.hidden) focarCampo(); // no toque, não puxa o teclado de volta sozinho
     }
 
