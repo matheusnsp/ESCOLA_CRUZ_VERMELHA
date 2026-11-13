@@ -39,8 +39,12 @@ test('rotas: GET/POST /certificados e a prévia; Modelos não salva mais o certi
 });
 
 test('menu do painel tem "Certificados" nos dois modos', () => {
-  const h = ler('src/views/admin/header.ejs');
-  assert.equal((h.match(/href="\/certificados"/g) || []).length, 2);
+  // 2026-11-13: o menu saiu do header.ejs para lib/menu-painel.js.
+  const { montarMenu } = require('../src/lib/menu-painel');
+  for (const modo of ['presencial', 'online']) {
+    const m = montarMenu({ modo, papel: 'DEV', pode: () => true, ativo: '' });
+    assert.ok(m.some((g) => g.href === '/certificados'), modo);
+  }
 });
 
 test('exemplo da prévia: aluno de exemplo com as assinaturas atuais', () => {

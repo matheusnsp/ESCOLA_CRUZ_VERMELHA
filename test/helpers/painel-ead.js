@@ -8,6 +8,7 @@ function montarPainel(quem, { requireDev = (req, res, next) => next() } = {}) {
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, '..', '..', 'src', 'views'));
   app.locals.asset = require('../../src/lib/assets').asset;
+  app.locals.montarMenu = require('../../src/lib/menu-painel').montarMenu;
   app.use(express.urlencoded({ extended: true }));
   app.use((req, res, next) => { req.session = { usuarioId: quem }; Object.assign(res.locals, { csrfToken: 'x', admPapel: 'DEV', pode: () => true, usuario: { nome: 'Dev', papel: 'DEV', id: quem } }); next(); });
   app.use(require('../../src/routes/ead')({ requireDev, auditar: async () => {}, ADMIN_URL: '' }));
