@@ -115,7 +115,10 @@ module.exports = function rotasWebinarios({ requireDev, auditar }) {
     const mudouHorario = antes.inicioEm && depois.inicioEm && new Date(antes.inicioEm).getTime() !== new Date(depois.inicioEm).getTime();
     const gravacaoNova = depois.gravacaoUrl && depois.gravacaoUrl !== antes.gravacaoUrl && !depois.gravacaoAvisadaEm && wb.janela(depois) === 'depois';
     if (!mudouHorario && !gravacaoNova) return;
-    if (mudouHorario) await prisma.inscricaoWebinario.updateMany({ where: { webinarioId: depois.id }, data: { lembrete24hEm: null, lembrete1hEm: null } });
+    if (mudouHorario) {
+      await prisma.inscricaoWebinario.updateMany({ where: { webinarioId: depois.id }, data: { lembrete24hEm: null, lembrete1hEm: null } });
+      if (wb.janela(depois) !== 'depois') await prisma.webinario.update({ where: { id: depois.id }, data: { gravacaoAvisadaEm: null } }); // nova sessão: nova gravação avisa de novo
+    }
     const lista = (await inscritos(depois)).filter((i) => i.acesso);
     if (gravacaoNova) await prisma.webinario.update({ where: { id: depois.id }, data: { gravacaoAvisadaEm: new Date() } });
     for (const i of lista) {
@@ -164,6 +167,17 @@ module.exports = function rotasWebinarios({ requireDev, auditar }) {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="inscritos-${wb.endereco(w.curso.nome)}.csv"`);
     res.send('﻿' + linhas.join('\n') + '\n');
+  });
+
+  // Certificado de um participante (para a secretaria reimprimir ou mandar a cópia).
+  get('/ead/webinarios/:id/certificado/:presencaId', async (req, res) => {
+    const w = await achar(req.params.id);
+    if (!w || !ehId(req.params.presencaId)) return naoAchou(res);
+    const p = await prisma.presencaWebinario.findFirst({ where: { id: req.params.presencaId, webinarioId: w.id } });
+    if (!p) return naoAchou(res);
+    const r = await require('../lib/webinario-certificado').emitirCertificadoWebinario(p.id, { documentoAluno: req.app.locals.documentoAluno });
+    if (!r) return naoAchou(res);
+    res.render('admin/certificado-imprimir', { lista: [{ id: p.id, ...r.dados, verificacao: r.verificacao }], turma: { curso: { nome: w.curso.nome } }, avisoRedacao: r.avisoRedacao || null });
   });
 
   post('/ead/webinarios/:id/excluir', async (req, res) => {

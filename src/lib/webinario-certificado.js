@@ -21,13 +21,14 @@ async function numerar(presencaId) {
   return { ...(await cert.lerNumero(presencaId)), novo: !!r };
 }
 
-function dadosCertificadoWebinario({ usuario, curso, w, numero, ajustes, documentoAluno }) {
+function dadosCertificadoWebinario({ usuario, curso, w, numero, ajustes, documentoAluno, realizadoEm }) {
   const doc = documentoAluno(usuario);
   const horas = wb.cargaHorasDe(w.duracaoMin);
-  const data = w.inicioEm ? dataRio(w.inicioEm) : null;
+  const quando = realizadoEm || w.inicioEm; // a data de quando a presença foi confirmada vale (remarcar depois não muda)
+  const data = quando ? dataRio(quando) : null;
   return {
     online: false,
-    webinario: { titulo: (curso.nomeCertificado || curso.nome).trim(), apresentador: w.apresentador || '', data, gravado: !w.inicioEm },
+    webinario: { titulo: (curso.nomeCertificado || curso.nome).trim(), apresentador: w.apresentador || '', data, gravado: !quando },
     nome: String(usuario.nome || '').trim(),
     portador: cert.portador(usuario.genero),
     documento: doc ? { tipo: doc.tipo.split(' ·')[0], numero: doc.numero } : null,
@@ -50,7 +51,7 @@ async function emitirCertificadoWebinario(presencaId, { enviarEmail = false, lin
   const numero = await numerar(p.id);
   const curso = p.webinario.curso;
   await extras.anexar('curso', [curso]);
-  const dados = dadosCertificadoWebinario({ usuario: p.usuario, curso, w: p.webinario, numero, ajustes: await cert.lerAjustes(), documentoAluno: documentoAluno || (() => null) });
+  const dados = dadosCertificadoWebinario({ usuario: p.usuario, curso, w: p.webinario, numero, realizadoEm: p.realizadoEm, ajustes: await cert.lerAjustes(), documentoAluno: documentoAluno || (() => null) });
 
   let verificacao = null; let avisoRedacao = null;
   const reg = await redacao.registrarCertificados([{

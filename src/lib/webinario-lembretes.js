@@ -12,7 +12,9 @@ const H = 3600 * 1000;
 async function processarLembretesWebinario(agora = new Date()) {
   const r = { enviados24h: 0, enviados1h: 0 };
   const lista = await prisma.webinario.findMany({
-    where: { publicado: true, inicioEm: { gt: agora, lte: new Date(agora.getTime() + 24 * H) } }, include: wb.INCLUIR,
+    // Sem filtro de publicado: despublicar é como a secretaria fecha as inscrições, e quem já está inscrito continua
+    // recebendo os lembretes (o acesso de cada um é conferido no envio).
+    where: { inicioEm: { gt: agora, lte: new Date(agora.getTime() + 24 * H) } }, include: wb.INCLUIR,
   });
   const email = require('./email');
   for (const w of lista) {

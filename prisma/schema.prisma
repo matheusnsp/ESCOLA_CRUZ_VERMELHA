@@ -837,6 +837,7 @@ model PresencaWebinario {
   webinarioId  String
   usuarioId    String
   confirmadaEm DateTime  @default(now())
+  realizadoEm  DateTime? // data do ao vivo quando a presença foi confirmada (o certificado não muda se remarcarem)
   webinario    Webinario @relation(fields: [webinarioId], references: [id], onDelete: Cascade)
   usuario      Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 

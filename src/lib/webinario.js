@@ -235,7 +235,7 @@ async function confirmarPresenca(usuarioId, w, palavra, agora = new Date()) {
     if (!w.palavraCodigo || normalizarPalavra(palavra) !== normalizarPalavra(w.palavraCodigo)) return { ok: false, erro: 'nao-confere' };
     const ja = await tx.presencaWebinario.findUnique({ where: chave });
     if (ja) return { ok: true, nova: false };
-    await tx.presencaWebinario.create({ data: { webinarioId: w.id, usuarioId } });
+    await tx.presencaWebinario.create({ data: { webinarioId: w.id, usuarioId, realizadoEm: w.inicioEm || null } });
     return { ok: true, nova: true };
   });
 }

@@ -1999,6 +1999,8 @@ router.post('/inscricoes/:id/confirmar', requirePermissao('financeiro:aprovar', 
     },
   });
   await sincronizarPagamentoManual(req, m, 'CURSO', 'PAGO');
+  // Webinário pago confirmado à mão (2026-11-13): cria a inscrição (lembretes, Minha conta, Inscritos) e confirma por e-mail.
+  await require('../lib/webinario-avisos').inscricaoPaga(m.id).catch((e) => console.error('[WEBINARIO] confirmação manual:', e.message));
   await auditar(req, 'CONFIRMOU_PAGAMENTO', 'Matricula', m.id, null);
   res.redirect(back(req, 'Pagamento confirmado.'));
 });

@@ -23,7 +23,7 @@
               <td><%= i.usuario.email %></td>
               <td><%= dataBr(i.criadoEm) %></td>
               <td><%= i.forma %><% if (!i.acesso) { %> <span class="ead-selo rascunho">sem acesso</span><% } %></td>
-              <td><%= i.presenca ? 'Sim, ' + dataBr(i.presenca.confirmadaEm) : 'Não' %></td>
+              <td><% if (i.presenca) { %>Sim, <%= dataBr(i.presenca.confirmadaEm) %> · <a href="/ead/webinarios/<%= webinario.id %>/certificado/<%= i.presenca.id %>" target="_blank" rel="noopener">Certificado</a><% } else { %>Não<% } %></td>
             </tr>
           <% }) %>
         </tbody>

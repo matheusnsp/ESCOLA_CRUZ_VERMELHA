@@ -16,16 +16,19 @@ async function confirmarInscricao(w, usuarioId) {
   });
 }
 
-// Matrícula paga na turma online de um webinário -> InscricaoWebinario (uma só) e e-mail de confirmação (só na primeira).
+// Matrícula paga na turma online de um webinário -> InscricaoWebinario (uma só) e e-mail de confirmação. Chamado uma vez por
+// pagamento confirmado (webhook/reconciliação, confirmação manual no painel, cupom de 100%).
 // Devolve true se a matrícula é de webinário (para o chamador não mandar outro aviso).
 async function inscricaoPaga(matriculaId) {
   const m = await prisma.matricula.findUnique({ where: { id: matriculaId }, select: { alunoId: true, turma: { select: { cursoId: true } } } });
   if (!m) return false;
   const w = await prisma.webinario.findUnique({ where: { cursoId: m.turma.cursoId }, include: wb.INCLUIR });
   if (!w) return false;
-  const ja = await prisma.inscricaoWebinario.findUnique({ where: { webinarioId_usuarioId: { webinarioId: w.id, usuarioId: m.alunoId } } });
-  if (ja) return true;
-  await prisma.inscricaoWebinario.create({ data: { webinarioId: w.id, usuarioId: m.alunoId } }).catch(() => null);
+  const chave = { webinarioId_usuarioId: { webinarioId: w.id, usuarioId: m.alunoId } };
+  // Recompra depois de estorno: a inscrição antiga existe; zera os lembretes e confirma de novo.
+  const ja = await prisma.inscricaoWebinario.findUnique({ where: chave });
+  if (ja) await prisma.inscricaoWebinario.update({ where: chave, data: { lembrete24hEm: null, lembrete1hEm: null } });
+  else await prisma.inscricaoWebinario.create({ data: { webinarioId: w.id, usuarioId: m.alunoId } }).catch(() => null);
   require('./cache-rapido').limparLinks(m.alunoId);
   await confirmarInscricao(w, m.alunoId);
   return true;
