@@ -51,8 +51,8 @@ const DEFINICOES_CONSULTA = [
     input_schema: obj({ termo: { type: 'string', description: 'Nome, e-mail, celular ou CPF, como a pessoa escreveu.' } }, ['termo']) },
   { name: 'ver_aluno', strict: true, description: 'Mostra o cadastro e as matrículas de um aluno (os mesmos dados da tela Inscrições do aluno). Precisa do id que veio de buscar_alunos.',
     input_schema: obj({ alunoId: { type: 'string' } }, ['alunoId']) },
-  { name: 'listar_pendentes', strict: true, description: 'Quem está com pagamento pendente, igual à tela Pendentes. aba: com-taxa (pagou a inscrição e falta a matrícula; padrão), sem-taxa (nada pago, ainda dá tempo), fora-de-prazo. Filtra por curso (nome) ou turma.',
-    input_schema: obj({ curso: { type: 'string' }, turmaId: { type: 'string' }, aba: { type: 'string', enum: ['com-taxa', 'sem-taxa', 'fora-de-prazo'] } }) },
+  { name: 'listar_pendentes', strict: true, description: 'Quem está com pagamento pendente, igual à tela Pendentes. aba: com-taxa (pagou a inscrição e falta a matrícula; padrão), sem-taxa (nada pago, ainda dá tempo), fora-prazo. Filtra por curso (nome) ou turma.',
+    input_schema: obj({ curso: { type: 'string' }, turmaId: { type: 'string' }, aba: { type: 'string', enum: ['com-taxa', 'sem-taxa', 'fora-prazo'] } }) },
   { name: 'listar_turmas', strict: true, description: 'Turmas presenciais, como na tela Turmas: curso, início, vagas ocupadas e situação. situacao: por-comecar, andamento, congeladas, concluidas, canceladas.',
     input_schema: obj({ situacao: { type: 'string', enum: ['por-comecar', 'andamento', 'congeladas', 'concluidas', 'canceladas'] }, curso: { type: 'string' } }) },
   { name: 'listar_cursos', strict: true, description: 'Cursos presenciais (id, nome, carga horária, se está ativo). Use para achar o curso de uma turma.',
@@ -121,7 +121,7 @@ async function listarPendentesFerramenta({ curso, turmaId, aba }, ctx) {
   const { faltaReceber } = require('./matricula');
   const agora = new Date();
   const r = await listarPendentes(agora);
-  const qual = { 'com-taxa': r.comTaxa, 'sem-taxa': r.semTaxa, 'fora-de-prazo': r.foraDePrazo }[aba || 'com-taxa'] || r.comTaxa;
+  const qual = { 'com-taxa': r.comTaxa, 'sem-taxa': r.semTaxa, 'fora-prazo': r.foraDePrazo }[aba || 'com-taxa'] || r.comTaxa;
   const nc = normalizar(curso);
   const lista = qual.filter((m) => (!turmaId || m.turmaId === turmaId) && (!nc || normalizar(m.turma.curso.nome).includes(nc))).slice(0, 60);
   anotar(ctx, 'alunos', lista.map((m) => m.alunoId)); anotar(ctx, 'turmas', lista.map((m) => m.turmaId));
