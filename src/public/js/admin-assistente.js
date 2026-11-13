@@ -326,7 +326,7 @@
         // Celular: fecha antes (destrava a página) para a rolagem até o primeiro campo preenchido valer.
         if (window.matchMedia && window.matchMedia('(max-width: 620px)').matches) fecharPainel();
         var r = preencher(f, prop);
-        nota(r.faltaram.length ? 'Preenchi o formulário (não achei na tela: ' + r.faltaram.join(', ') + '). Confira e clique em Salvar.' : 'Preenchi o formulário. Confira e clique em Salvar.');
+        nota((r.faltaram.length ? 'Preenchi o formulário (não achei na tela: ' + r.faltaram.join(', ') + '). ' : 'Preenchi o formulário. ') + 'Confira e clique em ' + botaoSalvar(prop) + '.');
       });
       acoes.appendChild(b);
     } else {
@@ -338,7 +338,7 @@
       });
       acoes.appendChild(a);
     }
-    acoes.appendChild(el('small', null, 'Nada é salvo até você clicar em Salvar.'));
+    acoes.appendChild(el('small', null, 'Nada é salvo até você clicar em ' + botaoSalvar(prop) + '.'));
     c.appendChild(acoes);
     msgs.appendChild(c);
     return c;
@@ -359,6 +359,8 @@
   // ---------- preencher formulários ----------
   // Onde a proposta vale: edição de um curso/turma -> só na tela de edição DELE; senão -> só em Novo curso / Nova turma.
   // (Antes, qualquer formulário na tela servia: "mude o preço do Socorrista" podia cair num curso novo ou em outro curso.)
+  // Nome do botão que salva, como aparece no formulário (novo: "Criar curso"/"Criar turma"; edição: "Salvar alterações").
+  function botaoSalvar(prop) { return prop && prop.editar ? 'Salvar alterações' : (prop && prop.formulario === 'turma' ? 'Criar turma' : 'Criar curso'); }
   function destino(prop) {
     if (prop.editar && /^\/(cursos|turmas)\/[0-9a-f-]{36}\/editar$/i.test(prop.editar.caminho)) {
       return { caminho: prop.editar.caminho, rotulo: 'Abrir a edição de ' + prop.editar.nome + ' e preencher' };
@@ -569,7 +571,7 @@
     if (fAlvo) {
       abrir(botao);
       var r = preencher(fAlvo, pendente);
-      nota(r.faltaram.length ? 'Preenchi o formulário (não achei na tela: ' + r.faltaram.join(', ') + '). Confira e clique em Salvar.' : 'Preenchi o formulário. Confira e clique em Salvar.');
+      nota((r.faltaram.length ? 'Preenchi o formulário (não achei na tela: ' + r.faltaram.join(', ') + '). ' : 'Preenchi o formulário. ') + 'Confira e clique em ' + botaoSalvar(pendente) + '.');
     }
   }
 })();
