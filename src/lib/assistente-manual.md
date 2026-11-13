@@ -8,10 +8,10 @@ O menu (grupos e endereços) é montado sozinho a partir de lib/menu-painel.js; 
 Página inicial do modo Presencial: Inscrições hoje, Recebido no mês, A receber, Para agir (o que precisa de atenção),
 Matrícula rápida (quem espera encaixe), Próximas turmas e Últimas inscrições. Tocar num número abre a lista dele.
 
-## Cursos — presencial (Cursos e turmas › Cursos)
+## Todos os cursos (Cursos › Todos os cursos)
 Lista dos cursos presenciais com carga horária, valores, turmas e se aparece no site. Filtro por endereço:
 `/cursos?q=<nome>&status=<ATIVO|INATIVO>`.
-- **Criar curso:** botão "Novo curso" (`/cursos/novo`). Campos: nome, resumo, texto completo, carga horária,
+- **Criar curso:** botão "Novo curso" (`/cursos/novo`, também em Cursos › Novo curso). Campos: nome, resumo, texto completo, carga horária,
   escolaridade mínima, área, preço à vista, total no parcelado, máximo de parcelas, taxa de inscrição, nome no
   certificado, conteúdo programático, validade do certificado, exige comprovante de saúde, ativo (aparece no site),
   foto e dúvidas frequentes. O botão "Escrever com IA" escreve resumo, texto completo, conteúdo e dúvidas; o texto
@@ -20,11 +20,14 @@ Lista dos cursos presenciais com carga horária, valores, turmas e se aparece no
 - **Editar:** botão "Editar" na linha do curso (`/cursos/<id>/editar`).
 - **Abrir turma do curso:** "Nova turma" na linha do curso.
 
-## Turmas (Cursos e turmas › Turmas)
+## Novo curso (Cursos › Novo curso)
+O mesmo formulário de "Criar curso" descrito em Todos os cursos (`/cursos/novo`).
+
+## Todas as turmas (Turmas › Todas as turmas)
 Lista das turmas por situação (abas): Por começar, Em andamento, Congeladas, Concluídas, Canceladas. Mostra curso,
 início, aulas, vagas ocupadas (inscrições com a taxa paga) e o mínimo. Filtro por endereço:
 `/turmas?aba=<por-comecar|andamento|congeladas|concluidas|canceladas>`.
-- **Criar turma:** botão "Nova turma" (`/turmas/nova`). Campos: curso, início previsto, vagas, mínimo de alunos,
+- **Criar turma:** botão "Nova turma" (`/turmas/nova`, também em Turmas › Nova turma). Campos: curso, início previsto, vagas, mínimo de alunos,
   instrutor e registro, situação, aulas (data e horário; "Adicionar aula" cria mais linhas). Botão "Criar turma"
   (na edição, "Salvar alterações").
 - **Ações na linha:** Alunos (lista filtrada pela turma), Notas, QR da pesquisa, Editar, Excluir (só sem alunos).
@@ -39,7 +42,10 @@ início, aulas, vagas ocupadas (inscrições com a taxa paga) e o mínimo. Filtr
     é concluída sozinha. Para retomar, volte para Aberta ou Confirmada.
   - Cancelada: tira a turma do site guardando o histórico (é o caminho quando ela tem alunos e não pode ser excluída).
 
-## Matrícula rápida (Cursos e turmas › Matrícula rápida)
+## Nova turma (Turmas › Nova turma)
+O mesmo formulário de "Criar turma" descrito em Todas as turmas (`/turmas/nova`; `?curso=<id>` já escolhe o curso).
+
+## Matrícula rápida (Turmas › Matrícula rápida)
 Quem pagou a inscrição no site da instituição, sem criar conta. A pessoa sugere a turma e os horários; a secretaria
 encaixa numa turma e ela recebe o e-mail para pagar o curso. Abas: Aguardando, Em turma, Todos. Filtro por endereço:
 `/matricula-rapida?sit=<aguardando|encaixados|todos>&curso=<id do curso>&q=<nome, e-mail ou telefone>`.
@@ -51,11 +57,11 @@ Confirmada não recebe mais aluno.
 - **Voltar para a espera:** quando a pessoa não pode mais ir na turma; escreva o motivo. Ela volta para Aguardando e
   nada é apagado (pagamentos e histórico ficam). Não vale para turma já concluída.
 
-## Mapa de horários (Cursos e turmas › Mapa de horários)
+## Mapa de horários (Turmas › Mapa de horários)
 Quantos alunos podem em cada dia e período (manhã, tarde, noite), pelo que marcaram no site depois de pagar a
 inscrição. Serve para abrir ou remarcar turmas. Filtro: `/horarios?curso=<id do curso>`. "Baixar planilha" exporta.
 
-## Mensagem de boas-vindas (Cursos e turmas › Mensagem de boas-vindas)
+## Mensagem de boas-vindas (Turmas › Mensagem de boas-vindas)
 Tudo sobre boas-vindas num lugar só:
 - **Envio por turma** (no topo): turmas abertas/confirmadas em andamento, situação do envio e "Abrir envio". Na
   tela de envio da turma: prévia do e-mail, "Enviar para X alunos" (quem pagar depois recebe sozinho) e a doação
