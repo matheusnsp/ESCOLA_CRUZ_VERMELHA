@@ -176,6 +176,25 @@
     document.body.appendChild(fundo); document.body.appendChild(menu); document.body.appendChild(botao);
   }
 
-  function iniciar() { iniciarGrupos(); iniciarGaveta(); iniciarFiltros(); iniciarFab(); }
+  // ---- Formulário de filtros que se aplica sozinho (2026-11-13; ex.: Pesquisa) e campos recolhidos no celular.
+  function iniciarFiltrosForm() {
+    Array.prototype.forEach.call(document.querySelectorAll('form[data-envia-ao-mudar]'), function (f) {
+      f.addEventListener('change', function (e) {
+        if (!e.target || e.target.tagName !== 'SELECT') return;
+        if (typeof f.requestSubmit === 'function') f.requestSubmit(); else f.submit();
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.adm-recolhe-cel'), function (c) {
+      var b = c.querySelector('.adm-recolhe-btn');
+      if (!b) return;
+      b.addEventListener('click', function () {
+        var abrir = !c.classList.contains('aberto');
+        c.classList.toggle('aberto', abrir);
+        b.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+      });
+    });
+  }
+
+  function iniciar() { iniciarGrupos(); iniciarGaveta(); iniciarFiltros(); iniciarFab(); iniciarFiltrosForm(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();
