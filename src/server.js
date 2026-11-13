@@ -400,6 +400,7 @@ setInterval(concluirTurmasPassadas, 60 * 60 * 1000).unref();
 // Lembretes de "falta pagar o curso" para quem pagou só a taxa (lib/lembretes.js): 1 h depois,
 // 3 dias antes e na véspera. Cada um sai uma vez por aluno, mesmo com os 3 serviços rodando.
 require('./lib/lembretes').agendarLembretes(30);
+require('./lib/webinario-lembretes').agendarLembretesWebinario(10); // webinários: lembretes 24 h e 1 h antes (2026-11-13)
 // Boas-vindas de quem pagou depois de a secretaria liberar a mensagem da turma (lib/boas-vindas.js).
 setInterval(() => require('./lib/boas-vindas').enviarPendentes(), 15 * 60 * 1000).unref();
 // Pesquisa de satisfação: e-mail logo depois da última aula de cada turma (lib/pesquisa.js).
