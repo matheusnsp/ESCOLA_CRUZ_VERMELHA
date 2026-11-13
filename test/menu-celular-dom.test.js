@@ -151,6 +151,29 @@ describe('painel no celular (DOM)', { skip: chromium ? false : 'sem Playwright' 
     await pc.close();
   });
 
+  test('form[data-envia-ao-mudar]: mudar um campo envia; o botão "Aplicar" some com o script', async () => {
+    const p = await pagina(`<form method="GET" action="#" data-envia-ao-mudar><select name="curso"><option value="">Todos</option><option value="bc">BC</option></select><button type="submit" data-sem-js>Aplicar</button></form>
+      <script>window.envios = 0; document.querySelector('form').addEventListener('submit', function (e) { e.preventDefault(); window.envios++; });</script>`, 1280);
+    assert.equal(await visivel(p, '[data-sem-js]'), false);
+    await p.selectOption('select[name=curso]', 'bc');
+    assert.equal(await p.evaluate(() => window.envios), 1);
+    await p.close();
+  });
+
+  test('.adm-recolhe-cel: no celular os campos ficam atrás do botão; no computador sempre à vista', async () => {
+    const html = `<div class="adm-recolhe-cel"><button type="button" class="adm-recolhe-btn" aria-expanded="false">Filtros</button><div class="adm-recolhe-corpo"><label>Curso</label></div></div>`;
+    const p = await pagina(html);
+    assert.equal(await visivel(p, '.adm-recolhe-corpo'), false);
+    await p.click('.adm-recolhe-btn');
+    assert.equal(await visivel(p, '.adm-recolhe-corpo'), true);
+    assert.equal(await p.getAttribute('.adm-recolhe-btn', 'aria-expanded'), 'true');
+    await p.close();
+    const pc = await pagina(html, 1280);
+    assert.equal(await visivel(pc, '.adm-recolhe-corpo'), true);
+    assert.equal(await visivel(pc, '.adm-recolhe-btn'), false);
+    await pc.close();
+  });
+
   test('no computador nada muda: abas visíveis, sem cartão', async () => {
     const p = await pagina(TURMAS, 1280);
     assert.equal(await visivel(p, '.adm-abas'), true);

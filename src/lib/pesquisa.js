@@ -109,8 +109,79 @@ async function listarRespostas() {
   return cfgs.map((c) => ({ matriculaId: c.chave.slice('pesquisa:resp:'.length), ...ler(c.valor) }))
     .sort((a, b) => String(b.respondidaEm).localeCompare(String(a.respondidaEm)));
 }
-async function contarEnvios() {
-  return prisma.configuracao.count({ where: { chave: { startsWith: 'pesquisa:envio:' } } });
+// Envios (e-mails da pesquisa). Com filtro { curso, turma }, conta só os das matrículas daquele curso/turma.
+async function contarEnvios(filtro = {}) {
+  if (!filtro.curso && !filtro.turma) return prisma.configuracao.count({ where: { chave: { startsWith: 'pesquisa:envio:' } } });
+  const cfgs = await prisma.configuracao.findMany({ where: { chave: { startsWith: 'pesquisa:envio:' } }, select: { chave: true } });
+  const ids = cfgs.map((c) => c.chave.slice('pesquisa:envio:'.length));
+  if (!ids.length) return 0;
+  const turma = filtro.turma ? { id: filtro.turma } : String(filtro.curso).startsWith('nome:') ? { curso: { nome: String(filtro.curso).slice(5) } } : { cursoId: filtro.curso };
+  return prisma.matricula.count({ where: { id: { in: ids }, turma } });
+}
+
+// ---- Filtros da página Pesquisa (2026-11-13; spec 2026-11-13-pesquisa-filtros-design.md) ----
+const FAIXAS = { satisfeitos: (n) => n >= 4, neutros: (n) => n === 3, insatisfeitos: (n) => n <= 2 };
+// Chave do curso: cursoId; respostas antigas sem ele usam o nome.
+const chaveCurso = (r) => (r.cursoId ? String(r.cursoId) : 'nome:' + String(r.curso || ''));
+
+function filtrarRespostas(todas, { curso, turma, nota } = {}) {
+  return todas.filter((r) => (!curso || chaveCurso(r) === curso) && (!turma || r.turmaId === turma) && (!nota || !FAIXAS[nota] || FAIXAS[nota](r.nota)));
+}
+
+function resumirRespostas(lista) {
+  const dist = [0, 0, 0, 0, 0, 0];
+  let soma = 0;
+  for (const r of lista) { soma += r.nota; if (dist[r.nota] !== undefined) dist[r.nota]++; }
+  return {
+    total: lista.length,
+    media: lista.length ? soma / lista.length : 0,
+    dist,
+    satisfeitos: lista.filter((r) => r.nota >= 4).length,
+    insatisfeitos: lista.filter((r) => r.nota <= 2).length,
+    comComentario: lista.filter((r) => r.comentario).length,
+    aprovadas: lista.filter((r) => r.status === 'aprovada').length,
+    aguardando: lista.filter((r) => r.autoriza && r.comentario && r.status === 'nova').length,
+  };
+}
+
+// Cursos que têm resposta (por nome) e as turmas do curso escolhido (mais nova primeiro).
+function opcoesFiltro(todas, curso) {
+  const cursos = new Map();
+  for (const r of todas) if (!cursos.has(chaveCurso(r))) cursos.set(chaveCurso(r), { id: chaveCurso(r), nome: r.curso || '—' });
+  const turmas = new Map();
+  if (curso) for (const r of todas) if (chaveCurso(r) === curso && r.turmaId && !turmas.has(r.turmaId)) turmas.set(r.turmaId, { id: r.turmaId, data: r.inicioTurma || null });
+  return {
+    cursos: [...cursos.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    turmas: [...turmas.values()].sort((a, b) => String(b.data || '').localeCompare(String(a.data || ''))),
+  };
+}
+
+function mediasPorCurso(todas) {
+  const g = new Map();
+  for (const r of todas) {
+    const k = chaveCurso(r);
+    const x = g.get(k) || { id: k, nome: r.curso || '—', total: 0, soma: 0 };
+    x.total++; x.soma += r.nota; g.set(k, x);
+  }
+  return [...g.values()].map(({ soma, ...x }) => ({ ...x, media: soma / x.total })).sort((a, b) => b.media - a.media || b.total - a.total);
+}
+
+// Lê e confere ?curso=&turma=&nota=: curso que não tem resposta, turma de outro curso e nota inválida viram vazio.
+function filtroDaQuery(q, todas) {
+  const txt = (v) => (typeof v === 'string' ? v.trim().slice(0, 200) : '');
+  const curso = txt(q && q.curso);
+  const turma = txt(q && q.turma);
+  const nota = txt(q && q.nota);
+  const cursoOk = curso && todas.some((r) => chaveCurso(r) === curso) ? curso : '';
+  const turmaOk = cursoOk && turma && todas.some((r) => chaveCurso(r) === cursoOk && r.turmaId === turma) ? turma : '';
+  return { curso: cursoOk, turma: turmaOk, nota: FAIXAS[nota] ? nota : '' };
+}
+
+function qsFiltro(filtro = {}, extra = {}) {
+  const p = new URLSearchParams();
+  for (const k of ['curso', 'turma', 'nota']) if (filtro[k]) p.set(k, filtro[k]);
+  for (const [k, v] of Object.entries(extra)) if (v) p.set(k, v);
+  return p.toString();
 }
 
 // "Maria Silva Souza" → "Maria S."
@@ -230,6 +301,7 @@ async function enviarPendentes({ simular = false } = {}) {
 }
 
 module.exports = {
+  chaveCurso, filtrarRespostas, resumirRespostas, opcoesFiltro, mediasPorCurso, filtroDaQuery, qsFiltro,
   token, tokenValido, link, tokenTurma, tokenTurmaValido, linkTurma, matriculaPorDocumento, fimDaTurma, lerConfig, salvarConfig, lerResposta, listarRespostas, contarEnvios,
   responder, mudarStatus, depoimentosDoSite, enviarPendentes, nomePublico, MAX_COMENTARIO, NOTA_MAX, ROTULOS,
 };

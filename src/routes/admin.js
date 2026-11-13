@@ -1656,30 +1656,32 @@ router.get('/certificados/previa', requirePermissao('turmas:gerenciar'), async (
 // Respostas da pesquisa enviada no fim de cada turma; aprovar o que vai para o site e ligar ou
 // desligar a seção "O que dizem os alunos" da página inicial.
 router.get('/pesquisa', requirePermissao('pesquisa:gerenciar', 'painel:leitura'), async (req, res) => {
-  const [todas, config, enviadas] = await Promise.all([pesquisa.listarRespostas(), pesquisa.lerConfig(), pesquisa.contarEnvios()]);
-  const autorizadas = todas.filter((r) => r.autoriza && r.comentario);
+  // Filtros por curso, turma e nota (2026-11-13; spec 2026-11-13-pesquisa-filtros-design.md): valem para tudo,
+  // menos a "Nota média por curso", que mostra todos os cursos para trocar de curso com um toque.
+  const [todas, config] = await Promise.all([pesquisa.listarRespostas(), pesquisa.lerConfig()]);
+  const filtro = pesquisa.filtroDaQuery(req.query, todas);
+  const filtradas = pesquisa.filtrarRespostas(todas, filtro);
+  const enviadas = await pesquisa.contarEnvios(filtro);
   const abas = [
-    { id: 'aguardando', rot: 'Aguardando aprovação', lista: autorizadas.filter((r) => r.status === 'nova') },
-    { id: 'aprovadas', rot: 'No site', lista: todas.filter((r) => r.status === 'aprovada') },
-    { id: 'ocultas', rot: 'Ocultas', lista: todas.filter((r) => r.status === 'oculta') },
-    { id: 'todas', rot: 'Todas as respostas', lista: todas },
+    { id: 'aguardando', rot: 'Aguardando aprovação', lista: filtradas.filter((r) => r.autoriza && r.comentario && r.status === 'nova') },
+    { id: 'aprovadas', rot: 'No site', lista: filtradas.filter((r) => r.status === 'aprovada') },
+    { id: 'ocultas', rot: 'Ocultas', lista: filtradas.filter((r) => r.status === 'oculta') },
+    { id: 'todas', rot: 'Todas as respostas', lista: filtradas },
   ];
-  const aba = abas.find((a) => a.id === req.query.aba) || (abas[0].lista.length ? abas[0] : abas[3]);
-  const soma = todas.reduce((t, r) => t + r.nota, 0);
-  const grupos = {};
-  for (const r of todas) { const g = grupos[r.curso] || (grupos[r.curso] = { curso: r.curso, total: 0, soma: 0 }); g.total++; g.soma += r.nota; }
+  const aba = abas.find((x) => x.id === req.query.aba) || (abas[0].lista.length ? abas[0] : abas[3]);
+  const resumo = pesquisa.resumirRespostas(filtradas);
   res.render('admin/pesquisa', {
     config,
     flash: req.query.ok || null,
     aba: aba.id,
-    abas: abas.map((a) => ({ id: a.id, rot: a.rot, n: a.lista.length })),
+    abas: abas.map((x) => ({ id: x.id, rot: x.rot, n: x.lista.length })),
     lista: aba.lista,
-    porCurso: Object.values(grupos).map((g) => ({ ...g, media: g.soma / g.total })).sort((a, b) => b.total - a.total),
-    resumo: {
-      total: todas.length, enviadas: Math.max(enviadas, todas.length), media: todas.length ? soma / todas.length : 0,
-      promotores: todas.filter((r) => r.nota >= 4).length, detratores: todas.filter((r) => r.nota <= 2).length,
-      aprovadas: abas[1].lista.length, aguardando: abas[0].lista.length,
-    },
+    filtro,
+    qs: pesquisa.qsFiltro(filtro),
+    opcoes: pesquisa.opcoesFiltro(todas, filtro.curso),
+    porCurso: pesquisa.mediasPorCurso(todas),
+    resumo: { ...resumo, enviadas: Math.max(enviadas, resumo.total) },
+    totalGeral: todas.length,
   });
 });
 
@@ -1687,7 +1689,8 @@ router.post('/pesquisa/site', requirePermissao('pesquisa:gerenciar'), async (req
   const mostrar = req.body.mostrar === '1';
   await pesquisa.salvarConfig({ mostrarNoSite: mostrar });
   await auditar(req, mostrar ? 'PESQUISA_MOSTROU_NO_SITE' : 'PESQUISA_OCULTOU_DO_SITE', 'Configuracao', 'pesquisa_config', null);
-  res.redirect('/pesquisa?ok=' + encodeURIComponent(mostrar ? 'A seção de depoimentos agora aparece no site.' : 'A seção de depoimentos foi ocultada do site.'));
+  const qs = pesquisa.qsFiltro(pesquisa.filtroDaQuery(req.body, await pesquisa.listarRespostas()));
+  res.redirect('/pesquisa?' + (qs ? qs + '&' : '') + 'ok=' + encodeURIComponent(mostrar ? 'A seção de depoimentos agora aparece no site.' : 'A seção de depoimentos foi ocultada do site.'));
 });
 
 router.post('/pesquisa/:matriculaId/:acao(aprovar|ocultar)', requirePermissao('pesquisa:gerenciar'), async (req, res) => {
@@ -1695,7 +1698,8 @@ router.post('/pesquisa/:matriculaId/:acao(aprovar|ocultar)', requirePermissao('p
   const feito = await pesquisa.mudarStatus(req.params.matriculaId, status, req.session.usuarioId);
   if (feito) await auditar(req, status === 'aprovada' ? 'PESQUISA_APROVOU' : 'PESQUISA_OCULTOU', 'Matricula', req.params.matriculaId, null);
   const aba = ['aguardando', 'aprovadas', 'ocultas', 'todas'].includes(req.body.aba) ? req.body.aba : 'aguardando';
-  res.redirect(`/pesquisa?aba=${aba}&ok=` + encodeURIComponent(!feito ? 'Esta resposta não pode ir para o site.' : status === 'aprovada' ? 'Depoimento aprovado para o site.' : 'Depoimento fora do site.'));
+  const qs = pesquisa.qsFiltro(pesquisa.filtroDaQuery(req.body, await pesquisa.listarRespostas()), { aba });
+  res.redirect(`/pesquisa?${qs}&ok=` + encodeURIComponent(!feito ? 'Esta resposta não pode ir para o site.' : status === 'aprovada' ? 'Depoimento aprovado para o site.' : 'Depoimento fora do site.'));
 });
 
 // ---------- Comprovantes da área da saúde (lib/comprovante-saude.js) ----------
