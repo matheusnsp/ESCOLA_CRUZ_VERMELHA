@@ -98,7 +98,7 @@
   var form = el('form', 'adm-assist-form');
   var campo = el('textarea');
   campo.rows = 1; campo.maxLength = 2000; campo.setAttribute('aria-label', 'Sua pergunta');
-  campo.placeholder = 'Pergunte sobre alunos, turmas ou como fazer algo';
+  campo.placeholder = 'Escreva sua pergunta';
   var enviarBtn = el('button'); enviarBtn.type = 'submit'; enviarBtn.setAttribute('aria-label', 'Enviar');
   enviarBtn.appendChild(icone('fa-paper-plane'));
   form.appendChild(campo); form.appendChild(enviarBtn);
