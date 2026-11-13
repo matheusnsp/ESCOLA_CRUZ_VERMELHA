@@ -1,0 +1,91 @@
+<%# Novo curso em 3 passos (telas novas, 2026-11-13): um formulário só, com os passos mostrados/escondidos no
+    navegador (js/curso-passos.js). Só "Criar curso" grava. Sem o script, os 3 passos aparecem um embaixo do outro. %>
+<%- include('head', { titulo: 'Novo curso' }) %>
+<%- include('header', { ativo: 'curso-novo' }) %>
+<% var c = curso || {}; %>
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Novo curso</h1>
+  <a href="/cursos" class="adm-link">Cancelar</a>
+</div>
+
+<div class="adm-passos" data-passos-indicador>
+  <span class="adm-passo" data-ind="1"><b>1</b> Curso</span><span class="adm-passo-traco"></span>
+  <span class="adm-passo" data-ind="2"><b>2</b> Valores</span><span class="adm-passo-traco"></span>
+  <span class="adm-passo" data-ind="3"><b>3</b> Textos</span>
+</div>
+
+<div class="adm-erro" data-passos-erro <%= erro ? '' : 'hidden' %>><i class="fa-solid fa-circle-exclamation"></i> <span><%= erro || '' %></span></div>
+
+<form method="POST" action="/cursos?_csrf=<%= csrfToken %>" class="adm-form adm-box" id="cursoNovo" <%- passoErro ? 'data-passo-erro="' + passoErro + '"' : '' %>>
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+  <section class="full adm-passo-corpo" data-passo="1">
+    <h2 class="adm-form-secao"><i class="fa-solid fa-circle-info"></i> Curso</h2>
+    <div class="adm-passo-grid">
+      <label class="full">Nome do curso
+        <input type="text" name="nome" value="<%= c.nome || '' %>" placeholder="Ex.: Cuidador Infantil" required>
+      </label>
+      <label>Carga horária (horas)
+        <input type="number" name="cargaHoraria" min="1" value="<%= c.cargaHoraria || '' %>" required>
+      </label>
+      <label>Área do curso
+        <select name="categoria">
+          <option value="">— sem área —</option>
+          <% categoriasCurso.forEach(function (cat) { %><option value="<%= cat %>" <%= c.categoria === cat ? 'selected' : '' %>><%= cat %></option><% }) %>
+        </select>
+      </label>
+      <label>Escolaridade mínima
+        <select name="escolaridadeMinima">
+          <% escolaridades.forEach(function (e) { %><option value="<%= e %>" <%= (c.escolaridadeMinima || '') === e ? 'selected' : '' %>><%= e || '— nenhuma —' %></option><% }) %>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section class="full adm-passo-corpo" data-passo="2">
+    <h2 class="adm-form-secao"><i class="fa-solid fa-tag"></i> Valores</h2>
+    <div class="adm-passo-grid">
+      <%- include('_curso-secao-valores', { c: c, valores: null }) %>
+    </div>
+  </section>
+
+  <section class="full adm-passo-corpo" data-passo="3">
+    <h2 class="adm-form-secao"><i class="fa-solid fa-file-lines"></i> Textos</h2>
+    <div class="adm-passo-grid">
+      <%- include('_ia-textos', { iaUrl: '/cursos/ia-textos', iaTipo: 'presencial', iaCursoId: '', iaSemFaqs: false, iaFaqsIniciais: faqsIniciais || [] }) %>
+      <label class="full">Resumo
+        <textarea name="descricao" rows="2" placeholder="Uma ou duas frases. Aparece no cartão do curso e no topo da página."><%= c.descricao || '' %></textarea>
+      </label>
+      <label class="full">Texto completo
+        <textarea name="descricaoLonga" rows="8" placeholder="Texto que aparece na página do curso. Deixe uma linha em branco entre os parágrafos."><%= c.descricaoLonga || '' %></textarea>
+        <small class="adm-hint">Siga o modelo de 3 parágrafos: o que o curso forma, o que o aluno aprende e onde vai poder atuar.</small>
+      </label>
+      <details class="full adm-mais" id="maisDetalhes" <%= (c.conteudoProgramatico || c.nomeCertificado || c.certificadoValidade || c.exigeComprovanteSaude || c.ativo) ? 'open' : '' %>>
+        <summary>Mais detalhes (opcional)</summary>
+        <div class="adm-passo-grid">
+          <label class="full">Conteúdo programático
+            <textarea name="conteudoProgramatico" rows="5" placeholder="Um item por linha. Vai no verso do certificado."><%= c.conteudoProgramatico || '' %></textarea>
+          </label>
+          <label>Nome no certificado
+            <input type="text" name="nomeCertificado" maxlength="120" value="<%= c.nomeCertificado || '' %>" placeholder="Em branco = nome do curso">
+          </label>
+          <label>Validade (opcional)
+            <input type="text" name="certificadoValidade" maxlength="120" value="<%= c.certificadoValidade || '' %>" placeholder="Ex.: Validade de 2 anos">
+          </label>
+          <label class="check full"><input type="checkbox" name="exigeComprovanteSaude" <%= c.exigeComprovanteSaude ? 'checked' : '' %>> Exige comprovante de que a pessoa é da área da saúde</label>
+          <label class="check full"><input type="checkbox" name="ativo" <%= c.ativo ? 'checked' : '' %>> Mostrar este curso no site (desmarcado, ele nasce fora do site)</label>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <div class="full adm-rodape-salvar">
+    <span><button type="button" class="adm-btn-neutro" data-passos-voltar hidden><i class="fa-solid fa-arrow-left"></i> Voltar</button>
+      <small class="adm-hint" data-passos-conta>Foto, certificado e dúvidas você completa depois, no resumo do curso.</small></span>
+    <span><button type="button" class="adm-btn" data-passos-continuar hidden>Continuar <i class="fa-solid fa-arrow-right"></i></button>
+      <button type="submit" class="adm-btn" data-passos-criar><i class="fa-solid fa-check"></i> Criar curso</button></span>
+  </div>
+</form>
+<script src="<%= asset('/js/ia-textos.js') %>"></script>
+<script src="<%= asset('/js/curso-passos.js') %>"></script>
+<%- include('foot') %>

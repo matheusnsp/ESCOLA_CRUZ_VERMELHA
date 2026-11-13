@@ -58,6 +58,26 @@ module.exports = function painelCursos({ requirePermissao, auditar }) {
     next();
   });
 
+  // ---- Novo curso em 3 passos (Curso → Valores → Textos) ----
+  const criar = requirePermissao('cursos:criar');
+  const renderNovo = async (res, { status = 200, curso = {}, erro = null, passo = null, faqsIniciais = [] } = {}) =>
+    res.status(status).render('admin/curso-novo', { curso, erro, passoErro: passo, taxaPadrao: await lerTaxaPadrao(), faqsIniciais });
+
+  router.get('/cursos/novo', criar, (req, res) => renderNovo(res));
+
+  router.post('/cursos', criar, async (req, res) => {
+    const b = req.body || {};
+    const txt = require('../lib/ia-textos');
+    const { dados, extras: ex, erro, passo } = S.lerNovoCurso(b);
+    if (erro) return renderNovo(res, { status: 400, curso: b, erro, passo, faqsIniciais: txt.faqsDoCorpo(b) });
+    const curso = await prisma.curso.create({ data: { ...dados, imagemUrl: null } });
+    await extras.salvarExtra('curso', curso.id, ex);
+    await txt.salvarFaqs(curso.id, txt.lerFaqsDoForm(b)); // dúvidas escritas com IA e marcadas
+    await auditar(req, 'CRIOU_CURSO', 'Curso', curso.id, { nome: curso.nome });
+    const podeAbrir = typeof res.locals.pode === 'function' && res.locals.pode('cursos:gerenciar');
+    return res.redirect(podeAbrir ? `/cursos/${curso.id}?ok=${encodeURIComponent('Curso criado.')}` : `/cursos?ok=${encodeURIComponent('Curso criado.')}`);
+  });
+
   // Link antigo (e-mails, favoritos): a edição agora começa no resumo.
   router.get(`/cursos/:id(${ID})/editar`, gerenciar, (req, res) => res.redirect(`/cursos/${req.params.id}`));
 
