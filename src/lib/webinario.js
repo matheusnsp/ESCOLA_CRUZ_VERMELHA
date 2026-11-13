@@ -183,6 +183,42 @@ function situacaoCartao(w, a, agora = new Date()) {
   return w.gravacaoUrl ? 'gravacao' : 'gravacao-em-breve';
 }
 
+// Vitrine (spec §6): publicados; primeiro os próximos (mais perto primeiro), depois os já realizados com gravação e os
+// só gravados (por ordemVitrine). Realizado sem gravação fica de fora. Com usuarioId, marca "inscrito".
+async function daVitrine(agora = new Date(), usuarioId = null) {
+  try {
+    const lista = await prisma.webinario.findMany({
+      where: { publicado: true, OR: [{ gratuito: true }, { precoOnline: { gt: 0 } }] }, include: INCLUIR, orderBy: [{ ordemVitrine: 'asc' }, { criadoEm: 'asc' }],
+    });
+    const proximos = lista.filter((w) => w.inicioEm && janela(w, agora) !== 'depois').sort((a, b) => new Date(a.inicioEm) - new Date(b.inicioEm));
+    const gravados = lista.filter((w) => (!w.inicioEm || janela(w, agora) === 'depois') && w.gravacaoUrl);
+    const out = [];
+    for (const w of [...proximos, ...gravados]) {
+      out.push({ ...w, quando: quandoTexto(w.inicioEm, { curto: true }), inscrito: usuarioId ? temAcesso(await acesso(usuarioId, w)) : false });
+    }
+    return out;
+  } catch (e) {
+    console.error('[WEBINARIO] vitrine:', e.message);
+    return [];
+  }
+}
+
+// Minha conta: webinários com inscrição (grátis ou paga com acesso) ou presença, do mais novo para o mais antigo.
+async function meus(usuarioId) {
+  const [insc, pres] = await Promise.all([
+    prisma.inscricaoWebinario.findMany({ where: { usuarioId }, include: { webinario: { include: INCLUIR } } }),
+    prisma.presencaWebinario.findMany({ where: { usuarioId }, include: { webinario: { include: INCLUIR } } }),
+  ]);
+  const comPresenca = new Set(pres.map((p) => p.webinarioId));
+  const porId = new Map();
+  for (const i of insc) {
+    if (comPresenca.has(i.webinarioId) || temAcesso(await acesso(usuarioId, i.webinario))) porId.set(i.webinarioId, { w: i.webinario, desde: i.criadoEm });
+  }
+  for (const p of pres) if (!porId.has(p.webinarioId)) porId.set(p.webinarioId, { w: p.webinario, desde: p.confirmadaEm });
+  return [...porId.values()].sort((a, b) => b.desde - a.desde)
+    .map(({ w, desde }) => ({ ...w, desde, quando: quandoTexto(w.inicioEm), temCertificado: comPresenca.has(w.id) }));
+}
+
 // Palavra-código (spec §3): grava a tentativa antes de comparar; 10 por pessoa por webinário por hora.
 // { ok: true, nova } | { ok: false, erro: 'sem-acesso'|'cedo'|'tentativas'|'nao-confere' }
 const LIMITE_TENTATIVAS = 10;
@@ -221,5 +257,5 @@ async function excluir(id) {
 
 module.exports = {
   agora, JANELA_MIN, INCLUIR, endereco, quandoTexto, linkPagina, cargaHorasDe, dataBrasilia, paraCampo, normalizarPalavra, salvar, doEndereco, porId,
-  acesso, temAcesso, janela, situacaoCartao, confirmarPresenca, LIMITE_TENTATIVAS, excluir,
+  acesso, temAcesso, janela, situacaoCartao, confirmarPresenca, daVitrine, meus, LIMITE_TENTATIVAS, excluir,
 };

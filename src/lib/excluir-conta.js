@@ -26,6 +26,7 @@ const EM_ANDAMENTO = {
   AND: [
     FANTASMA,
     { NOT: { statusPagamento: { in: ['PAGO', 'PARCELADO'] }, turma: { curso: { ebook: { isNot: null } } } } },
+    { NOT: { statusPagamento: { in: ['PAGO', 'PARCELADO'] }, turma: { curso: { webinario: { isNot: null } } } } }, // webinário pago (2026-11-13), idem
   ],
   statusPagamento: { in: ['PENDENTE', 'PAGO', 'PARCELADO'] },
   turma: { status: { not: 'ENCERRADA' } },

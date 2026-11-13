@@ -303,7 +303,8 @@ router.get('/escola-digital', (req, res, next) => (async () => {
   const usuario = req.session && req.session.usuarioId ? { id: req.session.usuarioId, papel: req.session.papel } : null;
   const v = await require('../lib/escola-digital-vitrine').montarVitrine(lista, usuario);
   const ebooks = await require('../lib/ebook').daVitrine(); // e-books (2026-11-09): fileira própria, sem cache
-  res.render('escola-digital', { ...v, ebooks, vitrine });
+  const webinarios = await require('../lib/webinario').daVitrine(new Date(), usuario && usuario.papel === 'ALUNO' ? usuario.id : null); // 2026-11-13
+  res.render('escola-digital', { ...v, ebooks, webinarios, vitrine });
 })().catch(next));
 
 router.get('/cursos', async (req, res) => {
