@@ -1977,6 +1977,10 @@ a.mr-num:hover { border-color: var(--linha); }
 .adm-cert-enviar input[type=file] { font-size: 12px; font-weight: 400; max-width: 100%; }
 .adm-cert-previa { margin-top: 16px; }
 .adm-cert-iframe { width: 100%; aspect-ratio: 297 / 420; max-height: 1100px; border: 1px solid var(--linha); border-radius: var(--r-s, 10px); background: #fff; }
+/* Safari: campo de texto e de arquivo têm largura mínima própria e vazavam do cartão (print do Matheus, 2026-11-13). */
+.adm-cert-cartoes > *, .adm-cert-cartao > *, .adm-cert-cartao label, .adm-cert-assinatura > * { min-width: 0; }
+.adm-cert-cartao input[type=text], .adm-cert-cartao input[type=file] { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.adm-cert-cartao input[type=file] { overflow: hidden; text-overflow: ellipsis; }
 
 /* ===== Menu em grupos e gaveta no celular (2026-11-13) =====================
    spec docs/superpowers/specs/2026-11-13-menu-submenus-design.md. O header.ejs desenha os grupos
