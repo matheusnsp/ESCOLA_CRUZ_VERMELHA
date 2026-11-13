@@ -61,6 +61,9 @@ app.locals.statusBadge = function (s) {
 const ROTULO_TURMA = { ENCERRADA: 'CONCLUÍDA' };
 app.locals.rotuloTurma = (s) => ROTULO_TURMA[s] || s;
 
+// Menu do painel em grupos (header.ejs; 2026-11-13).
+app.locals.montarMenu = require('./lib/menu-painel').montarMenu;
+
 // Helper disponível em todas as views: status da MATRÍCULA, separando o parcelado que ainda tem
 // parcelas (status PARCELADO, gravado quando o cartão parcelado é aprovado) do parcelado já
 // quitado (plano PARCELADO com status PAGO: a secretaria marcou as parcelas como quitadas).

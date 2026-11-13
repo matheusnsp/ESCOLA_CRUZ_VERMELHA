@@ -1977,3 +1977,79 @@ a.mr-num:hover { border-color: var(--linha); }
 .adm-cert-enviar input[type=file] { font-size: 12px; font-weight: 400; max-width: 100%; }
 .adm-cert-previa { margin-top: 16px; }
 .adm-cert-iframe { width: 100%; aspect-ratio: 297 / 420; max-height: 1100px; border: 1px solid var(--linha); border-radius: var(--r-s, 10px); background: #fff; }
+
+/* ===== Menu em grupos e gaveta no celular (2026-11-13) =====================
+   spec docs/superpowers/specs/2026-11-13-menu-submenus-design.md. O header.ejs desenha os grupos
+   (lib/menu-painel.js); /js/admin-menu.js abre/fecha grupos e a gaveta. */
+.adm-grp { display: grid; }
+.adm-grp-tit {
+  all: unset; box-sizing: border-box; cursor: pointer;
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 9px 14px; border-radius: var(--r-s);
+  font: 700 14px var(--fonte); color: var(--tinta);
+}
+.adm-grp-tit > i:first-child { font-size: 13px; color: var(--mut); width: 18px; text-align: center; }
+.adm-grp-tit:hover { background: var(--bg); }
+.adm-grp-tit:focus-visible { outline: 2px solid var(--vermelho); outline-offset: 2px; }
+.adm-grp-seta { margin-left: auto; font-size: 11px; color: var(--mut); transition: transform .15s; }
+.adm-grp-selo { margin-left: 6px; }
+.adm-grp.aberto > .adm-grp-tit .adm-grp-seta { transform: rotate(90deg); }
+.adm-grp.ativo > .adm-grp-tit, .adm-grp.ativo > .adm-grp-tit > i:first-child { color: var(--vermelho-txt); }
+.adm-grp.aberto > .adm-grp-tit .adm-grp-selo { display: none; } /* aberto: o selo já aparece no item */
+.adm-grp-itens { display: none; margin: 2px 0 6px 23px; padding-left: 10px; border-left: 2px solid var(--linha); }
+.adm-grp.aberto > .adm-grp-itens { display: grid; gap: 1px; }
+.adm-nav .adm-grp-itens a { padding: 8px 10px; font-size: 14px; font-weight: 600; }
+.adm-nav .adm-grp-itens a .adm-badge { margin-left: auto; }
+.adm-nav-sep { font: 800 10.5px var(--fonte); letter-spacing: .12em; text-transform: uppercase; color: var(--mut); padding: 14px 14px 4px; }
+.adm-topo-cel, .adm-lado-fechar, .adm-lado-fundo { display: none; }
+
+@media (min-width: 1025px) {
+  .adm-nav .adm-grp-tit { padding: 10px 12px; font-size: 14.5px; }
+}
+
+@media (max-width: 1024px) {
+  /* topo fino: logo, nome da página e o botão Menu */
+  .adm-topo-cel {
+    display: flex; align-items: center; gap: 12px;
+    position: sticky; top: 0; z-index: 900;
+    padding: 10px 16px; background: var(--card);
+    border-bottom: 1px solid var(--linha); box-shadow: var(--sombra);
+  }
+  .adm-topo-cel::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--vermelho); }
+  .adm-topo-logo img { height: 34px; width: auto; display: block; }
+  .adm-topo-onde { font: 700 14px var(--fonte); color: var(--mut); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .adm-menu-btn {
+    margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    font: 700 14px var(--fonte); color: var(--tinta);
+    padding: 9px 14px; border-radius: 999px; border: 1px solid var(--linha); background: var(--card);
+  }
+  /* o menu vira gaveta pela esquerda */
+  .adm-top {
+    position: fixed; top: 0; bottom: 0; left: 0; z-index: 1001;
+    width: min(320px, 86vw); height: auto;
+    flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 18px;
+    padding: 18px 14px 16px; overflow-y: auto; overscroll-behavior: contain;
+    border: 0; border-right: 1px solid var(--linha);
+    transform: translateX(-105%); transition: transform .2s ease; visibility: hidden;
+  }
+  body.adm-menu-aberto .adm-top { transform: none; visibility: visible; box-shadow: 0 0 40px rgba(0,0,0,.25); }
+  body.adm-menu-aberto { overflow: hidden; }
+  .adm-lado-fundo:not([hidden]) { display: block; position: fixed; inset: 0; z-index: 1000; background: rgba(15,18,22,.45); }
+  .adm-lado-fechar {
+    display: grid; place-items: center; position: absolute; right: 10px; top: 12px;
+    width: 40px; height: 40px; border: 0; border-radius: 50%; background: none; color: var(--mut); font-size: 20px; cursor: pointer;
+  }
+  .adm-top .adm-brand { padding-right: 44px; }
+  .adm-top .adm-brand-txt { display: none; }
+  .adm-nav { order: 0; width: auto; flex: 1 0 auto; flex-direction: column; overflow: visible; padding: 0; margin: 0; gap: 2px; }
+  .adm-nav a { white-space: normal; padding: 10px 12px; }
+  .adm-top-pe {
+    display: flex !important; /* vence o display:contents do style do header.ejs */
+    flex-wrap: wrap; align-items: center; gap: 10px;
+    padding: 14px 4px 0; border-top: 1px solid var(--linha);
+  }
+  .adm-top-pe .adm-tema { flex: 1 1 100%; margin-left: 0; }
+  .adm-top-pe .adm-tema button { flex: 1; width: auto; }
+  .adm-top-pe .adm-sair span { display: inline; }
+}
+@media (max-width: 1024px) and (prefers-reduced-motion: reduce) { .adm-top { transition: none; } }
