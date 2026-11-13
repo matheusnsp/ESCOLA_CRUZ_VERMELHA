@@ -9,7 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+const { PDFDocument, StandardFonts, rgb, degrees } = require('pdf-lib');
 const { paraPdf } = require('./ead-cartao');
 const { mascarar } = require('./documento');
 
@@ -96,15 +96,25 @@ async function apagar(caminho) {
   await fs.promises.unlink(path.join(pastaLocal(), c.nome)).catch(() => {});
 }
 
-// Escreve o texto no rodapé de todas as páginas (7 pt, cinza claro, centralizado).
+// Escreve o texto no rodapé de todas as páginas (7 pt, cinza claro, centralizado). O rodapé é o de baixo NA TELA:
+// respeita o recorte da página (CropBox) e a rotação (/Rotate 90, 180, 270), senão o texto saía cortado ou de lado.
 async function marcar(buffer, texto) {
   const doc = await PDFDocument.load(buffer, { updateMetadata: false });
   const fonte = await doc.embedFont(StandardFonts.Helvetica);
   const t = paraPdf(texto); // a Helvetica do PDF só tem o WinAnsi: "Ł" vira "L", emoji sai
+  const largura = fonte.widthOfTextAtSize(t, 7);
   for (const pagina of doc.getPages()) {
-    const { width } = pagina.getSize();
-    const largura = fonte.widthOfTextAtSize(t, 7);
-    pagina.drawText(t, { x: Math.max(8, (width - largura) / 2), y: 10, size: 7, font: fonte, color: rgb(0.6, 0.6, 0.6) });
+    const { x: cx, y: cy, width: cw, height: ch } = pagina.getCropBox();
+    const giro = ((pagina.getRotation().angle % 360) + 360) % 360;
+    const meioL = Math.max(8, (cw - largura) / 2); // ao longo da largura
+    const meioA = Math.max(8, (ch - largura) / 2); // ao longo da altura (páginas giradas de lado)
+    const pos = {
+      0: { x: cx + meioL, y: cy + 10 },
+      90: { x: cx + cw - 10, y: cy + meioA },
+      180: { x: cx + cw - meioL, y: cy + ch - 10 },
+      270: { x: cx + 10, y: cy + ch - meioA },
+    }[giro] || { x: cx + meioL, y: cy + 10 };
+    pagina.drawText(t, { ...pos, rotate: degrees(giro), size: 7, font: fonte, color: rgb(0.6, 0.6, 0.6) });
   }
   return Buffer.from(await doc.save());
 }
