@@ -128,6 +128,7 @@
     painel.hidden = false;
     document.body.classList.add('adm-assist-aberto');
     travarPagina();
+    corDoSafari(true);
     [botao, botaoTopo].forEach(function (b) { if (b) b.setAttribute('aria-expanded', 'true'); });
     rolarFim();
     if (telaDeToque()) { try { painel.focus({ preventScroll: true }); } catch (e) { painel.focus(); } } else campo.focus();
@@ -150,6 +151,20 @@
   // e a página aparecia embaixo). overflow:hidden não basta no iOS; prender o body com position:fixed resolve.
   // Ao fechar, a página volta exatamente para onde estava.
   var rolagemTravada = null;
+  // Barras do próprio Safari (endereço e a barra ↑ ↓ ✓ em cima do teclado) ficam fora da página; a única forma de
+  // mudar a cor delas é a meta theme-color. Com o painel aberto, a cor do painel; ao fechar, volta a de antes.
+  var corAntes = null;
+  function corDoSafari(abrindo) {
+    var m = document.querySelector('meta[name="theme-color"]');
+    if (abrindo) {
+      if (!m) { m = document.createElement('meta'); m.setAttribute('name', 'theme-color'); document.head.appendChild(m); m.setAttribute('data-assist', ''); }
+      if (corAntes === null) corAntes = m.getAttribute('content') || '';
+      m.setAttribute('content', getComputedStyle(painel).backgroundColor);
+    } else if (m && corAntes !== null) {
+      if (m.hasAttribute('data-assist') && !corAntes) m.parentNode.removeChild(m); else m.setAttribute('content', corAntes);
+      corAntes = null;
+    }
+  }
   function travarPagina() {
     if (rolagemTravada !== null || !window.matchMedia || !window.matchMedia('(max-width: 620px)').matches) return;
     rolagemTravada = window.scrollY || window.pageYOffset || 0;
@@ -167,6 +182,7 @@
     painel.hidden = true;
     document.body.classList.remove('adm-assist-aberto');
     soltarPagina();
+    corDoSafari(false);
     painel.style.top = ''; painel.style.height = '';
     [botao, botaoTopo].forEach(function (b) { if (b) b.setAttribute('aria-expanded', 'false'); });
     var volta = quemAbriu && quemAbriu.offsetParent !== null ? quemAbriu : (botaoTopo && botaoTopo.offsetParent !== null ? botaoTopo : botao);

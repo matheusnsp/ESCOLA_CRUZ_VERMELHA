@@ -251,6 +251,19 @@ describe('tela do assistente', { skip: chromium ? false : 'sem Playwright' }, ()
     await c.close();
   });
 
+  test('celular: barras do Safari tingidas com a cor do painel enquanto ele está aberto (theme-color)', async () => {
+    const c = await navegador.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const p = await abrir('/pendentes', '', 'pendentes', 390, c);
+    const cor = () => p.evaluate(() => { const m = document.querySelector('meta[name="theme-color"]'); return m && m.getAttribute('content'); });
+    const antes = await cor();
+    await p.tap('.adm-assist-top');
+    const fundo = await p.$eval('#admAssist', (e) => getComputedStyle(e).backgroundColor);
+    assert.equal(await cor(), fundo);
+    await p.tap('.adm-assist-x');
+    assert.equal(await cor(), antes);
+    await c.close();
+  });
+
   test('erro vira mensagem amigável', async () => {
     respostas = [[{ tipo: 'erro', mensagem: 'O assistente está fora do ar agora. Tente de novo em instantes.' }, { tipo: 'fim' }]];
     const p = await abrir('/pendentes', '', 'pendentes');
