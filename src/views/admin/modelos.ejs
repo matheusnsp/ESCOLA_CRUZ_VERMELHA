@@ -37,4 +37,55 @@
   </div>
 </form>
 
+<%# Texto por curso (2026-11-13): um texto só de um curso; os outros usam o padrão acima. %>
+<section class="adm-box adm-bv-cursos" id="texto-curso">
+  <div class="adm-box-head"><h2 class="adm-h2"><i class="fa-solid fa-book"></i> Texto por curso</h2></div>
+  <% if (cursoEditando) { var _txt = textosCursos[cursoEditando.id] || modelo.texto; %>
+    <form method="POST" action="/modelos/curso" class="adm-form adm-bv-curso-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="cursoId" value="<%= cursoEditando.id %>">
+      <label class="full">
+        Texto de <b><%= cursoEditando.nome %></b>
+        <textarea name="texto" rows="18" class="adm-mono"><%= _txt %></textarea>
+        <small class="adm-hint">Mesmos campos do padrão: <code>{CURSO}</code>, <code>{curso}</code>, <code>{data}</code>, <code>{hora}</code>, <code>{local}</code> e <code>{doacao}</code>.
+          A doação de cada turma continua valendo. Apague tudo e salve para o curso voltar ao texto padrão.</small>
+      </label>
+      <div class="full adm-form-rodape">
+        <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> Salvar texto do curso</button>
+        <a href="/modelos#texto-curso" class="adm-link">Cancelar</a>
+      </div>
+    </form>
+  <% } else { %>
+    <p class="adm-hint adm-bv-cursos-dica">Um texto só para um curso. Os cursos sem texto próprio usam o padrão acima. A doação de cada turma continua valendo.</p>
+    <% if (!cursos.length) { %>
+      <p class="adm-mut adm-bv-cursos-dica">Nenhum curso presencial ativo.</p>
+    <% } else { %>
+    <table class="adm-table adm-table-cards">
+      <thead><tr><th>Curso</th><th>Texto</th><th></th></tr></thead>
+      <tbody>
+        <% cursos.forEach(function (c) { var _tem = !!textosCursos[c.id]; %>
+          <tr>
+            <td><b><%= c.nome %></b></td>
+            <td><span class="adm-bv-tag<%= _tem ? ' proprio' : '' %>"><%= _tem ? 'Texto próprio' : 'Padrão' %></span></td>
+            <td class="adm-bv-acoes">
+              <% if (_tem) { %>
+                <a href="/modelos?curso=<%= c.id %>#texto-curso" class="adm-link">Editar</a>
+                <form method="POST" action="/modelos/curso" data-confirmar="<%= c.nome %> volta a usar o texto padrão. O texto próprio dele será apagado." data-botao="Voltar ao padrão">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <input type="hidden" name="cursoId" value="<%= c.id %>">
+                  <input type="hidden" name="texto" value="">
+                  <button type="submit" class="adm-link">Voltar ao padrão</button>
+                </form>
+              <% } else { %>
+                <a href="/modelos?curso=<%= c.id %>#texto-curso" class="adm-link">Escrever texto do curso</a>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% } %>
+  <% } %>
+</section>
+
 <%- include('foot') %>

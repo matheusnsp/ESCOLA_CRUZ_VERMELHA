@@ -93,6 +93,7 @@ async function avisosDeBoasVindas(matriculas) {
     if (!ids.length) return [];
     const turmas = await prisma.turma.findMany({ where: { id: { in: ids } }, include: { curso: true, aulas: true } });
     await extras.anexar('turma', turmas);
+    await boasVindas.anexarTextosCursos(turmas);
     const modelo = await boasVindas.lerModelo();
     return turmas.filter(boasVindas.turmaEmCurso).map((t) => ({
       curso: t.curso.nome,
