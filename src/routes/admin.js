@@ -118,16 +118,7 @@ async function auditar(req, acao, alvoTipo, alvoId, detalhe) {
   }
 }
 
-function parseDecimal(v, { opcional = false } = {}) {
-  if (v == null || String(v).trim() === '') return opcional ? null : NaN;
-  const n = Number(String(v).replace(',', '.'));
-  return Number.isFinite(n) && n >= 0 ? n : NaN;
-}
-
-function parseInteiro(v, { min = 0 } = {}) {
-  const n = parseInt(v, 10);
-  return Number.isInteger(n) && n >= min ? n : NaN;
-}
+const { parseDecimal, parseInteiro } = require('../lib/parse-form');
 
 async function sincronizarPagamentoManual(req, matricula, tipo, novoStatus) {
   try {
