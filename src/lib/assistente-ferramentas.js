@@ -251,7 +251,7 @@ function respostaPreencher(formulario, { ok, erros, ignorados }) {
   if (Object.keys(erros).length) return { resultado: { preparado: false, erros, ignorados } };
   const campos = { ...ok }; const cursoNome = campos.cursoNome; delete campos.cursoNome;
   return { resultado: { preparado: true, formulario, campos: Object.keys(campos), ...(cursoNome ? { curso: cursoNome } : {}), ignorados, aviso: 'Ainda não está salvo: a pessoa precisa clicar em "Preencher na tela", conferir e clicar em Salvar.' },
-    evento: { tipo: 'preencher', formulario, campos } };
+    evento: { tipo: 'preencher', formulario, campos, ...(cursoNome ? { cursoNome } : {}) } };
 }
 
 async function escreverTextos(entrada, ctx) {
