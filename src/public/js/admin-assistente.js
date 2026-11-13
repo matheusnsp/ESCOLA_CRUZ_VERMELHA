@@ -318,6 +318,20 @@
     });
     c.appendChild(dl);
     var acoes = el('div', 'adm-assist-cartao-acoes');
+    // Curso que já existe (telas novas, 2026-11-13): um botão por seção (Valores, Página no site…).
+    var subs = prop.editar && prop.editar.secoes && prop.editar.secoes.length
+      ? prop.editar.secoes.map(function (x) { return { formulario: prop.formulario, campos: x.campos, editar: { id: prop.editar.id, nome: prop.editar.nome, caminho: x.caminho, secao: x.secao, rotulo: x.rotulo, botao: x.botao } }; })
+      : [prop];
+    subs.forEach(function (sub) { acoes.appendChild(acaoDe(sub)); });
+    var botoes = subs.map(botaoSalvar).filter(function (b, i, l) { return l.indexOf(b) === i; });
+    acoes.appendChild(el('small', null, 'Nada é salvo até você clicar em ' + botoes.join(' / ') + '.'));
+    c.appendChild(acoes);
+    msgs.appendChild(c);
+    return c;
+  }
+
+  // Botão do cartão: "Preencher na tela" quando o formulário certo está aberto; senão "Abrir … e preencher".
+  function acaoDe(prop) {
     var f = acharFormulario(prop);
     if (f) {
       var b = el('button', 'adm-btn adm-assist-preencher'); b.type = 'button';
@@ -328,20 +342,15 @@
         var r = preencher(f, prop);
         nota((r.faltaram.length ? 'Preenchi o formulário (não achei na tela: ' + r.faltaram.join(', ') + '). ' : 'Preenchi o formulário. ') + 'Confira e clique em ' + botaoSalvar(prop) + '.');
       });
-      acoes.appendChild(b);
-    } else {
-      var d = destino(prop);
-      var a = el('a', 'adm-btn adm-assist-abrir'); a.href = d.caminho;
-      a.appendChild(icone('fa-arrow-up-right-from-square')); a.appendChild(document.createTextNode(' ' + d.rotulo));
-      a.addEventListener('click', function () {
-        gravar(CHAVE_PREENCHER, { formulario: prop.formulario, campos: prop.campos, editar: prop.editar, caminho: d.caminho, criadoEm: Date.now() });
-      });
-      acoes.appendChild(a);
+      return b;
     }
-    acoes.appendChild(el('small', null, 'Nada é salvo até você clicar em ' + botaoSalvar(prop) + '.'));
-    c.appendChild(acoes);
-    msgs.appendChild(c);
-    return c;
+    var d = destino(prop);
+    var a = el('a', 'adm-btn adm-assist-abrir'); a.href = d.caminho;
+    a.appendChild(icone('fa-arrow-up-right-from-square')); a.appendChild(document.createTextNode(' ' + d.rotulo));
+    a.addEventListener('click', function () {
+      gravar(CHAVE_PREENCHER, { formulario: prop.formulario, campos: prop.campos, editar: prop.editar, caminho: d.caminho, criadoEm: Date.now() });
+    });
+    return a;
   }
 
   function desenharConversa() {
@@ -360,8 +369,14 @@
   // Onde a proposta vale: edição de um curso/turma -> só na tela de edição DELE; senão -> só em Novo curso / Nova turma.
   // (Antes, qualquer formulário na tela servia: "mude o preço do Socorrista" podia cair num curso novo ou em outro curso.)
   // Nome do botão que salva, como aparece no formulário (novo: "Criar curso"/"Criar turma"; edição: "Salvar alterações").
-  function botaoSalvar(prop) { return prop && prop.editar ? 'Salvar alterações' : (prop && prop.formulario === 'turma' ? 'Criar turma' : 'Criar curso'); }
+  function botaoSalvar(prop) {
+    if (prop && prop.editar && prop.editar.botao) return prop.editar.botao; // seção do curso (Salvar valores…)
+    return prop && prop.editar ? 'Salvar alterações' : (prop && prop.formulario === 'turma' ? 'Criar turma' : 'Criar curso');
+  }
   function destino(prop) {
+    if (prop.editar && prop.editar.secao && /^\/cursos\/[0-9a-f-]{36}\/(pagina|valores|certificado|publicacao|duvidas)$/i.test(prop.editar.caminho)) {
+      return { caminho: prop.editar.caminho, rotulo: 'Abrir ' + prop.editar.rotulo + ' e preencher' };
+    }
     if (prop.editar && /^\/(cursos|turmas)\/[0-9a-f-]{36}\/editar$/i.test(prop.editar.caminho)) {
       return { caminho: prop.editar.caminho, rotulo: 'Abrir a edição de ' + prop.editar.nome + ' e preencher' };
     }
@@ -369,7 +384,15 @@
   }
   function acharFormulario(prop) {
     if (location.pathname !== destino(prop).caminho) return null;
+    if (prop.editar && prop.editar.secao) return formularioDaSecao(prop);
     return formularioDaTela(prop.formulario);
+  }
+  // Seção do curso: o formulário que tem os campos propostos; Dúvidas: o bloco de sugestões.
+  function formularioDaSecao(prop) {
+    if (prop.editar.secao === 'duvidas') return document.querySelector('.ia-duvidas-form');
+    var ks = Object.keys(prop.campos || {});
+    for (var i = 0; i < ks.length; i++) { var e = document.querySelector('form [name="' + ks[i] + '"]'); if (e && e.form) return e.form; }
+    return null;
   }
   function formularioDaTela(tipo) {
     var c = tipo === 'turma' ? document.querySelector('form [name=cursoId]') : document.querySelector('form [name=cargaHoraria]');
@@ -412,6 +435,21 @@
   }
   function preencherFaqs(f, faqs) {
     if (!faqs || !faqs.length) return true;
+    if (f.classList && f.classList.contains('ia-duvidas-form')) { // seção Dúvidas: sugestões marcadas
+      var l = f.querySelector('.ia-faqs-lista');
+      if (!l) return false;
+      l.textContent = '';
+      faqs.forEach(function (q, i) {
+        var linha = el('div', 'ia-faq'); var rot = el('label', 'check');
+        var cb = el('input'); cb.type = 'checkbox'; cb.name = 'faqsIa[' + i + '][usar]'; cb.value = '1'; cb.checked = true;
+        rot.appendChild(cb); rot.appendChild(document.createTextNode(' Usar'));
+        var p = el('input'); p.type = 'text'; p.name = 'faqsIa[' + i + '][pergunta]'; p.maxLength = 200; p.value = q.pergunta;
+        var r = el('textarea'); r.name = 'faqsIa[' + i + '][resposta]'; r.rows = 2; r.maxLength = 600; r.value = String(q.resposta || '').slice(0, 600);
+        linha.appendChild(rot); linha.appendChild(p); linha.appendChild(r); l.appendChild(linha);
+      });
+      f.hidden = false;
+      return true;
+    }
     var bloco = f.querySelector('.ia-textos');
     if (bloco && bloco.hasAttribute('data-sem-faqs')) return false; // curso já criado: dúvidas ficam na seção própria
     var caixa = f.querySelector('.ia-faqs'); var lista = f.querySelector('.ia-faqs-lista');

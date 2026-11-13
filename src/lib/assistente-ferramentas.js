@@ -184,7 +184,9 @@ async function listarCursos({ termo }, ctx) {
   const { semSoOnline } = require('./ead-curso-online');
   const cs = await semSoOnline(await prisma.curso.findMany({ where: { ebook: null, webinario: null }, orderBy: { nome: 'asc' }, select: { id: true, nome: true, cargaHoraria: true, ativo: true } }));
   const nt = normalizar(termo);
-  return { cursos: cs.filter((c) => !nt || normalizar(c.nome).includes(nt) || pontuarNome(nt, c.nome) >= 0.6).slice(0, 30) };
+  const lista = cs.filter((c) => !nt || normalizar(c.nome).includes(nt) || pontuarNome(nt, c.nome) >= 0.6).slice(0, 30);
+  anotar(ctx, 'cursos', lista.map((c) => c.id)); // pode linkar o resumo do curso (/cursos/<id>)
+  return { cursos: lista };
 }
 
 const CONSULTAS = { buscar_alunos: buscarAlunos, ver_aluno: verAluno, listar_pendentes: listarPendentesFerramenta, listar_turmas: listarTurmas, listar_cursos: listarCursos };
@@ -274,7 +276,7 @@ async function alvoEdicao(tipo, id) {
   if (tipo === 'curso') {
     const c = await prisma.curso.findUnique({ where: { id }, select: { id: true, nome: true, ebook: { select: { id: true } } } });
     const soOnline = c ? await require('./ead-curso-online').ehSoOnline(c.id).catch(() => false) : false;
-    return c && !c.ebook && !soOnline ? { id: c.id, caminho: `/cursos/${c.id}/editar`, nome: c.nome } : null;
+    return c && !c.ebook && !soOnline ? { id: c.id, caminho: `/cursos/${c.id}`, nome: c.nome } : null;
   }
   const t = await prisma.turma.findUnique({ where: { id }, select: { id: true, status: true, inicioPrevisto: true, curso: { select: { nome: true } } } });
   return t && !FORA_DO_PRESENCIAL.includes(t.status) ? { id: t.id, caminho: `/turmas/${t.id}/editar`, nome: `${t.curso.nome} · ${dia2(t.inicioPrevisto)}` } : null;
@@ -288,6 +290,14 @@ async function comEdicao(tipo, idEditar, resposta) {
     return { resultado: { preparado: false, erros } };
   }
   if (!resposta.evento) return resposta;
+  // Curso (telas novas, 2026-11-13): cada campo vai para a seção dele (Valores, Página no site, Certificado,
+  // Inscrição e publicação, Dúvidas); o cartão mostra um botão por seção.
+  if (tipo === 'curso') {
+    const secoes = require('./curso-secoes').secoesDosCampos(resposta.evento.campos || {})
+      .map((x) => ({ ...x, caminho: `/cursos/${alvo.id}/${x.secao}` }));
+    alvo.secoes = secoes;
+    resposta.resultado.aviso = `Ainda não está salvo: a pessoa clica em "Abrir … e preencher" (${secoes.map((x) => x.rotulo).join(', ')}), confere e clica em ${secoes.map((x) => x.botao).join(' / ')}.`;
+  }
   return { resultado: { ...resposta.resultado, editando: alvo.nome }, evento: { ...resposta.evento, editar: alvo } };
 }
 

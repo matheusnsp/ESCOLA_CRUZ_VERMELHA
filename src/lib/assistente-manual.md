@@ -9,28 +9,40 @@ Página inicial do modo Presencial: Inscrições hoje, Recebido no mês, A receb
 Matrícula rápida (quem espera encaixe), Próximas turmas e Últimas inscrições. Tocar num número abre a lista dele.
 
 ## Todos os cursos (Cursos › Todos os cursos)
-Lista dos cursos presenciais com carga horária, valores, turmas e se aparece no site. Filtro por endereço:
-`/cursos?q=<nome>&status=<ATIVO|INATIVO>`.
-- **Criar curso:** botão "Novo curso" (`/cursos/novo`, também em Cursos › Novo curso). Campos: nome, resumo, texto completo, carga horária,
-  escolaridade mínima, área, preço à vista, total no parcelado, máximo de parcelas, taxa de inscrição, nome no
-  certificado, conteúdo programático, validade do certificado, exige comprovante de saúde, ativo (aparece no site),
-  foto e dúvidas frequentes. O botão "Escrever com IA" escreve resumo, texto completo, conteúdo e dúvidas; o texto
-  completo sai sempre em 3 parágrafos (o que o curso forma; o que o aluno aprende; onde vai poder atuar).
-  Botão final: "Criar curso" (num curso que já existe, "Salvar alterações").
-- **Editar:** botão "Editar" na linha do curso (`/cursos/<id>/editar`).
-- **Abrir turma do curso:** "Nova turma" na linha do curso.
+Lista dos cursos presenciais: nome, horas e área, próximas turmas, se está no site e o que falta (foto, texto
+completo, conteúdo do certificado, dúvidas). Filtros por endereço: `/cursos?q=<nome>&status=<ATIVO|INATIVO>`
+(ATIVO = No site, INATIVO = Fora do site). O botão **Abrir** leva ao resumo do curso (`/cursos/<id>`).
+- **Resumo do curso:** um cartão por parte, cada uma com a sua tela e o seu botão de salvar:
+  - Página no site (`/cursos/<id>/pagina`): nome, resumo, texto completo, carga horária, área, escolaridade e foto
+    ("Escrever com IA" com Desfazer; "Gerar foto com IA"). Botão "Salvar página".
+  - Valores (`/cursos/<id>/valores`): à vista, total no parcelado, máximo de parcelas, taxa de inscrição. "Salvar valores".
+  - Certificado (`/cursos/<id>/certificado`): nome no certificado, conteúdo programático ("Sugerir com IA"),
+    validade e quem assina (até 4). "Salvar certificado".
+  - Dúvidas frequentes (`/cursos/<id>/duvidas`): editar, mudar a ordem (setas), remover, adicionar e "Sugerir dúvidas"
+    (IA; marcar e "Adicionar as marcadas"). Cada ação grava na hora.
+  - Turmas deste curso (`/cursos/<id>/turmas`): as turmas e "Nova turma deste curso".
+  - Inscrição e publicação (`/cursos/<id>/publicacao`): "Mostrar este curso no site", "Exige comprovante da área da
+    saúde" ("Salvar") e **Excluir curso** (só sem turmas, inscrições, EAD ou cupom; senão, desmarque Mostrar no site).
+- O texto completo sai sempre em 3 parágrafos (o que o curso forma; o que o aluno aprende; onde vai poder atuar).
 
 ## Novo curso (Cursos › Novo curso)
-O mesmo formulário de "Criar curso" descrito em Todos os cursos (`/cursos/novo`).
+`/cursos/novo`, em 3 passos: 1 Curso (nome, carga horária, área, escolaridade), 2 Valores (preços e taxa), 3 Textos
+(resumo, texto completo, dúvidas e "Mais detalhes": conteúdo programático, nome no certificado, validade, comprovante
+de saúde, Mostrar no site). "Começar com a IA" no topo: a pessoa escreve o que sabe e a IA preenche os 3 passos.
+Voltar/Continuar não salvam; só "Criar curso". O curso nasce fora do site e abre no resumo. Foto, certificado e o resto
+se completam depois, nas seções.
 
 ## Todas as turmas (Turmas › Todas as turmas)
 Lista das turmas por situação (abas): Por começar, Em andamento, Congeladas, Concluídas, Canceladas. Mostra curso,
-início, aulas, vagas ocupadas (inscrições com a taxa paga) e o mínimo. Filtro por endereço:
-`/turmas?aba=<por-comecar|andamento|congeladas|concluidas|canceladas>`.
-- **Criar turma:** botão "Nova turma" (`/turmas/nova`, também em Turmas › Nova turma). Campos: curso, início previsto, vagas, mínimo de alunos,
-  instrutor e registro, situação, aulas (data e horário; "Adicionar aula" cria mais linhas). Botão "Criar turma"
-  (na edição, "Salvar alterações").
-- **Ações na linha:** Alunos (lista filtrada pela turma), Notas, QR da pesquisa, Editar, Excluir (só sem alunos).
+início, aulas, vagas ocupadas (inscrições com a taxa paga) e o mínimo. Filtros por endereço:
+`/turmas?aba=<por-comecar|andamento|congeladas|concluidas|canceladas>&q=<nome do curso>`. O botão **Abrir** leva ao
+resumo da turma (`/turmas/<id>`).
+- **Resumo da turma:** a situação e a próxima mudança automática, e cartões para Dados da turma (`/turmas/<id>/editar`),
+  Alunos (`/alunos?turma=<id>`, com quantos têm pagamento pendente), Mensagem de boas-vindas, Notas, QR da pesquisa e
+  Certificados. Embaixo, Excluir turma (só sem alunos; com alunos, marque Cancelada em Dados da turma).
+- **Dados da turma:** blocos Quando (curso, início, aulas e **Gerar aulas**: dias da semana + horário + até quando
+  cria as datas de uma vez), Vagas (vagas e mínimo), Situação e Instrutor. Botão "Salvar alterações" (na nova, "Criar
+  turma"); depois de salvar, volta ao resumo.
 - **Situações:**
   - Aberta: aparece no site e aceita inscrição. Vira Confirmada sozinha à 00:00 do dia de início.
   - Confirmada: vai acontecer e não aceita mais inscrição pelo site nem encaixe na Matrícula rápida (quem já está
@@ -43,7 +55,9 @@ início, aulas, vagas ocupadas (inscrições com a taxa paga) e o mínimo. Filtr
   - Cancelada: tira a turma do site guardando o histórico (é o caminho quando ela tem alunos e não pode ser excluída).
 
 ## Nova turma (Turmas › Nova turma)
-O mesmo formulário de "Criar turma" descrito em Todas as turmas (`/turmas/nova`; `?curso=<id>` já escolhe o curso).
+`/turmas/nova` (`?curso=<id>` já escolhe o curso): os mesmos blocos de Dados da turma, com "Começar com a IA" no topo
+(a pessoa escreve curso, dias, horário, vagas e instrutor; a IA preenche) e "Gerar aulas". Botão "Criar turma"; a turma
+nasce Aberta e abre no resumo.
 
 ## Matrícula rápida (Turmas › Matrícula rápida)
 Quem pagou a inscrição no site da instituição, sem criar conta. A pessoa sugere a turma e os horários; a secretaria
