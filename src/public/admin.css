@@ -2427,3 +2427,5 @@ body.adm-assist-aberto .adm-assist-btn { display: none; }
 .adm-comecar-texto { width: 100%; font: inherit; font-size: 15px; color: var(--tinta); background: var(--campo); border: 1px solid var(--linha); border-radius: var(--r-s); padding: 12px; resize: vertical; box-sizing: border-box; }
 .adm-comecar-bt { justify-self: start; }
 .adm-ou { text-align: center; color: var(--mut); font-weight: 700; font-size: 13px; margin: 6px 0 14px; }
+.adm-rot-acao { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ia-desfazer[hidden] { display: none; }

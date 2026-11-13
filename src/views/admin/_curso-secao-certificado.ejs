@@ -5,7 +5,7 @@
     <small class="adm-hint">Use quando o certificado precisa de um nome mais completo que o do site (ex.: "Punção Venosa e Diluição de Medicamentos").</small>
   </label>
   <label class="full">
-    Conteúdo programático
+    <span class="adm-rot-acao">Conteúdo programático <button type="button" class="adm-btn-neutro ia-conteudo-bt" data-url="/cursos/<%= c.id %>/ia-conteudo"><i class="fa-solid fa-wand-magic-sparkles"></i> Sugerir com IA</button></span>
     <textarea name="conteudoProgramatico" rows="8" placeholder="Um item por linha, ex.:&#10;Fundamentos da terapia intravenosa&#10;Revisão anatômica do sistema venoso periférico"><%= c.conteudoProgramatico || '' %></textarea>
     <small class="adm-hint">Um item por linha. Vai no verso do certificado.</small>
   </label>
@@ -53,3 +53,5 @@
       })();
     </script>
   <% } %>
+<p class="ia-textos-msg full ia-conteudo-msg" role="status" hidden></p>
+<script src="<%= asset('/js/ia-conteudo.js') %>"></script>

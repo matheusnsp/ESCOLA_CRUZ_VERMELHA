@@ -42,7 +42,15 @@
         .then(function (r) { return r.json(); })
         .then(function (j) {
           if (!j.ok) { aviso(j.erro || 'Não foi possível escrever agora.', true); return; }
-          campos.forEach(function (n) { var c = campo(n); if (c && typeof j.textos[n] === 'string' && j.textos[n]) c.value = j.textos[n]; });
+          // Desfazer (2026-11-13): guarda o texto de antes; o botão devolve sem salvar nada.
+          var antes = {};
+          campos.forEach(function (n) { var c = campo(n); if (c && typeof j.textos[n] === 'string' && j.textos[n]) { antes[n] = c.value; c.value = j.textos[n]; } });
+          if (Object.keys(antes).length) {
+            var desf = bloco.querySelector('.ia-desfazer');
+            if (!desf) { desf = el('button', { type: 'button', class: 'adm-btn-neutro ia-desfazer' }, 'Desfazer (voltar ao texto anterior)'); bt.insertAdjacentElement('afterend', desf); }
+            desf.hidden = false;
+            desf.onclick = function () { Object.keys(antes).forEach(function (n) { var c = campo(n); if (c) c.value = antes[n]; }); desf.hidden = true; aviso('Textos de antes de volta. Nada foi salvo.'); };
+          }
           if (faqs && !bloco.hasAttribute('data-sem-faqs')) mostrarFaqs(j.textos.faqs);
           aviso('Pronto: confira os textos e clique em Salvar.');
         })

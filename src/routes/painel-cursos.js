@@ -188,6 +188,26 @@ module.exports = function painelCursos({ requirePermissao, auditar }) {
     res.render('admin/curso-turmas', { curso, turmas });
   });
 
+  // "Sugerir com IA" no conteúdo programático (seção Certificado). JSON { ok, conteudo }. Nada é salvo.
+  router.post(`/cursos/:id(${ID})/ia-conteudo`, gerenciar, async (req, res) => {
+    const ia = require('../lib/ead-ia');
+    if (!ia.ehChaveConfigurada()) return res.json({ ok: false, erro: ia.MSG_CHAVE });
+    const t = await ia.dentroDoTeto();
+    if (!t.ok) return res.json({ ok: false, erro: t.erro });
+    const curso = await prisma.curso.findUnique({ where: { id: req.params.id }, select: { id: true, nome: true, descricaoLonga: true } });
+    if (!curso) return res.json({ ok: false, erro: 'Curso não encontrado.' });
+    const txt = require('../lib/ia-textos');
+    try {
+      const r = await txt.sugerirConteudo({ nome: curso.nome, descricaoLonga: curso.descricaoLonga });
+      await ia.somarCustoAvulso(r.usage);
+      await auditar(req, 'IA_CONTEUDO_CURSO', 'Curso', curso.id, {});
+      return res.json({ ok: true, conteudo: r.conteudo });
+    } catch (e) {
+      if (e.usage) await ia.somarCustoAvulso(e.usage).catch(() => {});
+      return res.json({ ok: false, erro: 'A IA não conseguiu agora; preencha à mão ou tente de novo.' });
+    }
+  });
+
   // ---- Dúvidas frequentes: cada ação grava na hora e volta para a seção ----
   const voltaDuvidas = (id, erro) => `/cursos/${id}/duvidas${erro ? `?erro=${encodeURIComponent(erro)}` : ''}`;
 
