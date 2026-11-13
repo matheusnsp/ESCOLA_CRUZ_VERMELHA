@@ -195,6 +195,29 @@
     });
   }
 
-  function iniciar() { iniciarGrupos(); iniciarGaveta(); iniciarFiltros(); iniciarFab(); iniciarFiltrosForm(); }
+  // ---- Rolagem da barra lateral (2026-11-13): cada item do menu abre uma página nova e a barra voltava ao topo,
+  // escondendo o item escolhido. Guarda a posição ao sair e volta para ela; sem posição guardada (ou se o item
+  // marcado ficar fora de vista), rola até o item marcado aparecer.
+  var CHAVE_ROLAGEM = 'adm-menu-rolagem';
+  function iniciarRolagem() {
+    var lado = document.getElementById('admLado') || document.querySelector('.adm-top');
+    if (!lado) return;
+    var guardada = null;
+    try { guardada = window.sessionStorage.getItem(CHAVE_ROLAGEM); } catch (e) { guardada = null; }
+    var n = parseInt(guardada, 10);
+    if (isFinite(n) && n >= 0) lado.scrollTop = n;
+    var ativo = lado.querySelector('.adm-nav a.on, .adm-nav a[aria-current="page"]');
+    if (ativo) {
+      var l = lado.getBoundingClientRect(), a = ativo.getBoundingClientRect();
+      if (a.top < l.top || a.bottom > l.bottom) lado.scrollTop += (a.top - l.top) - l.height / 3;
+    }
+    function guardar() {
+      try { window.sessionStorage.setItem(CHAVE_ROLAGEM, String(Math.round(lado.scrollTop))); } catch (e) { /* sem armazenamento: só não lembra */ }
+    }
+    lado.addEventListener('click', function (e) { if (e.target && e.target.closest && e.target.closest('a[href]')) guardar(); });
+    window.addEventListener('pagehide', guardar);
+  }
+
+  function iniciar() { iniciarGrupos(); iniciarRolagem(); iniciarGaveta(); iniciarFiltros(); iniciarFab(); iniciarFiltrosForm(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();

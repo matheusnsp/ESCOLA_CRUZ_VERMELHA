@@ -174,6 +174,33 @@ describe('painel no celular (DOM)', { skip: chromium ? false : 'sem Playwright' 
     await pc.close();
   });
 
+  const MENU_LONGO = `<header class="adm-top" id="admLado"><nav class="adm-nav">${Array.from({ length: 30 }, (_, i) => `<a href="#i${i}" class="${i === 27 ? 'on' : ''}"${i === 27 ? ' aria-current="page"' : ''}>Item ${i}</a>`).join('')}</nav></header>`;
+
+  test('barra lateral: sem posição guardada, rola até o item marcado ficar à vista', async () => {
+    const p = await navegador.newPage({ viewport: { width: 1280, height: 500 } });
+    await p.setContent(`<!doctype html><html><body class="adm">${MENU_LONGO}<main class="adm-wrap">x</main></body></html>`);
+    await p.addStyleTag({ content: CSS });
+    await p.addScriptTag({ content: JS });
+    const ok = await p.evaluate(() => { const lado = document.querySelector('.adm-top').getBoundingClientRect(); const a = document.querySelector('.adm-nav a.on').getBoundingClientRect(); return a.top >= lado.top && a.bottom <= lado.bottom; });
+    assert.equal(ok, true);
+    await p.close();
+  });
+
+  test('barra lateral: volta para a posição em que estava antes de trocar de página', async () => {
+    const p = await navegador.newPage({ viewport: { width: 1280, height: 500 } });
+    const html = (com) => `<!doctype html><html><head><style>${CSS}</style></head><body class="adm">${MENU_LONGO.replace(' class="on" aria-current="page"', '')}<main class="adm-wrap">x</main>${com ? `<script>${JS}</script>` : ''}</body></html>`;
+    await p.route('http://painel.teste/**', (r) => r.fulfill({ contentType: 'text/html', body: html(!r.request().url().includes('sem-js')) }));
+    await p.goto('http://painel.teste/sem-js');
+    await p.evaluate(() => sessionStorage.setItem('adm-menu-rolagem', '180'));
+    await p.goto('http://painel.teste/pagina');
+    assert.equal(await p.$eval('.adm-top', (e) => e.scrollTop), 180);
+    // clicar num item guarda a posição atual
+    await p.$eval('.adm-top', (e) => { e.scrollTop = 240; });
+    await p.$eval('.adm-nav a:nth-child(21)', (a) => a.click());
+    assert.equal(await p.evaluate(() => sessionStorage.getItem('adm-menu-rolagem')), '240');
+    await p.close();
+  });
+
   test('no computador nada muda: abas visíveis, sem cartão', async () => {
     const p = await pagina(TURMAS, 1280);
     assert.equal(await visivel(p, '.adm-abas'), true);
