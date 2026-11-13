@@ -3113,54 +3113,8 @@ const STATUS_TURMA_ATIVA = ['ABERTA', 'CONFIRMADA'];
 router.get('/pendentes', requirePermissao('pendentes:gerenciar'), async (req, res) => {
   const agora = new Date();
 
-  // Turma que ainda dá pra aproveitar: aberta e com início no futuro.
-  // O status sozinho não bastava — turma marcada ABERTA com data vencida
-  // aparecia como se desse tempo. (O fechamento automático só roda quando
-  // alguém acessa o site do aluno, então pode atrasar.)
-  const TURMA_VALE = turmaEmAberto(agora);
-
-  const [comTaxa, semTaxa, foraDePrazo] = await Promise.all([
-    // ── 1. Taxa paga, curso pendente ──────────────────────────────────────
-    prisma.matricula.findMany({
-      where: {
-        statusPagamento: 'PENDENTE',
-        taxaConfirmada: true,
-        turma: TURMA_VALE,
-      },
-      orderBy: { turma: { inicioPrevisto: 'asc' } },
-      include: { aluno: true, turma: { include: { curso: true } }, cupomEad: { select: { desconto: true } }, pagamentos: true },
-    }),
-
-    // ── 2. Nada pago, ainda dá tempo ──────────────────────────────────────
-    prisma.matricula.findMany({
-      where: {
-        statusPagamento: 'PENDENTE',
-        taxaConfirmada: false,
-        turma: TURMA_VALE,
-      },
-      orderBy: { turma: { inicioPrevisto: 'asc' } },
-      include: { aluno: true, turma: { include: { curso: true } }, cupomEad: { select: { desconto: true } }, pagamentos: true },
-    }),
-
-    // ── 3. Fora de prazo ──────────────────────────────────────────────────
-    // Pendente, mas a turma encerrou ou já começou. Não desaparece mais da
-    // tela: é gente que ficou pelo caminho e a secretaria pode querer chamar
-    // pra outra turma.
-    prisma.matricula.findMany({
-      where: {
-        statusPagamento: 'PENDENTE',
-        // Turma congelada (pausada) não é "fora de prazo": fica fora de Pendentes até ser retomada.
-        // Turma em espera (sem data) também não: não há prazo a vencer.
-        turma: { status: { notIn: ['CONGELADA', ...FORA_DO_PRESENCIAL] } }, // online: cobrança única, fora de Pendentes
-        OR: [
-          { turma: { status: { notIn: STATUS_TURMA_ATIVA } } },
-          { turma: { inicioPrevisto: { lte: agora } } },
-        ],
-      },
-      orderBy: { turma: { inicioPrevisto: 'desc' } },
-      include: { aluno: true, turma: { include: { curso: true } }, pagamentos: true },
-    }),
-  ]);
+  // Consulta em lib/pendentes.js (2026-11-13): a mesma usada pelo assistente da secretaria.
+  const { comTaxa, semTaxa, foraDePrazo } = await require('../lib/pendentes').listarPendentes(agora);
 
   // Último contato registrado de cada aluno. Serve pra secretaria não
   // insistir com quem acabou de receber mensagem.
