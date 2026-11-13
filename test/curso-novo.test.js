@@ -80,6 +80,11 @@ describe('Novo curso: rota e tela', { skip: temBanco ? false : 'sem DATABASE_URL
       const visivel = (n) => p.evaluate((x) => !document.querySelector(`[data-passo="${x}"]`).hidden, n);
       assert.equal(await visivel(1), true);
       assert.equal(await visivel(2), false);
+      // visível de verdade (o estilo dos botões não pode vencer o hidden)
+      assert.equal(await p.isVisible('[data-passos-erro]'), false, 'caixa de erro vazia escondida');
+      assert.equal(await p.isVisible('[data-passos-voltar]'), false);
+      assert.equal(await p.isVisible('[data-passos-criar]'), false);
+      assert.equal(await p.isVisible('[data-passos-continuar]'), true);
       await p.click('[data-passos-continuar]');
       assert.equal(await visivel(1), true, 'sem nome não avança');
       assert.match(await p.textContent('[data-passos-erro]'), /Informe o nome do curso\./);

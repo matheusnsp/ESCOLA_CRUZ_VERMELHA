@@ -2429,3 +2429,5 @@ body.adm-assist-aberto .adm-assist-btn { display: none; }
 .adm-ou { text-align: center; color: var(--mut); font-weight: 700; font-size: 13px; margin: 6px 0 14px; }
 .adm-rot-acao { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ia-desfazer[hidden] { display: none; }
+/* hidden vence o display dos botões e da caixa de erro (Novo curso em passos) */
+.adm-rodape-salvar [hidden], [data-passos-erro][hidden] { display: none !important; }
