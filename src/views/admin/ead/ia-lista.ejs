@@ -8,7 +8,7 @@
 
 <div class="adm-h1-row">
   <h1 class="adm-h1">Criar curso com IA</h1>
-  <% if (chave) { %><a class="adm-btn" href="/ead/ia/novo"><i class="fa-solid fa-wand-magic-sparkles"></i> Criar curso com IA</a><% } %>
+  <% if (chave) { %><a class="adm-btn" href="/ead/ia/novo" data-criar><i class="fa-solid fa-wand-magic-sparkles"></i> Criar curso com IA</a><% } %>
 </div>
 <%- include('_mensagens') %>
 <% if (!chave) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= msgChave %></div><% } %>

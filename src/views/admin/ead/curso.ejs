@@ -28,7 +28,7 @@
 <%# Etapa 4: venda no site. Preço único (PIX ou cartão, sem taxa) e o interruptor "Publicar no site". %>
 <div class="adm-box adm-espaco">
   <div class="ead-topico-cab"><h3>Módulos</h3>
-    <a class="adm-btn" href="/ead/curso/<%= co.id %>/modulos/novo"><i class="fa-solid fa-plus"></i> Novo módulo</a>
+    <a class="adm-btn" href="/ead/curso/<%= co.id %>/modulos/novo" data-criar><i class="fa-solid fa-plus"></i> Novo módulo</a>
   </div>
   <% if (!modulos.length) { %>
     <p class="ead-vazio">Nenhum módulo ainda.</p>

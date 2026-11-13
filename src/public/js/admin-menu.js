@@ -140,6 +140,39 @@
   }
   function iniciarFiltros() { Array.prototype.forEach.call(document.querySelectorAll('.adm-abas'), montarFiltro); }
 
-  function iniciar() { iniciarGrupos(); iniciarGaveta(); iniciarFiltros(); }
+  // ---- Botão de criar no celular (até 620 px): os [data-criar] viram um (+) redondo no canto de baixo.
+  // Um só: o (+) é o próprio link. Vários (Contas a pagar): o (+) abre a lista com todos.
+  function iniciarFab() {
+    var origem = document.querySelectorAll('[data-criar]');
+    if (!origem.length) return;
+    var opcoes = Array.prototype.map.call(origem, function (a) {
+      var i = a.querySelector('i'); return { href: a.getAttribute('href'), rotulo: a.textContent.replace(/\s+/g, ' ').trim(), icone: i ? i.className : 'fa-solid fa-plus' };
+    });
+    document.body.classList.add('adm-tem-fab');
+    if (opcoes.length === 1) {
+      var um = el('a', 'adm-fab', '<i class="fa-solid fa-plus" aria-hidden="true"></i>');
+      um.href = opcoes[0].href; um.setAttribute('aria-label', opcoes[0].rotulo);
+      document.body.appendChild(um);
+      return;
+    }
+    var botao = el('button', 'adm-fab', '<i class="fa-solid fa-plus" aria-hidden="true"></i>');
+    botao.type = 'button'; botao.setAttribute('aria-label', 'Criar'); botao.setAttribute('aria-expanded', 'false');
+    var fundo = el('div', 'adm-fab-fundo'); fundo.hidden = true;
+    var menu = el('div', 'adm-fab-menu'); menu.hidden = true;
+    opcoes.forEach(function (o) {
+      var a = el('a', null, '<i class="' + esc(o.icone) + '" aria-hidden="true"></i> ' + esc(o.rotulo)); a.href = o.href; menu.appendChild(a);
+    });
+    function abrir(sim) {
+      menu.hidden = !sim; fundo.hidden = !sim;
+      botao.setAttribute('aria-expanded', sim ? 'true' : 'false');
+      botao.classList.toggle('aberto', sim);
+    }
+    botao.addEventListener('click', function () { abrir(menu.hidden); });
+    fundo.addEventListener('click', function () { abrir(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !menu.hidden) abrir(false); });
+    document.body.appendChild(fundo); document.body.appendChild(menu); document.body.appendChild(botao);
+  }
+
+  function iniciar() { iniciarGrupos(); iniciarGaveta(); iniciarFiltros(); iniciarFab(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();

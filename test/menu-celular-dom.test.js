@@ -82,6 +82,43 @@ describe('painel no celular (DOM)', { skip: chromium ? false : 'sem Playwright' 
     await p.close();
   });
 
+  test('(+) flutuante: um botão de criar vira o (+) com o mesmo link; no computador fica como hoje', async () => {
+    const html = `<div class="adm-h1-row"><h1 class="adm-h1">Turmas</h1><a href="/turmas/nova" class="adm-btn" data-criar><i class="fa-solid fa-plus"></i> Nova turma</a></div>`;
+    const p = await pagina(html);
+    assert.equal(await visivel(p, '.adm-h1-row [data-criar]'), false);
+    assert.equal(await visivel(p, '.adm-fab'), true);
+    assert.equal(await p.getAttribute('.adm-fab', 'href'), '/turmas/nova');
+    assert.equal(await p.getAttribute('.adm-fab', 'aria-label'), 'Nova turma');
+    await p.close();
+    const pc = await pagina(html, 1280);
+    assert.equal(await visivel(pc, '.adm-h1-row [data-criar]'), true);
+    assert.equal(await visivel(pc, '.adm-fab'), false);
+    await pc.close();
+  });
+
+  test('(+) também esconde botão marcado fora do topo (barra de filtros, caixa de módulos)', async () => {
+    const p = await pagina(`<form class="adm-filtros"><a href="/cursos/novo" class="adm-btn" data-criar><i class="fa-solid fa-plus"></i> Novo curso</a></form>`);
+    assert.equal(await visivel(p, '[data-criar]'), false);
+    assert.equal(await p.getAttribute('.adm-fab', 'href'), '/cursos/novo');
+    await p.close();
+  });
+
+  test('(+) com várias opções (Contas): abre a lista com as três e fecha tocando fora', async () => {
+    const p = await pagina(`<div class="adm-h1-row"><h1 class="adm-h1">Contas</h1>
+      <a href="/contas/nova?tipo=DESPESA" class="adm-btn" data-criar><i class="fa-solid fa-plus"></i> Nova despesa</a>
+      <a href="/contas/nova?tipo=COMPRA" class="adm-btn-sec" data-criar><i class="fa-solid fa-cart-shopping"></i> Pedido de compra</a>
+      <a href="/contas/nova?tipo=REEMBOLSO" class="adm-btn-sec" data-criar><i class="fa-solid fa-hand-holding-dollar"></i> Reembolso</a></div>`);
+    assert.equal(await p.$$eval('.adm-fab', (l) => l.length), 1);
+    assert.equal(await visivel(p, '.adm-fab-menu'), false);
+    await p.click('.adm-fab');
+    assert.equal(await visivel(p, '.adm-fab-menu'), true);
+    assert.deepEqual(await p.$$eval('.adm-fab-menu a', (l) => l.map((a) => [a.textContent.trim(), a.getAttribute('href'), !!a.querySelector('i.fa-solid')])), [
+      ['Nova despesa', '/contas/nova?tipo=DESPESA', true], ['Pedido de compra', '/contas/nova?tipo=COMPRA', true], ['Reembolso', '/contas/nova?tipo=REEMBOLSO', true]]);
+    await p.mouse.click(20, 200);
+    assert.equal(await visivel(p, '.adm-fab-menu'), false);
+    await p.close();
+  });
+
   test('no computador nada muda: abas visíveis, sem cartão', async () => {
     const p = await pagina(TURMAS, 1280);
     assert.equal(await visivel(p, '.adm-abas'), true);
@@ -95,4 +132,13 @@ test('toda linha de filtro do painel tem nome (vira o título da lista no celula
   const sem = [];
   (function andar(d) { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); if (fs.statSync(p).isDirectory()) andar(p); else if (f.endsWith('.ejs')) { for (const m of fs.readFileSync(p, 'utf8').matchAll(/<(?:nav|div) class="adm-abas[^"]*"[^>]*>/g)) if (!/aria-label="[^"]+"/.test(m[0])) sem.push(path.relative(raiz, p)); } } })(raiz);
   assert.deepEqual(sem, []);
+});
+
+test('botões de criar do topo marcados para virar (+) no celular; os do meio do conteúdo não', () => {
+  const V = (f) => fs.readFileSync(path.join(__dirname, '..', 'src', 'views', 'admin', f), 'utf8');
+  const marcados = (f) => (V(f).match(/data-criar\b/g) || []).length;
+  for (const f of ['turmas.ejs', 'cursos.ejs', 'dev-usuarios.ejs', 'ead/cupons.ejs', 'ead/ebooks.ejs', 'ead/escolas.ejs', 'ead/ia-lista.ejs', 'ead/curso.ejs']) assert.equal(marcados(f), 1, f);
+  assert.equal(marcados('contas.ejs'), 3);
+  assert.doesNotMatch(V('ead/escolas.ejs'), /data-criar[^>]*>\s*<i[^>]*><\/i>\s*Outro lote/);
+  assert.match(V('ead/escolas.ejs'), /href="\/ead\/escolas\/lote\/novo"\s+data-criar/);
 });

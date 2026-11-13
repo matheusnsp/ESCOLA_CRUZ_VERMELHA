@@ -2093,3 +2093,26 @@ a.mr-num:hover { border-color: var(--linha); }
   .adm-folha-item.on .adm-folha-num { background: var(--vermelho); color: #fff; }
   .adm-folha-sep { height: 1px; background: var(--linha); margin: 8px 6px; }
 }
+
+/* ===== Botão de criar no celular: (+) flutuante (2026-11-13) ===== */
+.adm-fab, .adm-fab-menu, .adm-fab-fundo { display: none; }
+@media (max-width: 620px) {
+  [data-criar] { display: none !important; } /* qualquer botão marcado: no topo (Turmas) ou numa barra (Cursos, Novo módulo) */
+  .adm-fab {
+    display: grid; place-items: center; position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 1050;
+    width: 58px; height: 58px; border-radius: 50%; border: 0; cursor: pointer;
+    background: var(--vermelho); color: #fff; font-size: 22px; text-decoration: none;
+    box-shadow: 0 8px 24px rgba(200,16,46,.35);
+  }
+  .adm-fab i { transition: transform .15s; }
+  .adm-fab.aberto i { transform: rotate(45deg); }
+  .adm-fab:focus-visible { outline: 3px solid var(--tinta); outline-offset: 3px; }
+  .adm-fab-fundo:not([hidden]) { display: block; position: fixed; inset: 0; z-index: 1048; background: rgba(15,18,22,.35); }
+  .adm-fab-menu:not([hidden]) { display: grid; position: fixed; right: 18px; bottom: calc(88px + env(safe-area-inset-bottom)); z-index: 1049; gap: 8px; justify-items: end; }
+  .adm-fab-menu a {
+    display: inline-flex; align-items: center; gap: 10px; padding: 11px 16px; border-radius: 999px;
+    background: var(--card); color: var(--tinta); font: 700 14.5px var(--fonte); text-decoration: none; box-shadow: 0 6px 18px rgba(0,0,0,.18);
+  }
+  .adm-fab-menu a i { color: var(--vermelho); }
+  body.adm-tem-fab .adm-wrap { padding-bottom: 96px; } /* o (+) não cobre o fim da página */
+}

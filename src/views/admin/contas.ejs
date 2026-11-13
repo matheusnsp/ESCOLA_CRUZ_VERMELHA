@@ -38,9 +38,9 @@ var NUM = { semana: rascunhos.length, enviadas: enviadas.filter(function (i) { r
   <h1 class="adm-h1">Contas a pagar</h1>
   <% if (pode('contas:lancar')) { %>
     <div class="adm-cp-novos">
-      <a href="/contas/nova?tipo=DESPESA" class="adm-btn"><i class="fa-solid fa-plus"></i> Nova despesa</a>
-      <a href="/contas/nova?tipo=COMPRA" class="adm-btn-sec"><i class="fa-solid fa-cart-shopping"></i> Pedido de compra</a>
-      <a href="/contas/nova?tipo=REEMBOLSO" class="adm-btn-sec"><i class="fa-solid fa-hand-holding-dollar"></i> Reembolso</a>
+      <a href="/contas/nova?tipo=DESPESA" class="adm-btn" data-criar><i class="fa-solid fa-plus"></i> Nova despesa</a>
+      <a href="/contas/nova?tipo=COMPRA" class="adm-btn-sec" data-criar><i class="fa-solid fa-cart-shopping"></i> Pedido de compra</a>
+      <a href="/contas/nova?tipo=REEMBOLSO" class="adm-btn-sec" data-criar><i class="fa-solid fa-hand-holding-dollar"></i> Reembolso</a>
     </div>
   <% } %>
 </div>
