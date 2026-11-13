@@ -244,9 +244,23 @@ describe('tela do assistente', { skip: chromium ? false : 'sem Playwright' }, ()
     await p.tap('.adm-assist-top');
     assert.equal(await p.evaluate(() => getComputedStyle(document.body).position), 'fixed');
     assert.equal(await p.evaluate(() => document.body.style.top), '-700px');
+    assert.match(await p.$eval('#admAssist', (e) => getComputedStyle(e).boxShadow), /0px 0px 0px \d+px/); // em volta do painel: cor do painel (faixa atrás da barra do Safari)
     await p.tap('.adm-assist-x');
     assert.notEqual(await p.evaluate(() => getComputedStyle(document.body).position), 'fixed');
     assert.equal(await p.evaluate(() => Math.round(window.scrollY)), 700);
+    await c.close();
+  });
+
+  test('celular: barras do Safari tingidas com a cor do painel enquanto ele está aberto (theme-color)', async () => {
+    const c = await navegador.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const p = await abrir('/pendentes', '', 'pendentes', 390, c);
+    const cor = () => p.evaluate(() => { const m = document.querySelector('meta[name="theme-color"]'); return m && m.getAttribute('content'); });
+    const antes = await cor();
+    await p.tap('.adm-assist-top');
+    const fundo = await p.$eval('#admAssist', (e) => getComputedStyle(e).backgroundColor);
+    assert.equal(await cor(), fundo);
+    await p.tap('.adm-assist-x');
+    assert.equal(await cor(), antes);
     await c.close();
   });
 
