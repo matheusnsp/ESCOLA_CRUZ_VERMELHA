@@ -1824,9 +1824,13 @@ a.mr-num:hover { border-color: var(--linha); }
 
 @media (max-width: 720px) {
   .mr-topo { padding: 16px; }
-  .mr-topo-nums { width: 100%; }
-  .mr-num { flex: 1 1 0; min-width: 0; padding: 10px 12px; }
-  .mr-num b { font-size: 19px; }
+  /* Celular: as duas contagens lado a lado e o valor em reais na linha de baixo, inteiro (antes, três blocos
+     lado a lado e "R$ 6.595,80" passava da borda do bloco). */
+  .mr-topo-nums { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mr-num { min-width: 0; padding: 10px 12px; }
+  .mr-num:nth-child(3) { grid-column: 1 / -1; }
+  .mr-num b { font-size: 19px; white-space: nowrap; }
+  .mr-num span { overflow-wrap: anywhere; }
   .mr-barra select { flex: 1 1 100%; }
   .mr-seg { flex: 1 1 auto; }
   .mr-seg a { flex: 1; justify-content: center; padding: 0 8px; }
