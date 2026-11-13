@@ -15,7 +15,8 @@ const uso = require('./assistente-uso');
 const ferramentas = require('./assistente-ferramentas');
 const contexto = require('./assistente-contexto');
 
-const MODELO = 'claude-opus-5-5';
+// Sonnet 5.5 (2026-11-13, pedido da pessoa): bem mais rápido que o Opus e metade do preço; dá conta de consultar e explicar.
+const MODELO = 'claude-sonnet-5-5';
 const MAX_RODADAS = 6;
 const MAX_MENSAGENS = 20;
 const MAX_CARACTERES = 2000;
@@ -71,6 +72,7 @@ async function responder({ mensagens, pagina, usuarioId, pode, papel, documentoA
   const messages = [...conversa, { role: 'system', content: pag.texto }];
 
   let usage = {};
+  const iteracoes = []; // custo por modelo que respondeu (com a reserva do servidor, pode ser outro)
   const usadas = [];
   let textoTotal = '';
   let terminou = false;
@@ -84,6 +86,8 @@ async function responder({ mensagens, pagina, usuarioId, pode, papel, documentoA
       stream.on('text', (delta) => { textoTotal += delta; emitir({ tipo: 'texto', texto: delta }); });
       const msg = await stream.finalMessage();
       usage = somar(usage, msg.usage);
+      if (msg.usage && Array.isArray(msg.usage.iterations) && msg.usage.iterations.length) iteracoes.push(...msg.usage.iterations.map((x) => ({ ...x, model: x.model || msg.model || MODELO })));
+      else if (msg.usage) iteracoes.push({ ...msg.usage, model: msg.model || MODELO });
       if (msg.stop_reason === 'refusal') { await registrar(); return erro(MSG.recusa); }
       const pedidos = (msg.content || []).filter((b) => b.type === 'tool_use');
       if (msg.stop_reason !== 'tool_use' || !pedidos.length) { terminou = true; break; }
@@ -118,7 +122,7 @@ async function responder({ mensagens, pagina, usuarioId, pode, papel, documentoA
   async function registrar() {
     if (!usage.input_tokens && !usage.output_tokens) return;
     await uso.registrarUso(usuarioId, usage, usadas).catch((e) => console.error('[ASSISTENTE] uso:', e.message));
-    await ia.somarCustoAvulso(usage).catch(() => {});
+    await ia.somarCustoAvulso({ iterations: iteracoes }).catch(() => {});
   }
 }
 

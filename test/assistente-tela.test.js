@@ -194,6 +194,21 @@ describe('tela do assistente', { skip: chromium ? false : 'sem Playwright' }, ()
     await p.context().close();
   });
 
+  test('formato: tabela não quebra palavra letra por letra; link no meio da frase é texto, link sozinho é botão', async () => {
+    respostas = [[{ tipo: 'resposta', texto: '| Aluno | Curso | Falta |\n|---|---|---|\n| Fernanda Abreu | Primeiros Socorros Básico | R$ 279,00 |\n\nPara cobrar, abra [a tela de Pendentes](/pendentes) e use o WhatsApp.\n\n[Abrir Pendentes](/pendentes?aba=com-taxa) [Ver inscrições](/alunos)' }, { tipo: 'fim' }]];
+    const p = await abrir('/pendentes', '', 'pendentes');
+    await p.click('#admAssistBtn'); await p.fill('.adm-assist-form textarea', 'x'); await p.keyboard.press('Enter');
+    await p.waitForSelector('.adm-assist-ia:not(.escrevendo) table');
+    const td = await p.$eval('.adm-assist-tabela td', (e) => { const cs = getComputedStyle(e); return { ow: cs.overflowWrap, wb: cs.wordBreak }; });
+    assert.equal(td.ow, 'normal'); assert.notEqual(td.wb, 'break-all');
+    assert.equal(await p.$eval('.adm-assist-tabela th', (e) => getComputedStyle(e).whiteSpace), 'nowrap');
+    // a palavra "Fernanda" cabe numa linha: altura da célula ≈ 1–2 linhas, não 4+
+    assert.ok(await p.$eval('.adm-assist-tabela td', (e) => e.getBoundingClientRect().height) < 60);
+    assert.equal(await p.$$eval('.adm-assist-ia p:not(.adm-assist-botoes) a.adm-assist-link', (l) => l.length), 1);
+    assert.equal(await p.$$eval('.adm-assist-ia p.adm-assist-botoes a.adm-assist-link', (l) => l.length), 2);
+    await p.context().close();
+  });
+
   test('erro vira mensagem amigável', async () => {
     respostas = [[{ tipo: 'erro', mensagem: 'O assistente está fora do ar agora. Tente de novo em instantes.' }, { tipo: 'fim' }]];
     const p = await abrir('/pendentes', '', 'pendentes');

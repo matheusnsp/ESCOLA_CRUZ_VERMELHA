@@ -62,7 +62,7 @@ secretaria**, dentro do painel, usando a API do Claude.
   manda as últimas **20** mensagens de texto (sem dados de ferramentas antigas).
 - **Lib** `src/lib/assistente.js`: monta o prompt, chama a API, roda o laço de ferramentas, filtra links.
   Ferramentas em `src/lib/assistente-ferramentas.js`. Manual em `src/lib/assistente-manual.md` (texto do projeto).
-- **Claude**: SDK oficial `@anthropic-ai/sdk` (já instalado, 1.6.0), modelo `claude-opus-5-5`, `effort: "low"`
+- **Claude**: SDK oficial `@anthropic-ai/sdk` (já instalado, 1.6.0), modelo `claude-sonnet-5-5 (era claude-opus-5-5; trocado em 2026-11-13 por velocidade)`, `effort: "low"`
   (chat), streaming, `max_tokens` 4000, laço manual de ferramentas (no máximo **6** rodadas por mensagem; passou
   disso, responde com o que tem). `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`) para recusa do
   modelo, com aviso no código. Sem chave configurada: o botão aparece, e o chat diz "O assistente ainda não está
@@ -214,7 +214,7 @@ flutuante continua no canto e o Assistente fica na barra do topo.
 
 ## 10. Decisões minhas (o Matheus pode mudar)
 
-- Modelo `claude-opus-5-5` com esforço baixo (rápido para chat); dá para trocar depois.
+- Modelo `claude-sonnet-5-5 (era claude-opus-5-5; trocado em 2026-11-13 por velocidade)` com esforço baixo (rápido para chat); dá para trocar depois.
 - Limites de 20 mensagens / 10 min e 200 / dia por pessoa.
 - Conversa só no navegador (some ao fechar a aba); últimas 20 mensagens vão para a API.
 - Assistente aparece para todo staff; dados conforme a permissão da rota de cada tela.
