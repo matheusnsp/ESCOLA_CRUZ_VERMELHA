@@ -15,13 +15,16 @@ describe('painel no celular (DOM)', { skip: chromium ? false : 'sem Playwright' 
   before(async () => { navegador = await chromium.launch(); });
   after(async () => { if (navegador) await navegador.close(); });
 
-  async function pagina(corpo, largura = 390) {
+  async function pagina(corpo, largura = 390, { semJs = false, antes = '' } = {}) {
     const p = await navegador.newPage({ viewport: { width: largura, height: 780 } });
-    await p.setContent(`<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body class="adm"><main class="adm-wrap">${corpo}</main></body></html>`);
+    await p.setContent(`<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body class="adm">${antes}<main class="adm-wrap">${corpo}</main></body></html>`);
     await p.addStyleTag({ content: CSS });
-    await p.addScriptTag({ content: JS });
+    if (!semJs) await p.addScriptTag({ content: JS });
     return p;
   }
+  const GAVETA = `<div class="adm-topo-cel"><span class="adm-topo-onde">Turmas</span><button type="button" class="adm-menu-btn" aria-controls="admLado" aria-expanded="false">Menu</button></div>
+    <div class="adm-lado-fundo" id="admLadoFundo" hidden></div>
+    <header class="adm-top" id="admLado"><button type="button" class="adm-lado-fechar">x</button><nav class="adm-nav"><div class="adm-grp" data-grupo="g"><button type="button" class="adm-grp-tit" aria-expanded="false">Alunos</button><div class="adm-grp-itens"><a href="/alunos">Alunos</a></div></div></nav></header>`;
   const visivel = (p, sel) => p.$eval(sel, (e) => getComputedStyle(e).display !== 'none' && !e.closest('[hidden]'));
 
   const TURMAS = `<nav class="adm-abas" aria-label="Turmas">
@@ -117,6 +120,35 @@ describe('painel no celular (DOM)', { skip: chromium ? false : 'sem Playwright' 
     await p.mouse.click(20, 200);
     assert.equal(await visivel(p, '.adm-fab-menu'), false);
     await p.close();
+  });
+
+  test('revisão: com o menu aberto o (+) some (não leva para outra página por cima da gaveta)', async () => {
+    const p = await pagina(`<a href="/turmas/nova" class="adm-btn" data-criar>Nova turma</a>`, 390, { antes: GAVETA });
+    assert.equal(await visivel(p, '.adm-fab'), true);
+    await p.click('.adm-menu-btn');
+    assert.equal(await visivel(p, '.adm-fab'), false);
+    await p.close();
+  });
+
+  test('revisão: contagem com .adm-badge-sutil (Dúvidas) vira a bolinha do cartão e da lista', async () => {
+    const p = await pagina(`<nav class="adm-abas" aria-label="Dúvidas"><a href="#a" class="adm-aba on">Aguardando resposta <span class="adm-badge-sutil">3</span></a><a href="#b" class="adm-aba">Respondidas <span class="adm-badge-sutil">9</span></a></nav>`);
+    assert.equal((await p.textContent('.adm-filtro-cel b')).trim(), 'Aguardando resposta');
+    assert.equal((await p.textContent('.adm-filtro-num')).trim(), '3');
+    await p.click('.adm-filtro-cel');
+    assert.deepEqual(await p.$$eval('.adm-folha-num', (l) => l.map((e) => e.textContent.trim())), ['3', '9']);
+    await p.close();
+  });
+
+  test('revisão: sem o script (falhou ao carregar) nada some — abas, menu e grupos ficam à vista', async () => {
+    const p = await pagina(TURMAS, 390, { semJs: true, antes: GAVETA });
+    assert.equal(await visivel(p, '.adm-abas'), true);
+    assert.equal(await p.$eval('.adm-top', (e) => { const r = e.getBoundingClientRect(); return getComputedStyle(e).visibility !== 'hidden' && r.right > 0; }), true);
+    assert.equal(await visivel(p, '.adm-grp-itens'), true);
+    assert.equal(await visivel(p, '.adm-menu-btn'), false);
+    await p.close();
+    const pc = await pagina('', 1280, { semJs: true, antes: GAVETA });
+    assert.equal(await visivel(pc, '.adm-grp-itens'), true);
+    await pc.close();
   });
 
   test('no computador nada muda: abas visíveis, sem cartão', async () => {

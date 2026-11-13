@@ -1997,7 +1997,7 @@ a.mr-num:hover { border-color: var(--linha); }
 .adm-grp.ativo > .adm-grp-tit, .adm-grp.ativo > .adm-grp-tit > i:first-child { color: var(--vermelho-txt); }
 .adm-grp.aberto > .adm-grp-tit .adm-grp-selo { display: none; } /* aberto: o selo já aparece no item */
 .adm-grp-itens { display: none; margin: 2px 0 6px 23px; padding-left: 10px; border-left: 2px solid var(--linha); }
-.adm-grp.aberto > .adm-grp-itens { display: grid; gap: 1px; }
+.adm-grp.aberto > .adm-grp-itens, html:not(.adm-js) .adm-grp-itens { display: grid; gap: 1px; } /* sem o script, todos abertos */
 .adm-nav .adm-grp-itens a { padding: 8px 10px; font-size: 14px; font-weight: 600; }
 .adm-nav .adm-grp-itens a .adm-badge { margin-left: auto; }
 .adm-nav-sep { font: 800 10.5px var(--fonte); letter-spacing: .12em; text-transform: uppercase; color: var(--mut); padding: 14px 14px 4px; }
@@ -2018,28 +2018,32 @@ a.mr-num:hover { border-color: var(--linha); }
   .adm-topo-cel::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--vermelho); }
   .adm-topo-logo img { height: 34px; width: auto; display: block; }
   .adm-topo-onde { font: 700 14px var(--fonte); color: var(--mut); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .adm-menu-btn {
+  .adm-menu-btn { display: none; }
+  html.adm-js .adm-menu-btn {
     margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
     font: 700 14px var(--fonte); color: var(--tinta);
     padding: 9px 14px; border-radius: 999px; border: 1px solid var(--linha); background: var(--card);
   }
-  /* o menu vira gaveta pela esquerda */
+  /* o menu vira gaveta pela esquerda (só com o script; sem ele, o menu fica aberto no alto da página) */
   .adm-top {
-    position: fixed; top: 0; bottom: 0; left: 0; z-index: 1001;
-    width: min(320px, 86vw); height: auto;
+    position: static; height: auto;
     flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 18px;
-    padding: 18px 14px 16px; overflow-y: auto; overscroll-behavior: contain;
+    padding: 18px 14px 16px;
+  }
+  html.adm-js .adm-top {
+    position: fixed; top: 0; bottom: 0; left: 0; z-index: 1001;
+    width: min(320px, 86vw); overflow-y: auto; overscroll-behavior: contain;
     border: 0; border-right: 1px solid var(--linha);
     transform: translateX(-105%); transition: transform .2s ease; visibility: hidden;
   }
   body.adm-menu-aberto .adm-top { transform: none; visibility: visible; box-shadow: 0 0 40px rgba(0,0,0,.25); }
   body.adm-menu-aberto { overflow: hidden; }
   .adm-lado-fundo:not([hidden]) { display: block; position: fixed; inset: 0; z-index: 1000; background: rgba(15,18,22,.45); }
-  .adm-lado-fechar {
+  html.adm-js .adm-lado-fechar {
     display: grid; place-items: center; position: absolute; right: 10px; top: 12px;
     width: 40px; height: 40px; border: 0; border-radius: 50%; background: none; color: var(--mut); font-size: 20px; cursor: pointer;
   }
-  .adm-top .adm-brand { padding-right: 44px; }
+  html.adm-js .adm-top .adm-brand { padding-right: 44px; }
   .adm-top .adm-brand-txt { display: none; }
   .adm-nav { order: 0; width: auto; flex: 1 0 auto; flex-direction: column; overflow: visible; padding: 0; margin: 0; gap: 2px; }
   .adm-nav a { white-space: normal; padding: 10px 12px; }
@@ -2058,7 +2062,7 @@ a.mr-num:hover { border-color: var(--linha); }
 .adm-filtro-cel { display: none; }
 .adm-folha[hidden], .adm-folha-fundo[hidden] { display: none !important; }
 @media (max-width: 620px) {
-  .adm-abas { display: none !important; }
+  html.adm-js .adm-abas { display: none !important; } /* sem o script, as abas continuam */
   .adm-filtro-cel {
     display: flex; align-items: center; gap: 12px; width: 100%; margin: 0 0 16px; cursor: pointer;
     padding: 12px 16px; border-radius: 16px; border: 1px solid var(--linha); background: var(--card);
@@ -2097,7 +2101,7 @@ a.mr-num:hover { border-color: var(--linha); }
 /* ===== Botão de criar no celular: (+) flutuante (2026-11-13) ===== */
 .adm-fab, .adm-fab-menu, .adm-fab-fundo { display: none; }
 @media (max-width: 620px) {
-  [data-criar] { display: none !important; } /* qualquer botão marcado: no topo (Turmas) ou numa barra (Cursos, Novo módulo) */
+  html.adm-js [data-criar] { display: none !important; } /* qualquer botão marcado: no topo (Turmas) ou numa barra (Cursos, Novo módulo) */
   .adm-fab {
     display: grid; place-items: center; position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 1050;
     width: 58px; height: 58px; border-radius: 50%; border: 0; cursor: pointer;
@@ -2114,7 +2118,8 @@ a.mr-num:hover { border-color: var(--linha); }
     background: var(--card); color: var(--tinta); font: 700 14.5px var(--fonte); text-decoration: none; box-shadow: 0 6px 18px rgba(0,0,0,.18);
   }
   .adm-fab-menu a i { color: var(--vermelho); }
-  body.adm-tem-fab .adm-wrap { padding-bottom: 96px; } /* o (+) não cobre o fim da página */
+  body.adm-tem-fab .adm-wrap { padding-bottom: 96px; }
+  body.adm-menu-aberto .adm-fab, body.adm-menu-aberto .adm-fab-menu, body.adm-menu-aberto .adm-fab-fundo { display: none !important; } /* menu aberto: o (+) sai da frente */ /* o (+) não cobre o fim da página */
 }
 
 /* ===== Boas-vindas: texto por curso (2026-11-13) ===== */

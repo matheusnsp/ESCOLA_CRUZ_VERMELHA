@@ -3,6 +3,9 @@
 // Sem dependências. localStorage pode estar bloqueado (aba anônima, Safari): tudo em try/catch.
 (function () {
   'use strict';
+  // Marca que o script rodou: o CSS só esconde abas/botões e transforma o menu em gaveta com esta classe.
+  // Se o script falhar, nada some (abas, botões e menu continuam à vista).
+  document.documentElement.classList.add('adm-js');
   var CHAVE = 'adm-menu-abertos';
 
   function lerAbertos() {
@@ -59,7 +62,7 @@
   // As abas continuam no HTML (no computador nada muda); no celular o CSS esconde as abas e mostra o cartão.
   var BAIXAR = /\.(xlsx|csv|pdf)(\?|$)/i;
   function textoAba(a) {
-    var n = a.querySelector('.adm-aba-num');
+    var n = a.querySelector('.adm-aba-num, .adm-badge-sutil'); // Dúvidas usa .adm-badge-sutil
     var t = a.textContent;
     if (n) t = t.replace(n.textContent, '');
     return { rotulo: t.replace(/\s+/g, ' ').trim(), num: n ? n.textContent.trim() : '' };
