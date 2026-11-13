@@ -12,7 +12,7 @@ const categorias = () => require('./vitrine').CATEGORIAS;
 
 const secao = (rotulo, botao, slug, campos) => ({ rotulo, botao, caminho: (id) => `/cursos/${id}/${slug}`, campos });
 const SECOES = {
-  pagina: secao('Página no site', 'Salvar página', 'pagina', ['nome', 'descricao', 'descricaoLonga', 'cargaHoraria', 'escolaridadeMinima', 'categoria']),
+  pagina: secao('Página no site', 'Salvar página', 'pagina', ['nome', 'descricao', 'descricaoLonga', 'cargaHoraria', 'escolaridadeMinima', 'categoria', 'pedido']),
   valores: secao('Valores', 'Salvar valores', 'valores', ['precoAvista', 'precoCheio', 'parcelas', 'taxaMatricula']),
   certificado: secao('Certificado', 'Salvar certificado', 'certificado', ['nomeCertificado', 'conteudoProgramatico', 'certificadoValidade']),
   publicacao: secao('Inscrição e publicação', 'Salvar', 'publicacao', ['ativo', 'exigeComprovanteSaude']),

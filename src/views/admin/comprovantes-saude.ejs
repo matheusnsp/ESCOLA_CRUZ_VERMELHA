@@ -22,9 +22,9 @@
   <div class="adm-box cs-cursos">
     <i class="fa-solid fa-user-doctor"></i>
     <% if (cursosQueExigem.length) { %>
-      <span>Cursos que exigem: <% cursosQueExigem.forEach(function (c, i) { %><a href="/cursos/<%= c.id %>/editar"><%= c.nome %></a><%= i < cursosQueExigem.length - 1 ? ', ' : '' %><% }) %>.</span>
+      <span>Cursos que exigem: <% cursosQueExigem.forEach(function (c, i) { %><a href="/cursos/<%= c.id %>/publicacao"><%= c.nome %></a><%= i < cursosQueExigem.length - 1 ? ', ' : '' %><% }) %>.</span>
     <% } else { %>
-      <span>Nenhum curso exige comprovante ainda. Marque em Cursos → editar → <b>Quem pode se inscrever</b>.</span>
+      <span>Nenhum curso exige comprovante ainda. Marque em Cursos › abrir o curso › <b>Inscrição e publicação</b>.</span>
     <% } %>
   </div>
 

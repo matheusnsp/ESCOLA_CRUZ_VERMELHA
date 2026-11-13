@@ -318,6 +318,11 @@
     });
     c.appendChild(dl);
     var acoes = el('div', 'adm-assist-cartao-acoes');
+    // Edição de curso sem nenhuma seção reconhecida: nunca cair em "Abrir Novo curso" (revisão final, 2026-11-13).
+    if (prop.editar && !(prop.editar.secoes && prop.editar.secoes.length) && prop.formulario === 'curso') {
+      acoes.appendChild(el('small', null, 'Abra o curso ' + prop.editar.nome + ' e mude na seção certa: nenhum destes campos tem lugar nas telas do curso.'));
+      c.appendChild(acoes); msgs.appendChild(c); return c;
+    }
     // Curso que já existe (telas novas, 2026-11-13): um botão por seção (Valores, Página no site…).
     var subs = prop.editar && prop.editar.secoes && prop.editar.secoes.length
       ? prop.editar.secoes.map(function (x) { return { formulario: prop.formulario, campos: x.campos, editar: { id: prop.editar.id, nome: prop.editar.nome, caminho: x.caminho, secao: x.secao, rotulo: x.rotulo, botao: x.botao } }; })

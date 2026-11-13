@@ -34,6 +34,13 @@ function proximaMudanca(t, agora = new Date()) {
 
 module.exports = function painelTurmas({ requirePermissao, auditar }) {
   const router = express.Router();
+  // Erro num handler async (banco fora, foto que não decodifica…) vai para a página de erro do server, como no
+  // admin.js, em vez de deixar o navegador carregando (revisão final, 2026-11-13).
+  const asyncHandler = require('../lib/asyncHandler');
+  ['get', 'post'].forEach((m) => {
+    const original = router[m].bind(router);
+    router[m] = (caminho, ...hs) => original(caminho, ...hs.map((h) => (typeof h === 'function' && h.constructor.name === 'AsyncFunction' ? asyncHandler(h) : h)));
+  });
 
   // "Começar com a IA" na Nova turma: texto livre -> curso, início, aulas, vagas e instrutor (JSON). Nada é salvo.
   router.post('/turmas/ia-comecar', requirePermissao('turmas:gerenciar'), async (req, res) => {

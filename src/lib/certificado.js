@@ -212,7 +212,7 @@ function dadosDoCertificado(m, ajustes, documentoAluno) {
 function pendencias(turma, alunos = []) {
   const p = [];
   if (escolhaDaTurma(turma).includes('instrutor') && !turma.instrutorNome) p.push({ texto: 'Nome do instrutor em branco (a assinatura sai sem nome). Preencha em "Assinaturas", abaixo.' });
-  if (!turma.curso.conteudoProgramatico) p.push({ texto: 'Conteúdo programático do curso vazio (verso sem a lista).', link: `/cursos/${turma.curso.id}/editar#certificado` });
+  if (!turma.curso.conteudoProgramatico) p.push({ texto: 'Conteúdo programático do curso vazio (verso sem a lista).', link: `/cursos/${turma.curso.id}/certificado` });
   const semDoc = alunos.filter((m) => !m.aluno.cpfCnpj && !m.aluno.passaporte);
   if (semDoc.length) p.push({ texto: `${semDoc.length} aluno(s) sem CPF ou passaporte no cadastro.` });
   return p;
