@@ -499,6 +499,32 @@ router.post('/modo', requireDev, (req, res) => {
 router.use(require('./ead')({ requireDev, auditar, ADMIN_URL }));
 router.use(require('./ead-ebooks')({ requireDev, auditar })); // E-books da Escola Digital (2026-11-09)
 
+// Assistente da secretaria (2026-11-13; spec 2026-11-13-assistente-secretaria-design.md): responde em NDJSON, um evento
+// por linha, enquanto o Claude escreve. "no-transform" impede o compression() de segurar o texto. Não grava nada.
+router.post('/assistente/mensagem', async (req, res) => {
+  const assistente = require('../lib/assistente');
+  res.status(200);
+  res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+  let fechou = false;
+  res.on('close', () => { fechou = true; });
+  const emitir = (e) => { if (!fechou) res.write(JSON.stringify(e) + '\n'); };
+  try {
+    const b = req.body || {};
+    await assistente.responder({
+      mensagens: b.mensagens, pagina: b.pagina, usuarioId: req.session.usuarioId, papel: req.session.papel,
+      pode: res.locals.pode, documentoAluno: req.app.locals.documentoAluno, emitir,
+    });
+  } catch (e) {
+    console.error('[ASSISTENTE] rota:', e.message);
+    emitir({ tipo: 'erro', mensagem: 'O assistente está fora do ar agora. Tente de novo em instantes.' });
+    emitir({ tipo: 'fim' });
+  }
+  res.end();
+});
+
 // ---------- Dashboard ----------
 
 // 💡 NOVO — Mesmo filtro de "matrícula fantasma" usado em conta.js (tela do
