@@ -151,7 +151,7 @@ conta.lote = _lotes.length;
     <input type="search" class="adm-fin-busca" id="finBusca" placeholder="Buscar aluno ou curso" aria-label="Buscar aluno ou curso">
   </div>
 
-  <div class="adm-abas adm-fin-abas" role="tablist">
+  <div class="adm-abas adm-fin-abas" role="tablist" aria-label="Pagamentos">
     <button type="button" class="adm-aba on" data-filtro="todos">Todos <span class="adm-aba-num"><%= pagamentos.length + _lotes.length %></span></button>
     <button type="button" class="adm-aba" data-filtro="curso">Matrícula paga <span class="adm-aba-num"><%= conta.curso %></span></button>
     <button type="button" class="adm-aba" data-filtro="taxa">Só a inscrição <span class="adm-aba-num"><%= conta.taxa %></span></button>

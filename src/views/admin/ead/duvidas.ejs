@@ -13,7 +13,7 @@
 </div>
 <%- include('_mensagens') %>
 
-<nav class="adm-abas" aria-label="Situação">
+<nav class="adm-abas" aria-label="Dúvidas">
   <% ABAS.forEach(function (a) { %>
     <a href="/ead/duvidas?status=<%= a[0] %><%= qCurso %>" class="adm-aba <%= status === a[0] ? 'on' : '' %>"><%= a[1] %> <span class="adm-badge-sutil"><%= contas[a[0]] || 0 %></span></a>
   <% }) %>
