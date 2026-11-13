@@ -1,0 +1,105 @@
+<%#
+  Webinário (2026-11-13): criar (webinario = null) ou editar. Título, descrições, capa e dúvidas ficam no curso escondido.
+%><% var novo = !webinario; var v = valores || {}; var bool = function (x) { return x === true || x === '1' || x === 'on'; }; %>
+<%- include('../head', { titulo: novo ? 'Novo webinário' : 'Webinário' }) %>
+<%- include('../header', { ativo: 'webinarios' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= novo ? 'Novo webinário' : v.nome %></h1>
+  <a href="/ead/webinarios" class="adm-link">← Webinários</a>
+</div>
+<%- include('_mensagens') %>
+<% if (!novo) { %><p><a class="adm-btn adm-btn-out" href="/ead/webinarios/<%= webinario.id %>/inscritos"><i class="fa-solid fa-users"></i> Inscritos</a></p><% } %>
+
+<form method="POST" action="<%= novo ? '/ead/webinarios/novo' : '/ead/webinarios/' + webinario.id %>?_csrf=<%= csrfToken %>" enctype="multipart/form-data" class="adm-box adm-box-pad">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="adm-form adm-campos">
+    <label class="full">Título do webinário
+      <input type="text" name="nome" required maxlength="120" value="<%= v.nome || '' %>" placeholder="Ex.: Engasgo em bebês: o que fazer">
+    </label>
+    <label class="full">Descrição curta (aparece no card da vitrine e no topo da página)
+      <textarea name="descricao" rows="2" maxlength="300"><%= v.descricao || '' %></textarea>
+    </label>
+    <label class="full">Texto da página ("Sobre o webinário")
+      <textarea name="descricaoLonga" rows="6" maxlength="3000"><%= v.descricaoLonga || '' %></textarea>
+    </label>
+    <label class="full">Quem apresenta (opcional)
+      <input type="text" name="apresentador" maxlength="120" value="<%= v.apresentador || '' %>" placeholder="Ex.: Enf. Ana Souza">
+    </label>
+    <label>Data e hora do ao vivo (horário de Brasília)
+      <input type="datetime-local" name="inicioEm" value="<%= v.inicioEm || '' %>">
+      <small class="adm-hint">Em branco: só gravado.</small>
+    </label>
+    <label>Duração (minutos)
+      <input type="number" name="duracaoMin" min="1" max="1440" required value="<%= v.duracaoMin || '' %>">
+    </label>
+    <label class="full">Link da transmissão (Zoom, Meet ou YouTube)
+      <input type="url" name="linkAoVivo" maxlength="500" value="<%= v.linkAoVivo || '' %>" placeholder="https://">
+      <small class="adm-hint">Não aparece na página: o inscrito entra pelo botão "Entrar na transmissão", que abre 30 minutos antes. Pode cadastrar no dia.</small>
+    </label>
+    <label class="full">Link da gravação (YouTube não listado ou Vimeo)
+      <input type="url" name="gravacaoUrl" maxlength="500" value="<%= v.gravacaoUrl || '' %>" placeholder="https://youtu.be/…">
+      <small class="adm-hint">Aparece na página para quem tem acesso, depois do ao vivo. Ao salvar a gravação pela primeira vez depois do ao vivo, os inscritos recebem um e-mail.</small>
+    </label>
+    <label class="full">Palavra-código do certificado
+      <input type="text" name="palavraCodigo" maxlength="60" value="<%= v.palavraCodigo || '' %>">
+      <small class="adm-hint">Combine com quem apresenta: falar e mostrar na tela perto do fim. Se houver gravação, a palavra precisa aparecer nela. Maiúsculas, acentos e espaços nas pontas não importam.</small>
+    </label>
+    <label class="check full"><input type="checkbox" name="gratuito" value="1"<%= bool(v.gratuito) ? ' checked' : '' %><%= travaGratis ? ' disabled' : '' %>> Grátis (só precisa de conta para se inscrever)</label>
+    <% if (travaGratis) { %><input type="hidden" name="gratuito" value="<%= bool(v.gratuito) ? '1' : '' %>"><p class="adm-hint full">Já há inscrições ou compras: não dá mais para trocar entre grátis e pago.</p><% } %>
+    <label>Preço (R$)
+      <input type="text" name="preco" inputmode="decimal" value="<%= v.preco || '' %>" placeholder="Ex.: 29,90"<%= travaGratis ? '' : '' %>>
+    </label>
+    <label>Parcelas no cartão
+      <input type="number" name="maxParcelas" min="1" max="12" value="<%= v.maxParcelas || 1 %>">
+    </label>
+    <input type="hidden" name="ordemVitrine" value="<%= v.ordemVitrine || 0 %>">
+    <label class="check full"><input type="checkbox" name="publicado" value="1"<%= bool(v.publicado) ? ' checked' : '' %>> Publicado (aparece na Escola Digital)</label>
+    <p class="adm-hint full">Para publicar: palavra-código e data do ao vivo ou link da gravação.</p>
+    <label class="full">Capa (JPG, PNG ou WEBP, até 3 MB)
+      <input type="file" name="foto" accept="image/jpeg,image/png,image/webp">
+    </label>
+    <% if (v.imagemUrl) { %>
+      <div class="full"><img src="<%= v.imagemUrl %>" alt="" class="ead-ebook-capa-previa">
+        <label class="check"><input type="checkbox" name="removerFoto" value="1"> Remover a capa</label></div>
+    <% } %>
+  </div>
+  <button type="submit" class="adm-btn"><i class="fa-solid fa-floppy-disk"></i> <%= novo ? 'Criar webinário' : 'Salvar' %></button>
+</form>
+
+<% if (!novo) { %>
+<div id="duvidas" class="adm-box adm-box-pad adm-espaco">
+  <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-circle-question"></i> Dúvidas frequentes</h2>
+  <p class="adm-mut">Aparecem em sanfona na página do webinário.</p>
+  <% if (faqs.length) { %>
+    <div class="adm-itens">
+      <% faqs.forEach(function (f) { %>
+        <div class="adm-item">
+          <div class="adm-item-txt"><strong><%= f.pergunta %></strong><div><%= f.resposta %></div></div>
+          <form method="POST" action="/ead/webinarios/<%= webinario.id %>/faqs/<%= f.id %>/remover" data-confirmar="Remover esta dúvida?">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="adm-mini danger" title="Remover"><i class="fa-solid fa-trash"></i></button>
+          </form>
+        </div>
+      <% }) %>
+    </div>
+  <% } else { %><p class="adm-mut">Nenhuma dúvida cadastrada ainda.</p><% } %>
+  <form method="POST" action="/ead/webinarios/<%= webinario.id %>/faqs" class="adm-form c1">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Pergunta <input type="text" name="pergunta" required maxlength="200"></label>
+    <label>Resposta <textarea name="resposta" required rows="3" maxlength="600"></textarea></label>
+    <button type="submit" class="adm-btn adm-btn-out">Adicionar dúvida</button>
+  </form>
+</div>
+
+<div class="adm-box adm-box-pad adm-espaco">
+  <h2 class="adm-h2 adm-form-h"><i class="fa-solid fa-trash"></i> Excluir</h2>
+  <p class="adm-mut">Só dá para excluir um webinário sem inscrições, compras e cupons. Com isso, desmarque "Publicado".</p>
+  <form method="POST" action="/ead/webinarios/<%= webinario.id %>/excluir" data-confirmar="Excluir este webinário?" data-botao="Excluir">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="adm-btn adm-btn-out danger">Excluir webinário</button>
+  </form>
+</div>
+<% } %>
+
+<%- include('../foot') %>

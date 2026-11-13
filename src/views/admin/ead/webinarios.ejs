@@ -1,0 +1,47 @@
+<%# Webinários da Escola Digital (2026-11-13): lista com capa, quando, preço, situação, inscritos, presenças e vendas. %>
+<% var brl = function (v) { return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }; %>
+<%- include('../head', { titulo: 'Webinários' }) %>
+<%- include('../header', { ativo: 'webinarios' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Webinários</h1>
+  <a class="adm-btn" href="/ead/webinarios/novo" data-criar><i class="fa-solid fa-plus"></i> Novo webinário</a>
+</div>
+<%- include('_mensagens') %>
+<p class="adm-mut">Palestras ao vivo (Zoom, Meet ou YouTube) e/ou gravadas (YouTube ou Vimeo). Quem assiste pega o certificado de participação com a palavra-código.</p>
+
+<% if (!lista.length) { %>
+  <div class="adm-box adm-box-pad"><p class="ead-vazio">Nenhum webinário ainda. Crie o primeiro.</p></div>
+<% } else { %>
+  <div class="adm-box adm-espaco">
+    <div class="ead-tabela-rolagem">
+      <table class="adm-table">
+        <thead><tr><th>Webinário</th><th>Quando</th><th>Preço</th><th>Situação</th><th class="centro">Inscritos</th><th class="centro">Presenças</th><th class="centro">Vendas</th><th class="centro">Ordem</th></tr></thead>
+        <tbody>
+          <% lista.forEach(function (w, i) { %>
+            <tr>
+              <td>
+                <a class="ead-ebook-linha" href="/ead/webinarios/<%= w.id %>">
+                  <% if (w.curso.imagemUrl) { %><img src="<%= w.curso.imagemUrl %>" alt="" width="54" height="40"><% } else { %><span class="ead-ebook-sem-capa"><i class="fa-solid fa-video"></i></span><% } %>
+                  <span><b><%= w.curso.nome %></b><small><%= w.duracaoMin %> min</small></span>
+                </a>
+              </td>
+              <td><%= w.quando || 'Gravado' %></td>
+              <td><%= w.gratuito ? 'Grátis' : brl(w.precoOnline) %></td>
+              <td><span class="ead-selo <%= w.publicado ? 'validado' : 'rascunho' %>"><%= w.publicado ? 'Publicado' : 'Rascunho' %></span></td>
+              <td class="centro"><a href="/ead/webinarios/<%= w.id %>/inscritos"><%= w._count.inscricoes %></a></td>
+              <td class="centro"><%= w._count.presencas %></td>
+              <td class="centro"><%= w.gratuito ? '—' : w.vendas %></td>
+              <td class="centro adm-ordem">
+                <form method="POST" action="/ead/webinarios/ordem/<%= w.id %>/cima"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="adm-mini" title="Subir"<%= i === 0 ? ' disabled' : '' %>><i class="fa-solid fa-arrow-up"></i></button></form>
+                <form method="POST" action="/ead/webinarios/ordem/<%= w.id %>/baixo"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="adm-mini" title="Descer"<%= i === lista.length - 1 ? ' disabled' : '' %>><i class="fa-solid fa-arrow-down"></i></button></form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } %>
+
+<%- include('../foot') %>

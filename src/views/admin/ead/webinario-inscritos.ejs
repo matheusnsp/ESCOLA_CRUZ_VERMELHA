@@ -1,0 +1,35 @@
+<%# Webinário (2026-11-13): inscritos, forma, presença e certificado; exportar CSV. %>
+<%- include('../head', { titulo: 'Inscritos' }) %>
+<%- include('../header', { ativo: 'webinarios' }) %>
+
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Inscritos · <%= webinario.curso.nome %></h1>
+  <a href="/ead/webinarios/<%= webinario.id %>" class="adm-link">← Webinário</a>
+</div>
+<p class="adm-mut"><%= quando ? quando + ' (Brasília)' : 'Gravado' %> · <%= lista.length %> <%= lista.length === 1 ? 'inscrito' : 'inscritos' %> · <%= lista.filter(function (i) { return i.presenca; }).length %> com presença</p>
+<p><a class="adm-btn adm-btn-out" href="/ead/webinarios/<%= webinario.id %>/inscritos.csv"><i class="fa-solid fa-file-csv"></i> Exportar CSV</a></p>
+
+<% if (!lista.length) { %>
+  <div class="adm-box adm-box-pad"><p class="ead-vazio">Ninguém inscrito ainda.</p></div>
+<% } else { %>
+  <div class="adm-box adm-espaco">
+    <div class="ead-tabela-rolagem">
+      <table class="adm-table adm-table-cards">
+        <thead><tr><th>Nome</th><th>E-mail</th><th>Inscrito em</th><th>Forma</th><th>Presença</th></tr></thead>
+        <tbody>
+          <% lista.forEach(function (i) { %>
+            <tr>
+              <td><b><%= i.usuario.nome %></b></td>
+              <td><%= i.usuario.email %></td>
+              <td><%= dataBr(i.criadoEm) %></td>
+              <td><%= i.forma %><% if (!i.acesso) { %> <span class="ead-selo rascunho">sem acesso</span><% } %></td>
+              <td><%= i.presenca ? 'Sim, ' + dataBr(i.presenca.confirmadaEm) : 'Não' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } %>
+
+<%- include('../foot') %>

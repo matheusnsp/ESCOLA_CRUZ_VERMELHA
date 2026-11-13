@@ -64,7 +64,7 @@ const MENUS = {
         { id: 'duvidas', rotulo: 'Dúvidas dos alunos', href: '/ead/duvidas', pode: SEMPRE, selo: 'duvidas' },
       ],
     },
-    { id: 'conteudos', rotulo: 'Conteúdos', icone: 'fa-photo-film', itens: [{ id: 'ebooks', rotulo: 'E-books', href: '/ead/ebooks', pode: SEMPRE }] },
+    { id: 'conteudos', rotulo: 'Conteúdos', icone: 'fa-photo-film', itens: [{ id: 'ebooks', rotulo: 'E-books', href: '/ead/ebooks', pode: SEMPRE }, { id: 'webinarios', rotulo: 'Webinários', href: '/ead/webinarios', pode: SEMPRE }] },
     {
       id: 'vendas', rotulo: 'Vendas', icone: 'fa-tags',
       itens: [

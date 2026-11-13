@@ -122,6 +122,13 @@ Perguntas dos alunos dos cursos online: Aguardando, Respondidas. Filtro: `/ead/d
 ## E-books (Conteúdos › E-books)
 E-books da Escola Digital (PDF com o nome do comprador no rodapé). "Novo e-book".
 
+## Webinários (Conteúdos › Webinários)
+Webinários da Escola Digital (só DEV): palestras ao vivo (Zoom, Meet ou YouTube) e/ou gravadas (YouTube ou Vimeo),
+grátis ou pagas. "Novo webinário": título, descrições, capa, quem apresenta, data e hora (em branco = só gravado),
+duração, link da transmissão, link da gravação, palavra-código do certificado e preço. Para publicar: palavra-código e
+data ou gravação. "Inscritos" mostra quem se inscreveu, a forma e a presença; "Exportar CSV" baixa a lista. O
+certificado de participação sai quando a pessoa digita a palavra-código na página do webinário.
+
 ## Escolas (lotes) (Vendas › Escolas (lotes))
 Vagas de cursos online vendidas em lote para escolas e empresas. "Novo lote".
 

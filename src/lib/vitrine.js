@@ -104,10 +104,11 @@ const URL_ESCOLA_DIGITAL = '/escola-digital';
 const urlOnline = (curso) => URL_ESCOLA_DIGITAL + '/' + slugCurso(curso && curso.nome);
 // E-books (2026-11-09): página do e-book; recebe o Curso escondido (ou qualquer objeto com nome).
 const urlEbook = (curso) => URL_ESCOLA_DIGITAL + '/ebook/' + slugCurso(curso && curso.nome);
+const urlWebinario = (curso) => URL_ESCOLA_DIGITAL + '/webinario/' + slugCurso(curso && curso.nome); // 2026-11-13
 
 // Selo de requisito do curso no site. Curso que exige comprovante da área da saúde (extra exigeComprovanteSaude,
 // lib/comprovante-saude.js) é para profissionais e estudantes da saúde, não para uma escolaridade.
 const PUBLICO_SAUDE = 'Profissionais e estudantes da saúde';
 const requisitoCurso = (curso) => (!curso ? null : curso.exigeComprovanteSaude ? PUBLICO_SAUDE : curso.escolaridadeMinima || null);
 
-module.exports = { CATEGORIAS, icone, reais, dataTurma, quando, agenda, ordenar, larguras, categoriasEmUso, slugCurso, urlCurso, urlOnline, urlEbook, requisitoCurso, URL_ESCOLA_DIGITAL };
+module.exports = { CATEGORIAS, icone, reais, dataTurma, quando, agenda, ordenar, larguras, categoriasEmUso, slugCurso, urlCurso, urlOnline, urlEbook, urlWebinario, requisitoCurso, URL_ESCOLA_DIGITAL };

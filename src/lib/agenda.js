@@ -77,4 +77,25 @@ function icsDaTurma(turma, urlCurso) {
   return linhas.map(dobrar).join('\r\n') + '\r\n';
 }
 
-module.exports = { icsDaTurma, horas };
+// Webinário (2026-11-13): um evento com início e duração; o "lugar" é a página do webinário (o link da transmissão
+// nunca vai no arquivo). w: { id, inicioEm, duracaoMin, curso: { nome } }.
+function icsDoWebinario(w, urlPagina) {
+  const z = (d) => new Date(d).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const nome = w.curso && w.curso.nome ? w.curso.nome : 'Webinário';
+  const fim = new Date(new Date(w.inicioEm).getTime() + (Number(w.duracaoMin) || 60) * 60000);
+  const linhas = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Escola de Educacao e Saude CVB-RJ//Agenda//PT-BR',
+    'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:' + texto(nome),
+    'BEGIN:VEVENT', `UID:webinario-${w.id}@escola.cruzvermelhariodejaneiro.org`, `DTSTAMP:${z(new Date())}`,
+    `DTSTART:${z(w.inicioEm)}`, `DTEND:${z(fim)}`,
+    'SUMMARY:' + texto('Webinário: ' + nome),
+    'LOCATION:' + texto(urlPagina || 'Online'),
+    'DESCRIPTION:' + texto('Webinário online da Escola de Educação e Saúde da Cruz Vermelha Brasileira – RJ.'
+      + (urlPagina ? '\nEntre pela página: ' + urlPagina : '')),
+    'BEGIN:VALARM', 'ACTION:DISPLAY', 'TRIGGER:-PT1H', 'DESCRIPTION:' + texto('Em 1 hora: ' + nome), 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR',
+  ];
+  return linhas.map(dobrar).join('\r\n') + '\r\n';
+}
+
+module.exports = { icsDaTurma, icsDoWebinario, horas };

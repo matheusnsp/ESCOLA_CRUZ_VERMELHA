@@ -43,6 +43,17 @@ function paraCampo(d) {
   return b.toISOString().slice(0, 16);
 }
 
+// "20/11/2026 às 19h" / "às 19h30" em Brasília; null sem data (só gravado).
+function quandoTexto(d, { curto = false } = {}) {
+  if (!d) return null;
+  const b = new Date(new Date(d).getTime() - 3 * 60 * MIN);
+  const p2 = (n) => String(n).padStart(2, '0');
+  const dia = `${p2(b.getUTCDate())}/${p2(b.getUTCMonth() + 1)}${curto ? '' : '/' + b.getUTCFullYear()}`;
+  return `${dia} às ${b.getUTCHours()}h${b.getUTCMinutes() ? p2(b.getUTCMinutes()) : ''}`;
+}
+// Link absoluto da página (e-mails).
+const linkPagina = (w) => `${(process.env.APP_URL || 'https://escola-cruz-vermelha.onrender.com').replace(/\/+$/, '')}${require('./vitrine').urlWebinario(w.curso)}`;
+
 // Comparação da palavra-código: sem maiúsculas, sem acentos e sem espaços nas pontas (espaços internos contam).
 const normalizarPalavra = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
@@ -186,6 +197,6 @@ async function excluir(id) {
 }
 
 module.exports = {
-  JANELA_MIN, INCLUIR, endereco, cargaHorasDe, dataBrasilia, paraCampo, normalizarPalavra, salvar, doEndereco, porId,
+  JANELA_MIN, INCLUIR, endereco, quandoTexto, linkPagina, cargaHorasDe, dataBrasilia, paraCampo, normalizarPalavra, salvar, doEndereco, porId,
   acesso, temAcesso, janela, situacaoCartao, excluir,
 };

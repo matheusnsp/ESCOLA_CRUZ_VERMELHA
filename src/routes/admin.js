@@ -498,6 +498,7 @@ router.post('/modo', requireDev, (req, res) => {
 // EAD (curso 100% online): só DEV. Spec docs/superpowers/specs/2026-11-05-ead-estrutura-conteudo.md
 router.use(require('./ead')({ requireDev, auditar, ADMIN_URL }));
 router.use(require('./ead-ebooks')({ requireDev, auditar })); // E-books da Escola Digital (2026-11-09)
+router.use(require('./ead-webinarios')({ requireDev, auditar })); // Webinários da Escola Digital (2026-11-13)
 
 // Assistente da secretaria (2026-11-13; spec 2026-11-13-assistente-secretaria-design.md): responde em NDJSON, um evento
 // por linha, enquanto o Claude escreve. "no-transform" impede o compression() de segurar o texto. Não grava nada.

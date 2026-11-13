@@ -38,6 +38,7 @@ const CATALOGO = {
   '/ead/ia': { params: [], dev: true },
   '/ead/duvidas': { params: ['status', 'curso'], dev: true },
   '/ead/ebooks': { params: [], dev: true },
+  '/ead/webinarios': { params: [], dev: true },
   '/ead/cupons': { params: [], dev: true },
   '/ead/escolas': { params: [], dev: true },
 };
