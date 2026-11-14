@@ -12,14 +12,20 @@ const g = (m, rot) => grupos(m).find((x) => x.rotulo === rot);
 
 test('DEV presencial: grupos, ordem, separador e grupo ativo aberto', () => {
   const m = montarMenu({ modo: 'presencial', papel: 'DEV', pode: todas, ativo: 'horarios' });
-  assert.deepEqual(grupos(m).map((x) => x.rotulo), ['Painel', 'Cursos e turmas', 'Alunos', 'Financeiro', 'Certificados', 'Configurações']);
+  assert.deepEqual(grupos(m).map((x) => x.rotulo), ['Painel', 'Cursos', 'Turmas', 'Alunos', 'Financeiro', 'Certificados', 'Configurações']);
   const iSep = m.findIndex((x) => x.separador);
   assert.equal(m[iSep].separador, 'Sistema');
   assert.equal(m[iSep + 1].rotulo, 'Configurações');
-  const ct = g(m, 'Cursos e turmas');
-  assert.ok(ct.aberto && ct.ativo);
-  assert.deepEqual(ct.itens.map((i) => i.rotulo), ['Cursos', 'Turmas', 'Matrícula rápida', 'Mapa de horários', 'Mensagem de boas-vindas']);
-  assert.deepEqual(ct.itens.map((i) => i.href), ['/cursos', '/turmas', '/matricula-rapida', '/horarios', '/modelos']);
+  const tu = g(m, 'Turmas');
+  assert.ok(tu.aberto && tu.ativo);
+  assert.equal(tu.id, 'turmas-grupo');
+  assert.deepEqual(tu.itens.map((i) => i.rotulo), ['Todas as turmas', 'Nova turma', 'Matrícula rápida', 'Mapa de horários', 'Mensagem de boas-vindas']);
+  assert.deepEqual(tu.itens.map((i) => i.href), ['/turmas', '/turmas/nova', '/matricula-rapida', '/horarios', '/modelos']);
+  const cu = g(m, 'Cursos');
+  assert.equal(cu.id, 'cursos-grupo');
+  assert.ok(!cu.aberto);
+  assert.deepEqual(cu.itens.map((i) => i.rotulo), ['Todos os cursos', 'Novo curso']);
+  assert.deepEqual(cu.itens.map((i) => i.href), ['/cursos', '/cursos/novo']);
   assert.ok(!g(m, 'Alunos').aberto);
   assert.deepEqual(g(m, 'Alunos').itens.map((i) => i.rotulo), ['Alunos', 'Matrículas', 'Pendentes', 'Comprovantes', 'Pesquisa de satisfação']);
   assert.deepEqual(g(m, 'Financeiro').itens.map((i) => i.rotulo), ['Financeiro', 'Contas a pagar', 'Cupons']);
@@ -57,7 +63,7 @@ test('Só integração: Configurações com um item', () => {
 test('Modo online só para DEV (outro papel cai no presencial)', () => {
   const m = montarMenu({ modo: 'online', papel: 'SECRETARIA', pode: todas, ativo: 'ead' });
   assert.equal(g(m, 'Cursos online'), undefined);
-  assert.ok(g(m, 'Cursos e turmas'));
+  assert.ok(g(m, 'Cursos') && g(m, 'Turmas'));
 });
 
 test('ativo desconhecido ou ausente: nada aberto, sem erro', () => {
@@ -73,4 +79,17 @@ test('todo ativo usado nas views do painel existe no menu', () => {
   (function andar(d) { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); if (fs.statSync(p).isDirectory()) andar(p); else if (f.endsWith('.ejs')) { const m = fs.readFileSync(p, 'utf8').match(/include\(['"](?:\.\.\/)?header['"],\s*\{[^}]*ativo:\s*['"]([^'"]+)/); if (m) usados.add(m[1]); } } })(raiz);
   assert.ok(usados.size > 15);
   for (const a of usados) assert.ok(ATIVOS.has(a), `ativo sem item no menu: ${a}`);
+});
+
+test('Cursos e Turmas: Novo curso e Nova turma só com permissão; ativo curso-novo abre Cursos', () => {
+  const leitura = (p) => p === 'painel:leitura';
+  const m = montarMenu({ modo: 'presencial', papel: 'CONSULTA', pode: leitura, ativo: 'cursos' });
+  assert.deepEqual(g(m, 'Cursos').itens.map((i) => i.rotulo), ['Todos os cursos']);
+  assert.deepEqual(g(m, 'Turmas').itens.map((i) => i.rotulo), ['Todas as turmas', 'Matrícula rápida', 'Mapa de horários']);
+  const n = montarMenu({ modo: 'presencial', papel: 'DEV', pode: todas, ativo: 'curso-novo' });
+  assert.ok(g(n, 'Cursos').aberto);
+  assert.ok(g(n, 'Cursos').itens.find((i) => i.rotulo === 'Novo curso').ativo);
+  const t = montarMenu({ modo: 'presencial', papel: 'DEV', pode: todas, ativo: 'turma-nova' });
+  assert.ok(g(t, 'Turmas').aberto);
+  assert.equal(montarMenu({ modo: 'presencial', papel: 'DEV', pode: todas }).some((x) => x.id === 'cursos-turmas'), false);
 });

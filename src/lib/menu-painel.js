@@ -25,10 +25,17 @@ const MENUS = {
   presencial: [
     { id: 'home', rotulo: 'Painel', icone: 'fa-gauge', href: '/', pode: SEMPRE },
     {
-      id: 'cursos-turmas', rotulo: 'Cursos e turmas', icone: 'fa-calendar-days',
+      id: 'cursos-grupo', rotulo: 'Cursos', icone: 'fa-book-medical',
       itens: [
-        { id: 'cursos', rotulo: 'Cursos', href: '/cursos', pode: SEMPRE },
-        { id: 'turmas', rotulo: 'Turmas', href: '/turmas', pode: SEMPRE },
+        { id: 'cursos', rotulo: 'Todos os cursos', href: '/cursos', pode: SEMPRE },
+        { id: 'curso-novo', rotulo: 'Novo curso', href: '/cursos/novo', pode: P('cursos:criar') },
+      ],
+    },
+    {
+      id: 'turmas-grupo', rotulo: 'Turmas', icone: 'fa-calendar-days',
+      itens: [
+        { id: 'turmas', rotulo: 'Todas as turmas', href: '/turmas', pode: SEMPRE },
+        { id: 'turma-nova', rotulo: 'Nova turma', href: '/turmas/nova', pode: P('turmas:gerenciar') },
         { id: 'matricula-rapida', rotulo: 'Matrícula rápida', href: '/matricula-rapida', pode: P('turmas:gerenciar', 'painel:leitura') },
         { id: 'horarios', rotulo: 'Mapa de horários', href: '/horarios', pode: P('turmas:gerenciar', 'painel:leitura') },
         { id: 'boas-vindas', rotulo: 'Mensagem de boas-vindas', href: '/modelos', pode: P('turmas:gerenciar') },

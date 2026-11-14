@@ -58,7 +58,7 @@ test('instruções do sistema: regras + menu gerado + manual', () => {
   const s = c.montarSistema();
   assert.match(s, /português do Brasil/);
   assert.match(s, /não grava nada/i);
-  assert.match(s, /Cursos e turmas › Matrícula rápida → \/matricula-rapida/);
+  assert.match(s, /Turmas › Matrícula rápida → \/matricula-rapida/);
   assert.match(s, /## Pendentes/);
 });
 

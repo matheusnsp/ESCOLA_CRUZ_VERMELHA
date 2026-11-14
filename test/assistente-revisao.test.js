@@ -29,7 +29,7 @@ test('Matrícula rápida: Encaixar, Mover e Voltar para a espera, só em turma A
 });
 
 test('Turmas: situações e mudanças automáticas como na tela', () => {
-  const s = secao('Turmas');
+  const s = secao('Todas as turmas');
   assert.match(s, /00:00 do dia de início/);
   assert.match(s, /dia seguinte à última aula/);
   assert.match(s, /fica Confirmada até lá/);
@@ -50,7 +50,7 @@ test('Painel: os blocos da tela', () => {
 });
 
 test('Cursos: o texto completo segue o modelo de 3 parágrafos (Escrever com IA)', () => {
-  assert.match(secao('Cursos — presencial'), /3 parágrafos/);
+  assert.match(secao('Todos os cursos'), /3 parágrafos/);
 });
 
 test('ferramentas: botões com o nome da tela e regra da Concluída', () => {
@@ -70,3 +70,5 @@ test('situação da turma com o nome da tela (Concluída, não ENCERRADA)', () =
   assert.match(src, /situacaoTurma: rotuloSituacao\(m\.turma\.status\)/);
   assert.match(src, /status: rotuloSituacao\(t\.status\)/);
 });
+
+test('manual sem o grupo antigo "Cursos e turmas"', () => { assert.doesNotMatch(manual, /Cursos e turmas ›/); });

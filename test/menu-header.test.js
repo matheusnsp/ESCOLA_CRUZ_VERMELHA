@@ -17,7 +17,7 @@ test('grupo do item ativo vem aberto e o item marcado', async () => {
   const html = await render({ ativo: 'permissoes' });
   assert.match(html, /<div class="adm-grp[^"]*" data-grupo="configuracoes"[^>]*>\s*<button type="button" class="adm-grp-tit" aria-expanded="true"/);
   assert.match(html, /<a href="\/dev\/permissoes" class="on" aria-current="page"/);
-  assert.match(html, /data-grupo="cursos-turmas"[^>]*>\s*<button type="button" class="adm-grp-tit" aria-expanded="false"/);
+  assert.match(html, /data-grupo="cursos-grupo"[^>]*>\s*<button type="button" class="adm-grp-tit" aria-expanded="false"/);
 });
 
 test('nenhum link do menu antigo some (DEV presencial)', async () => {
