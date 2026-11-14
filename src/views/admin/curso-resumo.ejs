@@ -1,0 +1,54 @@
+<%# Resumo do curso (telas novas de Cursos, 2026-11-13): um cartão por parte, com o estado e o link. %>
+<%- include('head', { titulo: curso.nome }) %>
+<%- include('header', { ativo: 'cursos' }) %>
+<% var c = curso;
+   var dia = function (d) { return new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit' }); };
+   var tem = function (item) { return faltas.indexOf(item) >= 0; }; %>
+<div class="adm-h1-row">
+  <h1 class="adm-h1"><%= c.nome %></h1>
+  <a href="/cursos" class="adm-link">← Todos os cursos</a>
+</div>
+<p class="adm-sub-titulo"><%= c.cargaHoraria %> horas<%= c.categoria ? ' · ' + c.categoria : '' %> ·
+  <% if (c.ativo) { %><b class="adm-txt-ok">aparece no site</b><% } else { %><b class="adm-mut">fora do site</b><% } %>
+  <%= turmas.length ? ' · próxima turma em ' + dia(turmas[0].inicioPrevisto) : '' %></p>
+<% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
+<% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
+
+<div class="adm-hub">
+  <a class="adm-hub-card" href="/cursos/<%= c.id %>/pagina">
+    <h3><i class="fa-solid fa-file-lines"></i> Página no site</h3>
+    <p>Nome, resumo, texto completo, carga horária, área e foto.</p>
+    <% if (tem('Foto')) { %><span class="adm-falta">Falta: Foto</span><% } %>
+    <% if (tem('Texto completo')) { %><span class="adm-falta">Falta: Texto completo</span><% } %>
+    <% if (!tem('Foto') && !tem('Texto completo')) { %><span class="adm-pronto">Completa</span><% } %>
+    <span class="adm-hub-acao">Editar →</span>
+  </a>
+  <a class="adm-hub-card" href="/cursos/<%= c.id %>/valores">
+    <h3><i class="fa-solid fa-tag"></i> Valores</h3>
+    <p><%= formatBRL(c.precoAvista) %> à vista · <%= formatBRL(c.precoCheio) %> em até <%= c.parcelas || 1 %>x<%= c.taxaMatricula != null ? ' · taxa de inscrição ' + formatBRL(c.taxaMatricula) : '' %></p>
+    <span class="adm-hub-acao">Editar →</span>
+  </a>
+  <a class="adm-hub-card" href="/cursos/<%= c.id %>/certificado">
+    <h3><i class="fa-solid fa-award"></i> Certificado</h3>
+    <p>Nome no certificado, conteúdo programático, validade e assinaturas.</p>
+    <% if (tem('Conteúdo do certificado')) { %><span class="adm-falta">Falta: Conteúdo do certificado</span><% } %>
+    <span class="adm-hub-acao">Editar →</span>
+  </a>
+  <a class="adm-hub-card" href="/cursos/<%= c.id %>/duvidas">
+    <h3><i class="fa-solid fa-circle-question"></i> Dúvidas frequentes</h3>
+    <p><%= c.totalFaqs ? c.totalFaqs + (c.totalFaqs === 1 ? ' pergunta aparece' : ' perguntas aparecem') + ' na página do curso.' : 'Nenhuma dúvida cadastrada.' %></p>
+    <% if (tem('Dúvidas frequentes')) { %><span class="adm-falta">Falta: Dúvidas frequentes</span><% } %>
+    <span class="adm-hub-acao">Editar →</span>
+  </a>
+  <a class="adm-hub-card" href="/cursos/<%= c.id %>/turmas">
+    <h3><i class="fa-solid fa-calendar-days"></i> Turmas deste curso</h3>
+    <p><% if (turmas.length) { turmas.forEach(function (t) { %><%= dia(t.inicioPrevisto) %> · <%= rotuloTurma(t.status) %> · <%= t._count.matriculas %> de <%= t.vagas %> vagas<br><% }) } else { %>Nenhuma turma por começar.<% } %></p>
+    <span class="adm-hub-acao">Ver turmas →</span>
+  </a>
+  <a class="adm-hub-card" href="/cursos/<%= c.id %>/publicacao">
+    <h3><i class="fa-solid fa-globe"></i> Inscrição e publicação</h3>
+    <p><%= c.exigeComprovanteSaude ? 'Exige comprovante da área da saúde.' : 'Não exige comprovante da área da saúde.' %> <%= c.ativo ? 'Aparece no site.' : 'Fora do site.' %></p>
+    <span class="adm-hub-acao">Editar →</span>
+  </a>
+</div>
+<%- include('foot') %>

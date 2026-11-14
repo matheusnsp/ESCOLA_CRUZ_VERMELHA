@@ -1,0 +1,71 @@
+<%# Seção Página no site (telas novas de Cursos, 2026-11-13): dados, textos e foto. c = curso. %>
+<h2 class="adm-form-secao full"><i class="fa-solid fa-circle-info"></i> Dados e textos</h2>
+  <label class="full">Nome do curso
+    <input type="text" name="nome" value="<%= c.nome || '' %>" required>
+  </label>
+
+  <%- include('_ia-textos', { iaUrl: '/cursos/ia-textos', iaTipo: 'presencial', iaCursoId: c.id, iaSemFaqs: true, iaFaqsIniciais: typeof faqsIniciais !== 'undefined' ? faqsIniciais : [] }) %>
+
+  <label class="full">Resumo
+    <textarea name="descricao" rows="2" placeholder="Uma ou duas frases. Aparece no cartão do curso e no topo da página."><%= c.descricao || '' %></textarea>
+  </label>
+
+  <label class="full">Texto completo
+    <textarea name="descricaoLonga" rows="8"
+              placeholder="Texto que aparece na página do curso. Deixe uma linha em branco entre os parágrafos."><%= c.descricaoLonga || '' %></textarea>
+  </label>
+
+  <label>Carga horária (horas)
+    <input type="number" name="cargaHoraria" min="1" value="<%= c.cargaHoraria || '' %>" required>
+  </label>
+
+  <label>Escolaridade mínima
+    <select name="escolaridadeMinima">
+      <% escolaridades.forEach(function (e) { %>
+        <option value="<%= e %>" <%= (c.escolaridadeMinima || '') === e ? 'selected' : '' %>><%= e || '— nenhuma —' %></option>
+      <% }) %>
+    </select>
+  </label>
+
+  <% if (typeof categoriasCurso !== 'undefined') { %>
+    <label>Área do curso
+      <select name="categoria">
+        <option value="">— sem área —</option>
+        <% categoriasCurso.forEach(function (cat) { %>
+          <option value="<%= cat %>" <%= c.categoria === cat ? 'selected' : '' %>><%= cat %></option>
+        <% }) %>
+      </select>
+      <small class="adm-hint">Usada nos filtros da lista de cursos do site.</small>
+    </label>
+  <% } %>
+
+  <div class="full adm-foto-campo" id="foto-do-curso">
+    <span class="adm-foto-rot">Foto do curso<% if (c.imagemGeradaPorIa) { %> <span class="adm-badge-ia">Imagem gerada por IA</span><% } %></span>
+    <% if (typeof okImagem !== 'undefined' && okImagem) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= okImagem %></div><% } %>
+    <% if (typeof erroImagem !== 'undefined' && erroImagem) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erroImagem %></div><% } %>
+    <% if (typeof statusImagem !== 'undefined' && statusImagem && !(typeof okImagem !== 'undefined' && okImagem && statusImagem.estado === 'gerando')) { %><%- include('ead/_status-imagens', { st: statusImagem }) %><% } %>
+    <div class="adm-foto-linha">
+      <% if (c.imagemUrl) { %>
+        <img src="<%= c.imagemUrl %>" alt="Foto atual" class="adm-foto-atual">
+      <% } else { %>
+        <span class="adm-foto-atual vazio"><i class="fa-solid fa-image"></i></span>
+      <% } %>
+      <div>
+        <input type="file" name="foto" accept="image/png,image/jpeg,image/webp,image/gif">
+        <small class="adm-hint">JPG, PNG, WEBP ou GIF, até 3 MB.<%= c.imagemUrl ? ' Envie outra para substituir a atual.' : '' %></small>
+        <% if (c.imagemUrl) { %>
+          <label class="check"><input type="checkbox" name="removerFoto"> Remover a foto atual</label>
+        <% } %>
+        <% if (typeof temOpenAI !== 'undefined' && temOpenAI) { %>
+          <%# Envia o formulário de baixo (fora deste, que é multipart): o Claude escreve o pedido, a OpenAI gera. %>
+          <label class="adm-pedido-img">Pedido da imagem <small class="adm-hint">(opcional: em branco, o Claude escreve; pode editar ou escrever o seu, em português)</small>
+            <textarea name="pedido" id="pedidoCursoPres" form="formImagemIa" rows="3" maxlength="1000" placeholder="Ex.: instrutora ensinando RCP num manequim, sala de aula, luz natural"><%= c.imagemPedido || '' %></textarea>
+          </label>
+          <button type="button" class="adm-btn adm-btn-neutro ia-pedido-bt" data-url="/cursos/<%= c.id %>/imagem-pedido-ia" data-tipo="curso" data-id="<%= c.id %>" data-alvo="pedidoCursoPres"><i class="fa-solid fa-pen-nib"></i> Escrever pedido com o Claude</button>
+          <p class="ia-textos-msg" id="pedidoCursoPres-msg" role="status" hidden></p>
+          <button type="submit" form="formImagemIa" class="adm-btn adm-btn-neutro adm-btn-ia"><i class="fa-solid fa-wand-magic-sparkles"></i> Gerar imagem com IA</button>
+        <% } %>
+        <% if (c.imagemSugestao) { %><small class="adm-hint">Descrição da imagem: <%= c.imagemSugestao %></small><% } %>
+      </div>
+    </div>
+  </div>

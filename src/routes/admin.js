@@ -852,12 +852,23 @@ router.get('/cursos', requirePermissao('cursos:gerenciar', 'painel:leitura'), as
   cursos.splice(0, cursos.length, ...visiveis);
   const total = totalComOnline - (await require('../lib/ead-curso-online').idsSoOnline()).size;
 
-  // O que o aluno paga de verdade (à vista e parcelado com os juros do cartão), igual ao checkout.
-  const cfgMatricula = await lerConfigMatricula();
-  await Promise.all(cursos.map(async (c) => { c.valores = await simularValores(c, cfgMatricula); }));
+  // "Falta" de cada curso (telas novas, 2026-11-13): foto, texto completo, conteúdo do certificado, dúvidas.
+  await extras.anexar('curso', cursos);
+  const faqsPorCurso = Object.fromEntries((await prisma.faqCurso.groupBy({ by: ['cursoId'], where: { cursoId: { in: cursos.map((c) => c.id) } }, _count: { _all: true } })).map((g) => [g.cursoId, g._count._all]));
+  const { faltasCurso } = require('../lib/curso-secoes');
+  cursos.forEach((c) => { c.faltas = faltasCurso({ ...c, totalFaqs: faqsPorCurso[c.id] || 0 }); });
+  // Contagens dos filtros (Todos / No site / Fora do site), sem os cursos só online e respeitando a busca.
+  const doFiltro = busca ? { nome: { contains: busca, mode: 'insensitive' } } : {};
+  const idsSoOnline = [...(await require('../lib/ead-curso-online').idsSoOnline())];
+  const semOnline = idsSoOnline.length ? { id: { notIn: idsSoOnline } } : {};
+  const [ativos, inativos] = await Promise.all([
+    prisma.curso.count({ where: { ...doFiltro, ...semOnline, ativo: true } }),
+    prisma.curso.count({ where: { ...doFiltro, ...semOnline, ativo: false } }),
+  ]);
 
   res.render('admin/cursos', {
     cursos,
+    contagem: { todos: ativos + inativos, ativos, inativos },
     total,
     busca,
     statusFiltro,
@@ -882,32 +893,15 @@ router.use('/cursos', async (req, res, next) => {
   next();
 });
 
+// Telas novas de Cursos (2026-11-13): resumo do curso e seções com salvar próprio (routes/painel-cursos.js).
+router.use(require('./painel-cursos')({ requirePermissao, auditar }));
+
 router.get('/cursos/novo', requirePermissao('cursos:criar'), async (req, res) => {
   res.render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: null, escolaridades: ESCOLARIDADES, erro: null });
 });
 
-// Assinaturas no formulário do curso: as linhas de quem assina (lista única, a mesma de Modelos) e
-// quem sai no certificado deste curso. Devolve { assinantes, escolha, erro }.
-function assinaturasDoForm(body) {
-  const linhas = [].concat(Object.values(body.assin || {})).slice(0, certificado.MAX_ASSINANTES);
-  const assinantes = linhas.map((l) => ({ nome: String(l.nome || '').trim(), cargo: String(l.cargo || '').trim() }));
-  const escolha = linhas.map((l, i) => (l.marcado && assinantes[i].nome ? 'a' + i : null)).filter(Boolean);
-  if (body.assinInstrutor) escolha.push('instrutor');
-  let erro = null;
-  if (!assinantes.some((a) => a.nome)) erro = 'Informe pelo menos uma pessoa que assina o certificado.';
-  else if (!escolha.length) erro = 'Marque pelo menos uma assinatura para o certificado.';
-  else if (escolha.length > certificado.MAX_NO_CERTIFICADO) erro = `O certificado leva no máximo ${certificado.MAX_NO_CERTIFICADO} assinaturas.`;
-  return { assinantes, escolha, erro };
-}
-
-async function salvarAssinaturasDoCurso(cursoId, body, req) {
-  if (!body.assin) return; // formulário antigo, sem a seção
-  const { assinantes, escolha } = assinaturasDoForm(body);
-  const { livro } = await certificado.lerAjustes();
-  await certificado.salvarAjustes({ assinantes, livro });
-  await extras.salvarExtra('curso', cursoId, { certAssinaturas: escolha });
-  await auditar(req, 'EDITOU_ASSINATURAS_CERTIFICADO', 'Curso', cursoId, { escolha });
-}
+const { assinaturasDoForm, salvarAssinaturasDoCurso: salvarAssinaturasCurso } = require('../lib/curso-assinaturas');
+const salvarAssinaturasDoCurso = (cursoId, body, req) => salvarAssinaturasCurso(cursoId, body, req, auditar);
 
 // Campos do certificado no formulário do curso (guardados em lib/extras.js, não no Curso).
 function extrasCursoDoForm(body) {
@@ -966,52 +960,9 @@ router.post('/cursos', requirePermissao('cursos:criar'), uploadFoto, async (req,
   res.redirect('/cursos?ok=Curso criado.');
 });
 
-router.get('/cursos/:id/editar', requirePermissao('cursos:gerenciar'), async (req, res) => {
-  const curso = await prisma.curso.findUnique({
-    where: { id: req.params.id },
-    include: { faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] } },
-  });
-  if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
-  await extras.anexar('curso', [curso]);
-  const valores = await simularValores(curso, await lerConfigMatricula());
-  res.render('admin/curso-form', {
-    taxaPadrao: await lerTaxaPadrao(), curso, valores, formatBRL, escolaridades: ESCOLARIDADES, erro: null, erroFaq: req.query.erroFaq || null,
-    okImagem: req.query.okImagem || null, erroImagem: req.query.erroImagem || null, temOpenAI: require('../lib/ead-imagens').temOpenAI(),
-    statusImagem: await require('../lib/ead-imagens').statusDe(`curso:${curso.id}`),
-  });
-});
 
-router.post('/cursos/:id/faqs', requirePermissao('cursos:gerenciar'), async (req, res) => {
-  const curso = await prisma.curso.findUnique({ where: { id: req.params.id } });
-  if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
-  const pergunta = String(req.body.pergunta || '').trim();
-  const resposta = String(req.body.resposta || '').trim();
-  if (!pergunta || !resposta) {
-    return res.redirect(`/cursos/${curso.id}/editar?erroFaq=` + encodeURIComponent('Preencha a pergunta e a resposta.'));
-  }
-  const total = await prisma.faqCurso.count({ where: { cursoId: curso.id } });
-  await prisma.faqCurso.create({ data: { cursoId: curso.id, pergunta, resposta, ordem: total } });
-  await auditar(req, 'ADICIONOU_FAQ', 'Curso', curso.id, { pergunta });
-  res.redirect(`/cursos/${curso.id}/editar#duvidas`);
-});
 
-// As dúvidas marcadas de "Escrever dúvidas com IA" (seção de dúvidas do curso), gravadas direto (2026-11-09).
-router.post('/cursos/:id/faqs-ia', requirePermissao('cursos:gerenciar'), async (req, res) => {
-  const curso = await prisma.curso.findUnique({ where: { id: req.params.id }, select: { id: true } }).catch(() => null);
-  if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
-  const txt = require('../lib/ia-textos');
-  const n = await txt.salvarFaqs(curso.id, txt.lerFaqsDoForm(req.body));
-  if (n) await auditar(req, 'ADICIONOU_FAQ', 'Curso', curso.id, { porIa: true, quantas: n });
-  res.redirect(`/cursos/${curso.id}/editar${n ? '' : '?erroFaq=' + encodeURIComponent('Nenhuma dúvida marcada (ou todas já existiam).')}#duvidas`);
-});
 
-router.post('/cursos/:id/faqs/:faqId/remover', requirePermissao('cursos:gerenciar'), async (req, res) => {
-  const faq = await prisma.faqCurso.findUnique({ where: { id: req.params.faqId } });
-  if (!faq || faq.cursoId !== req.params.id) return res.status(404).render('admin/erro', { mensagem: 'Duvida nao encontrada.' });
-  await prisma.faqCurso.delete({ where: { id: faq.id } });
-  await auditar(req, 'REMOVEU_FAQ', 'Curso', req.params.id, { pergunta: faq.pergunta });
-  res.redirect(`/cursos/${req.params.id}/editar#duvidas`);
-});
 
 // Escrever com IA (2026-11-09): o Claude escreve resumo, texto completo, conteúdo programático e dúvidas no padrão
 // dos outros cursos; a página só preenche os campos (nada é salvo). JSON { ok, textos } ou { ok:false, erro }.
@@ -1039,37 +990,6 @@ router.post('/cursos/ia-textos', requirePermissao('cursos:criar', 'cursos:gerenc
   }
 });
 
-router.post('/cursos/:id', requirePermissao('cursos:gerenciar'), uploadFoto, async (req, res) => {
-  const existe = await prisma.curso.findUnique({ where: { id: req.params.id } });
-  if (!existe) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
-  if (req.uploadErro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro: req.uploadErro });
-  const { dados, erro } = lerCursoDoForm(req.body);
-  if (erro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro });
-  if (!req.body.valorParcela) delete dados.valorParcela; // não está mais no formulário: na edição, mantém o gravado
-  // EAD (etapa 8): o curso com versão online não pode ficar com o endereço de outro curso online.
-  const eadAcesso = require('../lib/ead-acesso');
-  if (dados.nome && await eadAcesso.enderecoOnlineEmUso(dados.nome, req.params.id) && await prisma.cursoOnline.count({ where: { cursoId: req.params.id } })) {
-    return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: { ...req.body, id: req.params.id, imagemUrl: existe.imagemUrl }, escolaridades: ESCOLARIDADES, erro: 'Já existe um curso online com o mesmo endereço no site (nome igual ou parecido). Escolha outro nome.' });
-  }
-  if (req.file) {
-    dados.imagemUrl = await salvarFotoCurso(req.file);
-    dados.imagemGeradaPorIa = false; // imagem própria: sem o selo de IA (2026-11-09)
-    await removerFotoCurso(existe.imagemUrl); 
-  } else if (req.body.removerFoto === 'on') {
-    dados.imagemUrl = null;
-    dados.imagemGeradaPorIa = false;
-    await removerFotoCurso(existe.imagemUrl); 
-  } else {
-    dados.imagemUrl = existe.imagemUrl; 
-  }
-  await prisma.curso.update({ where: { id: req.params.id }, data: dados });
-  if (dados.nome) await eadAcesso.guardarEnderecoAntigo(req.params.id, existe.nome, dados.nome); // links antigos do curso online
-  await extras.salvarExtra('curso', req.params.id, extrasCursoDoForm(req.body));
-  await salvarAssinaturasDoCurso(req.params.id, req.body, req);
-  await require('../lib/ia-textos').salvarFaqs(req.params.id, require('../lib/ia-textos').lerFaqsDoForm(req.body));
-  await auditar(req, 'EDITOU_CURSO', 'Curso', req.params.id, { nome: dados.nome });
-  res.redirect('/cursos?ok=Curso atualizado.');
-});
 
 // "Escrever pedido com o Claude" para a imagem do curso presencial: devolve o pedido (JSON), sem gerar a imagem.
 router.post('/cursos/:id/imagem-pedido-ia', requirePermissao('cursos:gerenciar'), async (req, res) => {
@@ -1094,7 +1014,7 @@ router.post('/cursos/:id/imagem-pedido-ia', requirePermissao('cursos:gerenciar')
 router.post('/cursos/:id/imagem-ia', requirePermissao('cursos:gerenciar'), async (req, res) => {
   const ia = require('../lib/ead-ia');
   const img = require('../lib/ead-imagens');
-  const volta = (tipo, msg) => res.redirect(`/cursos/${encodeURIComponent(req.params.id)}/editar?${tipo}Imagem=${encodeURIComponent(msg)}#foto-do-curso`);
+  const volta = (tipo, msg) => res.redirect(`/cursos/${encodeURIComponent(req.params.id)}/pagina?${tipo}Imagem=${encodeURIComponent(msg)}#foto-do-curso`);
   if (!(await prisma.curso.findUnique({ where: { id: req.params.id }, select: { id: true } }).catch(() => null))) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
   if (!ia.ehChaveConfigurada()) return volta('erro', ia.MSG_CHAVE);
   const t = await ia.dentroDoTeto();
@@ -1118,32 +1038,6 @@ router.post('/cursos/:id/imagem-ia', requirePermissao('cursos:gerenciar'), async
   return volta('ok', 'Gerando a imagem em segundo plano (cerca de 1 minuto). Recarregue a página para ver.');
 });
 
-router.post('/cursos/:id/excluir', requirePermissao('cursos:gerenciar'), async (req, res) => {
-  const curso = await prisma.curso.findUnique({ where: { id: req.params.id } });
-  if (!curso) return res.status(404).render('admin/erro', { mensagem: 'Curso nao encontrado.' });
-
-  const turmas = await prisma.turma.findMany({ where: { cursoId: curso.id }, select: { id: true } });
-  const turmaIds = turmas.map((t) => t.id);
-  const matriculas = turmaIds.length ? await prisma.matricula.count({ where: { turmaId: { in: turmaIds } } }) : 0;
-
-  if (turmas.length > 0 || matriculas > 0) {
-    return res.redirect(backCursos(req, 'Nao e possivel excluir: o curso tem turmas e/ou inscrições. Use "desativar" para tira-lo do site preservando o historico.', 'erro'));
-  }
-  // Curso com EAD: o banco recusaria (CursoOnline com onDelete Restrict); aqui sai a mensagem certa.
-  if (await prisma.cursoOnline.count({ where: { cursoId: curso.id } })) {
-    return res.redirect(backCursos(req, 'Não é possível excluir: o curso tem conteúdo EAD. Desative o EAD em EAD → curso antes.', 'erro'));
-  }
-
-  // Cupom do curso presencial (2026-11-09): o banco recusaria (onDelete Restrict); apagar o cupom muda o alcance dele.
-  if (await prisma.cupomEad.count({ where: { cursoId: curso.id } })) {
-    return res.redirect(backCursos(req, 'Não é possível excluir: o curso tem cupom de desconto. Apague o cupom em Cupons antes.', 'erro'));
-  }
-
-  await prisma.curso.delete({ where: { id: curso.id } });
-  await removerFotoCurso(curso.imagemUrl);
-  await auditar(req, 'EXCLUIU_CURSO', 'Curso', curso.id, { nome: curso.nome });
-  res.redirect(backCursos(req, 'Curso excluido.'));
-});
 
 
 router.post('/cursos/:id/ativar', requirePermissao('cursos:gerenciar'), async (req, res) => {

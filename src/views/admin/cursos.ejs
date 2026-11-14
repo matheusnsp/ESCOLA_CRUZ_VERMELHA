@@ -19,43 +19,24 @@
 <% } %>
 
 <form method="GET" action="/cursos" class="adm-filtros">
-
+  <% if (statusFiltro) { %><input type="hidden" name="status" value="<%= statusFiltro %>"><% } %>
   <label class="adm-campo cresce">
     <span>Buscar</span>
-    <input
-      type="text"
-      name="q"
-      value="<%= busca %>"
-      placeholder="Nome do curso"
-    >
+    <input type="text" name="q" value="<%= busca %>" placeholder="Nome do curso">
   </label>
-
-  <label class="adm-campo">
-    <span>No site</span>
-    <select name="status">
-      <option value="">Todos</option>
-
-      <option value="ATIVO" <%= statusFiltro === 'ATIVO' ? 'selected' : '' %>>
-        Visíveis no site
-      </option>
-
-      <option value="INATIVO" <%= statusFiltro === 'INATIVO' ? 'selected' : '' %>>
-        Ocultos
-      </option>
-    </select>
-  </label>
-
-  <button type="submit" class="adm-btn-neutro">
-    <i class="fa-solid fa-filter"></i> Filtrar
-  </button>
-
-  <% if (pode('cursos:gerenciar')) { %>
-    <a href="/cursos/novo" class="adm-btn" data-criar>
-      <i class="fa-solid fa-plus"></i> Novo curso
-    </a>
+  <button type="submit" class="adm-btn-neutro"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+  <% if (pode('cursos:criar')) { %>
+    <a href="/cursos/novo" class="adm-btn" data-criar><i class="fa-solid fa-plus"></i> Novo curso</a>
   <% } %>
-
 </form>
+
+<% var _q = busca ? 'q=' + encodeURIComponent(busca) : ''; var _filtros = [['', 'Todos', contagem.todos], ['ATIVO', 'No site', contagem.ativos], ['INATIVO', 'Fora do site', contagem.inativos]]; %>
+<nav class="adm-abas" aria-label="Filtrar cursos">
+  <% _filtros.forEach(function (f) { var u = '/cursos' + (f[0] ? '?status=' + f[0] + (_q ? '&' + _q : '') : (_q ? '?' + _q : '')); %>
+    <a href="<%= u %>" class="adm-aba <%= (statusFiltro || '') === f[0] ? 'on' : '' %>">
+      <%= f[1] %> · <%= f[2] %></a>
+  <% }) %>
+</nav>
 
 <div class="adm-box">
 
@@ -91,11 +72,10 @@
       <thead>
         <tr>
           <th>Curso</th>
-          <th>Carga</th>
-          <th>Valores</th>
-          <th>Turmas</th>
-          <th>No site</th>
-          <th>Ações</th>
+          <th>Próximas turmas</th>
+          <th>Site</th>
+          <th>Falta</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -112,13 +92,9 @@
               <% } %>
               <span>
                 <strong><%= c.nome %></strong>
-                <% if (c.escolaridadeMinima) { %><br><small class="adm-mut"><%= c.escolaridadeMinima %></small><% } %>
+                <br><small class="adm-mut"><%= c.cargaHoraria %> h<%= c.categoria ? ' · ' + c.categoria : '' %></small>
               </span>
             </div>
-          </td>
-          <td><%= c.cargaHoraria %>h</td>
-          <td>
-            <%- include('valores-curso', { v: c.valores, compacto: true }) %>
           </td>
           <td>
             <%
@@ -148,33 +124,18 @@
           </td>
           <td>
             <% if (c.ativo) { %>
-              <span class="badge ok" title="Aparece no site da escola">Visível</span>
+              <span class="badge ok" title="Aparece no site da escola">No site</span>
             <% } else { %>
-              <span class="badge mut" title="Não aparece no site da escola">Oculto</span>
+              <span class="badge mut" title="Não aparece no site da escola">Fora do site</span>
             <% } %>
+          </td>
+          <td>
+            <% if ((c.faltas || []).length) { c.faltas.forEach(function (f) { %><span class="adm-falta"><%= f %></span> <% }) } else { %><span class="adm-mut">—</span><% } %>
           </td>
           <td class="adm-acoes">
             <% if (pode('cursos:gerenciar')) { %>
-              <div class="adm-pend-acoes">
-                <a href="/cursos/<%= c.id %>/editar" class="adm-pend-btn"><i class="fa-solid fa-pen"></i> Editar</a>
-                <form method="POST" action="/cursos/<%= c.id %>/ativar"
-                      data-confirmar="<%= c.ativo ? 'Ocultar ' + c.nome + ' do site? As turmas e inscrições continuam; o curso só deixa de aparecer para os alunos.' : 'Mostrar ' + c.nome + ' no site da escola?' %>"
-                      data-botao="<%= c.ativo ? 'Ocultar do site' : 'Mostrar no site' %>">
-                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                  <% if (statusFiltro) { %><input type="hidden" name="status" value="<%= statusFiltro %>"><% } %>
-                  <% if (busca) { %><input type="hidden" name="q" value="<%= busca %>"><% } %>
-                  <button class="adm-pend-btn"><i class="fa-solid <%= c.ativo ? 'fa-eye-slash' : 'fa-eye' %>"></i> <%= c.ativo ? 'Ocultar' : 'Mostrar' %></button>
-                </form>
-                <% if (!c._count.turmas) { %>
-                  <form method="POST" action="/cursos/<%= c.id %>/excluir"
-                        data-confirmar="Excluir o curso <%= c.nome %>? Não dá para desfazer." data-botao="Excluir">
-                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                    <% if (statusFiltro) { %><input type="hidden" name="status" value="<%= statusFiltro %>"><% } %>
-                    <% if (busca) { %><input type="hidden" name="q" value="<%= busca %>"><% } %>
-                    <button class="adm-pend-btn perigo"><i class="fa-solid fa-trash"></i> Excluir</button>
-                  </form>
-                <% } %>
-              </div>
+              <a href="/cursos/<%= c.id %>" class="adm-pend-btn">
+                Abrir <i class="fa-solid fa-arrow-right"></i></a>
             <% } %>
           </td>
         </tr>

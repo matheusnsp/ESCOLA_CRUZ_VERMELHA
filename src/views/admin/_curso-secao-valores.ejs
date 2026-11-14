@@ -1,0 +1,28 @@
+<%# Seção Valores (telas novas de Cursos, 2026-11-13). c = curso. %>
+  <label>À vista (R$)
+    <input type="text" name="precoAvista" value="<%= c.precoAvista || '' %>" placeholder="150.00" required>
+  </label>
+
+  <label>No parcelado, total (R$)
+    <input type="text" name="precoCheio" value="<%= c.precoCheio || '' %>" placeholder="155.00" required>
+  </label>
+
+  <label>Máximo de parcelas
+    <input type="number" name="parcelas" min="1" value="<%= c.parcelas || 1 %>" required>
+  </label>
+
+  <label>Taxa de inscrição (R$)
+    <input type="text" name="taxaMatricula"
+           value="<%= c.taxaMatricula != null ? c.taxaMatricula : '' %>"
+           placeholder="em branco = padrão (<%= typeof taxaPadrao === 'number' && !isNaN(taxaPadrao) ? taxaPadrao.toFixed(2).replace('.', ',') : 'sem padrão' %>)">
+  </label>
+
+  <% if (typeof valores !== 'undefined' && valores) { %>
+    <div class="full adm-simulacao">
+      <span class="adm-foto-rot">Como aparece para o aluno na inscrição</span>
+      <%- include('valores-curso', { v: valores, compacto: false }) %>
+      <small class="adm-hint">Mesma conta do checkout da escola, com os juros do cartão da Únicopag. Atualiza ao salvar.</small>
+    </div>
+  <% } else { %>
+    <p class="adm-hint full">Depois de salvar, aqui aparece o valor que o aluno paga à vista e no parcelado, já com os juros do cartão.</p>
+  <% } %>

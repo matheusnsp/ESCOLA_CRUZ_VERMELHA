@@ -2369,3 +2369,42 @@ body.adm-assist-aberto .adm-assist-btn { display: none; }
 }
 @keyframes admGirar { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { html.adm-js.adm-app .adm-recarregar.girando i { animation: none; } }
+
+/* ── Telas novas de Cursos e Turmas (2026-11-13): resumo com cartões, seções com salvar fixo ── */
+.adm-sub-titulo { color: var(--mut); margin: -12px 0 18px; font-size: 15px; }
+.adm-txt-ok { color: var(--ok-tx); }
+.adm-hub { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 1100px) { .adm-hub { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .adm-hub { grid-template-columns: 1fr; } }
+.adm-hub-card { background: var(--card); border: 1px solid var(--linha); border-radius: var(--r); padding: 18px; display: grid; gap: 8px; align-content: start; text-decoration: none; color: var(--tinta); min-width: 0; }
+.adm-hub-card:hover { border-color: var(--vermelho); }
+.adm-hub-card:focus-visible { outline: 2px solid var(--vermelho); outline-offset: 2px; }
+.adm-hub-card h3 { margin: 0; font-size: 16px; display: flex; gap: 10px; align-items: center; }
+.adm-hub-card h3 i { color: var(--vermelho-txt); width: 18px; text-align: center; }
+.adm-hub-card p { margin: 0; color: var(--mut); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.adm-hub-acao { color: var(--vermelho-txt); font-weight: 700; font-size: 13px; }
+.adm-falta, .adm-pronto { justify-self: start; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+.adm-falta { background: var(--alerta-bg); color: var(--alerta-tx); }
+.adm-pronto { background: var(--ok-bg); color: var(--ok-tx); }
+.adm-rodape-salvar { position: sticky; bottom: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--card); border-top: 1px solid var(--linha); margin: 8px -26px 0; padding: 14px 26px calc(14px + env(safe-area-inset-bottom, 0px)); border-radius: 0 0 var(--r) var(--r); }
+/* O rodapé fica preso embaixo da tela ao rolar: a caixa não pode cortar (overflow) nem sobrar espaço depois dele. */
+.adm-form:has(> .adm-rodape-salvar) { padding-bottom: 0; overflow: visible; }
+.adm-rodape-salvar .adm-hint { margin: 0; }
+.adm-perigo { margin-top: 18px; border: 1px solid var(--erro-bd); background: var(--erro-bg); border-radius: var(--r); padding: 18px 20px; display: grid; gap: 10px; }
+.adm-perigo h2 { margin: 0; font-size: 16px; color: var(--erro-tx); display: flex; gap: 10px; align-items: center; }
+.adm-perigo p { margin: 0; font-size: 14px; color: var(--tinta); }
+.adm-btn-perigo { justify-self: start; border: 1px solid var(--erro-tx); color: var(--erro-tx); background: transparent; border-radius: var(--r-s); padding: 9px 16px; font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; }
+.adm-btn-perigo:disabled { opacity: .45; cursor: not-allowed; }
+.adm-tag-ia { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--roxo-bg); color: var(--roxo-tx); }
+.adm-faqs { display: grid; gap: 4px; }
+.adm-faqs-tit { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.adm-faqs-tit h2 { margin: 0; font-size: 17px; display: flex; gap: 10px; align-items: center; }
+.adm-faqs-tit h2 i { color: var(--vermelho-txt); }
+.adm-faq { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 14px 0; border-top: 1px solid var(--linha); }
+.adm-faq-ordem { display: grid; gap: 4px; }
+.adm-faq-ordem form, .adm-faq-acoes form { margin: 0; }
+.adm-faq-txt p { margin: 4px 0 0; color: var(--mut); font-size: 14px; overflow-wrap: anywhere; }
+.adm-faq-acoes { display: flex; gap: 6px; align-items: center; }
+.adm-faq-edicao { margin-top: 10px; }
+.adm-faq-edicao[hidden] { display: none; }
+.adm-faq-nova { border-top: 1px solid var(--linha); padding-top: 14px; margin-top: 4px; }
