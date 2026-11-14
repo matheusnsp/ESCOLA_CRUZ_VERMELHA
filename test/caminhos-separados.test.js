@@ -52,7 +52,9 @@ test('Boas-vindas num lugar só: botão sai da linha da turma; envio por turma n
   assert.doesNotMatch(ler('turmas.ejs'), /\/boas-vindas"/);
   const tv = ler('turma-boas-vindas.ejs');
   assert.match(tv, /include\('header', \{ ativo: 'boas-vindas' \}\)/);
-  assert.match(tv, /<a href="\/modelos" class="adm-link"><i class="fa-solid fa-arrow-left"><\/i> Mensagem de boas-vindas<\/a>/);
+  // 2026-11-13: volta para o resumo da turma e mantém o atalho para a página geral.
+  assert.match(tv, /<a href="\/turmas\/<%= turma\.id %>" class="adm-link">← Voltar à turma<\/a>/);
+  assert.match(tv, /<a href="\/modelos" class="adm-link">Mensagem de boas-vindas<\/a>/);
   const ejs = require('ejs');
   const html = await ejs.renderFile(V('modelos.ejs'), {
     ativo: 'boas-vindas', modoPainel: 'presencial', admPapel: 'DEV', pode: () => true, csrfToken: 'x', usuario: { nome: 'Dev' }, asset: (u) => u,
@@ -88,7 +90,8 @@ test('Certificados num lugar só: botão sai da linha da turma; "Imprimir por tu
   assert.doesNotMatch(ler('turmas.ejs'), /\/certificados"/);
   const tc = ler('turma-certificados.ejs');
   assert.match(tc, /include\('header', \{ ativo: 'certificados' \}\)/);
-  assert.match(tc, /<a href="\/certificados" class="adm-link"><i class="fa-solid fa-arrow-left"><\/i> Certificados<\/a>/);
+  assert.match(tc, /<a href="\/turmas\/<%= turma\.id %>" class="adm-link">← Voltar à turma<\/a>/);
+  assert.match(tc, /<a href="\/certificados" class="adm-link">Certificados<\/a>/);
   const ejs = require('ejs');
   const base = {
     ativo: 'certificados', modoPainel: 'presencial', admPapel: 'DEV', pode: () => true, csrfToken: 'x', usuario: { nome: 'Dev' }, asset: (u) => u,

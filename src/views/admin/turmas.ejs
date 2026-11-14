@@ -22,6 +22,13 @@
 
 <%- include('abas-turmas', { aba, abas }) %>
 
+<form method="GET" action="/turmas" class="adm-filtros">
+  <input type="hidden" name="aba" value="<%= aba %>">
+  <label class="adm-campo cresce"><span>Buscar</span>
+    <input type="text" name="q" value="<%= typeof busca !== 'undefined' ? busca : '' %>" placeholder="Nome do curso"></label>
+  <button type="submit" class="adm-btn-neutro"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+</form>
+
 <div class="adm-box">
   <% if (lista.length && (aba === 'por-comecar' || aba === 'andamento')) { %>
     <p class="adm-box-intro"><i class="fa-solid fa-user-group"></i>
@@ -43,8 +50,8 @@
           <th>Início</th>
           <th>Aulas</th>
           <th>Vagas</th>
-          <th>Status</th>
-          <th>Ações</th>
+          <th>Situação</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -76,26 +83,10 @@
           </td>
           <td><span class="badge st-<%= t.status.toLowerCase() %>"><%= rotuloTurma(t.status) %></span></td>
           <td class="adm-acoes">
-            <div class="adm-pend-acoes">
-              <% if (podeAlunos) { %>
-                <a href="/alunos?turma=<%= t.id %>" class="adm-pend-btn"><i class="fa-solid fa-user-graduate"></i> Alunos</a>
-              <% } %>
-              <% if (pode('turmas:gerenciar') || pode('secretaria:leitura')) { %>
-                <a href="/turmas/<%= t.id %>/notas" class="adm-pend-btn"><i class="fa-solid fa-star-half-stroke"></i> Notas</a>
-              <% } %>
-              <% if (pode('turmas:gerenciar')) { %>
-                <%# Boas-vindas e Certificados saíram daqui (2026-11-13): o envio fica em Mensagem de boas-vindas e a impressão em Certificados. %>
-                <a href="/turmas/<%= t.id %>/pesquisa-qr" class="adm-pend-btn" title="QR para os alunos avaliarem o curso no fim da aula"><i class="fa-solid fa-qrcode"></i> QR da pesquisa</a>
-                <a href="/turmas/<%= t.id %>/editar" class="adm-pend-btn"><i class="fa-solid fa-pen"></i> Editar</a>
-                <% if (!insc) { %>
-                  <form method="POST" action="/turmas/<%= t.id %>/excluir"
-                        data-confirmar="Excluir a turma de <%= t.curso.nome %> (<%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) %>)? Só é possível se ninguém se inscreveu." data-botao="Excluir">
-                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                    <button class="adm-pend-btn perigo"><i class="fa-solid fa-trash"></i> Excluir</button>
-                  </form>
-                <% } %>
-              <% } %>
-            </div>
+            <% if (pode('turmas:gerenciar')) { %>
+              <a href="/turmas/<%= t.id %>" class="adm-pend-btn">
+                Abrir <i class="fa-solid fa-arrow-right"></i></a>
+            <% } %>
           </td>
         </tr>
         <% }) %>

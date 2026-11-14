@@ -42,4 +42,39 @@ async function comecarCurso(textoPessoa, opts = {}) {
   return { campos: ok, textos: r.textos, usage: [usage, r.usage] };
 }
 
-module.exports = { comecarCurso, definirCliente, ESQUEMA_CURSO };
+const ESQUEMA_TURMA = objeto({
+  cursoNome: texto, inicioPrevisto: texto,
+  aulas: { type: 'array', items: objeto({ data: { type: 'string' }, horario: { type: 'string' } }) },
+  vagas: numero, minimoAlunos: numero, instrutorNome: texto, instrutorRegistro: texto,
+});
+
+const dataOk = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '')); if (!m) return false; const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return d.getUTCMonth() === +m[2] - 1; };
+
+// { campos, usage } — campos da Nova turma já validados; o curso é achado pelo nome entre os presenciais.
+async function comecarTurma(textoPessoa, opts = {}) {
+  const t = String(textoPessoa || '').trim().slice(0, 3000);
+  if (!t) throw new Error('Escreva como é a turma.');
+  const prisma = require('../db');
+  const { semSoOnline } = require('./ead-curso-online');
+  const F = require('./assistente-ferramentas');
+  const cursos = await semSoOnline(await prisma.curso.findMany({ where: { ebook: null, webinario: null }, select: { id: true, nome: true } }));
+  const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+  const pede = `Hoje é ${hoje}. Datas no formato AAAA-MM-DD; horário "HH:MM – HH:MM". Para "toda terça e quinta de dezembro", liste cada aula.\n`
+    + `Cursos que existem: ${cursos.map((c) => c.nome).join('; ')}.\n\nTexto da pessoa:\n${t}`;
+  const { json, usage } = await IA.chamarClaude(clienteDe(opts), { system: SYSTEM, messages: [{ role: 'user', content: pede }], schema: ESQUEMA_TURMA, effort: 'low' });
+  const j = json || {};
+  // Curso: igual ao nome (sem acento) ou muito parecido.
+  const alvo = F.normalizar(j.cursoNome);
+  const curso = alvo ? (cursos.find((c) => F.normalizar(c.nome) === alvo) || cursos.find((c) => F.pontuarNome(alvo, c.nome) >= 0.8)) : null;
+  const { normalizarHorario } = require('../public/js/gerar-aulas');
+  const aulas = (Array.isArray(j.aulas) ? j.aulas : []).slice(0, 60)
+    .map((a) => ({ data: a && a.data, horario: normalizarHorario(a && a.horario) }))
+    .filter((a) => dataOk(a.data) && a.horario);
+  const base = semVazios({ cursoId: curso ? curso.id : null, inicioPrevisto: dataOk(j.inicioPrevisto) ? j.inicioPrevisto : null, vagas: j.vagas, minimoAlunos: j.minimoAlunos, instrutorNome: j.instrutorNome, instrutorRegistro: j.instrutorRegistro });
+  const { ok } = await F.validarTurma(base);
+  delete ok.cursoNome;
+  if (aulas.length) ok.aulas = aulas;
+  return { campos: ok, usage };
+}
+
+module.exports = { comecarCurso, comecarTurma, definirCliente, ESQUEMA_CURSO, ESQUEMA_TURMA };
