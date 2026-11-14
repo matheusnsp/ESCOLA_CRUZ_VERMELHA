@@ -896,69 +896,8 @@ router.use('/cursos', async (req, res, next) => {
 // Telas novas de Cursos (2026-11-13): resumo do curso e seções com salvar próprio (routes/painel-cursos.js).
 router.use(require('./painel-cursos')({ requirePermissao, auditar }));
 
-router.get('/cursos/novo', requirePermissao('cursos:criar'), async (req, res) => {
-  res.render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: null, escolaridades: ESCOLARIDADES, erro: null });
-});
 
-const { assinaturasDoForm, salvarAssinaturasDoCurso: salvarAssinaturasCurso } = require('../lib/curso-assinaturas');
-const salvarAssinaturasDoCurso = (cursoId, body, req) => salvarAssinaturasCurso(cursoId, body, req, auditar);
 
-// Campos do certificado no formulário do curso (guardados em lib/extras.js, não no Curso).
-function extrasCursoDoForm(body) {
-  return {
-    nomeCertificado: String(body.nomeCertificado || '').trim().slice(0, 120) || null,
-    conteudoProgramatico: String(body.conteudoProgramatico || '').replace(/\r\n/g, '\n').trim().slice(0, 4000) || null,
-    certificadoValidade: String(body.certificadoValidade || '').trim().slice(0, 120) || null,
-    // Área do curso (filtros do site). Valor fora da lista não é gravado.
-    categoria: require('../lib/vitrine').CATEGORIAS.includes(body.categoria) ? body.categoria : null,
-    // Inscrição só com comprovante de que é da área da saúde (lib/comprovante-saude.js).
-    exigeComprovanteSaude: body.exigeComprovanteSaude === 'on' ? true : null,
-  };
-}
-
-function lerCursoDoForm(body) {
-  const dados = {
-    nome: String(body.nome || '').trim(),
-    descricao: String(body.descricao || '').trim() || null,
-    descricaoLonga: String(body.descricaoLonga || '').trim() || null,
-    cargaHoraria: parseInteiro(body.cargaHoraria, { min: 1 }),
-    escolaridadeMinima: ESCOLARIDADES.includes(body.escolaridadeMinima) && body.escolaridadeMinima ? body.escolaridadeMinima : null,
-    precoAvista: parseDecimal(body.precoAvista),
-    precoCheio: parseDecimal(body.precoCheio),
-    parcelas: parseInteiro(body.parcelas, { min: 1 }),
-    // O valor da parcela não é pedido no formulário (o site calcula as parcelas na hora, com os
-    // juros do cartão); o campo do banco fica com parcelado ÷ parcelas, só como referência.
-    valorParcela: body.valorParcela ? parseDecimal(body.valorParcela) : NaN,
-    taxaMatricula: parseDecimal(body.taxaMatricula, { opcional: true }),
-    ativo: body.ativo === 'on' || body.ativo === 'true',
-  };
-  if (Number.isNaN(dados.valorParcela) && !Number.isNaN(dados.precoCheio) && dados.parcelas > 0) {
-    dados.valorParcela = Math.round((Number(dados.precoCheio) / dados.parcelas) * 100) / 100;
-  }
-  let erro = null;
-  if (!dados.nome) erro = 'Informe o nome do curso.';
-  else if (Number.isNaN(dados.cargaHoraria)) erro = 'Carga horaria invalida.';
-  else if (Number.isNaN(dados.precoAvista) || Number.isNaN(dados.precoCheio) || Number.isNaN(dados.valorParcela)) erro = 'Verifique os valores (use numeros, ex.: 150.00).';
-  else if (Number.isNaN(dados.parcelas)) erro = 'Numero de parcelas invalido.';
-  else if (Number.isNaN(dados.taxaMatricula)) erro = 'Taxa de inscrição inválida (deixe em branco para usar o padrão).';
-  else if (body.assin) erro = assinaturasDoForm(body).erro;
-  return { dados, erro };
-}
-
-router.post('/cursos', requirePermissao('cursos:criar'), uploadFoto, async (req, res) => {
-  // Revisão I2: depois de um erro, as dúvidas sugeridas pela IA voltam no formulário.
-  const faqsIniciais = require('../lib/ia-textos').faqsDoCorpo(req.body);
-  if (req.uploadErro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: req.body, escolaridades: ESCOLARIDADES, erro: req.uploadErro, faqsIniciais });
-  const { dados, erro } = lerCursoDoForm(req.body);
-  if (erro) return res.status(400).render('admin/curso-form', { taxaPadrao: await lerTaxaPadrao(), curso: req.body, escolaridades: ESCOLARIDADES, erro, faqsIniciais });
-  dados.imagemUrl = req.file ? await salvarFotoCurso(req.file) : null;
-  const curso = await prisma.curso.create({ data: dados });
-  await extras.salvarExtra('curso', curso.id, extrasCursoDoForm(req.body));
-  await salvarAssinaturasDoCurso(curso.id, req.body, req);
-  await require('../lib/ia-textos').salvarFaqs(curso.id, require('../lib/ia-textos').lerFaqsDoForm(req.body)); // dúvidas escritas com IA e marcadas
-  await auditar(req, 'CRIOU_CURSO', 'Curso', curso.id, { nome: curso.nome });
-  res.redirect('/cursos?ok=Curso criado.');
-});
 
 
 

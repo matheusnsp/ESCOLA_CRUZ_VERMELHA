@@ -139,4 +139,17 @@ async function salvarFaqs(cursoId, faqs, { tx = prisma } = {}) {
   return n;
 }
 
-module.exports = { SYSTEM, MODELO_TEXTO_COMPLETO, exemplos, escrever, lerFaqsDoForm, faqsDoCorpo, dadosDoCurso, salvarFaqs, definirCliente };
+// 2026-11-13: "Sugerir com IA" no conteúdo programático (seção Certificado): a partir do nome e do texto completo.
+// Um item por linha, sem marcadores; vai no verso do certificado.
+const ESQUEMA_CONTEUDO = { type: 'object', properties: { conteudo: { type: 'string' } }, required: ['conteudo'], additionalProperties: false };
+const limparItens = (t) => String(t || '').replace(/\r\n/g, '\n').split('\n')
+  .map((l) => l.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, '').trim()).filter(Boolean).join('\n').slice(0, 4000);
+async function sugerirConteudo({ nome, descricaoLonga } = {}, opts = {}) {
+  const IA = require('./ead-ia');
+  const pede = `Curso presencial: ${String(nome || '').slice(0, 120)}\n\nTexto do curso:\n${String(descricaoLonga || '').slice(0, 3000)}\n\n`
+    + 'Escreva o conteúdo programático para o verso do certificado: de 6 a 12 itens curtos, um por linha, sem numeração nem marcadores.';
+  const { json, usage } = await IA.chamarClaude(clienteDe(opts), { system: SYSTEM, messages: [{ role: 'user', content: pede }], schema: ESQUEMA_CONTEUDO, effort: 'low' });
+  return { conteudo: limparItens(json && json.conteudo), usage };
+}
+
+module.exports = { sugerirConteudo, SYSTEM, MODELO_TEXTO_COMPLETO, exemplos, escrever, lerFaqsDoForm, faqsDoCorpo, dadosDoCurso, salvarFaqs, definirCliente };

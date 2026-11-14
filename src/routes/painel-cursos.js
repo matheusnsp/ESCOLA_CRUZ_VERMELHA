@@ -58,6 +58,46 @@ module.exports = function painelCursos({ requirePermissao, auditar }) {
     next();
   });
 
+  // ---- Novo curso em 3 passos (Curso → Valores → Textos) ----
+  const criar = requirePermissao('cursos:criar');
+  const renderNovo = async (res, { status = 200, curso = {}, erro = null, passo = null, faqsIniciais = [] } = {}) =>
+    res.status(status).render('admin/curso-novo', { curso, erro, passoErro: passo, taxaPadrao: await lerTaxaPadrao(), faqsIniciais });
+
+  router.get('/cursos/novo', criar, (req, res) => renderNovo(res));
+
+  router.post('/cursos', criar, async (req, res) => {
+    const b = req.body || {};
+    const txt = require('../lib/ia-textos');
+    const { dados, extras: ex, erro, passo } = S.lerNovoCurso(b);
+    if (erro) return renderNovo(res, { status: 400, curso: b, erro, passo, faqsIniciais: txt.faqsDoCorpo(b) });
+    const curso = await prisma.curso.create({ data: { ...dados, imagemUrl: null } });
+    await extras.salvarExtra('curso', curso.id, ex);
+    await txt.salvarFaqs(curso.id, txt.lerFaqsDoForm(b)); // dúvidas escritas com IA e marcadas
+    await auditar(req, 'CRIOU_CURSO', 'Curso', curso.id, { nome: curso.nome });
+    const podeAbrir = typeof res.locals.pode === 'function' && res.locals.pode('cursos:gerenciar');
+    return res.redirect(podeAbrir ? `/cursos/${curso.id}?ok=${encodeURIComponent('Curso criado.')}` : `/cursos?ok=${encodeURIComponent('Curso criado.')}`);
+  });
+
+  // "Começar com a IA": texto livre -> campos dos 3 passos (JSON). Nada é salvo.
+  router.post('/cursos/ia-comecar', criar, async (req, res) => {
+    const ia = require('../lib/ead-ia');
+    if (!ia.ehChaveConfigurada()) return res.json({ ok: false, erro: ia.MSG_CHAVE });
+    const t = await ia.dentroDoTeto();
+    if (!t.ok) return res.json({ ok: false, erro: t.erro });
+    const texto = String((req.body && req.body.texto) || '').trim();
+    if (!texto) return res.json({ ok: false, erro: 'Escreva o que você sabe do curso.' });
+    try {
+      const r = await require('../lib/ia-comecar').comecarCurso(texto);
+      for (const u of r.usage) await ia.somarCustoAvulso(u);
+      await auditar(req, 'IA_COMECAR_CURSO', 'Curso', 'novo', {});
+      return res.json({ ok: true, campos: r.campos, textos: r.textos });
+    } catch (e) {
+      if (e.usage) await ia.somarCustoAvulso(e.usage).catch(() => {});
+      console.error('[IA COMEÇAR CURSO]', e.message);
+      return res.json({ ok: false, erro: 'A IA não conseguiu agora; preencha à mão ou tente de novo.' });
+    }
+  });
+
   // Link antigo (e-mails, favoritos): a edição agora começa no resumo.
   router.get(`/cursos/:id(${ID})/editar`, gerenciar, (req, res) => res.redirect(`/cursos/${req.params.id}`));
 
@@ -146,6 +186,26 @@ module.exports = function painelCursos({ requirePermissao, auditar }) {
       },
     });
     res.render('admin/curso-turmas', { curso, turmas });
+  });
+
+  // "Sugerir com IA" no conteúdo programático (seção Certificado). JSON { ok, conteudo }. Nada é salvo.
+  router.post(`/cursos/:id(${ID})/ia-conteudo`, gerenciar, async (req, res) => {
+    const ia = require('../lib/ead-ia');
+    if (!ia.ehChaveConfigurada()) return res.json({ ok: false, erro: ia.MSG_CHAVE });
+    const t = await ia.dentroDoTeto();
+    if (!t.ok) return res.json({ ok: false, erro: t.erro });
+    const curso = await prisma.curso.findUnique({ where: { id: req.params.id }, select: { id: true, nome: true, descricaoLonga: true } });
+    if (!curso) return res.json({ ok: false, erro: 'Curso não encontrado.' });
+    const txt = require('../lib/ia-textos');
+    try {
+      const r = await txt.sugerirConteudo({ nome: curso.nome, descricaoLonga: curso.descricaoLonga });
+      await ia.somarCustoAvulso(r.usage);
+      await auditar(req, 'IA_CONTEUDO_CURSO', 'Curso', curso.id, {});
+      return res.json({ ok: true, conteudo: r.conteudo });
+    } catch (e) {
+      if (e.usage) await ia.somarCustoAvulso(e.usage).catch(() => {});
+      return res.json({ ok: false, erro: 'A IA não conseguiu agora; preencha à mão ou tente de novo.' });
+    }
   });
 
   // ---- Dúvidas frequentes: cada ação grava na hora e volta para a seção ----

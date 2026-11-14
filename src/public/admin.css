@@ -2408,3 +2408,26 @@ body.adm-assist-aberto .adm-assist-btn { display: none; }
 .adm-faq-edicao { margin-top: 10px; }
 .adm-faq-edicao[hidden] { display: none; }
 .adm-faq-nova { border-top: 1px solid var(--linha); padding-top: 14px; margin-top: 4px; }
+.adm-passos { display: flex; gap: 10px; align-items: center; margin: 0 0 16px; flex-wrap: wrap; }
+.adm-passo { display: flex; gap: 8px; align-items: center; font-weight: 700; color: var(--mut); font-size: 14px; }
+.adm-passo b { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--linha); color: var(--mut); font-size: 13px; }
+.adm-passo.on { color: var(--tinta); } .adm-passo.on b { background: var(--vermelho); color: #fff; }
+.adm-passo.feito b { background: var(--ok-bg); color: var(--ok-tx); }
+.adm-passo-traco { width: 34px; height: 2px; background: var(--linha); }
+.adm-passo-corpo[hidden] { display: none; }
+.adm-passo-corpo .adm-form-secao { margin: 0 0 12px; }
+.adm-passo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.adm-passo-grid > .full { grid-column: 1 / -1; }
+@media (max-width: 620px) { .adm-passo-grid { grid-template-columns: 1fr; } }
+.adm-mais { border: 1px solid var(--linha); border-radius: var(--r-s); padding: 12px 14px; }
+.adm-mais > summary { cursor: pointer; font-weight: 700; }
+.adm-mais[open] > summary { margin-bottom: 12px; }
+.adm-rodape-salvar > span { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.adm-comecar-ia { margin-bottom: 6px; }
+.adm-comecar-texto { width: 100%; font: inherit; font-size: 15px; color: var(--tinta); background: var(--campo); border: 1px solid var(--linha); border-radius: var(--r-s); padding: 12px; resize: vertical; box-sizing: border-box; }
+.adm-comecar-bt { justify-self: start; }
+.adm-ou { text-align: center; color: var(--mut); font-weight: 700; font-size: 13px; margin: 6px 0 14px; }
+.adm-rot-acao { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ia-desfazer[hidden] { display: none; }
+/* hidden vence o display dos botões e da caixa de erro (Novo curso em passos) */
+.adm-rodape-salvar [hidden], [data-passos-erro][hidden] { display: none !important; }

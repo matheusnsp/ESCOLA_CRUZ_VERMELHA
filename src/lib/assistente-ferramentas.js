@@ -329,4 +329,4 @@ async function executarFormulario(nome, entrada, ctx) {
   return { resultado: { erro: 'ferramenta_desconhecida' } };
 }
 
-module.exports = { rotuloSituacao, DEFINICOES_CONSULTA, DEFINICOES_FORMULARIO, executarConsulta, executarFormulario, pontuarNome, normalizar, levenshtein };
+module.exports = { validarCurso, validarTurma, rotuloSituacao, DEFINICOES_CONSULTA, DEFINICOES_FORMULARIO, executarConsulta, executarFormulario, pontuarNome, normalizar, levenshtein };

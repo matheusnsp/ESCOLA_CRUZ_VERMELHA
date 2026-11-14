@@ -405,6 +405,8 @@
       else { var e = porNome(f, k); ok = definir(e, v); if (ok && !primeiro) primeiro = e; }
       if (!ok) faltaram.push(rot[k] || k);
     });
+    // Novo curso em passos (2026-11-13): campos de passos escondidos e de "Mais detalhes" ficam visíveis/etiquetados.
+    if (f.id === 'cursoNovo' && window.admPassos) window.admPassos.mostrarTudoQueVeio(prop.campos);
     if (primeiro && primeiro.scrollIntoView) { try { primeiro.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { primeiro.scrollIntoView(); } }
     return { faltaram: faltaram };
   }

@@ -107,4 +107,20 @@ function faltasTurma(t = {}) {
   return f;
 }
 
-module.exports = { SECOES, DUVIDAS, ESCOLARIDADES, lerSecao, secoesDosCampos, faltasCurso, faltasTurma };
+// Novo curso (3 passos + "Mais detalhes"): junta as seções num curso só. O curso nasce fora do site, a não ser que
+// "Mostrar no site" venha marcado. passo = 1 (curso) ou 2 (valores) quando há erro.
+function lerNovoCurso(body = {}) {
+  const pag = lerSecao('pagina', body);
+  const val = lerSecao('valores', body);
+  const cert = lerSecao('certificado', body);
+  const pub = lerSecao('publicacao', body);
+  const erro = pag.erro || val.erro || null;
+  return {
+    dados: { ...pag.dados, ...val.dados, ...pub.dados },
+    extras: { ...pag.extras, ...cert.extras, ...pub.extras },
+    erro,
+    passo: pag.erro ? 1 : val.erro ? 2 : null,
+  };
+}
+
+module.exports = { lerNovoCurso, SECOES, DUVIDAS, ESCOLARIDADES, lerSecao, secoesDosCampos, faltasCurso, faltasTurma };
