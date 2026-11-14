@@ -31,7 +31,11 @@ const temBanco = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');
 describe('confirmar no banco', { skip: temBanco ? false : 'sem DATABASE_URL local' }, () => {
   const prisma = require('../src/db');
   let curso; const ids = {};
-  const meioDia = (deslocDias) => { const d = new Date(); d.setDate(d.getDate() + deslocDias); d.setHours(12, 0, 0, 0); return d; };
+  // "Hoje" é o dia de Brasília (o servidor está em UTC: entre 21h e meia-noite de Brasília, o UTC já é o dia seguinte).
+  const meioDia = (deslocDias) => {
+    const [a, m, d] = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()).split('-').map(Number);
+    return new Date(Date.UTC(a, m - 1, d + deslocDias, 12, 0, 0));
+  };
   before(async () => {
     curso = await prisma.curso.create({ data: { nome: `Curso Meia-noite ${Date.now()}`, cargaHoraria: 8, precoAvista: 1, precoCheio: 1, valorParcela: 1, ativo: true } });
     for (const [k, d] of [['hoje', 0], ['amanha', 1], ['ontem', -1]]) {
