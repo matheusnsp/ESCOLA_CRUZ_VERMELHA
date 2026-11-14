@@ -48,6 +48,19 @@ const ESQUEMA_TURMA = objeto({
   vagas: numero, minimoAlunos: numero, instrutorNome: texto, instrutorRegistro: texto,
 });
 
+// Curso pelo nome: igual (sem acento) ganha; senão o de maior nota (>= 0.8). Empate na melhor nota: em branco,
+// para não escolher o curso errado sem a pessoa perceber.
+function escolherCurso(cursos, nome) {
+  const F = require('./assistente-ferramentas');
+  const alvo = F.normalizar(nome);
+  if (!alvo) return null;
+  const iguais = cursos.filter((c) => F.normalizar(c.nome) === alvo);
+  if (iguais.length) return iguais.length === 1 ? iguais[0] : null;
+  const notas = cursos.map((c) => ({ c, n: F.pontuarNome(alvo, c.nome) })).filter((x) => x.n >= 0.8).sort((a, b) => b.n - a.n);
+  if (!notas.length || (notas[1] && notas[1].n === notas[0].n)) return null;
+  return notas[0].c;
+}
+
 const dataOk = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '')); if (!m) return false; const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return d.getUTCMonth() === +m[2] - 1; };
 
 // { campos, usage } — campos da Nova turma já validados; o curso é achado pelo nome entre os presenciais.
@@ -64,8 +77,7 @@ async function comecarTurma(textoPessoa, opts = {}) {
   const { json, usage } = await IA.chamarClaude(clienteDe(opts), { system: SYSTEM, messages: [{ role: 'user', content: pede }], schema: ESQUEMA_TURMA, effort: 'low' });
   const j = json || {};
   // Curso: igual ao nome (sem acento) ou muito parecido.
-  const alvo = F.normalizar(j.cursoNome);
-  const curso = alvo ? (cursos.find((c) => F.normalizar(c.nome) === alvo) || cursos.find((c) => F.pontuarNome(alvo, c.nome) >= 0.8)) : null;
+  const curso = escolherCurso(cursos, j.cursoNome);
   const { normalizarHorario } = require('../public/js/gerar-aulas');
   const aulas = (Array.isArray(j.aulas) ? j.aulas : []).slice(0, 60)
     .map((a) => ({ data: a && a.data, horario: normalizarHorario(a && a.horario) }))
@@ -77,4 +89,4 @@ async function comecarTurma(textoPessoa, opts = {}) {
   return { campos: ok, usage };
 }
 
-module.exports = { comecarCurso, comecarTurma, definirCliente, ESQUEMA_CURSO, ESQUEMA_TURMA };
+module.exports = { escolherCurso, comecarCurso, comecarTurma, definirCliente, ESQUEMA_CURSO, ESQUEMA_TURMA };

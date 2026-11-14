@@ -48,6 +48,13 @@ async function carregarCurso(id) {
 
 module.exports = function painelCursos({ requirePermissao, auditar }) {
   const router = express.Router();
+  // Erro num handler async (banco fora, foto que não decodifica…) vai para a página de erro do server, como no
+  // admin.js, em vez de deixar o navegador carregando (revisão final, 2026-11-13).
+  const asyncHandler = require('../lib/asyncHandler');
+  ['get', 'post'].forEach((m) => {
+    const original = router[m].bind(router);
+    router[m] = (caminho, ...hs) => original(caminho, ...hs.map((h) => (typeof h === 'function' && h.constructor.name === 'AsyncFunction' ? asyncHandler(h) : h)));
+  });
   const gerenciar = requirePermissao('cursos:gerenciar');
 
   router.use('/cursos', async (req, res, next) => {

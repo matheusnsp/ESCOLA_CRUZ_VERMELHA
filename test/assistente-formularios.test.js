@@ -140,7 +140,9 @@ test('pequenos ajustes: editar curso/turma existente leva o endereço da ediçã
   const t = await prisma.turma.findFirst({ where: { status: { in: ['ABERTA', 'CONFIRMADA'] } }, include: { curso: true } });
   if (!t) return;
   const r = await f.executarFormulario('preencher_curso', { campos: { precoAvista: 500 }, editarCursoId: t.cursoId }, { pode: () => true });
-  assert.deepEqual(r.evento.editar, { id: t.cursoId, caminho: `/cursos/${t.cursoId}/editar`, nome: t.curso.nome });
+  // Telas novas (2026-11-13): o curso abre no resumo e cada campo vai para a seção dele.
+  assert.deepEqual(r.evento.editar, { id: t.cursoId, caminho: `/cursos/${t.cursoId}`, nome: t.curso.nome,
+    secoes: [{ secao: 'valores', rotulo: 'Valores', botao: 'Salvar valores', campos: { precoAvista: '500.00' }, caminho: `/cursos/${t.cursoId}/valores` }] });
   const r2 = await f.executarFormulario('preencher_turma', { campos: { vagas: 25 }, editarTurmaId: t.id }, { pode: () => true });
   assert.equal(r2.evento.editar.caminho, `/turmas/${t.id}/editar`);
   const r3 = await f.executarFormulario('preencher_curso', { campos: { nome: 'Novo' } }, { pode: () => true });
