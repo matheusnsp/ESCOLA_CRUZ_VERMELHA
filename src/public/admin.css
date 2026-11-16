@@ -2450,3 +2450,5 @@ body.adm-assist-aberto .adm-assist-btn { display: none; }
 .adm-previa-texto { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 15px; line-height: 1.55; background: var(--bg); border: 1px solid var(--linha); border-radius: var(--r-s); padding: 16px; color: var(--tinta); max-height: 60vh; overflow-y: auto; }
 .adm-previa-acoes { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
 .adm-bv-whats { display: grid; gap: 4px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--linha); }
+.adm-btn.whats-btn { background: var(--whats); color: var(--whats-tx); justify-self: stretch; justify-content: center; margin-top: 4px; }
+.adm-btn.whats-btn:hover { background: var(--whats-esc); }

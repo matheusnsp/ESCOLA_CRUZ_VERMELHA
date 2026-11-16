@@ -66,7 +66,9 @@
         <% } %>
         <div class="adm-bv-whats">
           <b><i class="fa-brands fa-whatsapp"></i> Pelo WhatsApp</b>
-          <small class="adm-hint">Um por um, pelo aplicativo do computador: na <a href="/alunos?turma=<%= turma.id %>">lista de alunos da turma</a>, botão <b>Confirmar aula</b> em cada aluno. O painel não manda WhatsApp sozinho nem para todos de uma vez; para avisar todos juntos, use "Copiar texto para o grupo do WhatsApp".</small>
+          <small class="adm-hint">Um por um, pelo aplicativo do computador. O botão abre a lista de alunos da turma; em cada aluno, <b>Confirmar aula</b> mostra a mensagem e manda. Para avisar todos juntos, use "Copiar texto para o grupo do WhatsApp".</small>
+          <a href="/alunos?turma=<%= turma.id %>" class="adm-btn whats-btn">
+            <i class="fa-brands fa-whatsapp"></i> Confirmar aula pelo WhatsApp</a>
         </div>
       </div>
     </section>
