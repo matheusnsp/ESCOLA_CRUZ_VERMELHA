@@ -97,7 +97,7 @@ describe('painel de cursos: resumo e seções', { skip: temBanco ? false : 'sem 
 
   test('excluir: desabilitado com turma (com o motivo); habilitado sem nada', async () => {
     const com = await (await fetch(`${srv.url}/cursos/${comTurma.id}/publicacao`)).text();
-    assert.match(com, /<button[^>]*class="adm-btn-perigo"[^>]*disabled/);
+    assert.match(com, /<button[^>]*class="adm-btn-excluir"[^>]*disabled/);
     assert.match(com, /tem turmas/);
     const sem = await (await fetch(`${srv.url}/cursos/${curso.id}/publicacao`)).text();
     assert.match(sem, /action="\/cursos\/[^"]+\/excluir"[^>]*data-confirmar=/);

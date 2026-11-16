@@ -58,13 +58,13 @@
   <% if (totalMatriculas) { %>
     <h2><i class="fa-solid fa-ban"></i> Cancelar ou excluir</h2>
     <p>Esta turma tem <b><%= totalMatriculas %> <%= totalMatriculas === 1 ? 'inscrição' : 'inscrições' %></b>, então não pode ser excluída. Para tirar do site, mude a situação para <b>Cancelada</b> em Dados da turma (os alunos continuam no histórico).</p>
-    <button type="button" class="adm-btn-perigo" disabled><i class="fa-solid fa-trash"></i> Excluir turma</button>
+    <button type="button" class="adm-btn-excluir" disabled><i class="fa-solid fa-trash"></i> Excluir turma</button>
   <% } else { %>
     <h2><i class="fa-solid fa-trash"></i> Excluir turma</h2>
     <p>Esta turma não tem alunos, então pode ser excluída. Não dá para desfazer.</p>
     <form method="POST" action="/turmas/<%= t.id %>/excluir" data-confirmar="Excluir a turma de <%= t.curso.nome %> (<%= dia(t.inicioPrevisto) %>)? Não dá para desfazer." data-botao="Excluir turma">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <button class="adm-btn-perigo"><i class="fa-solid fa-trash"></i> Excluir turma</button>
+      <button class="adm-btn-excluir"><i class="fa-solid fa-trash"></i> Excluir turma</button>
     </form>
   <% } %>
 </div>

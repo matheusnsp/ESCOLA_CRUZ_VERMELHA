@@ -40,11 +40,9 @@ test('tela intermediária no modo aplicativo: abre o app na mesma aba e volta so
   assert.match(js, /location\.replace\(voltar\)/);
 });
 
-test('lista de alunos da turma: botão de WhatsApp e o registro do envio', () => {
+test('lista de alunos da turma: Confirmar aula leva à prévia; o POST registra e abre o app', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', 'admin', 'alunos.ejs'), 'utf8');
-  assert.match(src, /action="\/alunos\/<%= a\.id %>\/confirmar-turma"/);
-  assert.doesNotMatch(src.slice(src.indexOf('/confirmar-turma"'), src.indexOf('/confirmar-turma"') + 300), /target="_blank"/, 'sem aba nova');
-  assert.match(src, /name="turma" value="<%= turmaId %>"/);
+  assert.match(src, /href="\/alunos\/<%= a\.id %>\/confirmar-turma\?turma=<%= turmaId %>"/);
   assert.match(src, /Confirmar aula/);
   assert.match(src, /confirmação enviada em/);
   const admin = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'admin.js'), 'utf8');
