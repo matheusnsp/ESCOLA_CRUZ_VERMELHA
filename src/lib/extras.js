@@ -6,7 +6,8 @@
 // recebido a migração. Aqui a estrutura do banco que o Prisma usa não muda.
 //
 //   curso: nomeCertificado, conteudoProgramatico, certificadoValidade
-//   turma: instrutorNome, instrutorRegistro, boasVindasDoacao, boasVindasEnviadaEm (ISO)
+//   turma: instrutorNome, instrutorRegistro, boasVindasDoacao, boasVindasEnviadaEm (ISO), lotouEm (ISO; fechou por lotação)
+//   matricula: confirmacaoTurmaEm (ISO; aula confirmada pelo WhatsApp na lista de alunos da turma)
 
 const prisma = require('../db');
 

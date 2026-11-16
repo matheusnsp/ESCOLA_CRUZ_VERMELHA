@@ -58,7 +58,7 @@
       dias: slots.filter(s => s.endsWith('-' + p)).map(s => R.dias_curtos[s.split('-')[0]])
     })).filter(g => g.dias.length);
     const dataCurta = (iso) => { const d = hs.dataBr(iso); return d ? d.slice(0, 5) : ''; };
-    const zap = (tel) => 'https://wa.me/55' + tel;
+    const zap = (tel) => 'whatsapp://send?phone=55' + tel;
   %>
   <div class="adm-cards c3">
     <div class="adm-stat ok">
@@ -162,7 +162,7 @@
               <td><%= hs.dataBr(l.pagoEm) || '—' %></td>
               <td>
                 <div class="adm-pend-acoes">
-                  <% if (l.telefone) { %><a href="<%= zap(l.telefone) %>" target="_blank" rel="noopener" class="adm-pend-btn whats"><i class="fa-brands fa-whatsapp"></i> <%= hs.telefoneBonito(l.telefone) %></a><% } %>
+                  <% if (l.telefone) { %><a href="<%= zap(l.telefone) %>" class="adm-pend-btn whats"><i class="fa-brands fa-whatsapp"></i> <%= hs.telefoneBonito(l.telefone) %></a><% } %>
                   <a href="mailto:<%= l.email %>" class="adm-pend-btn"><i class="fa-regular fa-envelope"></i> E-mail</a>
                 </div>
               </td>
@@ -189,7 +189,7 @@
                 <% if (alunoId) { %><a href="/alunos/<%= alunoId %>/matriculas" class="adm-link-aluno"><%= l.nome %></a><% } else { %><b><%= l.nome %></b><% } %>
                 <% if (!h.cursoSel) { %><small class="adm-hz-curso"><%= l.cursoNome %></small><% } %>
                 <small class="adm-mut adm-hz-contato">
-                  <% if (l.telefone) { %><a href="<%= zap(l.telefone) %>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> <%= hs.telefoneBonito(l.telefone) %></a><% } else { %><a href="mailto:<%= l.email %>"><%= l.email %></a><% } %>
+                  <% if (l.telefone) { %><a href="<%= zap(l.telefone) %>"><i class="fa-brands fa-whatsapp"></i> <%= hs.telefoneBonito(l.telefone) %></a><% } else { %><a href="mailto:<%= l.email %>"><%= l.email %></a><% } %>
                 </small>
               </td>
               <td>

@@ -27,6 +27,9 @@ Local: {local}
 
 Estamos ansiosos para compartilhar conhecimentos valiosos.
 
+Será disponibilizado um Canal no WhatsApp onde serão publicadas fotos durante a aula e todos os alunos poderão postar nas suas Redes Sociais marcando nosso Perfil da Cruz Vermelha Brasileira RJ.
+https://whatsapp.com/channel/0029Vb9EiBm60eBihpjqom0A
+
 {doacao}
 
 Vestimenta: blusa (camisa com manga curta), calça (sem rasgos) e sapato fechado. *NÃO É PERMITIDO A ENTRADA TRAJANDO: BERMUDA, SHORT, MINI SAIA, BLUSA REGATA OU DECOTADA, CAMISETA, SANDÁLIAS ABERTAS, CHINELO, BONÉ.*
@@ -258,6 +261,6 @@ async function anexarTextosCursos(turmas) {
 }
 
 module.exports = {
-  PADROES, lerModelo, salvarModelo, montarTexto, turmasParaEnvio, lerTextosCursos, salvarTextoCurso, anexarTextosCursos, textoParaHtml, assunto, turmaEmCurso,
+  carregarTurma, PADROES, lerModelo, salvarModelo, montarTexto, turmasParaEnvio, lerTextosCursos, salvarTextoCurso, anexarTextosCursos, textoParaHtml, assunto, turmaEmCurso,
   FILTRO_ALUNO_OK, enviarTurma, enviarPendentes, anexarEnvios,
 };

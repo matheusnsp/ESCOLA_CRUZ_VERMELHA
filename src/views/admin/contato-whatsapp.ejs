@@ -1,5 +1,5 @@
 <%- include('head', { titulo: 'Abrindo o WhatsApp' }) %>
-<%- include('header', { ativo: 'pendentes' }) %>
+<%- include('header', { ativo: typeof ativoMenu !== 'undefined' ? ativoMenu : 'pendentes' }) %>
 
 <%
   // ═══════════════════════════════════════════════════════════════════════
@@ -37,6 +37,15 @@
     <span class="adm-mut"><%= aluno.celular %> · <%= curso %></span>
   </p>
 
+  <% if (typeof linkApp !== 'undefined' && linkApp) { %>
+    <%# Aplicativo WhatsApp do computador (2026-11-16): abre a conversa sem aba nova e volta sozinho para a lista. %>
+    <div id="wppApp" data-link-app="<%= linkApp %>" data-voltar="<%= voltarPara %>">
+      <a href="<%= linkApp %>" class="wpp-btn"><i class="fa-brands fa-whatsapp"></i> Abrir no aplicativo WhatsApp</a>
+      <p class="wpp-nota" id="nota">Abrindo o aplicativo WhatsApp… quando ele abrir, esta tela volta sozinha para a lista.</p>
+      <p class="wpp-nota" id="semApp" hidden>Parece que o aplicativo não abriu. Instale o WhatsApp do computador (é o mesmo número) ou use o WhatsApp Web:
+        <a href="<%= link %>" target="_blank" rel="noopener">Abrir no WhatsApp Web</a> · <a href="<%= voltarPara %>">Voltar à lista</a></p>
+    </div>
+  <% } else { %>
   <a href="<%= link %>" target="_blank" rel="noopener" id="linkWpp" class="wpp-btn">
     <i class="fa-brands fa-whatsapp"></i> Abrir a conversa
   </a>
@@ -44,6 +53,7 @@
   <p class="wpp-nota" id="nota">
     Se não abrir sozinho em alguns segundos, clique no botão acima.
   </p>
+  <% } %>
 
   <details class="wpp-texto">
     <summary>Ver a mensagem que vai ser enviada</summary>
@@ -60,6 +70,9 @@
 </div>
 
 
+<% if (typeof linkApp !== 'undefined' && linkApp) { %>
+<script src="<%= asset('/js/whatsapp-app.js') %>"></script>
+<% } else { %>
 <script>
   // Tenta abrir sozinho. Se o navegador bloquear, o botão continua ali —
   // é justamente esse o caso que esta página existe pra cobrir.
@@ -74,5 +87,6 @@
     } catch (e) { /* bloqueado — o botão resolve */ }
   }, 600);
 </script>
+<% } %>
 
 <%- include('foot') %>

@@ -29,7 +29,7 @@ const { formatBRL, calcularValores, lerConfigMatricula, faltaReceber, cursoJaPag
 const { simularValores } = require('../lib/simular-valores');
 const { estornarTransacao } = require('../lib/unicopag'); // 💡 A3 — refund real no gateway
 const { outroPagamentoCursoPago } = require('../lib/status-pagamento');
-const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarTextoWhats, montarLinkProspeccao } = require('../lib/lembretes');
+const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarTextoWhats, montarLinkProspeccao, paraApp } = require('../lib/lembretes');
 const { coletarDadosRelatorio, gerarExcel, gerarPdf, coletarLancamentosOfx, gerarOfx } = require('../lib/relatorio'); // relatórios Excel/PDF
 const { estornosExtras, totalEstornado: somarEstornos, lotesDaTabela } = require('../lib/financeiro-estornos');
 const { atualizarStatusTurmas } = require('../lib/concluir-turmas');
@@ -2651,6 +2651,23 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
 
 // ---------- Alunos ----------
 
+// Confirmar a aula pelo WhatsApp (2026-11-16): na lista de alunos de uma turma, abre o aplicativo WhatsApp com a
+// mensagem de boas-vindas da turma (lib/confirmacao-turma.js) e registra o envio na matrícula (extras).
+router.post('/alunos/:id/confirmar-turma', requirePermissao('turmas:gerenciar', 'aluno:gerenciar'), async (req, res) => {
+  const turmaId = String(req.body.turma || '');
+  const voltar = `/alunos?turma=${encodeURIComponent(turmaId)}`;
+  const m = await prisma.matricula.findFirst({ where: { alunoId: req.params.id, turmaId, ...FILTRO_VAGA }, include: { aluno: true, turma: { include: { curso: true } } } });
+  if (!m) return res.redirect(voltar + '&erro=' + encodeURIComponent('Este aluno não está nesta turma.'));
+  const texto = await require('../lib/confirmacao-turma').textoDaTurma(turmaId);
+  const ct = require('../lib/confirmacao-turma');
+  const link = texto && ct.linkWhatsApp(m.aluno.celular, texto); // reserva (WhatsApp Web)
+  const linkApp = texto && ct.linkApp(m.aluno.celular, texto); // principal: aplicativo do computador, sem aba nova
+  if (!link) return res.redirect(voltar + '&erro=' + encodeURIComponent(`${String(m.aluno.nome).split(' ')[0]} não tem celular válido cadastrado.`));
+  await extras.salvarExtra('matricula', m.id, { confirmacaoTurmaEm: new Date().toISOString() });
+  await auditar(req, 'CONFIRMOU_TURMA_WHATSAPP', 'Usuario', m.alunoId, { matriculaId: m.id, turmaId });
+  return res.render('admin/contato-whatsapp', { aluno: m.aluno, curso: m.turma.curso.nome, link, linkApp, texto, voltarPara: voltar, ativoMenu: 'alunos' });
+});
+
 router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), async (req, res) => {
   const busca = String(req.query.q || '').trim();
   const soDigitos = busca.replace(/\D/g, '');
@@ -2685,7 +2702,7 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), asy
         take: 200,
         include: {
           _count: { select: { matriculas: true } },
-          ...(turmaId ? { matriculas: { where: { turmaId, ...FILTRO_VAGA }, select: { statusPagamento: true } } } : {}),
+          ...(turmaId ? { matriculas: { where: { turmaId, ...FILTRO_VAGA }, select: { id: true, statusPagamento: true } } } : {}),
         }
       }),
       prisma.usuario.count({ where }),
@@ -2717,6 +2734,8 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), asy
       if (!prospeccaoEm[log.alvoId]) prospeccaoEm[log.alvoId] = log.criadoEm;
     }
 
+    // Confirmar a aula pelo WhatsApp (2026-11-16): quando já foi enviado, para esta turma.
+    if (turmaId) await extras.anexar('matricula', alunos.flatMap((a) => a.matriculas || []));
     // Só quem tem ZERO inscrições ganha link de convite.
     const linhas = alunos.map((a) => ({
       ...a,
@@ -2724,6 +2743,8 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), asy
         ? montarLinkProspeccao(a, turmasAbertas)
         : null,
       prospeccaoEm: prospeccaoEm[a.id] || null,
+      celularValido: /^\d{10,11}$/.test(String(a.celular || '').replace(/\D/g, '')),
+      confirmacaoTurmaEm: (a.matriculas && a.matriculas[0] && a.matriculas[0].confirmacaoTurmaEm) || null,
     }));
 
     res.render('admin/alunos', { 
@@ -2786,7 +2807,11 @@ router.post('/alunos/:id/prospeccao', requirePermissao('aluno:gerenciar'), async
     turmasOferecidas: [...new Set(turmasAbertas.map((t) => t.curso.nome))].slice(0, 3),
   });
 
-  return res.redirect(link);
+  const textoConvite = decodeURIComponent((String(link).split('&text=')[1] || ''));
+  return res.render('admin/contato-whatsapp', {
+    aluno, curso: [...new Set(turmasAbertas.map((t) => t.curso.nome))].slice(0, 3).join(', ') || '—',
+    link, linkApp: paraApp(link), texto: textoConvite, voltarPara: '/alunos?inscricao=sem', ativoMenu: 'alunos',
+  });
 });
 
 router.get('/alunos/:id/editar', requirePermissao('aluno:gerenciar'), async (req, res) => {
@@ -3093,6 +3118,7 @@ router.post('/pendentes/:id/whatsapp', requirePermissao('pendentes:gerenciar'), 
     aluno: m.aluno,
     curso: m.turma?.curso?.nome || '—',
     link,
+    linkApp: paraApp(link), // aplicativo do computador; o Web fica de reserva
     texto: montarTextoWhats(m, pendencia),
     voltarPara: req.body.voltar || '/pendentes',
   });

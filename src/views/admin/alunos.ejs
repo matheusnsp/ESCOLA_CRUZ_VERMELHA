@@ -101,6 +101,7 @@
             <td>
               <% if (turmaId && a.matriculas && a.matriculas[0]) { const _tudo = a.matriculas[0].statusPagamento !== 'PENDENTE'; %>
                 <span class="badge <%= _tudo ? 'ok' : 'pend' %>"><%= _tudo ? 'Matrícula paga' : 'Só a inscrição' %></span>
+                <% if (a.confirmacaoTurmaEm) { %><br><small class="adm-mut"><i class="fa-brands fa-whatsapp"></i> confirmação enviada em <%= dataHoraBR(a.confirmacaoTurmaEm) %></small><% } %>
               <% } else if (a._count.matriculas > 0) { %>
                 <a href="/alunos/<%= a.id %>/matriculas" class="adm-link-aluno">
                   <%= a._count.matriculas %> inscriç<%= a._count.matriculas === 1 ? 'ão' : 'ões' %>
@@ -123,7 +124,7 @@
                 %>
                 <% if (a._count.matriculas === 0 && !a.bloqueioTotal && pode('aluno:gerenciar')) { %>
                   <% if (a.linkProspeccao) { %>
-                    <form method="POST" action="/alunos/<%= a.id %>/prospeccao" target="_blank"
+                    <form method="POST" action="/alunos/<%= a.id %>/prospeccao"
                           data-confirmar="Abrir o WhatsApp para convidar <%= a.nome.split(' ')[0] %>?<%= a.prospeccaoEm ? '\n\nAtenção: esta pessoa já foi contatada em ' + dataHoraBR(a.prospeccaoEm) + '.' : '' %>">
                       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                       <button class="adm-pend-btn whats" title="Convidar por WhatsApp">
@@ -135,6 +136,21 @@
                   <% } %>
                 <% } %>
 
+                <%# Confirmar a aula pelo aplicativo WhatsApp (2026-11-16): só na lista de uma turma, na mesma aba. %>
+                <% if (turmaId && a.matriculas && a.matriculas[0] && (pode('turmas:gerenciar') || pode('aluno:gerenciar'))) { %>
+                  <% if (a.celularValido) { %>
+                    <form method="POST" action="/alunos/<%= a.id %>/confirmar-turma"
+                          data-confirmar="Abrir o WhatsApp para confirmar a aula com <%= a.nome.split(' ')[0] %>?<%= a.confirmacaoTurmaEm ? '\n\nAtenção: a confirmação já foi enviada em ' + dataHoraBR(a.confirmacaoTurmaEm) + '.' : '' %>" data-botao="Abrir o WhatsApp" data-confirmar-tipo="ok">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <input type="hidden" name="turma" value="<%= turmaId %>">
+                      <button class="adm-pend-btn whats" title="Mandar a mensagem de boas-vindas da turma pelo aplicativo WhatsApp">
+                        <i class="fa-brands fa-whatsapp"></i> Confirmar aula
+                      </button>
+                    </form>
+                  <% } else { %>
+                    <small class="adm-txt-alerta" title="Celular não cadastrado ou inválido">sem WhatsApp</small>
+                  <% } %>
+                <% } %>
                 <a href="/alunos/<%= a.id %>/matriculas" class="adm-pend-btn"><i class="fa-solid fa-list-check"></i> Ver aluno</a>
                 <% if (pode('aluno:gerenciar')) { %>
                   <a href="/alunos/<%= a.id %>/editar" class="adm-pend-btn"><i class="fa-solid fa-pen-to-square"></i> Editar</a>

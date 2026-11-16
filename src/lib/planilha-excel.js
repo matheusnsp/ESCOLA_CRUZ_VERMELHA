@@ -169,7 +169,7 @@ function corPorSituacao(ws, ref) {
 // Valor de uma coluna da tabela na linha n (1 = primeira linha de dados), ou "" se não existe.
 // Célula vazia referenciada pelo INDEX vira 0 no Excel: o IF devolve "" nesse caso.
 const valor = (tabela, coluna, n) => `IFERROR(IF(INDEX(${tabela}[${coluna}],${n})="","",INDEX(${tabela}[${coluna}],${n})),"")`;
-const linkWhats = (expr) => `IF(${expr}="","",HYPERLINK("https://web.whatsapp.com/send?phone=55"&${expr},"WhatsApp"))`;
+const linkWhats = (expr) => `IF(${expr}="","",HYPERLINK("whatsapp://send?phone=55"&${expr},"WhatsApp"))`;
 const linkEmail = (expr) => `IF(${expr}="","",HYPERLINK("mailto:"&${expr},"Enviar e-mail"))`;
 const estiloLink = { color: { argb: AZUL_LINK }, underline: true };
 
