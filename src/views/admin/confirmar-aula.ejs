@@ -1,10 +1,10 @@
 <%# Confirmar a aula pelo WhatsApp (2026-11-16): a mensagem que vai ser enviada (boas-vindas da turma, já preenchida)
     e o botão que registra e abre o aplicativo WhatsApp. Ver esta tela não registra nada. %>
-<%- include('head', { titulo: 'Confirmar aula' }) %>
+<%- include('head', { titulo: 'Confirmar aula pelo WhatsApp' }) %>
 <%- include('header', { ativo: 'alunos' }) %>
 <% var dataHora = function (d) { var x = new Date(d); return x.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) + ' às ' + x.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }); }; %>
 <div class="adm-h1-row">
-  <h1 class="adm-h1">Confirmar aula</h1>
+  <h1 class="adm-h1">Confirmar aula pelo WhatsApp</h1>
   <a href="/alunos?turma=<%= turma.id %>" class="adm-link">← Voltar aos alunos</a>
 </div>
 <p class="adm-sub-titulo">Para <b><%= aluno.nome %></b> · <%= aluno.celular %> · <%= turma.curso.nome %></p>

@@ -47,3 +47,16 @@ test('[bug do print] o botão vermelho da caixa Confirmar volta a ter texto bran
   assert.match(css, /\.adm-btn-excluir\s*\{/);
   for (const f of ['views/admin/curso-secao.ejs', 'views/admin/turma-resumo.ejs']) assert.doesNotMatch(ler(f), /class="adm-btn-perigo"/, f);
 });
+
+test('cada tela diz o canal: e-mail (todos de uma vez) ou WhatsApp (um por um)', () => {
+  const bv = ler('views/admin/turma-boas-vindas.ejs');
+  assert.match(bv, /Envio por e-mail/);
+  assert.match(bv, /'Enviar por e-mail para ' \+ faltam\.length/);
+  assert.match(bv, /já receberam por e-mail/);
+  assert.match(bv, /Pelo WhatsApp/);
+  assert.match(bv, /href="\/alunos\?turma=<%= turma\.id %>"/);
+  assert.match(bv, /Copiar texto para o grupo do WhatsApp/);
+  const r = ler('views/admin/turma-resumo.ejs');
+  assert.match(r, /por e-mail \(para todos de uma vez\) e pelo WhatsApp \(um por um/);
+  assert.match(ler('views/admin/confirmar-aula.ejs'), /Confirmar aula pelo WhatsApp/);
+});
