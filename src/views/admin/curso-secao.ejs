@@ -30,12 +30,12 @@
     <h2><i class="fa-solid fa-trash"></i> Excluir curso</h2>
     <% if (motivoNaoExcluir) { %>
       <p><%= motivoNaoExcluir %></p>
-      <button type="button" class="adm-btn-perigo" disabled><i class="fa-solid fa-trash"></i> Excluir curso</button>
+      <button type="button" class="adm-btn-excluir" disabled><i class="fa-solid fa-trash"></i> Excluir curso</button>
     <% } else { %>
       <p>Este curso não tem turmas nem inscrições, então pode ser excluído. Não dá para desfazer.</p>
       <form method="POST" action="/cursos/<%= c.id %>/excluir" data-confirmar="Excluir o curso <%= c.nome %>? Não dá para desfazer." data-botao="Excluir curso">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <button class="adm-btn-perigo"><i class="fa-solid fa-trash"></i> Excluir curso</button>
+        <button class="adm-btn-excluir"><i class="fa-solid fa-trash"></i> Excluir curso</button>
       </form>
     <% } %>
   </div>

@@ -2651,6 +2651,19 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
 
 // ---------- Alunos ----------
 
+// Prévia da confirmação da aula (2026-11-16): mostra a mensagem que vai ser enviada; nada é registrado aqui.
+// O botão "Enviar no WhatsApp" da tela faz o POST abaixo (registra e abre o aplicativo).
+router.get('/alunos/:id/confirmar-turma', requirePermissao('turmas:gerenciar', 'aluno:gerenciar'), async (req, res) => {
+  const turmaId = String(req.query.turma || '');
+  const voltar = `/alunos?turma=${encodeURIComponent(turmaId)}`;
+  const m = await prisma.matricula.findFirst({ where: { alunoId: req.params.id, turmaId, ...FILTRO_VAGA }, include: { aluno: true, turma: { include: { curso: true } } } });
+  if (!m) return res.redirect(voltar + '&erro=' + encodeURIComponent('Este aluno não está nesta turma.'));
+  const texto = await require('../lib/confirmacao-turma').textoDaTurma(turmaId);
+  if (!texto) return res.redirect(voltar + '&erro=' + encodeURIComponent('Turma não encontrada.'));
+  const ex = await extras.lerExtra('matricula', m.id);
+  res.render('admin/confirmar-aula', { aluno: m.aluno, turma: m.turma, texto, jaEnviadaEm: ex.confirmacaoTurmaEm || null });
+});
+
 // Confirmar a aula pelo WhatsApp (2026-11-16): na lista de alunos de uma turma, abre o aplicativo WhatsApp com a
 // mensagem de boas-vindas da turma (lib/confirmacao-turma.js) e registra o envio na matrícula (extras).
 router.post('/alunos/:id/confirmar-turma', requirePermissao('turmas:gerenciar', 'aluno:gerenciar'), async (req, res) => {

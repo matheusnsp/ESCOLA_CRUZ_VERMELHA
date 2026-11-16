@@ -22,8 +22,8 @@
 <div class="adm-bv-grade">
   <section class="adm-box adm-bv-previa">
     <div class="adm-box-head">
-      <h2 class="adm-h2"><i class="fa-solid fa-envelope"></i> Como o aluno recebe</h2>
-      <button type="button" class="adm-pend-btn" id="bvCopiar" data-texto="<%= texto %>"><i class="fa-brands fa-whatsapp"></i> Copiar para WhatsApp</button>
+      <h2 class="adm-h2"><i class="fa-solid fa-message"></i> A mensagem (e-mail e WhatsApp)</h2>
+      <button type="button" class="adm-pend-btn" id="bvCopiar" data-texto="<%= texto %>"><i class="fa-brands fa-whatsapp"></i> Copiar texto para o grupo do WhatsApp</button>
     </div>
     <div class="adm-bv-email">
       <p class="adm-bv-assunto"><small>Assunto</small> <%= assunto %></p>
@@ -41,21 +41,21 @@
 
   <div class="adm-bv-lado">
     <section class="adm-box">
-      <div class="adm-box-head"><h2 class="adm-h2"><i class="fa-solid fa-paper-plane"></i> Envio</h2></div>
+      <div class="adm-box-head"><h2 class="adm-h2"><i class="fa-solid fa-envelope"></i> Envio por e-mail</h2></div>
       <div class="adm-bv-envio">
         <% if (!emCurso) { %>
           <p class="adm-mut"><%= turma.status === 'CONGELADA' ? 'Turma congelada: nada é enviado agora. Ao retomar, quem já foi liberado recebe sozinho.' : 'Esta turma já terminou ou foi cancelada; não há envio.' %></p>
         <% } else { %>
-          <p><b><%= recebem.length - faltam.length %></b> de <b><%= recebem.length %></b> <%= recebem.length === 1 ? 'aluno com pagamento ok já recebeu' : 'alunos com pagamento ok já receberam' %>.</p>
+          <p><b><%= recebem.length - faltam.length %></b> de <b><%= recebem.length %></b> <%= recebem.length === 1 ? 'aluno com pagamento ok já recebeu por e-mail' : 'alunos com pagamento ok já receberam por e-mail' %>.</p>
           <% if (turma.boasVindasEnviadaEm) { %>
             <p class="adm-mut">Liberado em <%= new Date(turma.boasVindasEnviadaEm).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }) %>. Quem pagar depois recebe sozinho.</p>
           <% } %>
           <form method="POST" action="/turmas/<%= turma.id %>/boas-vindas/enviar"
                 data-confirmar="Enviar as boas-vindas por e-mail para <%= faltam.length %> <%= faltam.length === 1 ? 'aluno' : 'alunos' %>? Quem pagar depois recebe sozinho."
-                data-botao="Enviar">
+                data-botao="Enviar por e-mail">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button class="adm-btn" <%= faltam.length ? '' : 'disabled' %>><i class="fa-solid fa-paper-plane"></i>
-              <%= faltam.length ? 'Enviar para ' + faltam.length + (faltam.length === 1 ? ' aluno' : ' alunos') : (turma.boasVindasEnviadaEm ? 'Todos já receberam' : 'Nenhum aluno com pagamento ok') %></button>
+              <%= faltam.length ? 'Enviar por e-mail para ' + faltam.length + (faltam.length === 1 ? ' aluno' : ' alunos') : (turma.boasVindasEnviadaEm ? 'Todos já receberam' : 'Nenhum aluno com pagamento ok') %></button>
           </form>
           <% if (!turma.boasVindasEnviadaEm && !faltam.length) { %>
             <form method="POST" action="/turmas/<%= turma.id %>/boas-vindas/enviar" class="adm-bv-liberar">
@@ -64,6 +64,10 @@
             </form>
           <% } %>
         <% } %>
+        <div class="adm-bv-whats">
+          <b><i class="fa-brands fa-whatsapp"></i> Pelo WhatsApp</b>
+          <small class="adm-hint">Um por um, pelo aplicativo do computador: na <a href="/alunos?turma=<%= turma.id %>">lista de alunos da turma</a>, botão <b>Confirmar aula</b> em cada aluno. O painel não manda WhatsApp sozinho nem para todos de uma vez; para avisar todos juntos, use "Copiar texto para o grupo do WhatsApp".</small>
+        </div>
       </div>
     </section>
 

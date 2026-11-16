@@ -1,0 +1,24 @@
+<%# Confirmar a aula pelo WhatsApp (2026-11-16): a mensagem que vai ser enviada (boas-vindas da turma, já preenchida)
+    e o botão que registra e abre o aplicativo WhatsApp. Ver esta tela não registra nada. %>
+<%- include('head', { titulo: 'Confirmar aula pelo WhatsApp' }) %>
+<%- include('header', { ativo: 'alunos' }) %>
+<% var dataHora = function (d) { var x = new Date(d); return x.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) + ' às ' + x.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }); }; %>
+<div class="adm-h1-row">
+  <h1 class="adm-h1">Confirmar aula pelo WhatsApp</h1>
+  <a href="/alunos?turma=<%= turma.id %>" class="adm-link">← Voltar aos alunos</a>
+</div>
+<p class="adm-sub-titulo">Para <b><%= aluno.nome %></b> · <%= aluno.celular %> · <%= turma.curso.nome %></p>
+<% if (jaEnviadaEm) { %><div class="adm-alerta adm-alerta-lotada" role="status"><i class="fa-brands fa-whatsapp"></i><span>A confirmação para esta pessoa já foi enviada em <%= dataHora(jaEnviadaEm) %>.</span></div><% } %>
+
+<div class="adm-box adm-box-pad adm-previa">
+  <h2 class="adm-h2"><i class="fa-solid fa-message"></i> Mensagem que vai ser enviada</h2>
+  <pre class="adm-previa-texto"><%= texto %></pre>
+  <small class="adm-hint">Os *asteriscos* viram negrito no WhatsApp. Para mudar o texto: <a href="/modelos">Turmas › Mensagem de boas-vindas</a> (texto de todas as turmas ou só deste curso) · a doação só desta turma em <a href="/turmas/<%= turma.id %>/boas-vindas">boas-vindas da turma</a>.</small>
+  <form method="POST" action="/alunos/<%= aluno.id %>/confirmar-turma" class="adm-previa-acoes">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="turma" value="<%= turma.id %>">
+    <button class="adm-btn"><i class="fa-brands fa-whatsapp"></i> Enviar no WhatsApp</button>
+    <a href="/alunos?turma=<%= turma.id %>" class="adm-link">Cancelar</a>
+  </form>
+</div>
+<%- include('foot') %>
