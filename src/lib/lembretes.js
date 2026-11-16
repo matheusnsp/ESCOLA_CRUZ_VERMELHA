@@ -505,7 +505,15 @@ function montarLinkProspeccao(aluno, turmasAbertas = []) {
   return urlWhatsApp(digitos, texto);
 }
 
+// 2026-11-16: no painel, o WhatsApp abre no APLICATIVO do computador (whatsapp://) — pedido da secretaria; o Web vira
+// só a reserva da tela intermediária (contato-whatsapp.ejs), quando o aplicativo não abre.
+function paraApp(urlWeb) {
+  if (!urlWeb) return null;
+  return String(urlWeb).replace(/^https:\/\/web\.whatsapp\.com\/send\?/, 'whatsapp://send?');
+}
+
 module.exports = {
+  paraApp,
   processarLembretes,
   agendarLembretes,
   enviarLembreteAvulso,

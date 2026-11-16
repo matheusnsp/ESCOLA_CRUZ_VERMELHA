@@ -29,7 +29,7 @@ const { formatBRL, calcularValores, lerConfigMatricula, faltaReceber, cursoJaPag
 const { simularValores } = require('../lib/simular-valores');
 const { estornarTransacao } = require('../lib/unicopag'); // 💡 A3 — refund real no gateway
 const { outroPagamentoCursoPago } = require('../lib/status-pagamento');
-const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarTextoWhats, montarLinkProspeccao } = require('../lib/lembretes');
+const { enviarLembreteAvulso, montarPendencia, montarLinkWhats, montarTextoWhats, montarLinkProspeccao, paraApp } = require('../lib/lembretes');
 const { coletarDadosRelatorio, gerarExcel, gerarPdf, coletarLancamentosOfx, gerarOfx } = require('../lib/relatorio'); // relatórios Excel/PDF
 const { estornosExtras, totalEstornado: somarEstornos, lotesDaTabela } = require('../lib/financeiro-estornos');
 const { atualizarStatusTurmas } = require('../lib/concluir-turmas');
@@ -2665,7 +2665,7 @@ router.post('/alunos/:id/confirmar-turma', requirePermissao('turmas:gerenciar', 
   if (!link) return res.redirect(voltar + '&erro=' + encodeURIComponent(`${String(m.aluno.nome).split(' ')[0]} não tem celular válido cadastrado.`));
   await extras.salvarExtra('matricula', m.id, { confirmacaoTurmaEm: new Date().toISOString() });
   await auditar(req, 'CONFIRMOU_TURMA_WHATSAPP', 'Usuario', m.alunoId, { matriculaId: m.id, turmaId });
-  return res.render('admin/contato-whatsapp', { aluno: m.aluno, curso: m.turma.curso.nome, link, linkApp, texto, voltarPara: voltar });
+  return res.render('admin/contato-whatsapp', { aluno: m.aluno, curso: m.turma.curso.nome, link, linkApp, texto, voltarPara: voltar, ativoMenu: 'alunos' });
 });
 
 router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), async (req, res) => {
@@ -2807,7 +2807,11 @@ router.post('/alunos/:id/prospeccao', requirePermissao('aluno:gerenciar'), async
     turmasOferecidas: [...new Set(turmasAbertas.map((t) => t.curso.nome))].slice(0, 3),
   });
 
-  return res.redirect(link);
+  const textoConvite = decodeURIComponent((String(link).split('&text=')[1] || ''));
+  return res.render('admin/contato-whatsapp', {
+    aluno, curso: [...new Set(turmasAbertas.map((t) => t.curso.nome))].slice(0, 3).join(', ') || '—',
+    link, linkApp: paraApp(link), texto: textoConvite, voltarPara: '/alunos?inscricao=sem', ativoMenu: 'alunos',
+  });
 });
 
 router.get('/alunos/:id/editar', requirePermissao('aluno:gerenciar'), async (req, res) => {
@@ -3114,6 +3118,7 @@ router.post('/pendentes/:id/whatsapp', requirePermissao('pendentes:gerenciar'), 
     aluno: m.aluno,
     curso: m.turma?.curso?.nome || '—',
     link,
+    linkApp: paraApp(link), // aplicativo do computador; o Web fica de reserva
     texto: montarTextoWhats(m, pendencia),
     voltarPara: req.body.voltar || '/pendentes',
   });

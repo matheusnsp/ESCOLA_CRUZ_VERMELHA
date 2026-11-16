@@ -1,5 +1,5 @@
 <%- include('head', { titulo: 'Abrindo o WhatsApp' }) %>
-<%- include('header', { ativo: 'pendentes' }) %>
+<%- include('header', { ativo: typeof ativoMenu !== 'undefined' ? ativoMenu : 'pendentes' }) %>
 
 <%
   // ═══════════════════════════════════════════════════════════════════════

@@ -114,7 +114,7 @@ function acoesHtml(m) { %>
   <td class="adm-acoes">
     <div class="adm-pend-acoes">
       <% if (m.linkWhats) { %>
-        <form method="POST" action="/pendentes/<%= m.id %>/whatsapp" target="_blank">
+        <form method="POST" action="/pendentes/<%= m.id %>/whatsapp">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <input type="hidden" name="voltar" value="/pendentes?aba=<%= aba %>">
           <button class="adm-pend-btn whats" title="Abrir o WhatsApp e registrar o contato">

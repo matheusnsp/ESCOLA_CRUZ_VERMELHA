@@ -139,7 +139,7 @@
             <div class="mr-bloco">
               <span class="mr-rot">Contato</span>
               <% if (p.email) { %><a class="mr-linha" href="mailto:<%= p.email %>"><i class="fa-regular fa-envelope"></i> <%= p.email %></a><% } %>
-              <% if (p.telefone) { %><a class="mr-linha mr-whats" href="https://wa.me/55<%= p.telefone %>" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> <%= tel(p.telefone) %></a><% } %>
+              <% if (p.telefone) { %><a class="mr-linha mr-whats" href="whatsapp://send?phone=55<%= p.telefone %>"><i class="fa-brands fa-whatsapp"></i> <%= tel(p.telefone) %></a><% } %>
               <% if (!p.email && !p.telefone) { %><small>Sem contato no site</small><% } %>
             </div>
           </div>
