@@ -86,7 +86,8 @@ Tudo sobre boas-vindas num lugar só:
 
 ## Alunos (Alunos › Alunos)
 Lista de alunos com busca por nome, e-mail, CPF ou passaporte e filtro por turma. Filtro por endereço:
-`/alunos?q=<busca>&turma=<id da turma>`. Tocar no aluno abre as inscrições dele (`/alunos/<id>/matriculas`): dados,
+`/alunos?q=<busca>&turma=<id da turma>`. Na lista de uma turma, o botão **Confirmar aula** abre o WhatsApp Web com a
+mensagem de boas-vindas da turma já preenchida (curso, data e hora, local, doação) e registra "confirmação enviada em". Tocar no aluno abre as inscrições dele (`/alunos/<id>/matriculas`): dados,
 inscrições, situação da taxa e da matrícula, valores, e "Editar dados".
 
 ## Matrículas (Alunos › Matrículas)

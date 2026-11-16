@@ -2651,6 +2651,21 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
 
 // ---------- Alunos ----------
 
+// Confirmar a aula pelo WhatsApp Web (2026-11-16): na lista de alunos de uma turma, abre o WhatsApp Web com a
+// mensagem de boas-vindas da turma (lib/confirmacao-turma.js) e registra o envio na matrícula (extras).
+router.post('/alunos/:id/confirmar-turma', requirePermissao('turmas:gerenciar', 'aluno:gerenciar'), async (req, res) => {
+  const turmaId = String(req.body.turma || '');
+  const voltar = `/alunos?turma=${encodeURIComponent(turmaId)}`;
+  const m = await prisma.matricula.findFirst({ where: { alunoId: req.params.id, turmaId, ...FILTRO_VAGA }, include: { aluno: true, turma: { include: { curso: true } } } });
+  if (!m) return res.redirect(voltar + '&erro=' + encodeURIComponent('Este aluno não está nesta turma.'));
+  const texto = await require('../lib/confirmacao-turma').textoDaTurma(turmaId);
+  const link = texto && require('../lib/confirmacao-turma').linkWhatsApp(m.aluno.celular, texto);
+  if (!link) return res.redirect(voltar + '&erro=' + encodeURIComponent(`${String(m.aluno.nome).split(' ')[0]} não tem celular válido cadastrado.`));
+  await extras.salvarExtra('matricula', m.id, { confirmacaoTurmaEm: new Date().toISOString() });
+  await auditar(req, 'CONFIRMOU_TURMA_WHATSAPP', 'Usuario', m.alunoId, { matriculaId: m.id, turmaId });
+  return res.render('admin/contato-whatsapp', { aluno: m.aluno, curso: m.turma.curso.nome, link, texto, voltarPara: voltar });
+});
+
 router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), async (req, res) => {
   const busca = String(req.query.q || '').trim();
   const soDigitos = busca.replace(/\D/g, '');
@@ -2685,7 +2700,7 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), asy
         take: 200,
         include: {
           _count: { select: { matriculas: true } },
-          ...(turmaId ? { matriculas: { where: { turmaId, ...FILTRO_VAGA }, select: { statusPagamento: true } } } : {}),
+          ...(turmaId ? { matriculas: { where: { turmaId, ...FILTRO_VAGA }, select: { id: true, statusPagamento: true } } } : {}),
         }
       }),
       prisma.usuario.count({ where }),
@@ -2717,6 +2732,8 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), asy
       if (!prospeccaoEm[log.alvoId]) prospeccaoEm[log.alvoId] = log.criadoEm;
     }
 
+    // Confirmar a aula pelo WhatsApp (2026-11-16): quando já foi enviado, para esta turma.
+    if (turmaId) await extras.anexar('matricula', alunos.flatMap((a) => a.matriculas || []));
     // Só quem tem ZERO inscrições ganha link de convite.
     const linhas = alunos.map((a) => ({
       ...a,
@@ -2724,6 +2741,8 @@ router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), asy
         ? montarLinkProspeccao(a, turmasAbertas)
         : null,
       prospeccaoEm: prospeccaoEm[a.id] || null,
+      celularValido: /^\d{10,11}$/.test(String(a.celular || '').replace(/\D/g, '')),
+      confirmacaoTurmaEm: (a.matriculas && a.matriculas[0] && a.matriculas[0].confirmacaoTurmaEm) || null,
     }));
 
     res.render('admin/alunos', { 
