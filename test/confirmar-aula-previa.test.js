@@ -60,3 +60,10 @@ test('cada tela diz o canal: e-mail (todos de uma vez) ou WhatsApp (um por um)',
   assert.match(r, /por e-mail \(para todos de uma vez\) e pelo WhatsApp \(um por um/);
   assert.match(ler('views/admin/confirmar-aula.ejs'), /Confirmar aula pelo WhatsApp/);
 });
+
+test('bloco Pelo WhatsApp tem um botão que abre a lista de alunos da turma (com os botões Confirmar aula)', () => {
+  const bv = ler('views/admin/turma-boas-vindas.ejs');
+  const i = bv.indexOf('adm-bv-whats');
+  const bloco = bv.slice(i, bv.indexOf('</div>', i));
+  assert.match(bloco, /<a href="\/alunos\?turma=<%= turma\.id %>" class="adm-btn whats-btn">\s*<i class="fa-brands fa-whatsapp"><\/i> Confirmar aula pelo WhatsApp<\/a>/);
+});
