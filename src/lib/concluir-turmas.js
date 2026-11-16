@@ -66,10 +66,31 @@ async function confirmarTurmasDoDia(agora = new Date()) {
   }
 }
 
-// As duas passagens automáticas, em ordem: Aberta → Confirmada (dia de início) e Confirmada → Concluída (dia seguinte à última aula).
+// 2026-11-16: turma Aberta que lotou vira Confirmada (sai do site e para de aceitar inscrição e encaixe).
+// Lotou = inscrições com a taxa paga e ainda valendo (PAGO, PARCELADO ou PENDENTE) >= vagas da turma — a mesma conta
+// da barrinha "18 de 30 vagas" do painel. Quem só começou a inscrição e não pagou não ocupa vaga.
+async function confirmarTurmasLotadas() {
+  try {
+    const n = await prisma.$executeRaw`
+      UPDATE "Turma" t SET status = 'CONFIRMADA'
+      WHERE t.status = 'ABERTA' AND t.vagas > 0
+        AND (SELECT count(*) FROM "Matricula" m
+             WHERE m."turmaId" = t.id AND m."taxaConfirmada" = true
+               AND m."statusPagamento"::text IN ('PAGO', 'PARCELADO', 'PENDENTE')) >= t.vagas`;
+    if (n) console.log(`[Turmas] ${n} turma(s) lotada(s) confirmada(s) automaticamente.`);
+    return n;
+  } catch (e) {
+    console.error('[Turmas] Falha ao confirmar turmas lotadas:', e.message);
+    return 0;
+  }
+}
+
+// As passagens automáticas, em ordem: Aberta → Confirmada (lotou ou chegou o dia de início) e Confirmada → Concluída
+// (dia seguinte à última aula).
 async function atualizarStatusTurmas() {
+  await confirmarTurmasLotadas();
   await confirmarTurmasDoDia();
   await concluirTurmasPassadas();
 }
 
-module.exports = { concluirTurmasPassadas, ajustarConclusao, inicioDoDiaSeguinteBrasilia, confirmarTurmasDoDia, atualizarStatusTurmas };
+module.exports = { confirmarTurmasLotadas, concluirTurmasPassadas, ajustarConclusao, inicioDoDiaSeguinteBrasilia, confirmarTurmasDoDia, atualizarStatusTurmas };
