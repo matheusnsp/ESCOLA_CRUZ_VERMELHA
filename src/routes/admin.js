@@ -2651,7 +2651,7 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
 
 // ---------- Alunos ----------
 
-// Confirmar a aula pelo WhatsApp Web (2026-11-16): na lista de alunos de uma turma, abre o WhatsApp Web com a
+// Confirmar a aula pelo WhatsApp (2026-11-16): na lista de alunos de uma turma, abre o aplicativo WhatsApp com a
 // mensagem de boas-vindas da turma (lib/confirmacao-turma.js) e registra o envio na matrícula (extras).
 router.post('/alunos/:id/confirmar-turma', requirePermissao('turmas:gerenciar', 'aluno:gerenciar'), async (req, res) => {
   const turmaId = String(req.body.turma || '');
@@ -2659,11 +2659,13 @@ router.post('/alunos/:id/confirmar-turma', requirePermissao('turmas:gerenciar', 
   const m = await prisma.matricula.findFirst({ where: { alunoId: req.params.id, turmaId, ...FILTRO_VAGA }, include: { aluno: true, turma: { include: { curso: true } } } });
   if (!m) return res.redirect(voltar + '&erro=' + encodeURIComponent('Este aluno não está nesta turma.'));
   const texto = await require('../lib/confirmacao-turma').textoDaTurma(turmaId);
-  const link = texto && require('../lib/confirmacao-turma').linkWhatsApp(m.aluno.celular, texto);
+  const ct = require('../lib/confirmacao-turma');
+  const link = texto && ct.linkWhatsApp(m.aluno.celular, texto); // reserva (WhatsApp Web)
+  const linkApp = texto && ct.linkApp(m.aluno.celular, texto); // principal: aplicativo do computador, sem aba nova
   if (!link) return res.redirect(voltar + '&erro=' + encodeURIComponent(`${String(m.aluno.nome).split(' ')[0]} não tem celular válido cadastrado.`));
   await extras.salvarExtra('matricula', m.id, { confirmacaoTurmaEm: new Date().toISOString() });
   await auditar(req, 'CONFIRMOU_TURMA_WHATSAPP', 'Usuario', m.alunoId, { matriculaId: m.id, turmaId });
-  return res.render('admin/contato-whatsapp', { aluno: m.aluno, curso: m.turma.curso.nome, link, texto, voltarPara: voltar });
+  return res.render('admin/contato-whatsapp', { aluno: m.aluno, curso: m.turma.curso.nome, link, linkApp, texto, voltarPara: voltar });
 });
 
 router.get('/alunos', requirePermissao('aluno:gerenciar', 'painel:leitura'), async (req, res) => {

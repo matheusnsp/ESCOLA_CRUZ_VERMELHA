@@ -21,17 +21,29 @@ test('o texto padrão é o da secretaria, com o Canal no WhatsApp, preenchido co
   assert.match(t, /Secretaria Escolar\n\*Cruz Vermelha Brasileira Filial do Estado do Rio de Janeiro\*$/);
 });
 
-test('link do WhatsApp Web com o texto; celular inválido -> null', () => {
-  const l = C.linkWhatsApp('(21) 98877-1122', 'Olá a todos');
-  assert.equal(l, 'https://web.whatsapp.com/send?phone=5521988771122&text=Ol%C3%A1%20a%20todos');
-  assert.equal(C.linkWhatsApp('123', 'x'), null);
+test('links do aplicativo (principal) e do WhatsApp Web (reserva); celular inválido -> null', () => {
+  assert.equal(C.linkApp('(21) 98877-1122', 'Olá a todos'), 'whatsapp://send?phone=5521988771122&text=Ol%C3%A1%20a%20todos');
+  assert.equal(C.linkWhatsApp('(21) 98877-1122', 'Olá a todos'), 'https://web.whatsapp.com/send?phone=5521988771122&text=Ol%C3%A1%20a%20todos');
+  assert.equal(C.linkApp('123', 'x'), null);
   assert.equal(C.linkWhatsApp(null, 'x'), null);
+});
+
+test('tela intermediária no modo aplicativo: abre o app na mesma aba e volta sozinha para a lista; senão oferece o Web', () => {
+  const v = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', 'admin', 'contato-whatsapp.ejs'), 'utf8');
+  assert.match(v, /typeof linkApp !== 'undefined' && linkApp/);
+  assert.match(v, /data-link-app="<%= linkApp %>"/);
+  assert.match(v, /data-voltar="<%= voltarPara %>"/);
+  assert.match(v, /Abrir no WhatsApp Web/);
+  const js = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'js', 'whatsapp-app.js'), 'utf8');
+  assert.match(js, /location\.href = linkApp/);
+  assert.match(js, /addEventListener\('blur'/);
+  assert.match(js, /location\.replace\(voltar\)/);
 });
 
 test('lista de alunos da turma: botão de WhatsApp e o registro do envio', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', 'admin', 'alunos.ejs'), 'utf8');
   assert.match(src, /action="\/alunos\/<%= a\.id %>\/confirmar-turma"/);
-  assert.match(src, /target="_blank"/);
+  assert.doesNotMatch(src.slice(src.indexOf('/confirmar-turma"'), src.indexOf('/confirmar-turma"') + 300), /target="_blank"/, 'sem aba nova');
   assert.match(src, /name="turma" value="<%= turmaId %>"/);
   assert.match(src, /Confirmar aula/);
   assert.match(src, /confirmação enviada em/);
@@ -42,6 +54,7 @@ test('lista de alunos da turma: botão de WhatsApp e o registro do envio', () =>
   assert.match(rota, /salvarExtra\('matricula', [^,]+, \{ confirmacaoTurmaEm/);
   assert.match(rota, /CONFIRMOU_TURMA_WHATSAPP/);
   assert.match(rota, /render\('admin\/contato-whatsapp'/);
+  assert.match(rota, /linkApp/);
 });
 
 const temBanco = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');
@@ -73,4 +86,28 @@ test('a lista renderiza com o botão para quem tem celular e "sem WhatsApp" para
   assert.equal((html.match(/Confirmar aula/g) || []).length, 1);
   assert.match(html, /sem WhatsApp/);
   assert.match(html, /confirmação enviada em/);
+});
+
+let chromium = null; try { ({ chromium } = require('playwright')); } catch (e) { /* sem playwright */ }
+test('modo aplicativo no navegador: abriu (perdeu o foco) → volta à lista; não abriu → mostra o Web', { skip: chromium ? false : 'sem Playwright' }, async () => {
+  const js = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'js', 'whatsapp-app.js'), 'utf8');
+  const pagina = '<div id="wppApp" data-link-app="about:blank#app" data-voltar="http://painel.test/alunos?turma=t1"><p id="nota">Abrindo</p><p id="semApp" hidden>sem app</p></div>';
+  const b = await chromium.launch();
+  try {
+    const p = await b.newPage();
+    await p.route('http://painel.test/**', (r) => r.fulfill({ contentType: 'text/html', body: r.request().url().includes('/alunos') ? '<p>lista</p>' : pagina }));
+    // abriu: o navegador perde o foco
+    await p.goto('http://painel.test/contato');
+    await p.evaluate(() => { window.__abriu = []; });
+    await p.addScriptTag({ content: js.replace('location.href = linkApp', 'window.__abriu.push(linkApp)') });
+    await p.evaluate(() => window.dispatchEvent(new Event('blur')));
+    await p.waitForURL('http://painel.test/alunos?turma=t1');
+    // não abriu: depois de 3 s aparece a reserva
+    await p.goto('http://painel.test/contato');
+    await p.evaluate(() => { window.__abriu = []; });
+    await p.addScriptTag({ content: js.replace('location.href = linkApp', 'window.__abriu.push(linkApp)') });
+    await p.waitForTimeout(3500);
+    assert.equal(await p.isVisible('#semApp'), true);
+    assert.deepEqual(await p.evaluate(() => window.__abriu), ['about:blank#app']);
+  } finally { await b.close(); }
 });
