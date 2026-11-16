@@ -1,0 +1,11 @@
+<%# Turmas que lotaram e fecharam sozinhas para novas inscrições (2026-11-16): aviso para abrir uma nova turma do
+    curso. Só para quem cria turma. avisosLotadas = lib/concluir-turmas.js turmasLotadasSemNova(). %>
+<% if (typeof avisosLotadas !== 'undefined' && avisosLotadas && avisosLotadas.length && pode('turmas:gerenciar')) {
+     var _dia = function (d) { var x = new Date(d); return String(x.getUTCDate()).padStart(2, '0') + '/' + String(x.getUTCMonth() + 1).padStart(2, '0'); };
+     avisosLotadas.forEach(function (a) { %>
+  <div class="adm-alerta adm-alerta-lotada" role="status">
+    <i class="fa-solid fa-users-slash"></i>
+    <span><a href="/turmas/<%= a.turmaId %>">A turma de <%= a.curso %> · <%= _dia(a.inicio) %></a> lotou (<%= a.vagas %> vagas) e fechou sozinha para novas inscrições. Para continuar vendendo o curso, abra uma nova turma.</span>
+    <a href="/turmas/nova?curso=<%= a.cursoId %>" class="adm-btn"><i class="fa-solid fa-plus"></i> Abrir nova turma</a>
+  </div>
+<% }) } %>

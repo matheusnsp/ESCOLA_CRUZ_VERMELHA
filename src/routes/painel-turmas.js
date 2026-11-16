@@ -23,7 +23,7 @@ const ddmm = (d) => { const x = new Date(d); return `${String(x.getUTCDate()).pa
 // Frase da próxima mudança automática (lib/concluir-turmas.js): Aberta -> Confirmada à 00:00 do início;
 // Confirmada -> Concluída no dia seguinte à última aula.
 function proximaMudanca(t, agora = new Date()) {
-  if (t.status === 'ABERTA' && new Date(t.inicioPrevisto) > agora) return `vira Confirmada sozinha à 00:00 de ${ddmm(t.inicioPrevisto)}`;
+  if (t.status === 'ABERTA' && new Date(t.inicioPrevisto) > agora) return `vira Confirmada sozinha quando lotar ou à 00:00 de ${ddmm(t.inicioPrevisto)}`;
   if (t.status === 'CONFIRMADA') {
     const ultimo = (t.aulas || []).reduce((m, a) => (!m || new Date(a.data) > m ? new Date(a.data) : m), null) || new Date(t.inicioPrevisto);
     const seguinte = new Date(Date.UTC(ultimo.getUTCFullYear(), ultimo.getUTCMonth(), ultimo.getUTCDate() + 1));
@@ -74,7 +74,9 @@ module.exports = function painelTurmas({ requirePermissao, auditar }) {
       prisma.matricula.count({ where: { turmaId: turma.id } }),
     ]);
     const faltas = faltasTurma({ totalAulas: turma.aulas.length, inscritos, minimoAlunos: turma.minimoAlunos, pendentes, inicioPrevisto: turma.inicioPrevisto });
-    res.render('admin/turma-resumo', { turma, inscritos, pendentes, totalMatriculas: total, faltas, mudanca: proximaMudanca(turma), ok: req.query.ok || null, erro: req.query.erro || null });
+    const avisoLotada = turma.lotouEm && turma.status === 'CONFIRMADA'
+      ? (await require('../lib/concluir-turmas').turmasLotadasSemNova().catch(() => [])).find((a) => a.turmaId === turma.id) || null : null;
+    res.render('admin/turma-resumo', { avisoLotada, turma, inscritos, pendentes, totalMatriculas: total, faltas, mudanca: proximaMudanca(turma), ok: req.query.ok || null, erro: req.query.erro || null });
   });
 
   return router;

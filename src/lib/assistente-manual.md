@@ -44,7 +44,8 @@ resumo da turma (`/turmas/<id>`).
   cria as datas de uma vez), Vagas (vagas e mínimo), Situação e Instrutor. Botão "Salvar alterações" (na nova, "Criar
   turma"); depois de salvar, volta ao resumo.
 - **Situações:**
-  - Aberta: aparece no site e aceita inscrição. Vira Confirmada sozinha à 00:00 do dia de início.
+  - Aberta: aparece no site e aceita inscrição. Vira Confirmada sozinha quando as vagas enchem (inscrições com a
+    taxa paga chegam ao número de vagas da turma) ou à 00:00 do dia de início, o que vier primeiro.
   - Confirmada: vai acontecer e não aceita mais inscrição pelo site nem encaixe na Matrícula rápida (quem já está
     nela pode ser movido para outra turma ou voltar para a espera). Marcar Confirmada antes do início fecha as
     inscrições na hora.

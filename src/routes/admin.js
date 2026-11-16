@@ -742,6 +742,7 @@ router.get('/', async (req, res) => {
   const comprovantesParaConferir = await comprovantesPromessa;
 
   res.render('admin/dashboard', {
+    avisosLotadas: await require('../lib/concluir-turmas').turmasLotadasSemNova().catch(() => []),
     comprovantesParaConferir,
     rajadas: await rajadasPromessa,
 

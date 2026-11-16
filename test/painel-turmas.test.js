@@ -52,7 +52,7 @@ describe('resumo da turma', { skip: temBanco ? false : 'sem DATABASE_URL local' 
     const html = await (await fetch(`${srv.url}/turmas/${comAlunos.id}`)).text();
     for (const t of ['Dados da turma', 'Alunos', 'Mensagem de boas-vindas', 'Notas', 'QR da pesquisa', 'Certificados']) assert.match(html, new RegExp(t));
     for (const u of [`/turmas/${comAlunos.id}/editar`, `/alunos\\?turma=${comAlunos.id}`, `/turmas/${comAlunos.id}/boas-vindas`, `/turmas/${comAlunos.id}/notas`, `/turmas/${comAlunos.id}/pesquisa-qr`, `/turmas/${comAlunos.id}/certificados`]) assert.match(html, new RegExp(`href="${u}"`));
-    assert.match(html, /vira Confirmada sozinha à 00:00 de \d\d\/\d\d/);
+    assert.match(html, /vira Confirmada sozinha quando lotar ou à 00:00 de \d\d\/\d\d/);
     assert.match(html, /1 com pagamento pendente/);
     assert.match(html, /<button[^>]*class="adm-btn-perigo"[^>]*disabled/);
   });

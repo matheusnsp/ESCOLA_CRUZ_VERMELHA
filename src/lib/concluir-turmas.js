@@ -66,10 +66,56 @@ async function confirmarTurmasDoDia(agora = new Date()) {
   }
 }
 
-// As duas passagens automáticas, em ordem: Aberta → Confirmada (dia de início) e Confirmada → Concluída (dia seguinte à última aula).
+// 2026-11-16: turma Aberta que lotou vira Confirmada (sai do site e para de aceitar inscrição e encaixe).
+// Lotou = inscrições com a taxa paga e ainda valendo (PAGO, PARCELADO ou PENDENTE) >= vagas da turma — a mesma conta
+// da barrinha "18 de 30 vagas" do painel. Quem só começou a inscrição e não pagou não ocupa vaga.
+async function confirmarTurmasLotadas() {
+  try {
+    const fechadas = await prisma.$queryRaw`
+      UPDATE "Turma" t SET status = 'CONFIRMADA'
+      WHERE t.status = 'ABERTA' AND t.vagas > 0
+        AND (SELECT count(*) FROM "Matricula" m
+             WHERE m."turmaId" = t.id AND m."taxaConfirmada" = true
+               AND m."statusPagamento"::text IN ('PAGO', 'PARCELADO', 'PENDENTE')) >= t.vagas
+      RETURNING t.id`;
+    // Anota que fechou por lotação (o Painel avisa para abrir outra turma do curso).
+    const extras = require('./extras');
+    const quando = new Date().toISOString();
+    for (const f of fechadas) await extras.salvarExtra('turma', f.id, { lotouEm: quando });
+    if (fechadas.length) console.log(`[Turmas] ${fechadas.length} turma(s) lotada(s) confirmada(s) automaticamente.`);
+    return fechadas.length;
+  } catch (e) {
+    console.error('[Turmas] Falha ao confirmar turmas lotadas:', e.message);
+    return 0;
+  }
+}
+
+// Avisos do Painel: turmas que fecharam por lotação, ainda por começar, de cursos que não têm outra turma Aberta
+// e futura. O aviso some sozinho quando a secretaria abre a nova turma (ou reabre esta).
+async function turmasLotadasSemNova(agora = new Date()) {
+  const ts = await prisma.turma.findMany({
+    where: { status: 'CONFIRMADA', inicioPrevisto: { gt: agora } },
+    orderBy: { inicioPrevisto: 'asc' },
+    select: { id: true, cursoId: true, inicioPrevisto: true, vagas: true, curso: { select: { nome: true } } },
+  });
+  if (!ts.length) return [];
+  await require('./extras').anexar('turma', ts);
+  const lotadas = ts.filter((t) => t.lotouEm);
+  if (!lotadas.length) return [];
+  const comAberta = new Set((await prisma.turma.findMany({
+    where: { cursoId: { in: [...new Set(lotadas.map((t) => t.cursoId))] }, status: 'ABERTA', inicioPrevisto: { gt: agora } },
+    select: { cursoId: true },
+  })).map((t) => t.cursoId));
+  return lotadas.filter((t) => !comAberta.has(t.cursoId))
+    .map((t) => ({ turmaId: t.id, cursoId: t.cursoId, curso: t.curso.nome, inicio: t.inicioPrevisto, vagas: t.vagas, lotouEm: t.lotouEm }));
+}
+
+// As passagens automáticas, em ordem: Aberta → Confirmada (lotou ou chegou o dia de início) e Confirmada → Concluída
+// (dia seguinte à última aula).
 async function atualizarStatusTurmas() {
+  await confirmarTurmasLotadas();
   await confirmarTurmasDoDia();
   await concluirTurmasPassadas();
 }
 
-module.exports = { concluirTurmasPassadas, ajustarConclusao, inicioDoDiaSeguinteBrasilia, confirmarTurmasDoDia, atualizarStatusTurmas };
+module.exports = { turmasLotadasSemNova, confirmarTurmasLotadas, concluirTurmasPassadas, ajustarConclusao, inicioDoDiaSeguinteBrasilia, confirmarTurmasDoDia, atualizarStatusTurmas };
