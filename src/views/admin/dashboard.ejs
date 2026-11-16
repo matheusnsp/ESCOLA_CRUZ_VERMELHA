@@ -28,6 +28,8 @@
   </div>
 </div>
 
+<%- include('_avisos-lotadas') %>
+
 <% if (typeof comprovantesParaConferir !== 'undefined' && comprovantesParaConferir && pode('aluno:gerenciar')) { %>
   <a href="/comprovantes-saude" class="adm-alerta adm-alerta-comprovante">
     <i class="fa-solid fa-user-doctor"></i>

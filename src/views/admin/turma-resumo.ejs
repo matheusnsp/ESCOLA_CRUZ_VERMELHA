@@ -10,6 +10,7 @@
 </div>
 <p class="adm-sub-titulo"><span class="badge st-<%= t.status.toLowerCase() %>"><%= rotuloTurma(t.status) %></span>
   <%= mudanca ? mudanca + ' · ' : '' %><%= t.aulas.length ? t.aulas.length + (t.aulas.length === 1 ? ' aula' : ' aulas') + ' · ' + t.aulas[0].horario : 'sem aulas cadastradas' %></p>
+<%- include('_avisos-lotadas', { avisosLotadas: avisoLotada ? [avisoLotada] : [] }) %>
 <% if (ok) { %><div class="adm-ok"><i class="fa-solid fa-circle-check"></i> <%= ok %></div><% } %>
 <% if (erro) { %><div class="adm-erro"><i class="fa-solid fa-circle-exclamation"></i> <%= erro %></div><% } %>
 

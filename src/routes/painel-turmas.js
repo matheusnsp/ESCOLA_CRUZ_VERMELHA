@@ -74,7 +74,9 @@ module.exports = function painelTurmas({ requirePermissao, auditar }) {
       prisma.matricula.count({ where: { turmaId: turma.id } }),
     ]);
     const faltas = faltasTurma({ totalAulas: turma.aulas.length, inscritos, minimoAlunos: turma.minimoAlunos, pendentes, inicioPrevisto: turma.inicioPrevisto });
-    res.render('admin/turma-resumo', { turma, inscritos, pendentes, totalMatriculas: total, faltas, mudanca: proximaMudanca(turma), ok: req.query.ok || null, erro: req.query.erro || null });
+    const avisoLotada = turma.lotouEm && turma.status === 'CONFIRMADA'
+      ? (await require('../lib/concluir-turmas').turmasLotadasSemNova().catch(() => [])).find((a) => a.turmaId === turma.id) || null : null;
+    res.render('admin/turma-resumo', { avisoLotada, turma, inscritos, pendentes, totalMatriculas: total, faltas, mudanca: proximaMudanca(turma), ok: req.query.ok || null, erro: req.query.erro || null });
   });
 
   return router;
