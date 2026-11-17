@@ -25,7 +25,7 @@ const { consumirToken, criarTokenDesbloqueio, verificarTokenDesbloqueio, criarTo
 const { enviarAlertaLoginSecretaria, enviarLinkDesbloqueio, enviarEmailResetSenha, enviarComprovanteRecusado } = require('../lib/email');
 const { ESCOLARIDADES: ESCOLARIDADES_ALUNO, SITUACOES_ESCOLARIDADE, GENEROS, UFS } = require('../lib/validation');
 const { mascarar, mascararRG, validarCpfCnpj } = require('../lib/documento');
-const { formatBRL, calcularValores, lerConfigMatricula, faltaReceber, cursoJaPago } = require('../lib/matricula');
+const { formatBRL, calcularValores, lerConfigMatricula, faltaReceber, cursoJaPago, valorCursoSemTaxa } = require('../lib/matricula');
 const { simularValores } = require('../lib/simular-valores');
 const { estornarTransacao } = require('../lib/unicopag'); // 💡 A3 — refund real no gateway
 const { outroPagamentoCursoPago } = require('../lib/status-pagamento');
@@ -2539,7 +2539,7 @@ async function descontoDaTransferencia(matriculaId) {
 router.get('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), async (req, res) => {
   const m = await prisma.matricula.findUnique({
     where: { id: req.params.id },
-    include: { aluno: true, turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } } },
+    include: { aluno: true, turma: { include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } } }, cupomEad: true },
   });
   if (!m) return res.status(404).render('admin/erro', { mensagem: 'Inscrição não encontrada.' });
   const turmas = await prisma.turma.findMany({
@@ -2549,7 +2549,7 @@ router.get('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), 
     include: { curso: true, aulas: { orderBy: { data: 'asc' }, take: 1 } },
   });
   res.render('admin/transferir', {
-    m, turmas, formatBRL, erro: null, descontoNoCurso: await descontoDaTransferencia(m.id),
+    m, turmas, formatBRL, erro: null, descontoNoCurso: await descontoDaTransferencia(m.id), cursoAtual: valorCursoSemTaxa(m),
     origemQ: req.query.q || '',
     origemTurma: req.query.turma || '',
     origemStatus: req.query.status || '',
@@ -2559,7 +2559,7 @@ router.get('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), 
 router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'), async (req, res) => {
   const m = await prisma.matricula.findUnique({
     where: { id: req.params.id },
-    include: { turma: { include: { curso: true } } },
+    include: { turma: { include: { curso: true } }, cupomEad: true },
   });
 
   if (!m) {
@@ -2588,6 +2588,7 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
       include: {
         aluno: true,
         turma: { include: { curso: true } },
+        cupomEad: true,
       },
     });
 
@@ -2597,6 +2598,7 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
       formatBRL,
       erro,
       descontoNoCurso: await descontoDaTransferencia(m.id),
+      cursoAtual: valorCursoSemTaxa(mCompleto),
     });
   };
 
@@ -2613,10 +2615,8 @@ router.post('/inscricoes/:id/transferir', requirePermissao('aluno:mover_turma'),
     return reRenderErro('Turma de destino nao encontrada.');
   }
 
-  const valorAntigo = Number(m.valorCurso);
-  const valoresDestino = await calcularValores(destino.curso, m.plano, m.alunoId, { matriculaId: m.id });
-  const valorNovo = Number(valoresDestino.total);
-  const diferenca = Math.round((valorNovo - valorAntigo) * 100) / 100;
+  // 2026-11-17: só o valor do curso muda; a taxa de inscrição da matrícula fica como está (lib/transferencia.js).
+  const { valorAntigo, valorNovo, diferenca } = await require('../lib/transferencia').calcularTransferencia(m, destino.curso);
 
   const dados = {
     turmaId: destino.id,

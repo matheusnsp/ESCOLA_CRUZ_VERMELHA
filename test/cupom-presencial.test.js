@@ -84,7 +84,8 @@ describe('cupom presencial', { skip: temBanco ? false : 'sem DATABASE_URL local'
     assert.ok((cursos.match(/calcularValores\([^;]*matriculaId: matricula\.id/g) || []).length >= 6, 'routes/cursos.js');
     assert.match(ler('src/lib/lembretes.js'), /calcularValores\(curso, 'PARCELADO', matricula\.alunoId, \{ matriculaId: matricula\.id \}\)/);
     assert.match(ler('src/lib/matricula-rapida.js'), /m\.alunoId, \{ matriculaId: m\.id \}\)/);
-    assert.match(ler('src/routes/admin.js'), /calcularValores\(destino\.curso, m\.plano, m\.alunoId, \{ matriculaId: m\.id \}\)/);
+    // 2026-11-17: a transferência passou para lib/transferencia.js (só o curso muda; a taxa fica).
+    assert.match(ler('src/lib/transferencia.js'), /calcularValores\(cursoDestino, plano, m\.alunoId, \{ matriculaId: m\.id \}\)/);
   });
 
   test('formulário: alvo presencial grava cursoId; "presenciais" grava todosPresenciais; lista com rótulos', async () => {
