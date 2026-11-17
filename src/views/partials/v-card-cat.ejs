@@ -59,6 +59,8 @@
         <% } %>
       </div>
       <span class="v-cc-ver" aria-hidden="true">Ver curso <i class="fa-solid fa-arrow-right"></i></span>
+      <%# Faixa do cupom (2026-11-17): dentro do rodapé, porque o card é uma grade de linhas fixas. %>
+      <% if (!_soOnline) { %><%- include('cupom-faixa', { cursoId: curso.id }) %><% } %>
     </div>
   </div>
 </article>

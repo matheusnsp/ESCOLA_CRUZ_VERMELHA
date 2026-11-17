@@ -1,0 +1,4 @@
+<%# Faixa do cupom do site (2026-11-17). Espera: cupomSite (Map cursoId → { texto, codigo }) e cursoId. %>
+<% var _fx = typeof cupomSite !== 'undefined' && cupomSite && cupomSite.get ? cupomSite.get(cursoId) : null; if (_fx) { var _i = _fx.texto.indexOf(_fx.codigo); %>
+<span class="v-cupom"><i class="fa-solid fa-ticket" aria-hidden="true"></i><span><%= _fx.texto.slice(0, _i) %><b><%= _fx.codigo %></b><%= _fx.texto.slice(_i + _fx.codigo.length) %></span></span>
+<% } %>

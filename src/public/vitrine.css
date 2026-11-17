@@ -1006,3 +1006,12 @@ html.v-menu-aberto .v-acoes .v-so-pc, html.v-menu-aberto .v-acoes .v-user { disp
 .ed-capa-ebook { aspect-ratio: 3 / 4; }
 @media (max-width: 1000px) { .ed-linha-ebooks { grid-auto-columns: calc((100% - 3 * 16px) / 4); } }
 @media (max-width: 700px) { .ed-linha-ebooks { grid-auto-columns: 44%; } }
+
+/* Faixa do cupom no site (2026-11-17): cards, Próximas turmas e turmas do curso. */
+.v-cupom { display: inline-flex; gap: 8px; align-items: center; margin-top: 10px; padding: 6px 13px; border: 1.5px dashed var(--v-red); border-radius: 14px; background: #fff6f6; color: #9c0f1d; font-size: 13px; font-weight: 700; line-height: 1.35; position: relative; z-index: 1; }
+.v-cupom b { color: var(--v-red); font-weight: 800; }
+.v-card .v-cupom { display: flex; margin-top: 14px; font-size: 12px; }
+.v-turma-txt .v-cupom { display: inline-flex; color: #9c0f1d; font-size: 13px; }
+.v-turma-txt .v-cupom span { display: inline; margin: 0; color: inherit; font-size: inherit; }
+.v-cc-pe:has(.v-cupom) { flex-wrap: wrap; }
+.v-cc .v-cupom { display: flex; flex-basis: 100%; margin-top: 0; font-size: 12px; }

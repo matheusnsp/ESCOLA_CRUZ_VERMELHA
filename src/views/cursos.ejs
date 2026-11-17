@@ -84,6 +84,7 @@ _%>
                 <span><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i> <%= c.cargaHoraria %> horas</span>
                 <span><i class="fa-solid fa-location-dot" aria-hidden="true"></i> Centro do Rio</span>
               </div>
+              <%- include('partials/cupom-faixa', { cursoId: c.id }) %>
             </div>
             <div class="v-preco">
               <small>Matrícula à vista</small>

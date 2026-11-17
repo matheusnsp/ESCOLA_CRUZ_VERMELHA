@@ -8,7 +8,8 @@
 const prisma = require('../db');
 const { ehId } = require('./ead-db');
 
-const TIPOS = ['PERCENTUAL', 'VALOR'];
+// FINAL (2026-11-17): valor = quanto a pessoa paga na matrícula (só presencial); taxaFinal = a taxa de inscrição.
+const TIPOS = ['PERCENTUAL', 'VALOR', 'FINAL'];
 const PAGOS = ['PAGO', 'PARCELADO'];
 
 const MSG = {
@@ -19,6 +20,14 @@ const MSG = {
 };
 
 const round2 = (x) => Math.round(Number(x) * 100) / 100;
+// Aceita "150", "150,50", "R$ 1.150,00" e "150.5". Vazio ou inválido = NaN.
+function lerReais(texto) {
+  if (typeof texto === 'number') return round2(texto);
+  let t = String(texto ?? '').replace(/R\$|\s/g, '');
+  if (!t) return NaN;
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  return /^\d+(\.\d+)?$/.test(t) ? round2(t) : NaN;
+}
 const normalizarCodigo = (texto) => String(texto || '').replace(/\s+/g, '').toUpperCase();
 const codigoValido = (codigo) => /^[A-Z0-9-]{3,30}$/.test(String(codigo || ''));
 
@@ -30,9 +39,18 @@ function fimDoDiaRio(d) {
 
 function calcularDesconto(cupom, preco) {
   const precoCheio = round2(preco);
-  const bruto = cupom.tipo === 'PERCENTUAL' ? round2((precoCheio * Number(cupom.valor)) / 100) : round2(cupom.valor);
+  const bruto = cupom.tipo === 'PERCENTUAL' ? round2((precoCheio * Number(cupom.valor)) / 100)
+    : cupom.tipo === 'FINAL' ? round2(precoCheio - Number(cupom.valor)) : round2(cupom.valor);
   const desconto = Math.min(Math.max(bruto, 0), precoCheio);
   return { precoCheio, desconto, precoFinal: round2(precoCheio - desconto) };
+}
+
+// Quantos cupons restam (2026-11-17). Sem limite: null. Renovando, quando acaba começa outra rodada.
+function restamDoCupom(cupom, usos) {
+  const lim = cupom.limiteUsos;
+  if (lim === null || lim === undefined) return null;
+  if (cupom.renovar) return { restam: lim - (usos % lim), rodada: Math.floor(usos / lim) + 1 };
+  return { restam: Math.max(lim - usos, 0), rodada: 1 };
 }
 
 const usosDoCupom = (cupomId) => prisma.cupomMatriculaEad.count({ where: { cupomId, matricula: { statusPagamento: { in: PAGOS } } } });
@@ -47,6 +65,16 @@ const usosParaLimite = (cupomId, alunoId = null) => prisma.cupomMatriculaEad.cou
     },
   },
 });
+
+// Usos para o limite de vários cupons de uma vez: Map cupomId → número.
+async function contarParaLimite(ids) {
+  const g = await prisma.cupomMatriculaEad.groupBy({
+    by: ['cupomId'],
+    where: { cupomId: { in: ids }, matricula: { OR: [{ statusPagamento: { in: PAGOS } }, { statusPagamento: 'PENDENTE', taxaConfirmada: true }] } },
+    _count: { _all: true },
+  });
+  return new Map(g.map((x) => [x.cupomId, x._count._all]));
+}
 
 // alvo: o CursoOnline ou (com { ebook: true }) o Ebook — os dois têm id e precoOnline. E-books (2026-11-09): cupom
 // de um curso não vale para e-book e vice-versa; sem curso nem e-book, vale para todos.
@@ -70,7 +98,7 @@ async function validarCupom(codigo, co, { ebook = false, webinario = false, pres
     if (cupom.webinarioId && (!webinario || cupom.webinarioId !== co.id)) return { erro: MSG.outroCurso }; // 2026-11-13
   }
   if (cupom.validoAte && fimDoDiaRio(cupom.validoAte) < new Date()) return { erro: MSG.venceu };
-  if (cupom.limiteUsos !== null && cupom.limiteUsos !== undefined && await usosParaLimite(cupom.id, alunoId) >= cupom.limiteUsos) return { erro: MSG.esgotado };
+  if (cupom.limiteUsos !== null && cupom.limiteUsos !== undefined && !cupom.renovar && await usosParaLimite(cupom.id, alunoId) >= cupom.limiteUsos) return { erro: MSG.esgotado };
   return { cupom, ...calcularDesconto(cupom, Number(presencial ? preco || 0 : co.precoOnline || 0)) };
 }
 
@@ -84,7 +112,8 @@ function lerDados(d) {
   if (!codigoValido(codigo)) return { erro: 'Código: 3 a 30 letras, números ou hífen.' };
   const tipo = TIPOS.includes(d.tipo) ? d.tipo : null;
   if (!tipo) return { erro: 'Escolha o tipo do desconto.' };
-  const valor = round2(d.valor);
+  const valor = lerReais(d.valor);
+  if (tipo === 'FINAL' && !(valor >= 0)) return { erro: 'Matrícula com o cupom: digite o valor (0 = curso de graça).' };
   if (tipo === 'PERCENTUAL' && !(valor >= 1 && valor <= 100)) return { erro: 'Desconto em %: de 1 a 100.' };
   if (tipo === 'VALOR' && !(valor > 0)) return { erro: 'Desconto em R$: maior que zero.' };
   const temLimite = d.limiteUsos !== null && d.limiteUsos !== undefined && d.limiteUsos !== '';
@@ -100,9 +129,21 @@ function lerDados(d) {
   const todosPresenciais = d.alvo === 'presenciais';
   // "tudo" (2026-11-10): sem alvo nenhum e com valeTudo; o resto fica vazio.
   const valeTudo = d.alvo === 'tudo';
+  const presencial = !!(cursoId || todosPresenciais);
+  if (tipo === 'FINAL' && !presencial) return { erro: 'Cupom de valor final: só para curso presencial (um curso ou todos os presenciais).' };
+  let taxaFinal = null;
+  if (tipo === 'FINAL' && d.taxaFinal !== undefined && d.taxaFinal !== null && String(d.taxaFinal).trim() !== '') {
+    taxaFinal = lerReais(d.taxaFinal);
+    if (!(taxaFinal >= 0)) return { erro: 'Taxa de inscrição com o cupom: um valor em R$ (0 = grátis) ou vazio.' };
+  }
+  const marcado = (x) => x === true || x === '1' || x === 'on' || x === 'true';
+  const renovar = marcado(d.renovar);
+  if (renovar && limiteUsos === null) return { erro: 'Para renovar sozinho, diga quantos cupons existem.' };
+  const noSite = marcado(d.noSite);
+  if (noSite && !presencial) return { erro: 'Mostrar no site: só para curso presencial (um curso ou todos os presenciais).' };
   const validoAte = d.validoAte ? new Date(d.validoAte) : null;
   if (validoAte && Number.isNaN(validoAte.getTime())) return { erro: 'Validade inválida.' };
-  return { dados: { codigo, tipo, valor, cursoOnlineId, ebookId, webinarioId, cursoId, todosPresenciais, valeTudo, validoAte, limiteUsos, observacao: String(d.observacao || '').trim().slice(0, 500) || null } };
+  return { dados: { codigo, tipo, valor, cursoOnlineId, ebookId, webinarioId, cursoId, todosPresenciais, valeTudo, validoAte, limiteUsos, taxaFinal, renovar, noSite, observacao: String(d.observacao || '').trim().slice(0, 500) || null } };
 }
 
 const repetido = (e) => e && e.code === 'P2002';
@@ -130,7 +171,8 @@ async function alterarCupom(id, d, atorId) {
   // Revisão do cupom presencial (I2): usado, o valor e o "Vale para" também ficam (as inscrições guardam o desconto).
   const mesmoAlvo = (a, b) => (a.cursoOnlineId || null) === (b.cursoOnlineId || null) && (a.ebookId || null) === (b.ebookId || null) && (a.webinarioId || null) === (b.webinarioId || null)
     && (a.cursoId || null) === (b.cursoId || null) && !!a.todosPresenciais === !!b.todosPresenciais && !!a.valeTudo === !!b.valeTudo;
-  if (temCompra && (Number(r.dados.valor) !== Number(atual.valor) || !mesmoAlvo(r.dados, atual))) return { erro: 'Este cupom já foi usado: o desconto e o "Vale para" não mudam. Crie outro cupom.' };
+  const taxa = (x) => (x === null || x === undefined ? null : Number(x));
+  if (temCompra && (Number(r.dados.valor) !== Number(atual.valor) || taxa(r.dados.taxaFinal) !== taxa(atual.taxaFinal) || !mesmoAlvo(r.dados, atual))) return { erro: 'Este cupom já foi usado: o desconto e o "Vale para" não mudam. Crie outro cupom.' };
   try {
     const cupom = await prisma.cupomEad.update({ where: { id }, data: r.dados });
     await auditar(atorId, 'EAD_CUPOM_ALTERADO', id, { antes: { codigo: atual.codigo, valor: Number(atual.valor), validoAte: atual.validoAte, limiteUsos: atual.limiteUsos }, depois: { codigo: cupom.codigo, valor: Number(cupom.valor), validoAte: cupom.validoAte, limiteUsos: cupom.limiteUsos } });
@@ -172,10 +214,13 @@ async function listarCupons({ ativos } = {}) {
     _sum: { desconto: true },
   }) : [];
   const porCupom = new Map(pagas.map((p) => [p.cupomId, p]));
+  // Quantos restam (2026-11-17): conta como o limite (pagas + quem já pagou a taxa).
+  const comLimite = cupons.filter((c) => c.limiteUsos !== null);
+  const paraLimite = comLimite.length ? await contarParaLimite(comLimite.map((c) => c.id)) : new Map();
   return cupons.map((c) => {
     const p = porCupom.get(c.id);
     const rotulo = c.cursoOnline ? c.cursoOnline.curso.nome : c.ebook ? `E-book: ${c.ebook.curso.nome}` : c.webinario ? `Webinário: ${c.webinario.curso.nome}` : c.curso ? `Presencial: ${c.curso.nome}` : c.todosPresenciais ? 'Todos os cursos presenciais' : c.valeTudo ? 'Tudo (online, e-books e presenciais)' : null;
-    return { ...c, curso: rotulo, usos: p ? p._count._all : 0, totalDesconto: p ? round2(p._sum.desconto || 0) : 0 };
+    return { ...c, curso: rotulo, usos: p ? p._count._all : 0, totalDesconto: p ? round2(p._sum.desconto || 0) : 0, quantidade: restamDoCupom(c, paraLimite.get(c.id) || 0) };
   });
 }
 
@@ -198,6 +243,6 @@ async function comprasDoCupom(id) {
 }
 
 module.exports = {
-  TIPOS, MSG, lerDados, valeNoPresencial, normalizarCodigo, codigoValido, calcularDesconto, validarCupom, usosDoCupom,
+  TIPOS, MSG, lerDados, lerReais, restamDoCupom, usosParaLimite, contarParaLimite, fimDoDiaRio, valeNoPresencial, normalizarCodigo, codigoValido, calcularDesconto, validarCupom, usosDoCupom,
   criarCupom, alterarCupom, ativarCupom, apagarCupom, listarCupons, comprasDoCupom, auditar,
 };

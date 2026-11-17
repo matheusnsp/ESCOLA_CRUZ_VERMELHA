@@ -682,6 +682,11 @@ model CupomEad {
   todosPresenciais Boolean             @default(false)
   // "Tudo" (2026-11-10): vale em qualquer produto — cursos online, e-books e presenciais.
   valeTudo         Boolean             @default(false)
+  // Valor final (2026-11-17): tipo FINAL = valor é a matrícula final; taxaFinal = taxa de inscrição final (vazio = normal).
+  taxaFinal        Decimal?            @db.Decimal(10, 2)
+  // Quantidade que renova sozinha quando acaba; noSite = faixa no site e aplica sozinho na inscrição.
+  renovar          Boolean             @default(false)
+  noSite           Boolean             @default(false)
   compras          CupomMatriculaEad[]
 }
 
@@ -693,6 +698,8 @@ model CupomMatriculaEad {
   precoCheio  Decimal   @db.Decimal(10, 2)
   desconto    Decimal   @db.Decimal(10, 2)
   precoFinal  Decimal   @db.Decimal(10, 2)
+  // Taxa de inscrição com o cupom de valor final (2026-11-17); vazio = a taxa normal.
+  taxaFinal   Decimal?  @db.Decimal(10, 2)
   criadoEm    DateTime  @default(now())
   matricula   Matricula @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
   cupom       CupomEad  @relation(fields: [cupomId], references: [id], onDelete: Restrict)
