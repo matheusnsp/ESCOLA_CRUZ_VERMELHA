@@ -79,7 +79,7 @@
         <option value="<%= t.id %>"
                 data-preco-avista="<%= t.curso.precoAvista %>"
                 data-preco-cheio="<%= t.curso.precoCheio %>"
-                data-taxa="<%= t.curso.taxaMatricula != null ? t.curso.taxaMatricula : 100 %>"
+                data-mesmo="<%= t.cursoId === m.turma.cursoId ? '1' : '' %>"
                 data-desconto="<%= typeof descontoNoCurso === 'function' ? descontoNoCurso(t.curso) : 0 %>">
           <%= t.curso.nome %> — <%= new Date(t.inicioPrevisto).toLocaleDateString('pt-BR') %> (<%= rotuloTurma(t.status) %>)<%= t.cursoId === m.turma.cursoId ? ' · mesmo curso' : ' · outro curso' %>
         </option>
@@ -92,9 +92,8 @@
   <p class="adm-explica">
     <i class="fa-solid fa-circle-info"></i>
     <span>
-      Mesmo curso: sem alteração de valores. Curso diferente: o valor é
-      recalculado pela matrícula do novo curso (+ taxa de inscrição) no mesmo plano
-      do aluno. Se ficar mais caro, a diferença fica pendente de pagamento; se
+      Mesmo curso: sem alteração de valores. Curso diferente: muda só o valor
+      do curso (no mesmo plano do aluno); a taxa de inscrição fica como está. Se ficar mais caro, a diferença fica pendente de pagamento; se
       ficar mais barato, o valor pago a mais fica registrado para reembolso.
       A vaga no destino não é bloqueada, mesmo se estiver cheia.
     </span>
@@ -107,7 +106,8 @@
 
 <script>
 (function () {
-  const valorAtual = <%- JSON.stringify(Number(m.valorCurso)) %>; // já inclui a taxa de inscrição (matrícula + taxa)
+  // 2026-11-17: a transferência muda só o curso; a taxa de inscrição da matrícula fica como está.
+  const cursoAtual = <%- JSON.stringify(Number(typeof cursoAtual !== 'undefined' ? cursoAtual : 0)) %>; // o curso sem a taxa
   const plano  = <%- JSON.stringify(m.plano) %>;
   const select = document.getElementById('turmaDestino');
   const aviso  = document.getElementById('diffAviso');
@@ -122,10 +122,8 @@
     if (!opt.value) { aviso.textContent = ''; return; }
 
     // Cupom do presencial gravado: sai do curso de destino quando vale nele (data-desconto).
-    const precoCurso = Math.max(0, (plano === 'A_VISTA' ? Number(opt.dataset.precoAvista) : Number(opt.dataset.precoCheio)) - (Number(opt.dataset.desconto) || 0));
-    const taxa  = Number(opt.dataset.taxa);
-    const preco = precoCurso + taxa; // soma a taxa pra ficar na mesma base do valorAtual (curso + taxa)
-    const diff  = Math.round((preco - valorAtual) * 100) / 100;
+    const precoCurso = Math.max(0, (plano !== 'PARCELADO' ? Number(opt.dataset.precoAvista) : Number(opt.dataset.precoCheio)) - (Number(opt.dataset.desconto) || 0));
+    const diff  = opt.dataset.mesmo ? 0 : Math.round((precoCurso - cursoAtual) * 100) / 100;
 
     if (diff > 0) {
       aviso.classList.add('mais');
