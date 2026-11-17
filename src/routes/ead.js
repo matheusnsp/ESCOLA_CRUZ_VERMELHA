@@ -704,7 +704,9 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
   // (vale até o fim desse dia).
   const diaDoCupom = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) ? new Date(`${d}T12:00:00-03:00`) : null);
   const dadosDoCupom = (b) => ({
-    codigo: b.codigo, tipo: b.tipo, valor: publicacao.lerPreco(b.valor) ?? NaN,
+    // Valor final (2026-11-17): 0 vale (curso de graça); lerDados lê "150,00".
+    codigo: b.codigo, tipo: b.tipo, valor: b.tipo === 'FINAL' ? b.valor : publicacao.lerPreco(b.valor) ?? NaN,
+    taxaFinal: b.taxaFinal, renovar: b.renovar, noSite: b.noSite,
     alvo: b.alvo, cursoOnlineId: b.cursoOnlineId || null, validoAte: diaDoCupom(b.validoAte), limiteUsos: String(b.limiteUsos || '').trim(),
     observacao: b.observacao,
   });
@@ -713,6 +715,8 @@ module.exports = function rotasEad({ requireDev, auditar, ADMIN_URL }) {
     alvo: c.ebookId ? `ebook:${c.ebookId}` : c.webinarioId ? `webinario:${c.webinarioId}` : c.cursoOnlineId ? `curso:${c.cursoOnlineId}` : c.cursoId ? `presencial:${c.cursoId}` : c.todosPresenciais ? 'presenciais' : c.valeTudo ? 'tudo' : '',
     validoAte: c.validoAte ? new Date(c.validoAte).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }) : '',
     limiteUsos: c.limiteUsos === null ? '' : String(c.limiteUsos), observacao: c.observacao || '',
+    taxaFinal: c.taxaFinal === null || c.taxaFinal === undefined ? '' : Number(c.taxaFinal).toLocaleString('pt-BR', { maximumFractionDigits: 2 }),
+    renovar: c.renovar ? '1' : '', noSite: c.noSite ? '1' : '',
   });
   const cursosDoForm = () => prisma.cursoOnline.findMany({ select: { id: true, curso: { select: { nome: true } } }, orderBy: { criadoEm: 'asc' } });
 

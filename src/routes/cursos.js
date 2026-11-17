@@ -116,8 +116,22 @@ const { limiteCupom, registrarFalhaCupom, MSG_TENTATIVAS } = require('../lib/lim
 async function cupomDaInscricao(req, curso, { doEnvio = false } = {}) {
   const daSessao = req.session && req.session.cupomPresencial && req.session.cupomPresencial.curso === curso.id ? req.session.cupomPresencial.codigo : '';
   const pediu = doEnvio ? req.body.cupom !== undefined : req.query.cupom !== undefined;
-  const codigo = pediu ? cupons.normalizarCodigo(doEnvio ? req.body.cupom : req.query.cupom) : (doEnvio ? '' : daSessao);
-  if (req.session && pediu && !doEnvio) req.session.cupomPresencial = undefined;
+  let codigo = pediu ? cupons.normalizarCodigo(doEnvio ? req.body.cupom : req.query.cupom) : (doEnvio ? '' : daSessao);
+  if (req.session && pediu && !doEnvio) {
+    req.session.cupomPresencial = undefined;
+    // Cupom do site (2026-11-17): "tirar" (?cupom= vazio) fica tirado; digitar outro código desfaz.
+    const tirados = { ...(req.session.cupomTirado || {}) };
+    if (codigo) delete tirados[curso.id]; else tirados[curso.id] = true;
+    req.session.cupomTirado = tirados;
+  }
+  // Sem código e sem ter tirado: o cupom do site entra sozinho (se esgotou ou venceu no meio, só não entra).
+  if (!codigo && !pediu && !doEnvio && !(req.session && req.session.cupomTirado && req.session.cupomTirado[curso.id])) {
+    const doSite = await require('../lib/cupom-site').cupomDoSiteDoCurso(curso).catch(() => null);
+    if (doSite) {
+      const v = await cupons.validarCupom(doSite.codigo, curso, { presencial: true, preco: Number(curso.precoAvista), alunoId: req.session && req.session.usuarioId });
+      if (!v.erro) return { cupom: v.cupom, codigo: v.cupom.codigo, erro: null, pediu: false, automatico: true };
+    }
+  }
   if (!codigo) return { cupom: null, codigo: '', erro: null, pediu };
   if (req.cupomBloqueado) return { cupom: null, codigo, erro: MSG_TENTATIVAS, pediu };
   const v = await cupons.validarCupom(codigo, curso, { presencial: true, preco: Number(curso.precoAvista), alunoId: req.session && req.session.usuarioId });
@@ -130,7 +144,8 @@ async function cupomDaInscricao(req, curso, { doEnvio = false } = {}) {
 async function gravarCupomInscricao(matriculaId, cupom, valores) {
   if (!cupom) return prisma.cupomMatriculaEad.deleteMany({ where: { matriculaId } });
   const precoFinal = Number(valores.valorCurso); const desconto = Number(valores.desconto);
-  const dados = { cupomId: cupom.id, precoCheio: Math.round((precoFinal + desconto) * 100) / 100, desconto, precoFinal };
+  const taxaFinal = valores.taxaDoCupom === null || valores.taxaDoCupom === undefined ? null : Number(valores.valorTaxaMatricula); // 2026-11-17
+  const dados = { cupomId: cupom.id, precoCheio: Math.round((precoFinal + desconto) * 100) / 100, desconto, precoFinal, taxaFinal };
   return prisma.cupomMatriculaEad.upsert({ where: { matriculaId }, update: dados, create: { matriculaId, ...dados } });
 }
 
@@ -267,6 +282,12 @@ async function carregarCatalogo(filtro) {
   return carregarVitrine(filtro, { agenda: true });
 }
 
+// Faixa do cupom no site (2026-11-17): se a consulta falhar, a página abre sem a faixa.
+const cupomSite = require('../lib/cupom-site');
+async function cupomSiteSeguro(cursos, cfgMap) {
+  try { return await cupomSite.cuponsDoSite(cursos, cfgMap); } catch (e) { console.error('[CUPOM SITE]', e.message); return new Map(); }
+}
+
 // A home mostra só alguns cursos em destaque; a lista completa fica em /cursos.
 const HOME_MAX_CURSOS = 4;
 
@@ -278,8 +299,9 @@ router.get('/', async (req, res) => {
   ]);
   const cursos = todos.slice(0, HOME_MAX_CURSOS);
   const depoimentos = await pesquisa.depoimentosDoSite(); // vazio enquanto a secretaria não ligar a seção
+  const cupomSite = await cupomSiteSeguro(cursos, cfgMap); // fora do cache: o "restam" muda (2026-11-17)
   res.render('home', {
-    depoimentos,
+    depoimentos, cupomSite,
     cursos, totalCursos: todos.length, cfgMap, formatBRL, totalExibicao, taxaExibicao, vitrine,
     destaque: cursos.find((c) => c.turmas && c.turmas.length) || null,
   });
@@ -308,7 +330,8 @@ router.get('/cursos', async (req, res) => {
     catalogo(res, 'cursos', () => carregarCatalogo(filtro)),
     lerConfigMatricula(),
   ]);
-  res.render('cursos', { cursos, cfgMap, formatBRL, totalExibicao, taxaExibicao, vitrine });
+  const cupomSite = await cupomSiteSeguro(cursos, cfgMap); // fora do cache: o "restam" muda (2026-11-17)
+  res.render('cursos', { cursos, cfgMap, formatBRL, totalExibicao, taxaExibicao, vitrine, cupomSite });
 });
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -543,7 +566,9 @@ router.get('/cursos/:cursoId', async (req, res, next) => {
 
   // Escola Digital desligada: nenhum link para o online na página do presencial (cópia: o objeto vem do cache).
   const cursoPagina = curso.online && !(await escolaDigital.estaLigada()) ? { ...curso, online: null } : curso;
+  const cupomSite = await cupomSiteSeguro([curso, ...outros], cfgMap); // 2026-11-17 (também nos "outros cursos")
   res.render('curso-detalhe', {
+    cupomSite,
     curso: cursoPagina,
     outros,
     formatBRL,

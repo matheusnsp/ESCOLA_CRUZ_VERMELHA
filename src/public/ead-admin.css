@@ -170,3 +170,8 @@ html[data-tema="escuro"] .ia-roteiro .ia-modulo { border-color: #3a4149; }
 .ead-img-ia { width: 180px; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 10px; flex: none; }
 .ead-img-ia.vazio { display: inline-flex; align-items: center; justify-content: center; background: #f1efeb; color: #b5b0a8; font-size: 28px; }
 .ead-selo.ia { background: #efe7ff; color: #5b2bbf; }
+
+/* Cupom de valor final (2026-11-17): caixinhas de renovar e de mostrar no site. */
+.adm-campos .adm-check { display: flex; flex-direction: row; gap: 10px; align-items: flex-start; font-weight: 500; }
+.adm-campos .adm-check input { width: auto; margin-top: 3px; flex: none; }
+.adm-campos label[hidden] { display: none !important; }

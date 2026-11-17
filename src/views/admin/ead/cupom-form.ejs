@@ -46,10 +46,13 @@
       <select name="tipo" <%= travado ? 'disabled' : '' %>>
         <option value="PERCENTUAL" <%= v.tipo === 'PERCENTUAL' ? 'selected' : '' %>>% do preço</option>
         <option value="VALOR" <%= v.tipo === 'VALOR' ? 'selected' : '' %>>R$ fixo</option>
+        <option value="FINAL" <%= v.tipo === 'FINAL' ? 'selected' : '' %>>Valor final (quanto a pessoa paga)</option>
       </select>
       <% if (travado) { %><input type="hidden" name="tipo" value="<%= v.tipo %>"><% } %>
     </label>
-    <label>Desconto (% ou R$)<input type="text" name="valor" inputmode="decimal" required value="<%= v.valor || '' %>" placeholder="10"></label>
+    <label><span data-rotulo-valor><%= v.tipo === 'FINAL' ? 'Matrícula (à vista) com o cupom, em R$' : 'Desconto (% ou R$)' %></span><input type="text" name="valor" inputmode="decimal" required value="<%= v.valor !== undefined && v.valor !== null ? v.valor : '' %>" placeholder="10"></label>
+    <%# Valor final (2026-11-17): a taxa de inscrição com o cupom. Vazio = a taxa normal; 0 = grátis. %>
+    <label data-so-final <%= v.tipo === 'FINAL' ? '' : 'hidden' %>>Taxa de inscrição com o cupom, em R$ (opcional)<input type="text" name="taxaFinal" inputmode="decimal" value="<%= v.taxaFinal !== undefined && v.taxaFinal !== null ? v.taxaFinal : '' %>" placeholder="vazio = taxa normal · 0 = grátis"></label>
     <% var _alvo = v.alvo !== undefined ? v.alvo : (v.cursoOnlineId ? 'curso:' + v.cursoOnlineId : ''); var _eb = typeof ebooks !== 'undefined' ? ebooks : []; var _pr = typeof presenciais !== 'undefined' ? presenciais : []; %>
     <label>Vale para
       <select name="alvo">
@@ -75,7 +78,9 @@
       </select>
     </label>
     <label>Vale até (opcional)<input type="date" name="validoAte" value="<%= v.validoAte || '' %>"></label>
-    <label>Limite de usos (opcional)<input type="number" name="limiteUsos" min="1" step="1" value="<%= v.limiteUsos || '' %>"></label>
+    <label>Quantidade de cupons (opcional)<input type="number" name="limiteUsos" min="1" step="1" value="<%= v.limiteUsos || '' %>"><small class="adm-mut">Conta 1 a cada inscrição paga com ele.</small></label>
+    <label class="full adm-check"><input type="checkbox" name="renovar" value="1" <%= v.renovar ? 'checked' : '' %>> <span><b>Quando acabar, renovar sozinho</b> com a mesma quantidade. Desmarcado: acabou, para de valer e some do site.</span></label>
+    <label class="full adm-check"><input type="checkbox" name="noSite" value="1" <%= v.noSite ? 'checked' : '' %>> <span><b>Mostrar no site e aplicar sozinho na inscrição</b> (só presencial). Aparece nas turmas: "Com o cupom <%= v.codigo || 'CÓDIGO' %>: R$ … com tudo incluso · restam N cupons".</span></label>
     <label class="full">Observação (interna)<input type="text" name="observacao" maxlength="500" value="<%= v.observacao || '' %>"></label>
   </div>
   <p class="adm-mut">100% libera o curso sem pagamento (cortesia). O desconto nunca passa do preço; os juros do parcelamento incidem sobre o preço com desconto.</p>
@@ -110,4 +115,19 @@
   </div>
 <% } %>
 
+<script>
+  // Valor final (2026-11-17): troca o rótulo do valor e mostra a taxa só no tipo "Valor final".
+  (function () {
+    var tipo = document.querySelector('select[name="tipo"]');
+    if (!tipo) return;
+    var rot = document.querySelector('[data-rotulo-valor]');
+    var taxa = document.querySelector('[data-so-final]');
+    function mudar() {
+      var final = tipo.value === 'FINAL';
+      if (rot) rot.textContent = final ? 'Matrícula (à vista) com o cupom, em R$' : 'Desconto (% ou R$)';
+      if (taxa) taxa.hidden = !final;
+    }
+    tipo.addEventListener('change', mudar);
+  })();
+</script>
 <%- include('../foot') %>

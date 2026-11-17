@@ -47,7 +47,9 @@ async function obterTaxaMatricula(curso, alunoId) {
 async function cupomDaMatricula(matriculaId, curso) {
   if (!matriculaId) return null;
   const cm = await prisma.cupomMatriculaEad.findUnique({ where: { matriculaId }, include: { cupom: true } }).catch(() => null);
-  return cm && require('./ead-cupom').valeNoPresencial(cm.cupom, curso) ? { ...cm.cupom, descontoGravado: Number(cm.desconto) } : null;
+  if (!cm || !require('./ead-cupom').valeNoPresencial(cm.cupom, curso)) return null;
+  // Valor final (2026-11-17): a taxa gravada também vale (null = taxa normal).
+  return { ...cm.cupom, descontoGravado: Number(cm.desconto), taxaGravada: cm.taxaFinal === null || cm.taxaFinal === undefined ? null : Number(cm.taxaFinal) };
 }
 
 // Monta os valores de uma matricula (sem persistir). opts.cupom (validado agora) ou opts.matriculaId (o gravado):
@@ -65,7 +67,12 @@ async function calcularValores(curso, plano, alunoId, { cupom = null, matriculaI
     desconto = new Prisma.Decimal(d.desconto);
     valorCurso = new Prisma.Decimal(d.precoFinal);
   }
-  const valorTaxaMatricula = await obterTaxaMatricula(curso, alunoId);
+  // Cupom de valor final (2026-11-17): a taxa do cupom (ou a gravada na inscrição), nunca acima da normal.
+  const taxaSemCupom = await obterTaxaMatricula(curso, alunoId);
+  let taxaDoCupom = null;
+  if (c && c.descontoGravado !== undefined) taxaDoCupom = c.taxaGravada === undefined ? null : c.taxaGravada;
+  else if (c && c.tipo === 'FINAL' && c.taxaFinal !== null && c.taxaFinal !== undefined) taxaDoCupom = Number(c.taxaFinal);
+  const valorTaxaMatricula = taxaDoCupom === null ? taxaSemCupom : new Prisma.Decimal(Math.min(taxaDoCupom, Number(taxaSemCupom)));
   const total = new Prisma.Decimal(valorCurso).add(valorTaxaMatricula);
 
   // Valor de cada parcela, apenas quando o plano for PARCELADO.
@@ -76,7 +83,7 @@ async function calcularValores(curso, plano, alunoId, { cupom = null, matriculaI
     valorParcela = total.div(parcelas);
   }
 
-  return { valorCurso, valorTaxaMatricula, total, valorParcela, desconto, cupom: c };
+  return { valorCurso, valorTaxaMatricula, total, valorParcela, desconto, cupom: c, taxaSemCupom, taxaDoCupom };
 }
 
 // Formata um Decimal/numero como moeda BRL.

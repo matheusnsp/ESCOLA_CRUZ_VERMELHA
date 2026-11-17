@@ -299,11 +299,19 @@ const _trilha = _totalPassos === 2
           <i class="fa-solid fa-arrow-left"></i> Rever o contrato
         </button>
 
-      <% var _cp = typeof cupomInfo !== 'undefined' && cupomInfo ? cupomInfo : { cupom: null, codigo: '', erro: null }; var _desc = Number(aVista.desconto || 0); %>
+      <% var _cp = typeof cupomInfo !== 'undefined' && cupomInfo ? cupomInfo : { cupom: null, codigo: '', erro: null }; var _desc = Number(aVista.desconto || 0);
+         // Valor final (2026-11-17): a taxa também pode baixar; riscada como o curso.
+         var _taxaCheia = aVista.taxaSemCupom !== undefined ? Number(aVista.taxaSemCupom) : Number(aVista.valorTaxaMatricula);
+         var _taxaBaixou = _taxaCheia > Number(aVista.valorTaxaMatricula);
+         var _taxaTxt = function () { return (_taxaBaixou ? '<s>' + formatBRL(_taxaCheia) + '</s> ' : '') + (Number(aVista.valorTaxaMatricula) > 0 ? formatBRL(aVista.valorTaxaMatricula) : 'Grátis'); }; %>
       <!-- ───────────────── Cupom de desconto (2026-11-09): só no valor do curso. Fica no passo do pagamento, não no contrato. ───────────────── -->
       <div class="chk-cupom" id="cupom">
         <% if (_cp.cupom) { %>
-          <p class="chk-cupom-ok"><i class="fa-solid fa-ticket" aria-hidden="true"></i> Cupom <b><%= _cp.codigo %></b> aplicado: <%= formatBRL(_desc) %> de desconto no curso. <a href="/inscrever/<%= turma.id %>?cupom=#cupom">tirar</a></p>
+          <% if (_cp.cupom.tipo === 'FINAL') { %>
+          <p class="chk-cupom-ok"><i class="fa-solid fa-ticket" aria-hidden="true"></i> Cupom <b><%= _cp.codigo %></b> aplicado<%= _cp.automatico ? ' sozinho' : '' %>: matrícula por <%= formatBRL(aVista.valorCurso) %><%= _taxaBaixou ? (Number(aVista.valorTaxaMatricula) > 0 ? ' e inscrição por ' + formatBRL(aVista.valorTaxaMatricula) : ' e inscrição grátis') : '' %>. <a href="/inscrever/<%= turma.id %>?cupom=#cupom">tirar</a></p>
+          <% } else { %>
+          <p class="chk-cupom-ok"><i class="fa-solid fa-ticket" aria-hidden="true"></i> Cupom <b><%= _cp.codigo %></b> aplicado<%= _cp.automatico ? ' sozinho' : '' %>: <%= formatBRL(_desc) %> de desconto no curso. <a href="/inscrever/<%= turma.id %>?cupom=#cupom">tirar</a></p>
+          <% } %>
         <% } else { %>
           <form method="GET" action="/inscrever/<%= turma.id %>#cupom" class="chk-cupom-form">
             <label for="chkCupom">Tem cupom?</label>
@@ -334,9 +342,9 @@ const _trilha = _totalPassos === 2
             <div class="chk-linha">
               <span>Valor da matrícula</span><strong class="num"><% if (_desc > 0) { %><s><%= formatBRL(Number(aVista.valorCurso) + _desc) %></s> <% } %><%= formatBRL(aVista.valorCurso) %></strong>
             </div>
-            <% if (Number(aVista.valorTaxaMatricula) > 0) { %>
+            <% if (Number(aVista.valorTaxaMatricula) > 0 || _taxaBaixou) { %>
             <div class="chk-linha">
-              <span>Taxa de inscrição</span><strong class="num"><%= formatBRL(aVista.valorTaxaMatricula) %></strong>
+              <span>Taxa de inscrição</span><strong class="num"><%- _taxaTxt() %></strong>
             </div>
             <% } %>
             <div class="chk-linha chk-linha-total">
@@ -428,9 +436,9 @@ const _trilha = _totalPassos === 2
               <div class="chk-linha">
                 <span>Valor da matrícula</span><strong class="num"><% if (_desc > 0) { %><s><%= formatBRL(Number(aVista.valorCurso) + _desc) %></s> <% } %><%= formatBRL(aVista.valorCurso) %></strong>
               </div>
-              <% if (Number(aVista.valorTaxaMatricula) > 0) { %>
+              <% if (Number(aVista.valorTaxaMatricula) > 0 || _taxaBaixou) { %>
               <div class="chk-linha">
-                <span>Taxa de inscrição</span><strong class="num"><%= formatBRL(aVista.valorTaxaMatricula) %></strong>
+                <span>Taxa de inscrição</span><strong class="num"><%- _taxaTxt() %></strong>
               </div>
               <% } %>
               <div class="chk-linha chk-linha-total">
@@ -529,7 +537,7 @@ const _trilha = _totalPassos === 2
 
             <div class="chk-resumo">
               <div class="chk-linha">
-                <span>Taxa de inscrição</span><strong class="num"><%= formatBRL(aVista.valorTaxaMatricula) %></strong>
+                <span>Taxa de inscrição</span><strong class="num"><%- _taxaTxt() %></strong>
               </div>
               <div class="chk-linha">
                 <span>Matrícula</span><strong class="num"><% if (_desc > 0) { %><s><%= formatBRL(Number(aVista.valorCurso) + _desc) %></s> <% } %><%= formatBRL(aVista.valorCurso) %></strong>

@@ -141,6 +141,7 @@ function tituloTurma(t) {
                   <div class="v-turma-txt">
                     <strong><%= tituloTurma(t) %></strong>
                     <span><%= t.aulas && t.aulas.length ? t.aulas[0].horario + ' · ' : '' %>Praça da Cruz Vermelha, 10 · Centro</span>
+                    <%- include('partials/cupom-faixa', { cursoId: curso.id }) %>
                   </div>
                   <a class="v-btn v-btn-red" href="/inscrever/<%= t.id %>">Inscrever-se <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
                 </div>
