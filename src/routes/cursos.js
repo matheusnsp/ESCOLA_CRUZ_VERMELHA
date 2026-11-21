@@ -535,7 +535,9 @@ router.get('/cursos/:cursoId', async (req, res, next) => {
           turmas: {
             where: turmasAbertas(),
             orderBy: { inicioPrevisto: 'asc' },
-            include: { aulas: { orderBy: { data: 'asc' }, take: 1 } },
+            // Todas as aulas (só data e horário): o card conta os encontros e os dias da semana.
+            // Antes vinha só a primeira, e a turma de 13 aulas aparecia como "1 encontro".
+            include: { aulas: { orderBy: { data: 'asc' }, select: { data: true, horario: true } } },
           },
           faqs: { orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }] },
         },

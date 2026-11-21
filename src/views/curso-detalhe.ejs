@@ -29,12 +29,30 @@ function dataLonga(d) {
   return new Date(d).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' });
 }
 // Título do card da turma: a data já está no quadrado vermelho, então aqui vai o dia da semana e
-// quantos encontros ("Quinta-feira · 1 encontro"), sem repetir a data por extenso.
+// quantos encontros, sem repetir a data por extenso. Com várias aulas, lista os dias da semana em que
+// elas caem, no plural quando repetem: "Sábado e sextas-feiras · 13 encontros", "Quintas-feiras · 4 encontros".
+// A data da aula é só dia (sem hora), então o dia da semana é lido em UTC; a data prevista da turma, em Brasília.
+function nomeDia(d, fuso) {
+  var s = new Date(d).toLocaleDateString('pt-BR', { weekday: 'long', timeZone: fuso });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function pluralDia(d, vezes) {
+  if (vezes < 2) return d;
+  return d.indexOf('-feira') > 0 ? d.replace('-feira', 's-feiras') : d + 's';
+}
 function tituloTurma(t) {
-  var dia = new Date(t.inicioPrevisto).toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'America/Sao_Paulo' });
-  dia = dia.charAt(0).toUpperCase() + dia.slice(1);
-  var n = t.aulas ? t.aulas.length : 0;
-  return n ? dia + ' · ' + n + (n === 1 ? ' encontro' : ' encontros') : dia;
+  var aulas = t.aulas || [];
+  var n = aulas.length;
+  if (n <= 1) {
+    var dia = nomeDia(t.inicioPrevisto, 'America/Sao_Paulo');
+    return n ? dia + ' · 1 encontro' : dia;
+  }
+  var ordem = []; var vezes = {};
+  aulas.forEach(function (a) { var d = nomeDia(a.data, 'UTC'); if (!vezes[d]) { vezes[d] = 0; ordem.push(d); } vezes[d]++; });
+  var dias = ordem.map(function (d) { return pluralDia(d, vezes[d]); });
+  dias = dias.map(function (d, i) { return i ? d.toLowerCase() : d; });
+  var texto = dias.length > 1 ? dias.slice(0, -1).join(', ') + ' e ' + dias[dias.length - 1] : dias[0];
+  return texto + ' · ' + n + ' encontros';
 }
 %>
 
