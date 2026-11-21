@@ -47,20 +47,41 @@ describe('página do curso: "Previsto"', { skip: temBanco ? false : 'sem DATABAS
   });
 
   // 2026-11-21: a turma de várias aulas aparecia como "1 encontro" (a página só carregava a primeira aula).
-  test('turma com 13 aulas (sábado + 12 sextas): "Sábado e sextas-feiras · 13 encontros"', async () => {
+  // O card usa a primeira aula (data, dia da semana, contagem), não o "início previsto", que pode estar diferente.
+  test('turma com 13 aulas às sextas (início previsto num sábado): "Sextas-feiras · 13 encontros", data 15, lista das aulas', async () => {
     const curso2 = await prisma.curso.create({ data: { nome: `Curso Encontros ${s}`, cargaHoraria: 100, precoAvista: 900, precoCheio: 990, valorParcela: 100, ativo: true } });
     try {
-      const sab = new Date('2027-01-09T00:00:00.000Z'); // sábado
-      const aulas = [{ data: sab, horario: '09:00 – 17:00' }];
-      for (let i = 0; i < 12; i++) aulas.push({ data: new Date(Date.UTC(2027, 0, 15 + 7 * i)), horario: '09:00 – 17:00' }); // sextas
+      const aulas = [];
+      for (let i = 0; i < 13; i++) aulas.push({ data: new Date(Date.UTC(2027, 0, 15 + 7 * i)), horario: '09:00 – 17:00' }); // sextas de 15/01 a 09/04
       await prisma.turma.create({ data: { cursoId: curso2.id, inicioPrevisto: new Date('2027-01-09T12:00:00-03:00'), status: 'ABERTA', aulas: { create: aulas } } });
       require('../src/lib/cache-rapido').limparTudo(); // o mapa de endereços dos cursos foi guardado no teste anterior
       const html = await (await fetch(site + vitrine.urlCurso(curso2))).text();
-      assert.match(html, /<strong>Sábado e sextas-feiras · 13 encontros<\/strong>/);
+      assert.match(html, /<strong>Sextas-feiras · 13 encontros<\/strong>/);
+      assert.match(html, /<b>15<\/b><span>janeiro<\/span>/);
+      assert.doesNotMatch(html, /<b>09<\/b><span>janeiro/);
+      assert.match(html, /Aulas: 15\/01, 22\/01, 29\/01, 05\/02, 12\/02, 19\/02, 26\/02, 05\/03, 12\/03, 19\/03, 26\/03, 02\/04, 09\/04</);
+      assert.match(html, /data-inicio="2027-01-15T12:00:00.000Z"/); // 09:00 de Brasília da primeira aula
       assert.doesNotMatch(html, /1 encontro</);
     } finally {
       await prisma.turma.deleteMany({ where: { cursoId: curso2.id } });
       await prisma.curso.delete({ where: { id: curso2.id } });
+    }
+  });
+
+  test('aulas com horários diferentes: cada data sai com o seu horário e o horário único some da linha do endereço', async () => {
+    const curso3 = await prisma.curso.create({ data: { nome: `Curso Horarios ${s}`, cargaHoraria: 12, precoAvista: 300, precoCheio: 330, valorParcela: 100, ativo: true } });
+    try {
+      const aulas = [{ data: new Date(Date.UTC(2027, 1, 6)), horario: '09:00 – 17:00' }, { data: new Date(Date.UTC(2027, 1, 13)), horario: '13:00 – 17:00' }, { data: new Date(Date.UTC(2027, 1, 20)), horario: '09:00 – 13:00' }];
+      await prisma.turma.create({ data: { cursoId: curso3.id, inicioPrevisto: new Date('2027-02-06T12:00:00-03:00'), status: 'ABERTA', aulas: { create: aulas } } });
+      require('../src/lib/cache-rapido').limparTudo();
+      const html = await (await fetch(site + vitrine.urlCurso(curso3))).text();
+      assert.match(html, /<strong>Sábados · 3 encontros<\/strong>/);
+      assert.match(html, /Aulas: 06\/02 09:00 – 17:00, 13\/02 13:00 – 17:00, 20\/02 09:00 – 13:00</);
+      assert.match(html, /<span>Praça da Cruz Vermelha, 10 · Centro<\/span>/);
+      assert.match(html, /horário varia por aula/);
+    } finally {
+      await prisma.turma.deleteMany({ where: { cursoId: curso3.id } });
+      await prisma.curso.delete({ where: { id: curso3.id } });
     }
   });
 });
