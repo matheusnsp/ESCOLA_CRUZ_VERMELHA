@@ -40,18 +40,11 @@ function pluralDia(d, vezes) {
   if (vezes < 2) return d;
   return d.indexOf('-feira') > 0 ? d.replace('-feira', 's-feiras') : d + 's';
 }
-// Datas de todas as aulas ("09/01, 15/01, …"), para a turma com mais de um encontro. Se o horário
-// muda de uma aula para outra, cada data sai com o seu ("15/01 09:00 – 17:00, 22/01 13:00 – 17:00").
+// Horário igual em todas as aulas? Aí ele aparece uma vez na linha do endereço; as datas das aulas saem
+// cada uma com o seu horário na linha "Aulas:" (pedido de 21/11).
 function horarioUnico(t) {
   var aulas = t.aulas || [];
   return aulas.every(function (a) { return a.horario === aulas[0].horario; });
-}
-function datasAulas(t) {
-  var mesmo = horarioUnico(t);
-  return (t.aulas || []).map(function (a) {
-    var d = new Date(a.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
-    return mesmo ? d : d + ' ' + a.horario;
-  }).join(', ');
 }
 // Data que aparece no quadrado vermelho: a da primeira aula, quando a turma tem aulas (o "início previsto"
 // pode ter ficado diferente da primeira aula); senão, o início previsto. A data da aula é só dia (UTC).
@@ -191,7 +184,7 @@ function tituloTurma(t) {
                   <div class="v-turma-txt">
                     <strong><%= tituloTurma(t) %></strong>
                     <span><%= t.aulas && t.aulas.length && horarioUnico(t) ? t.aulas[0].horario + ' · ' : '' %>Praça da Cruz Vermelha, 10 · Centro</span>
-                    <% if (t.aulas && t.aulas.length > 1) { %><span class="v-turma-datas"><i class="fa-regular fa-calendar" aria-hidden="true"></i> Aulas: <%= datasAulas(t) %></span><% } %>
+                    <% if (t.aulas && t.aulas.length > 1) { %><span class="v-turma-datas"><i class="fa-regular fa-calendar" aria-hidden="true"></i> Aulas: <% t.aulas.forEach(function (a, i) { %><b><%= new Date(a.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' }) %> <%= a.horario %></b><%= i < t.aulas.length - 1 ? ', ' : '' %><% }) %></span><% } %>
                     <%- include('partials/cupom-faixa', { cursoId: curso.id }) %>
                   </div>
                   <a class="v-btn v-btn-red" href="/inscrever/<%= t.id %>">Inscrever-se <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
