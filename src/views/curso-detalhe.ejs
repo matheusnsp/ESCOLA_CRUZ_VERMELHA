@@ -29,12 +29,62 @@ function dataLonga(d) {
   return new Date(d).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' });
 }
 // Título do card da turma: a data já está no quadrado vermelho, então aqui vai o dia da semana e
-// quantos encontros ("Quinta-feira · 1 encontro"), sem repetir a data por extenso.
+// quantos encontros, sem repetir a data por extenso. Com várias aulas, lista os dias da semana em que
+// elas caem, no plural quando repetem: "Sábado e sextas-feiras · 13 encontros", "Quintas-feiras · 4 encontros".
+// A data da aula é só dia (sem hora), então o dia da semana é lido em UTC; a data prevista da turma, em Brasília.
+function nomeDia(d, fuso) {
+  var s = new Date(d).toLocaleDateString('pt-BR', { weekday: 'long', timeZone: fuso });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function pluralDia(d, vezes) {
+  if (vezes < 2) return d;
+  return d.indexOf('-feira') > 0 ? d.replace('-feira', 's-feiras') : d + 's';
+}
+// Datas de todas as aulas ("09/01, 15/01, …"), para a turma com mais de um encontro. Se o horário
+// muda de uma aula para outra, cada data sai com o seu ("15/01 09:00 – 17:00, 22/01 13:00 – 17:00").
+function horarioUnico(t) {
+  var aulas = t.aulas || [];
+  return aulas.every(function (a) { return a.horario === aulas[0].horario; });
+}
+function datasAulas(t) {
+  var mesmo = horarioUnico(t);
+  return (t.aulas || []).map(function (a) {
+    var d = new Date(a.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
+    return mesmo ? d : d + ' ' + a.horario;
+  }).join(', ');
+}
+// Data que aparece no quadrado vermelho: a da primeira aula, quando a turma tem aulas (o "início previsto"
+// pode ter ficado diferente da primeira aula); senão, o início previsto. A data da aula é só dia (UTC).
+function dataDoCard(t) {
+  if (t.aulas && t.aulas.length) {
+    var p = new Date(t.aulas[0].data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', timeZone: 'UTC' }).split(' de ');
+    return { dia: p[0], mes: p[1] };
+  }
+  return vitrine.dataTurma(t.inicioPrevisto);
+}
+// Momento para a contagem regressiva: a primeira aula, na hora em que começa (horário "09:00 – 17:00" → 09:00
+// de Brasília); sem aulas, o início previsto. Assim a contagem bate com a data do quadrado vermelho.
+function inicioDaContagem(t) {
+  if (t.aulas && t.aulas.length) {
+    var dia = new Date(t.aulas[0].data).toISOString().slice(0, 10);
+    var h = (String(t.aulas[0].horario || '').match(/(\d{1,2}):(\d{2})/) || [null, '08', '00']);
+    return new Date(dia + 'T' + String(h[1]).padStart(2, '0') + ':' + h[2] + ':00-03:00').toISOString();
+  }
+  return new Date(t.inicioPrevisto).toISOString();
+}
 function tituloTurma(t) {
-  var dia = new Date(t.inicioPrevisto).toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'America/Sao_Paulo' });
-  dia = dia.charAt(0).toUpperCase() + dia.slice(1);
-  var n = t.aulas ? t.aulas.length : 0;
-  return n ? dia + ' · ' + n + (n === 1 ? ' encontro' : ' encontros') : dia;
+  var aulas = t.aulas || [];
+  var n = aulas.length;
+  if (n <= 1) {
+    var dia = n ? nomeDia(aulas[0].data, 'UTC') : nomeDia(t.inicioPrevisto, 'America/Sao_Paulo');
+    return n ? dia + ' · 1 encontro' : dia;
+  }
+  var ordem = []; var vezes = {};
+  aulas.forEach(function (a) { var d = nomeDia(a.data, 'UTC'); if (!vezes[d]) { vezes[d] = 0; ordem.push(d); } vezes[d]++; });
+  var dias = ordem.map(function (d) { return pluralDia(d, vezes[d]); });
+  dias = dias.map(function (d, i) { return i ? d.toLowerCase() : d; });
+  var texto = dias.length > 1 ? dias.slice(0, -1).join(', ') + ' e ' + dias[dias.length - 1] : dias[0];
+  return texto + ' · ' + n + ' encontros';
 }
 %>
 
@@ -60,16 +110,16 @@ function tituloTurma(t) {
       </div>
 
       <aside class="v-curso-card">
-        <% if (prox) { var d = vitrine.dataTurma(prox.inicioPrevisto); %>
+        <% if (prox) { var d = dataDoCard(prox); %>
           <span class="v-rotulo">Próxima turma</span>
           <div class="v-curso-turma">
             <div class="v-data"><b><%= d.dia %></b><span><%= d.mes %></span></div>
             <div>
               <strong><%= tituloTurma(prox) %></strong>
-              <% if (prox.aulas && prox.aulas.length) { %><em><i class="fa-regular fa-clock" aria-hidden="true"></i> <%= prox.aulas[0].horario %></em><% } %>
+              <% if (prox.aulas && prox.aulas.length) { %><em><i class="fa-regular fa-clock" aria-hidden="true"></i> <%= horarioUnico(prox) ? prox.aulas[0].horario : "horário varia por aula" %></em><% } %>
             </div>
           </div>
-          <div class="curso-countdown v-contagem" data-inicio="<%= new Date(prox.inicioPrevisto).toISOString() %>">
+          <div class="curso-countdown v-contagem" data-inicio="<%= inicioDaContagem(prox) %>">
             <span class="v-contagem-rot">Previsto em</span>
             <div class="cd-nums v-contagem-nums">
               <span><b data-d>--</b><i>dias</i></span>
@@ -135,12 +185,13 @@ function tituloTurma(t) {
             </div>
           <% } else { %>
             <div class="v-turmas">
-              <% turmas.forEach(function (t) { var dt = vitrine.dataTurma(t.inicioPrevisto); %>
+              <% turmas.forEach(function (t) { var dt = dataDoCard(t); %>
                 <div class="v-turma">
                   <div class="v-data"><b><%= dt.dia %></b><span><%= dt.mes %></span></div>
                   <div class="v-turma-txt">
                     <strong><%= tituloTurma(t) %></strong>
-                    <span><%= t.aulas && t.aulas.length ? t.aulas[0].horario + ' · ' : '' %>Praça da Cruz Vermelha, 10 · Centro</span>
+                    <span><%= t.aulas && t.aulas.length && horarioUnico(t) ? t.aulas[0].horario + ' · ' : '' %>Praça da Cruz Vermelha, 10 · Centro</span>
+                    <% if (t.aulas && t.aulas.length > 1) { %><span class="v-turma-datas"><i class="fa-regular fa-calendar" aria-hidden="true"></i> Aulas: <%= datasAulas(t) %></span><% } %>
                     <%- include('partials/cupom-faixa', { cursoId: curso.id }) %>
                   </div>
                   <a class="v-btn v-btn-red" href="/inscrever/<%= t.id %>">Inscrever-se <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
