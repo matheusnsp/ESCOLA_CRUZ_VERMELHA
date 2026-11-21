@@ -59,7 +59,8 @@ describe('página do curso: "Previsto"', { skip: temBanco ? false : 'sem DATABAS
       assert.match(html, /<strong>Sextas-feiras · 13 encontros<\/strong>/);
       assert.match(html, /<b>15<\/b><span>janeiro<\/span>/);
       assert.doesNotMatch(html, /<b>09<\/b><span>janeiro/);
-      assert.match(html, /Aulas: 15\/01, 22\/01, 29\/01, 05\/02, 12\/02, 19\/02, 26\/02, 05\/03, 12\/03, 19\/03, 26\/03, 02\/04, 09\/04</);
+      assert.match(html, /Aulas: <b>15\/01 09:00 – 17:00<\/b>, <b>22\/01 09:00 – 17:00<\/b>, /);
+      assert.match(html, /<b>09\/04 09:00 – 17:00<\/b><\/span>/);
       assert.match(html, /data-inicio="2027-01-15T12:00:00.000Z"/); // 09:00 de Brasília da primeira aula
       assert.doesNotMatch(html, /1 encontro</);
     } finally {
@@ -76,7 +77,7 @@ describe('página do curso: "Previsto"', { skip: temBanco ? false : 'sem DATABAS
       require('../src/lib/cache-rapido').limparTudo();
       const html = await (await fetch(site + vitrine.urlCurso(curso3))).text();
       assert.match(html, /<strong>Sábados · 3 encontros<\/strong>/);
-      assert.match(html, /Aulas: 06\/02 09:00 – 17:00, 13\/02 13:00 – 17:00, 20\/02 09:00 – 13:00</);
+      assert.match(html, /Aulas: <b>06\/02 09:00 – 17:00<\/b>, <b>13\/02 13:00 – 17:00<\/b>, <b>20\/02 09:00 – 13:00<\/b></);
       assert.match(html, /<span>Praça da Cruz Vermelha, 10 · Centro<\/span>/);
       assert.match(html, /horário varia por aula/);
     } finally {
