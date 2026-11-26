@@ -1518,9 +1518,15 @@ router.post('/certificados', requirePermissao('turmas:gerenciar'), receberAssina
 
 // Prévia: o modelo do certificado com um aluno de exemplo e as assinaturas atuais (na página, num iframe).
 // ?modalidade=presencial|online|webinario (sem o parâmetro: online, como antes das sub-abas).
+// ?assinatura=com|sem (online e webinário) ou mao|escaneada (presencial): a opção marcada na página, ainda sem
+// salvar, para a prévia mudar na hora (public/js/certificados-previa.js). Sem cache: a prévia reflete o que está salvo.
 router.get('/certificados/previa', requirePermissao('turmas:gerenciar'), async (req, res) => {
   const ajustes = await certificado.lerAjustes();
   const modalidade = String(req.query.modalidade || 'online');
+  const assinatura = String(req.query.assinatura || '');
+  if (modalidade === 'presencial' && ['mao', 'escaneada'].includes(assinatura)) ajustes.assinaturaPresencial = assinatura;
+  if (modalidade !== 'presencial' && ['com', 'sem'].includes(assinatura)) ajustes.assinaturaOnline = assinatura;
+  res.setHeader('Cache-Control', 'no-store');
   const d = modalidade === 'presencial' ? certificado.exemploCertificadoPresencial(ajustes)
     : modalidade === 'webinario' ? require('../lib/webinario-certificado').exemploCertificadoWebinario(ajustes)
       : require('../lib/ead-certificado').exemploCertificadoEad(ajustes);
