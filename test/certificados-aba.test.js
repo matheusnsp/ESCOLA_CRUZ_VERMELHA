@@ -25,7 +25,8 @@ test('aba Certificados: cartões de quem assina com miniatura, envio e remover',
   assert.equal((html.match(/type="file" name="assinaturaImg\d"/g) || []).length, 6);
   assert.match(await render({ aba: 'online' }), /name="assinaturaOnline" value="com" checked/); // 2026-11-26: na sub-aba Online
   assert.match(html, /name="livro" min="1" value="2"/);
-  assert.match(html, /<iframe[^>]+src="\/certificados\/previa\?modalidade=presencial"/);
+  assert.match(html, /<iframe[^>]+src="\/certificados\/previa\?modalidade=presencial&amp;assinatura=mao"/);
+  assert.match(html, /<script src="\/js\/certificados-previa\.js">/); // prévia ao vivo ao trocar a opção
 });
 
 // 2026-11-26: sub-abas Presencial | Online | Webinário, cada uma com as suas opções e a sua prévia; "Quem assina e livro"
@@ -48,13 +49,13 @@ test('sub-abas: sem aba abre em Presencial; cada uma com as suas opções e pré
   assert.match(on, /name="assinaturaOnline" value="com" checked/);
   assert.doesNotMatch(on, /name="assinaturaPresencial"/);
   assert.match(on, /<input type="hidden" name="aba" value="online">/);
-  assert.match(on, /<iframe[^>]+src="\/certificados\/previa\?modalidade=online"/);
+  assert.match(on, /<iframe[^>]+src="\/certificados\/previa\?modalidade=online&amp;assinatura=com"/);
 
   const web = await render({ aba: 'webinario' });
   assert.match(web, /class="adm-aba on">Webinário</);
   assert.doesNotMatch(web, /name="assinaturaOnline"|name="assinaturaPresencial"/);
   assert.match(web, /Segue a regra do certificado online/);
-  assert.match(web, /<iframe[^>]+src="\/certificados\/previa\?modalidade=webinario"/);
+  assert.match(web, /<iframe[^>]+src="\/certificados\/previa\?modalidade=webinario&amp;assinatura=com"/);
 
   for (const html of [pres, on, web]) {
     assert.match(html, /Quem assina e livro/);
@@ -76,6 +77,13 @@ test('rotas: ?aba= e ?modalidade= (presencial, online, webinário); o POST volta
   assert.match(previa, /modalidade === 'presencial' \? certificado\.exemploCertificadoPresencial\(ajustes\)/);
   assert.match(previa, /modalidade === 'webinario' \? require\('\.\.\/lib\/webinario-certificado'\)\.exemploCertificadoWebinario\(ajustes\)/);
   assert.match(previa, /exemploCertificadoEad\(ajustes\)/);
+  // 2026-11-26: ?assinatura= por cima do que está salvo (prévia ao vivo) e sem cache.
+  assert.match(previa, /\['mao', 'escaneada'\]\.includes\(assinatura\)\) ajustes\.assinaturaPresencial = assinatura/);
+  assert.match(previa, /\['com', 'sem'\]\.includes\(assinatura\)\) ajustes\.assinaturaOnline = assinatura/);
+  assert.match(previa, /Cache-Control', 'no-store'/);
+  const js = ler('src/public/js/certificados-previa.js');
+  assert.match(js, /getElementById\('previaCert'\)/);
+  assert.match(js, /addEventListener\('change'/);
 });
 
 test('exemplo do presencial: aluno, turma e instrutor de exemplo, validade de 2 anos, imagem só com "escaneada"', () => {

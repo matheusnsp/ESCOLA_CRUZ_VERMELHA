@@ -78,8 +78,9 @@
   <%# Prévia da modalidade desta sub-aba (iframe com o modelo impresso e um aluno de exemplo). %>
   <div class="full adm-cert-previa">
     <h2 class="adm-form-secao"><i class="fa-solid fa-eye"></i> Prévia do certificado <%= _aba === 'presencial' ? 'presencial' : _aba === 'online' ? 'online' : 'do webinário' %></h2>
-    <p class="adm-hint">Com um aluno de exemplo e o que está salvo nesta página (salve para atualizar). <a href="/certificados/previa?modalidade=<%= _aba %>" target="_blank" rel="noopener">Abrir em tela cheia</a></p>
-    <iframe class="adm-cert-iframe" title="Prévia do certificado" src="/certificados/previa?modalidade=<%= _aba %>" loading="lazy"></iframe>
+    <% var _assinaturaPrevia = _aba === 'presencial' ? (ajustes.assinaturaPresencial === 'escaneada' ? 'escaneada' : 'mao') : (ajustes.assinaturaOnline === 'sem' ? 'sem' : 'com'); %>
+    <p class="adm-hint">Com um aluno de exemplo. Trocar a opção de assinatura acima atualiza a prévia na hora; quem assina e o livro só entram depois de salvar. <a href="/certificados/previa?modalidade=<%= _aba %>&amp;assinatura=<%= _assinaturaPrevia %>" target="_blank" rel="noopener" id="previaTelaCheia">Abrir em tela cheia</a></p>
+    <iframe class="adm-cert-iframe" title="Prévia do certificado" id="previaCert" data-modalidade="<%= _aba %>" src="/certificados/previa?modalidade=<%= _aba %>&amp;assinatura=<%= _assinaturaPrevia %>" loading="lazy"></iframe>
   </div>
 
   <%# Bloco comum às três modalidades: quem assina (6 cartões) e o livro em uso. %>
@@ -124,4 +125,5 @@
   </div>
 </form>
 
+<script src="<%= asset('/js/certificados-previa.js') %>"></script>
 <%- include('foot') %>
