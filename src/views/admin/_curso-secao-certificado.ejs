@@ -9,10 +9,7 @@
     <textarea name="conteudoProgramatico" rows="8" placeholder="Um item por linha, ex.:&#10;Fundamentos da terapia intravenosa&#10;Revisão anatômica do sistema venoso periférico"><%= c.conteudoProgramatico || '' %></textarea>
     <small class="adm-hint">Um item por linha. Vai no verso do certificado.</small>
   </label>
-  <label class="full">
-    Validade (opcional)
-    <input type="text" name="certificadoValidade" maxlength="120" value="<%= c.certificadoValidade || '' %>" placeholder="Ex.: Validade de 2 anos">
-  </label>
+  <%- include('_curso-validade', { c: c, classe: 'full' }) %>
 
   <% if (typeof certAjustes !== 'undefined' && certAjustes) {
        // Depois de um erro ao salvar, volta o que foi digitado; senão, a lista de Modelos e a escolha do curso.

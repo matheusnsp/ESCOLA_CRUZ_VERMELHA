@@ -2452,3 +2452,7 @@ body.adm-assist-aberto .adm-assist-btn { display: none; }
 .adm-bv-whats { display: grid; gap: 4px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--linha); }
 .adm-btn.whats-btn { background: var(--whats); color: var(--whats-tx); justify-self: stretch; justify-content: center; margin-top: 4px; }
 .adm-btn.whats-btn:hover { background: var(--whats-esc); }
+
+/* ===== Certificados: sub-abas por modalidade (2026-11-26). A barra usa .adm-abas; a prévia fica dentro do formulário. ===== */
+.adm-cert-previa .adm-form-secao { margin-top: 0; }
+.adm-cert-comum { margin-top: 4px; }

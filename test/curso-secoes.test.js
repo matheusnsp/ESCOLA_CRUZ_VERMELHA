@@ -47,9 +47,15 @@ test('lerSecao pagina: dados do curso + área nos extras', () => {
 });
 
 test('lerSecao certificado e publicacao', () => {
-  const c = S.lerSecao('certificado', { conteudoProgramatico: 'A\r\nB', nomeCertificado: '', certificadoValidade: '2 anos' });
+  // 2026-11-26: validade em meses (6, 12, 24, 36, 60) no lugar do texto livre.
+  const c = S.lerSecao('certificado', { conteudoProgramatico: 'A\r\nB', nomeCertificado: '', certificadoValidadeMeses: '24' });
   assert.deepEqual(c.dados, {});
-  assert.deepEqual(c.extras, { nomeCertificado: null, conteudoProgramatico: 'A\nB', certificadoValidade: '2 anos' });
+  assert.deepEqual(c.extras, { nomeCertificado: null, conteudoProgramatico: 'A\nB', certificadoValidadeMeses: 24 });
+  // "Sem validade" (ou um número fora da lista) apaga o prazo E o texto antigo; 'antigo' não mexe em nenhum dos dois.
+  assert.deepEqual(S.lerSecao('certificado', { conteudoProgramatico: 'A', certificadoValidadeMeses: '' }).extras, { nomeCertificado: null, conteudoProgramatico: 'A', certificadoValidadeMeses: null, certificadoValidade: null });
+  assert.deepEqual(S.lerSecao('certificado', { conteudoProgramatico: 'A', certificadoValidadeMeses: '7' }).extras, { nomeCertificado: null, conteudoProgramatico: 'A', certificadoValidadeMeses: null, certificadoValidade: null });
+  assert.deepEqual(S.lerSecao('certificado', { conteudoProgramatico: 'A', certificadoValidadeMeses: 'antigo' }).extras, { nomeCertificado: null, conteudoProgramatico: 'A' });
+  assert.ok(S.SECOES.certificado.campos.includes('certificadoValidadeMeses') && !S.SECOES.certificado.campos.includes('certificadoValidade'));
   const p = S.lerSecao('publicacao', {});
   assert.deepEqual(p.dados, { ativo: false });
   assert.deepEqual(p.extras, { exigeComprovanteSaude: null });

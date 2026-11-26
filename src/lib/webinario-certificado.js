@@ -40,7 +40,23 @@ function dadosCertificadoWebinario({ usuario, curso, w, numero, ajustes, documen
     assinaturaOnline: ajustes.assinaturaOnline === 'sem' ? 'sem' : 'com',
     instrutorNome: '', instrutorRegistro: '',
     livro: numero.livro, registro: numero.registro,
-    validade: '', conteudo: [],
+    validade: cert.textoValidade(curso, numero.emitidoEm || new Date()), // prazo do curso do webinário, contado da emissão (2026-11-26)
+    conteudo: [],
+  };
+}
+
+// Prévia da sub-aba Webinário (painel → Certificados): um participante e um webinário de exemplo com as assinaturas e a
+// escolha atuais. Validade de 2 anos para mostrar a linha; sem livro/registro (não reserva número).
+function exemploCertificadoWebinario(ajustes) {
+  const agora = new Date();
+  return {
+    ...dadosCertificadoWebinario({
+      usuario: { nome: 'Aluno Exemplo', genero: null },
+      curso: { nome: 'Primeiros Socorros em Casa', cargaHoraria: 2, certificadoValidadeMeses: 24 },
+      w: { duracaoMin: 90, apresentador: 'Apresentador(a) de Exemplo', inicioEm: agora },
+      numero: { livro: null, registro: null, emitidoEm: agora }, realizadoEm: agora, ajustes, documentoAluno: () => null,
+    }),
+    teste: true,
   };
 }
 
@@ -79,4 +95,4 @@ async function aoConfirmar(w, usuarioId, req) {
   return emitirCertificadoWebinario(p.id, { enviarEmail: true, linkCertificado: `${wb.linkPagina(w)}/certificado`, documentoAluno: req && req.app && req.app.locals.documentoAluno });
 }
 
-module.exports = { emitirCertificadoWebinario, aoConfirmar, dadosCertificadoWebinario };
+module.exports = { emitirCertificadoWebinario, aoConfirmar, dadosCertificadoWebinario, exemploCertificadoWebinario };

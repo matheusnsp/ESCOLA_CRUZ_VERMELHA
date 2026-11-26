@@ -65,11 +65,14 @@
       <p class="cert-local"><%= c.emitidoEm %></p>
 <% if (c.online) { %>      <p class="cert-ressalva">Capacitação teórica. Não inclui treinamento prático em manequim, oferecido nos cursos presenciais da Escola.</p>
 <% } -%>
-<%_ /* Online "sem assinatura" (painel → Modelos): só nome e cargo. Com assinatura: a imagem escaneada (se houver) e a linha. Webinário segue a regra do online. */ var _semLinha = (c.online || c.webinario) && c.assinaturaOnline === 'sem'; _%>
+<%_ /* Online "sem assinatura" (painel → Certificados): só nome e cargo. Com assinatura: a imagem escaneada (se houver) e a linha. Webinário segue a regra do online.
+       Presencial (2026-11-26): 'mao' = só a linha (assinado à mão); 'escaneada' = a imagem de quem tiver, em cima da linha. */
+     var _semLinha = (c.online || c.webinario) && c.assinaturaOnline === 'sem';
+     var _semImagem = _semLinha || (!c.online && !c.webinario && c.assinaturaPresencial === 'mao'); _%>
       <div class="cert-assinaturas n<%= c.assinaturas.length %><%= _semLinha ? ' sem-linha' : '' %>">
         <% c.assinaturas.forEach(function (a) { %>
           <div>
-<%_ if (!_semLinha && a.imagemUrl) { _%>
+<%_ if (!_semImagem && a.imagemUrl) { _%>
             <img class="cert-assinatura-img" src="<%= a.imagemUrl %>" alt="">
 <%_ } _%>
 <%_ if (!_semLinha) { _%>

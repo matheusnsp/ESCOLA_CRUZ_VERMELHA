@@ -11,7 +11,7 @@
   var criar = form.querySelector('[data-passos-criar]');
   var caixaErro = document.querySelector('[data-passos-erro]');
   var mais = document.getElementById('maisDetalhes');
-  var MAIS = ['conteudoProgramatico', 'nomeCertificado', 'certificadoValidade', 'exigeComprovanteSaude', 'ativo'];
+  var MAIS = ['conteudoProgramatico', 'nomeCertificado', 'certificadoValidadeMeses', 'exigeComprovanteSaude', 'ativo'];
   var atual = 1;
 
   function erro(msg) {

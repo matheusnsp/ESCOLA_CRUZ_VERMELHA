@@ -1,0 +1,15 @@
+<%#
+  Validade do certificado (2026-11-26): prazo em meses por curso; o certificado sai com "Válido até dd/mm/aaaa", contado da
+  emissão. c = curso; classe = 'full' ou ''. Um curso que só tem o texto livre antigo (certificadoValidade) mostra a opção
+  "Texto antigo" marcada: salvar assim não muda nada; escolher um prazo (ou "Sem validade") substitui o texto.
+%>
+<% var _meses = Number(c.certificadoValidadeMeses) || 0; var _antigo = !_meses && (c.certificadoValidade || '').trim();
+   var _ops = [[6, '6 meses'], [12, '1 ano'], [24, '2 anos'], [36, '3 anos'], [60, '5 anos']]; %>
+  <label class="<%= classe %>">Validade do certificado
+    <select name="certificadoValidadeMeses">
+      <% if (_antigo) { %><option value="antigo" selected>Texto antigo: "<%= _antigo %>"</option><% } %>
+      <option value="" <%= !_meses && !_antigo ? 'selected' : '' %>>Sem validade</option>
+      <% _ops.forEach(function (o) { %><option value="<%= o[0] %>" <%= _meses === o[0] ? 'selected' : '' %>><%= o[1] %></option><% }) %>
+    </select>
+    <small class="adm-hint">O certificado sai com "Válido até dd/mm/aaaa", contado da data de emissão.<% if (_antigo) { %> Este curso ainda usa o texto antigo; escolha um prazo para passar à data calculada.<% } %></small>
+  </label>

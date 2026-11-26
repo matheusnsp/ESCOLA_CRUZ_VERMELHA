@@ -99,7 +99,7 @@ describe('Novo curso: rota e tela', { skip: temBanco ? false : 'sem DATABASE_URL
       assert.equal(await p.evaluate(() => document.querySelector('#maisDetalhes').open), true);
       assert.equal(await p.evaluate(() => !!document.querySelector('[name=precoAvista]').closest('label').querySelector('.adm-tag-ia')), true);
       const nomes = await p.evaluate(() => [...new FormData(document.querySelector('#cursoNovo')).keys()]);
-      for (const n of ['nome', 'cargaHoraria', 'precoAvista', 'precoCheio', 'parcelas', 'taxaMatricula', 'descricao', 'descricaoLonga', 'conteudoProgramatico', 'nomeCertificado', 'certificadoValidade']) assert.ok(nomes.includes(n), n);
+      for (const n of ['nome', 'cargaHoraria', 'precoAvista', 'precoCheio', 'parcelas', 'taxaMatricula', 'descricao', 'descricaoLonga', 'conteudoProgramatico', 'nomeCertificado', 'certificadoValidadeMeses']) assert.ok(nomes.includes(n), n);
       await p.close();
     } finally { await b.close(); }
   });
