@@ -60,7 +60,7 @@ function dadosCertificadoEad({ usuario, curso, modulos, numero, concluidoEm, aju
     instrutorRegistro: '',
     livro: numero.livro,
     registro: numero.registro,
-    validade: (curso.certificadoValidade || '').trim(),
+    validade: cert.textoValidade(curso, numero.emitidoEm || new Date()), // prazo do curso contado da emissão (2026-11-26)
     conteudo: ordem.map((m) => m.titulo),
   };
 }
@@ -122,10 +122,10 @@ async function previaCertificadoEad(alunoCursoId, { documentoAluno } = {}) {
 }
 
 // Aba "Certificados" do painel (2026-11-12): um certificado de exemplo, com as assinaturas e a escolha atuais, para ver
-// como vai ficar antes de algum aluno baixar. Marcado como teste (sem livro/registro).
+// como vai ficar antes de algum aluno baixar. Marcado como teste (sem livro/registro). Validade de 2 anos para mostrar a linha.
 function exemploCertificadoEad(ajustes) {
   const dados = dadosCertificadoEad({
-    usuario: { nome: 'Aluno Exemplo', genero: null }, curso: { nome: 'Primeiros Socorros Básicos', cargaHoraria: 4 },
+    usuario: { nome: 'Aluno Exemplo', genero: null }, curso: { nome: 'Primeiros Socorros Básicos', cargaHoraria: 4, certificadoValidadeMeses: 24 },
     modulos: [{ titulo: 'Antes de tudo', final: false }, { titulo: 'Parada cardíaca', final: false }, { titulo: 'Engasgo', final: false }, { titulo: 'Juntando tudo', final: true }],
     numero: { livro: null, registro: null, emitidoEm: new Date() }, concluidoEm: new Date(), ajustes, documentoAluno: () => null,
   });

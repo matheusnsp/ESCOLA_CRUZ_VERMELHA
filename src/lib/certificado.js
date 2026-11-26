@@ -3,7 +3,7 @@
 // Certificado impresso pela secretaria (A4 deitado, frente e verso), no layout do modelo em Word
 // da escola. Ajustes gerais em Configuracao: nome e cargo de quem assina pela coordenação e o
 // Livro em uso. Por turma (lib/extras.js): instrutor e registro profissional. Por curso (extras):
-// nome no certificado, conteúdo programático e validade. Nenhuma coluna nova no banco.
+// nome no certificado, conteúdo programático e validade (prazo em meses, contado da emissão). Nenhuma coluna nova no banco.
 //
 // Livro/Registro: gerados na PRIMEIRA impressão de cada aluno (registro no LogAuditoria); reimprimir
 // mantém o mesmo número. O registro é sequencial dentro do livro.
@@ -21,7 +21,7 @@ const PADRAO_ASSINANTE = { nome: 'AMANDA FERRARI PENZA', cargo: 'Coordenadora de
 const PADROES = { livro: '1' };
 
 async function lerAjustes() {
-  const cfgs = await prisma.configuracao.findMany({ where: { chave: { in: ['cert_assinantes', 'cert_livro_atual', 'cert_coordenador_nome', 'cert_coordenador_cargo', 'cert_assinatura_online'] } } });
+  const cfgs = await prisma.configuracao.findMany({ where: { chave: { in: ['cert_assinantes', 'cert_livro_atual', 'cert_coordenador_nome', 'cert_coordenador_cargo', 'cert_assinatura_online', 'cert_assinatura_presencial'] } } });
   const m = Object.fromEntries(cfgs.map((c) => [c.chave, c.valor]));
   let assinantes = [];
   try { assinantes = JSON.parse(m.cert_assinantes || '[]'); } catch (e) { assinantes = []; }
@@ -33,13 +33,22 @@ async function lerAjustes() {
     assinantes = [{ nome: (m.cert_coordenador_nome || '').trim() || PADRAO_ASSINANTE.nome, cargo: (m.cert_coordenador_cargo || '').trim() || PADRAO_ASSINANTE.cargo }];
   }
   // Certificado online (2026-11-12): 'com' = linha para assinar (e a assinatura escaneada, se houver); 'sem' = só nome e cargo.
-  return { assinantes, livro: Math.max(1, parseInt(m.cert_livro_atual, 10) || 1), assinaturaOnline: m.cert_assinatura_online === 'sem' ? 'sem' : 'com' };
+  // Certificado presencial (2026-11-26): 'mao' = só a linha, assinado à mão na hora (como sempre foi);
+  // 'escaneada' = a imagem escaneada de quem tiver, em cima da linha.
+  return {
+    assinantes,
+    livro: Math.max(1, parseInt(m.cert_livro_atual, 10) || 1),
+    assinaturaOnline: m.cert_assinatura_online === 'sem' ? 'sem' : 'com',
+    assinaturaPresencial: m.cert_assinatura_presencial === 'escaneada' ? 'escaneada' : 'mao',
+  };
 }
 
 // Imagem da assinatura escaneada: só endereço do nosso armazenamento (/uploads/… ou https://…).
 const imagemValida = (u) => (typeof u === 'string' && /^(\/uploads\/[\w.-]+|https:\/\/\S+)$/.test(u.trim()) ? u.trim().slice(0, 500) : null);
 
 // v.assinantes: [{ nome, cargo }] na ordem das linhas do formulário (linha sem nome fica vazia).
+// assinaturaOnline / assinaturaPresencial: só mudam quando vêm no objeto (undefined = mantém o que está), porque a
+// página Certificados tem sub-abas e cada uma envia só a sua opção; o formulário do curso não envia nenhuma.
 async function salvarAjustes(v) {
   const assinantes = (v.assinantes || []).slice(0, MAX_ASSINANTES)
     .map((a) => ({ nome: String(a && a.nome || '').trim().slice(0, 80), cargo: String(a && a.nome && a.cargo || '').trim().slice(0, 80), imagemUrl: a && a.nome ? imagemValida(a.imagemUrl) : null }));
@@ -50,7 +59,8 @@ async function salvarAjustes(v) {
   await salvar('cert_assinantes', assinantes.length ? JSON.stringify(assinantes) : null);
   const livro = String(Math.max(1, parseInt(v.livro, 10) || 1));
   await salvar('cert_livro_atual', livro === PADROES.livro ? null : livro);
-  await salvar('cert_assinatura_online', v.assinaturaOnline === 'sem' ? 'sem' : null);
+  if (v.assinaturaOnline !== undefined) await salvar('cert_assinatura_online', v.assinaturaOnline === 'sem' ? 'sem' : null);
+  if (v.assinaturaPresencial !== undefined) await salvar('cert_assinatura_presencial', v.assinaturaPresencial === 'escaneada' ? 'escaneada' : null);
   await prisma.configuracao.deleteMany({ where: { chave: { in: ['cert_coordenador_nome', 'cert_coordenador_cargo'] } } });
 }
 
@@ -68,15 +78,18 @@ function escolhaDaTurma(turma) {
   return e.length ? e : escolhaDoCurso(turma.curso);
 }
 
+// Com 'escaneada' (painel → Certificados › Presencial) a imagem de quem tiver vai junto; com 'mao' (padrão) só nome e cargo
+// e o modelo imprime a linha para assinar.
 function assinaturasDaTurma(turma, ajustes) {
   const lista = [];
+  const escaneada = ajustes.assinaturaPresencial === 'escaneada';
   for (const chave of escolhaDaTurma(turma)) {
     if (chave === 'instrutor') {
       const reg = (turma.instrutorRegistro || '').trim();
       lista.push({ nome: (turma.instrutorNome || '').trim(), cargo: 'Instrutor' + (reg ? ' ' + reg : ''), instrutor: true });
     } else {
       const a = ajustes.assinantes[Number(chave.slice(1))];
-      if (a && a.nome) lista.push({ nome: a.nome, cargo: a.cargo });
+      if (a && a.nome) lista.push({ nome: a.nome, cargo: a.cargo, ...(escaneada && a.imagemUrl ? { imagemUrl: a.imagemUrl } : {}) });
     }
   }
   return lista.slice(0, MAX_NO_CERTIFICADO);
@@ -179,6 +192,33 @@ function emitidoEm(d = new Date()) {
   return `Rio de Janeiro, ${p2(x.getDate())} de ${MESES[x.getMonth()]} de ${x.getFullYear()}.`;
 }
 
+// Validade do certificado (2026-11-26): prazo em meses por curso (extras: certificadoValidadeMeses), contado da data de
+// emissão (a primeira impressão). As opções do formulário do curso; qualquer outro número não é aceito.
+const VALIDADES = [
+  { meses: 6, rotulo: '6 meses' }, { meses: 12, rotulo: '1 ano' }, { meses: 24, rotulo: '2 anos' },
+  { meses: 36, rotulo: '3 anos' }, { meses: 60, rotulo: '5 anos' },
+];
+const mesesValidade = (v) => { const n = parseInt(v, 10); return VALIDADES.some((o) => o.meses === n) ? n : null; };
+
+// Dia de Brasília em que o certificado foi emitido, `meses` depois: mesmo dia do mês (31/01 + 1 mês → 28/02 ou 29/02,
+// o último dia do mês). Devolve a data à meia-noite UTC, para dataBr imprimir dd/mm/aaaa sem fuso. null sem prazo.
+function validoAte(emitidoEm, meses) {
+  const n = Number(meses);
+  if (!emitidoEm || !(n > 0) || Number.isNaN(new Date(emitidoEm).getTime())) return null;
+  const partes = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: 'numeric', day: 'numeric' })
+    .formatToParts(new Date(emitidoEm)).filter((x) => x.type !== 'literal').map((x) => [x.type, Number(x.value)]));
+  const ultimoDia = new Date(Date.UTC(partes.year, partes.month - 1 + n + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(partes.year, partes.month - 1 + n, Math.min(partes.day, ultimoDia)));
+}
+
+// O que sai no verso: "Válido até dd/mm/aaaa" com o prazo novo; o texto livre antigo (certificadoValidade) enquanto o
+// curso não tiver prazo; nada sem os dois.
+function textoValidade(curso, emitidoEm) {
+  const ate = validoAte(emitidoEm, curso && curso.certificadoValidadeMeses);
+  if (ate) return `Válido até ${dataBr(ate)}`;
+  return String((curso && curso.certificadoValidade) || '').trim();
+}
+
 function portador(genero) {
   if (genero === 'Feminino') return 'Portadora';
   if (genero === 'Masculino') return 'Portador';
@@ -199,13 +239,29 @@ function dadosDoCertificado(m, ajustes, documentoAluno) {
     periodo: periodo(turma),
     emitidoEm: emitidoEm(m.certEmitidoEm || new Date()),
     assinaturas: assinaturasDaTurma(turma, ajustes),
+    assinaturaPresencial: ajustes.assinaturaPresencial === 'escaneada' ? 'escaneada' : 'mao',
     instrutorNome: (turma.instrutorNome || '').trim(),
     instrutorRegistro: (turma.instrutorRegistro || '').trim(),
     livro: m.certLivro,
     registro: m.certRegistro,
-    validade: (curso.certificadoValidade || '').trim(),
+    validade: textoValidade(curso, m.certEmitidoEm || new Date()),
     conteudo: String(curso.conteudoProgramatico || '').split(/\r?\n/).map((l) => l.trim().replace(/^[-•*]\s*/, '')).filter(Boolean),
   };
+}
+
+// Prévia da sub-aba Presencial (painel → Certificados): um aluno, uma turma e um instrutor de exemplo com as assinaturas e
+// a escolha atuais, no mesmo formato de dadosDoCertificado. Validade de 2 anos para mostrar a linha no verso; sem
+// livro/registro (não reserva número).
+function exemploCertificadoPresencial(ajustes) {
+  const hoje = new Date();
+  const dia = (n) => new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate() - n));
+  const curso = {
+    nome: 'Primeiros Socorros Básicos', cargaHoraria: 8, certificadoValidadeMeses: 24,
+    conteudoProgramatico: 'Avaliação da cena e da vítima\nParada cardiorrespiratória e RCP\nEngasgo\nHemorragias e curativos\nQueimaduras\nPrática em manequim',
+  };
+  const turma = { curso, instrutorNome: 'Instrutor(a) de Exemplo', instrutorRegistro: 'COREN-RJ 000000', inicioPrevisto: dia(8), aulas: [{ data: dia(8) }, { data: dia(7) }] };
+  const m = { aluno: { nome: 'Aluno Exemplo', genero: null }, turma, certLivro: null, certRegistro: null, certEmitidoEm: hoje };
+  return { ...dadosDoCertificado(m, ajustes, () => null), teste: true };
 }
 
 // O que falta para o certificado sair completo (mostrado antes de imprimir).
@@ -242,5 +298,6 @@ module.exports = {
   turmasParaImprimir,
   lerAjustes, salvarAjustes, numerar, anexarCertificados, dadosDoCertificado, pendencias, PADROES,
   reservarNumero, lerNumero, numerarEad, emitidoEm, portador, dataBr,
+  VALIDADES, mesesValidade, validoAte, textoValidade, exemploCertificadoPresencial,
   escolhaDaTurma, escolhaDoCurso, assinaturasDaTurma, MAX_ASSINANTES, MAX_NO_CERTIFICADO,
 };

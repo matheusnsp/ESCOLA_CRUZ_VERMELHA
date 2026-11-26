@@ -21,5 +21,17 @@ describe('ajustes do certificado: assinatura online', { skip: temBanco ? false :
     await cert.salvarAjustes({ assinantes: [{ nome: 'A', cargo: 'C', imagemUrl: '/uploads/a.webp' }, { nome: 'B', cargo: 'P' }], livro: '1', assinaturaOnline: 'qualquer' });
     a = await cert.lerAjustes();
     assert.equal(a.assinaturaOnline, 'com', 'valor desconhecido volta ao padrão');
+    // 2026-11-26: presencial à mão (padrão, como sempre foi) ou com a assinatura escaneada; cada sub-aba envia só a sua
+    // opção, então o que vem undefined fica como está.
+    assert.equal(a.assinaturaPresencial, 'mao');
+    await cert.salvarAjustes({ assinantes: [{ nome: 'A', cargo: 'C' }], livro: '1', assinaturaOnline: 'sem', assinaturaPresencial: 'escaneada' });
+    a = await cert.lerAjustes();
+    assert.equal(a.assinaturaPresencial, 'escaneada'); assert.equal(a.assinaturaOnline, 'sem');
+    await cert.salvarAjustes({ assinantes: [{ nome: 'A', cargo: 'C' }], livro: '1', assinaturaPresencial: 'mao' });
+    a = await cert.lerAjustes();
+    assert.equal(a.assinaturaPresencial, 'mao'); assert.equal(a.assinaturaOnline, 'sem', 'sem assinaturaOnline no objeto: mantém');
+    await cert.salvarAjustes({ assinantes: [{ nome: 'A', cargo: 'C' }], livro: '1', assinaturaOnline: 'com', assinaturaPresencial: 'qualquer' });
+    a = await cert.lerAjustes();
+    assert.equal(a.assinaturaPresencial, 'mao', 'valor desconhecido volta ao padrão'); assert.equal(a.assinaturaOnline, 'com');
   });
 });

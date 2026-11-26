@@ -6,6 +6,7 @@
 // que o assistente propõe e o "o que falta" dos cartões. Sem banco.
 
 const { parseDecimal, parseInteiro } = require('./parse-form');
+const mesesValidade = (v) => require('./certificado').mesesValidade(v); // prazos aceitos (6, 12, 24, 36, 60) ficam lá
 
 const ESCOLARIDADES = ['', 'Ensino Fundamental', 'Ensino Médio', 'Ensino Superior'];
 const categorias = () => require('./vitrine').CATEGORIAS;
@@ -14,7 +15,7 @@ const secao = (rotulo, botao, slug, campos) => ({ rotulo, botao, caminho: (id) =
 const SECOES = {
   pagina: secao('Página no site', 'Salvar página', 'pagina', ['nome', 'descricao', 'descricaoLonga', 'cargaHoraria', 'escolaridadeMinima', 'categoria', 'pedido']),
   valores: secao('Valores', 'Salvar valores', 'valores', ['precoAvista', 'precoCheio', 'parcelas', 'taxaMatricula']),
-  certificado: secao('Certificado', 'Salvar certificado', 'certificado', ['nomeCertificado', 'conteudoProgramatico', 'certificadoValidade']),
+  certificado: secao('Certificado', 'Salvar certificado', 'certificado', ['nomeCertificado', 'conteudoProgramatico', 'certificadoValidadeMeses']),
   publicacao: secao('Inscrição e publicação', 'Salvar', 'publicacao', ['ativo', 'exigeComprovanteSaude']),
 };
 const DUVIDAS = { secao: 'duvidas', rotulo: 'Dúvidas frequentes', botao: 'Adicionar as marcadas', caminho: (id) => `/cursos/${id}/duvidas` };
@@ -55,15 +56,18 @@ function lerSecao(nome, body = {}) {
     return { dados, extras: {}, erro };
   }
   if (nome === 'certificado') {
-    return {
-      dados: {},
-      extras: {
-        nomeCertificado: cortado(b.nomeCertificado, 120),
-        conteudoProgramatico: String(b.conteudoProgramatico || '').replace(/\r\n/g, '\n').trim().slice(0, 4000) || null,
-        certificadoValidade: cortado(b.certificadoValidade, 120),
-      },
-      erro: null,
+    // Validade (2026-11-26): prazo em meses (certificadoValidadeMeses) no lugar do texto livre (certificadoValidade).
+    // O texto antigo fica guardado e continua saindo enquanto o curso não tiver prazo: 'antigo' = não mexe em nada;
+    // '' (sem validade) = apaga o texto antigo também, senão a escolha não teria efeito.
+    const extras = {
+      nomeCertificado: cortado(b.nomeCertificado, 120),
+      conteudoProgramatico: String(b.conteudoProgramatico || '').replace(/\r\n/g, '\n').trim().slice(0, 4000) || null,
     };
+    if (b.certificadoValidadeMeses !== 'antigo') {
+      extras.certificadoValidadeMeses = mesesValidade(b.certificadoValidadeMeses);
+      if (b.certificadoValidadeMeses !== undefined && !extras.certificadoValidadeMeses) extras.certificadoValidade = null;
+    }
+    return { dados: {}, extras, erro: null };
   }
   if (nome === 'publicacao') {
     return {

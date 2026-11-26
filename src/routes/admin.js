@@ -1481,15 +1481,20 @@ router.post('/modelos', requirePermissao('turmas:gerenciar'), async (req, res) =
 });
 
 // ---------- Certificados (2026-11-12): quem assina, assinatura escaneada, com/sem assinatura no online, livro, prévia ----------
+// 2026-11-26: sub-abas por modalidade (Presencial | Online | Webinário), cada uma com as suas opções e a sua prévia;
+// "Quem assina e livro" é comum às três. A sub-aba vai na query (?aba=) e volta num campo oculto do formulário.
+const ABAS_CERT = ['presencial', 'online', 'webinario'];
+const abaCert = (v) => (ABAS_CERT.includes(String(v || '')) ? String(v) : 'presencial');
 router.get('/certificados', requirePermissao('turmas:gerenciar'), async (req, res) => {
   res.render('admin/certificados', {
-    ajustes: await certificado.lerAjustes(), ok: req.query.ok || null, erro: req.query.erro || null,
+    ajustes: await certificado.lerAjustes(), ok: req.query.ok || null, erro: req.query.erro || null, aba: abaCert(req.query.aba),
     turmasCert: await certificado.turmasParaImprimir({ todas: req.query.todas === '1' }),
   });
 });
 
 router.post('/certificados', requirePermissao('turmas:gerenciar'), receberAssinaturas, async (req, res) => {
-  if (req.uploadErro) return res.redirect('/certificados?erro=' + encodeURIComponent(req.uploadErro));
+  const aba = abaCert(req.body && req.body.aba);
+  if (req.uploadErro) return res.redirect(`/certificados?aba=${aba}&erro=` + encodeURIComponent(req.uploadErro));
   // Imagem nova substitui a de antes; "remover" tira; sem nada, fica a que já estava.
   const atuais = (await certificado.lerAjustes()).assinantes;
   const linhas = Object.values(req.body.assinantes || {});
@@ -1503,15 +1508,22 @@ router.post('/certificados', requirePermissao('turmas:gerenciar'), receberAssina
     if (antes && url !== antes) apagar.push(antes);
     linhas[i] = { ...linhas[i], imagemUrl: url };
   }
-  await certificado.salvarAjustes({ assinantes: linhas, livro: req.body.livro, assinaturaOnline: req.body.assinaturaOnline });
+  // Cada sub-aba envia só a sua opção (a outra fica como está: salvarAjustes não mexe no que vem undefined).
+  await certificado.salvarAjustes({ assinantes: linhas, livro: req.body.livro, assinaturaOnline: req.body.assinaturaOnline, assinaturaPresencial: req.body.assinaturaPresencial });
   for (const u of apagar) await removerFotoCurso(u).catch(() => {});
-  await auditar(req, 'EDITOU_CERTIFICADOS', 'Configuracao', null, { assinaturaOnline: req.body.assinaturaOnline === 'sem' ? 'sem' : 'com' });
-  res.redirect('/certificados?ok=' + encodeURIComponent('Certificados salvos.'));
+  const salvo = await certificado.lerAjustes();
+  await auditar(req, 'EDITOU_CERTIFICADOS', 'Configuracao', null, { aba, assinaturaOnline: salvo.assinaturaOnline, assinaturaPresencial: salvo.assinaturaPresencial });
+  res.redirect(`/certificados?aba=${aba}&ok=` + encodeURIComponent('Certificados salvos.'));
 });
 
-// Prévia: o modelo do certificado online com um aluno de exemplo e as assinaturas atuais (na página, num iframe).
+// Prévia: o modelo do certificado com um aluno de exemplo e as assinaturas atuais (na página, num iframe).
+// ?modalidade=presencial|online|webinario (sem o parâmetro: online, como antes das sub-abas).
 router.get('/certificados/previa', requirePermissao('turmas:gerenciar'), async (req, res) => {
-  const d = require('../lib/ead-certificado').exemploCertificadoEad(await certificado.lerAjustes());
+  const ajustes = await certificado.lerAjustes();
+  const modalidade = String(req.query.modalidade || 'online');
+  const d = modalidade === 'presencial' ? certificado.exemploCertificadoPresencial(ajustes)
+    : modalidade === 'webinario' ? require('../lib/webinario-certificado').exemploCertificadoWebinario(ajustes)
+      : require('../lib/ead-certificado').exemploCertificadoEad(ajustes);
   res.render('admin/certificado-imprimir', { lista: [{ id: 'exemplo', ...d, verificacao: null }], turma: { curso: { nome: d.curso } }, avisoRedacao: null, barraAluno: null, previaPainel: true });
 });
 

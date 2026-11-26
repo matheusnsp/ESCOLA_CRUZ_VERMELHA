@@ -69,7 +69,7 @@
         <textarea name="descricaoLonga" rows="8" placeholder="Texto que aparece na página do curso. Deixe uma linha em branco entre os parágrafos."><%= c.descricaoLonga || '' %></textarea>
         <small class="adm-hint">Siga o modelo de 3 parágrafos: o que o curso forma, o que o aluno aprende e onde vai poder atuar.</small>
       </label>
-      <details class="full adm-mais" id="maisDetalhes" <%= (c.conteudoProgramatico || c.nomeCertificado || c.certificadoValidade || c.exigeComprovanteSaude || c.ativo) ? 'open' : '' %>>
+      <details class="full adm-mais" id="maisDetalhes" <%= (c.conteudoProgramatico || c.nomeCertificado || c.certificadoValidadeMeses || c.exigeComprovanteSaude || c.ativo) ? 'open' : '' %>>
         <summary>Mais detalhes (opcional)</summary>
         <div class="adm-passo-grid">
           <label class="full">Conteúdo programático
@@ -78,9 +78,7 @@
           <label>Nome no certificado
             <input type="text" name="nomeCertificado" maxlength="120" value="<%= c.nomeCertificado || '' %>" placeholder="Em branco = nome do curso">
           </label>
-          <label>Validade (opcional)
-            <input type="text" name="certificadoValidade" maxlength="120" value="<%= c.certificadoValidade || '' %>" placeholder="Ex.: Validade de 2 anos">
-          </label>
+          <%- include('_curso-validade', { c: c, classe: '' }) %>
           <label class="check full"><input type="checkbox" name="exigeComprovanteSaude" <%= c.exigeComprovanteSaude ? 'checked' : '' %>> Exige comprovante de que a pessoa é da área da saúde</label>
           <label class="check full"><input type="checkbox" name="ativo" <%= c.ativo ? 'checked' : '' %>> Mostrar este curso no site (desmarcado, ele nasce fora do site)</label>
         </div>
